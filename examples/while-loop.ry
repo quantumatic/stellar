@@ -1,0 +1,10 @@
+pub fun main() {
+    while a > 4 {
+        if a < 2 {
+            println("a < 2");
+        }
+
+        println("%d", a);
+        a--;
+    }
+}

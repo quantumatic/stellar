@@ -1,0 +1,13 @@
+[package]
+name = "ry-static-analyzer"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+ry-ast = {path = "../ry-ast"}
+ry-lexer = {path = "../ry-lexer"}
+ry-parser = {path = "../ry-parser"}
+ry-report = {path = "../ry-report"}
+codespan-reporting = "0.11.1"
+num-traits = "0.2.15"
+thiserror = "1.0.40"

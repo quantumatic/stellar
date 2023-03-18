@@ -1,0 +1,7 @@
+pub fun test() i32 {
+    2
+}
+
+pub fun test2() {
+    [1, test(), 3 + 2]
+}

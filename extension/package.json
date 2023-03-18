@@ -1,0 +1,25 @@
+{
+  "name": "ry",
+  "displayName": "Ry",
+  "description": "Ry programming language",
+  "version": "0.0.1",
+  "engines": {
+    "vscode": "^1.76.0"
+  },
+  "categories": [
+    "Programming Languages"
+  ],
+  "contributes": {
+    "languages": [{
+      "id": "ry",
+      "aliases": ["Ry programming language", "ry"],
+      "extensions": [".ry"],
+      "configuration": "./language-configuration.json"
+    }],
+    "grammars": [{
+      "language": "ry",
+      "scopeName": "source.ry",
+      "path": "./syntaxes/ry.tmLanguage.json"
+    }]
+  }
+}

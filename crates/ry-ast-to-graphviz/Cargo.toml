@@ -1,0 +1,9 @@
+[package]
+name = "ry-ast-to-graphviz"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+ry-ast = {path = "../ry-ast"}
+ry-report = {path = "../ry-report"}
+ry-parser = {path = "../ry-parser"}

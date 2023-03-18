@@ -1,0 +1,5 @@
+import "test";
+
+pub fun test() {}
+
+import "test2";

@@ -1,0 +1,14 @@
+[package]
+name = "ry"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+ry-parser = {path = "../ry-parser"}
+ry-lexer = {path = "../ry-lexer"}
+ry-report = {path = "../ry-report"}
+ry-ast = {path = "../ry-ast"}
+ry-ast-to-graphviz = {path = "../ry-ast-to-graphviz"}
+ry-static-analyzer = {path = "../ry-static-analyzer"}
+codespan-reporting = "0.11.1"
+clap = "4.1.4"

@@ -1,0 +1,5 @@
+pub enum Test {
+    Variant1,
+    Variant2,
+    Variant3,
+}

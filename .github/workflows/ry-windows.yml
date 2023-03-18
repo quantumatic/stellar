@@ -1,0 +1,24 @@
+name: ry-windows
+
+on:
+  push:
+    branches: [ "main" ]
+    paths:
+      - '**/*.rs'
+  pull_request:
+    branches: [ "main" ]
+    paths:
+      - '**/*.rs'
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+    - uses: actions/checkout@v3
+    - name: Build ry binary
+      run: cargo build --verbose --manifest-path=crates/ry/Cargo.toml
+    - name: Tests for ry
+      run: cargo test --verbose --manifest-path=crates/ry-lexer/Cargo.toml; cargo test --verbose --manifest-path=crates/ry-parser/Cargo.toml
