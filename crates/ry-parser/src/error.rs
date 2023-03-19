@@ -1,7 +1,5 @@
 use codespan_reporting::diagnostic::{Diagnostic, Label};
-
-use ry_ast::location::*;
-use ry_ast::token::{LexerError, RawToken, Token};
+use ry_ast::{location::*, token::*};
 use ry_report::Reporter;
 use thiserror::Error;
 

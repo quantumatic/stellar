@@ -12,7 +12,7 @@
 //! ```
 //!
 //! Lexer is fairly standart. It implements `Iterator<Item = Token>` on each step,
-//! and stops at eof (always returns [`RawToken::EndOfFile`] when it's already eof).
+//! and stops at eof (always returns [`EndOfFile`] when it's already eof).
 //! ```
 //! use ry_lexer::Lexer;
 //! use ry_ast::token::RawToken;
@@ -21,14 +21,15 @@
 //! let mut string_interner = StringInterner::default();
 //! let mut lexer = Lexer::new("", &mut string_interner);
 //!
-//! assert_eq!(lexer.next().unwrap().value, RawToken::EndOfFile);
-//! assert_eq!(lexer.next().unwrap().value, RawToken::EndOfFile); // ok
+//! assert_eq!(lexer.next().unwrap().value, EndOfFile);
+//! assert_eq!(lexer.next().unwrap().value, EndOfFile); // ok
 //! ```
 //!
-//! Quick note here: Ry lexer uses string_interner crate to intern (i.e., deduplicate)
-//! strings, which can be usefull when working with identifiers.
+//! Note: the Ry lexer makes use of the `string_interner` crate to perform string interning,
+//! a process of deduplicating strings, which can be highly beneficial when dealing with
+//! identifiers.
 //!
-//! If error appeared in the process, [`RawToken::Invalid`] will be returned:
+//! If error appeared in the process, [`Invalid`] will be returned:
 //!
 //! ```
 //! use ry_lexer::Lexer;
@@ -38,14 +39,12 @@
 //! let mut string_interner = StringInterner::default();
 //! let mut lexer = Lexer::new("#", &mut string_interner);
 //!
-//! assert_eq!(lexer.next().unwrap().value, RawToken::Invalid(LexerError::UnexpectedChar('#')));
+//! assert_eq!(lexer.next().unwrap().value, Invalid(LexerError::UnexpectedChar('#')));
 //! ```
-//!
-//! Lexer doesn't emit diagnostics in the process.
 
-use ry_ast::{location::*, token::*};
+use std::{string::String, str::Chars, char::from_u32};
+use ry_ast::{location::*, token::RawToken::*, token::*};
 
-use std::{char::from_u32, str::Chars};
 use string_interner::StringInterner;
 
 mod number;
@@ -253,7 +252,7 @@ impl<'a> Lexer<'a> {
                 let e = self.scan_escape();
 
                 if let Err(e) = e {
-                    return Some((RawToken::Invalid(e.0), e.1).into());
+                    return Some((Invalid(e.0), e.1).into());
                 } else if let Ok(c) = e {
                     result = c;
                 }
@@ -264,7 +263,7 @@ impl<'a> Lexer<'a> {
             if self.current == '\n' || self.eof() {
                 return Some(
                     (
-                        RawToken::Invalid(LexerError::UnterminatedCharLiteral),
+                        Invalid(LexerError::UnterminatedCharLiteral),
                         self.span_from_start(),
                     )
                         .into(),
@@ -282,7 +281,7 @@ impl<'a> Lexer<'a> {
             2..=i32::MAX => {
                 return Some(
                     (
-                        RawToken::Invalid(LexerError::MoreThanOneCharInCharLiteral),
+                        Invalid(LexerError::MoreThanOneCharInCharLiteral),
                         self.span_from_start(),
                     )
                         .into(),
@@ -291,7 +290,7 @@ impl<'a> Lexer<'a> {
             0 => {
                 return Some(
                     (
-                        RawToken::Invalid(LexerError::EmptyCharLiteral),
+                        Invalid(LexerError::EmptyCharLiteral),
                         self.span_from_start(),
                     )
                         .into(),
@@ -300,7 +299,7 @@ impl<'a> Lexer<'a> {
             _ => {}
         }
 
-        Some((RawToken::Char(result), self.span_from_start()).into())
+        Some((Char(result), self.span_from_start()).into())
     }
 
     fn scan_string(&mut self) -> IterElem {
@@ -325,7 +324,7 @@ impl<'a> Lexer<'a> {
                 let e = self.scan_escape();
 
                 if let Err(e) = e {
-                    return Some((RawToken::Invalid(e.0), e.1).into());
+                    return Some((Invalid(e.0), e.1).into());
                 } else if let Ok(c) = e {
                     buffer.push(c);
                 }
@@ -336,14 +335,14 @@ impl<'a> Lexer<'a> {
 
         if self.eof() || self.current == '\n' {
             return Some(Token::new(
-                RawToken::Invalid(LexerError::UnterminatedStringLiteral),
+                Invalid(LexerError::UnterminatedStringLiteral),
                 self.span_from_start(),
             ));
         }
 
         self.advance(); // '"'
 
-        Some(Token::new(RawToken::String(buffer), self.span_from_start()))
+        Some(Token::new(String(buffer), self.span_from_start()))
     }
 
     fn scan_wrapped_id(&mut self) -> IterElem {
@@ -356,14 +355,14 @@ impl<'a> Lexer<'a> {
 
         if self.current != '`' {
             return Some(Token::new(
-                RawToken::Invalid(LexerError::UnterminatedWrappedIdentifierLiteral),
+                Invalid(LexerError::UnterminatedWrappedIdentifierLiteral),
                 self.span_from_start(),
             ));
         }
 
         if name.is_empty() {
             return Some(Token::new(
-                RawToken::Invalid(LexerError::EmptyWrappedIdentifierLiteral),
+                Invalid(LexerError::EmptyWrappedIdentifierLiteral),
                 self.span_from_start(),
             ));
         }
@@ -371,7 +370,7 @@ impl<'a> Lexer<'a> {
         self.advance(); // '`'
 
         Some(Token::new(
-            RawToken::Identifier(self.identifier_interner.get_or_intern(name)),
+            Identifier(self.identifier_interner.get_or_intern(name)),
             self.span_from_start(),
         ))
     }
@@ -384,7 +383,7 @@ impl<'a> Lexer<'a> {
         let content = self.advance_while(|current, _| (current != '\n'));
 
         Some(Token::new(
-            RawToken::Comment(content[2..].replace('\r', "")),
+            Comment(content[2..].replace('\r', "")),
             self.span_from_start(),
         ))
     }
@@ -396,7 +395,7 @@ impl<'a> Lexer<'a> {
         match RESERVED.get(name) {
             Some(reserved) => Some(Token::new(reserved.clone(), self.span_from_start())),
             None => Some(Token::new(
-                RawToken::Identifier(self.identifier_interner.get_or_intern(name)),
+                Identifier(self.identifier_interner.get_or_intern(name)),
                 self.span_from_start(),
             )),
         }
@@ -441,7 +440,7 @@ impl<'a> Lexer<'a> {
         loop {
             let t = self.next();
             match t.as_ref().unwrap().value {
-                RawToken::Comment(_) => {}
+                Comment(_) => {}
                 _ => {
                     return t;
                 }
@@ -459,79 +458,79 @@ impl<'c> Iterator for Lexer<'c> {
         }
 
         match (self.current, self.next) {
-            ('\0', _) => Some(Token::new(RawToken::EndOfFile, self.char_location(1))),
+            ('\0', _) => Some(Token::new(EndOfFile, self.char_location(1))),
 
-            (':', ':') => self.advance_twice_with(RawToken::DoubleColon),
-            (':', _) => self.advance_with(RawToken::Colon),
+            (':', ':') => self.advance_twice_with(DoubleColon),
+            (':', _) => self.advance_with(Colon),
 
-            ('@', _) => self.advance_with(RawToken::AtSign),
+            ('@', _) => self.advance_with(AtSign),
 
             ('"', _) => self.scan_string(),
             ('\'', _) => self.scan_char(),
             ('`', _) => self.scan_wrapped_id(),
 
-            ('+', '+') => self.advance_twice_with(RawToken::PlusPlus),
-            ('+', '=') => self.advance_twice_with(RawToken::PlusEq),
-            ('+', _) => self.advance_with(RawToken::Plus),
+            ('+', '+') => self.advance_twice_with(PlusPlus),
+            ('+', '=') => self.advance_twice_with(PlusEq),
+            ('+', _) => self.advance_with(Plus),
 
-            ('-', '-') => self.advance_twice_with(RawToken::MinusMinus),
-            ('-', '=') => self.advance_twice_with(RawToken::MinusEq),
-            ('-', _) => self.advance_with(RawToken::Minus),
+            ('-', '-') => self.advance_twice_with(MinusMinus),
+            ('-', '=') => self.advance_twice_with(MinusEq),
+            ('-', _) => self.advance_with(Minus),
 
-            ('*', '*') => self.advance_twice_with(RawToken::AsteriskAsterisk),
-            ('*', '=') => self.advance_twice_with(RawToken::AsteriskEq),
-            ('*', _) => self.advance_with(RawToken::Asterisk),
+            ('*', '*') => self.advance_twice_with(AsteriskAsterisk),
+            ('*', '=') => self.advance_twice_with(AsteriskEq),
+            ('*', _) => self.advance_with(Asterisk),
 
             ('/', '/') => self.scan_single_line_comment(),
-            ('/', '=') => self.advance_twice_with(RawToken::SlashEq),
-            ('/', _) => self.advance_with(RawToken::Slash),
+            ('/', '=') => self.advance_twice_with(SlashEq),
+            ('/', _) => self.advance_with(Slash),
 
-            ('!', '=') => self.advance_twice_with(RawToken::NotEq),
-            ('!', '!') => self.advance_twice_with(RawToken::BangBang),
-            ('!', _) => self.advance_with(RawToken::Bang),
+            ('!', '=') => self.advance_twice_with(NotEq),
+            ('!', '!') => self.advance_twice_with(BangBang),
+            ('!', _) => self.advance_with(Bang),
 
-            ('>', '>') => self.advance_twice_with(RawToken::RightShift),
-            ('>', '=') => self.advance_twice_with(RawToken::GreaterThanOrEq),
-            ('>', _) => self.advance_with(RawToken::GreaterThan),
+            ('>', '>') => self.advance_twice_with(RightShift),
+            ('>', '=') => self.advance_twice_with(GreaterThanOrEq),
+            ('>', _) => self.advance_with(GreaterThan),
 
-            ('<', '<') => self.advance_twice_with(RawToken::LeftShift),
-            ('<', '=') => self.advance_twice_with(RawToken::LessThanOrEq),
-            ('<', _) => self.advance_with(RawToken::LessThan),
+            ('<', '<') => self.advance_twice_with(LeftShift),
+            ('<', '=') => self.advance_twice_with(LessThanOrEq),
+            ('<', _) => self.advance_with(LessThan),
 
-            ('=', '=') => self.advance_twice_with(RawToken::Eq),
-            ('=', _) => self.advance_with(RawToken::Assign),
+            ('=', '=') => self.advance_twice_with(Eq),
+            ('=', _) => self.advance_with(Assign),
 
-            ('|', '=') => self.advance_twice_with(RawToken::OrEq),
-            ('|', '|') => self.advance_twice_with(RawToken::OrOr),
-            ('|', _) => self.advance_with(RawToken::Or),
+            ('|', '=') => self.advance_twice_with(OrEq),
+            ('|', '|') => self.advance_twice_with(OrOr),
+            ('|', _) => self.advance_with(Or),
 
-            ('?', ':') => self.advance_twice_with(RawToken::Elvis),
-            ('?', _) => self.advance_with(RawToken::QuestionMark),
+            ('?', ':') => self.advance_twice_with(Elvis),
+            ('?', _) => self.advance_with(QuestionMark),
 
-            ('&', '&') => self.advance_twice_with(RawToken::AndAnd),
-            ('&', _) => self.advance_with(RawToken::And),
+            ('&', '&') => self.advance_twice_with(AndAnd),
+            ('&', _) => self.advance_with(And),
 
-            ('^', '=') => self.advance_twice_with(RawToken::XorEq),
-            ('^', _) => self.advance_with(RawToken::Xor),
+            ('^', '=') => self.advance_twice_with(XorEq),
+            ('^', _) => self.advance_with(Xor),
 
-            ('~', '=') => self.advance_twice_with(RawToken::NotEq),
-            ('~', _) => self.advance_with(RawToken::Not),
+            ('~', '=') => self.advance_twice_with(NotEq),
+            ('~', _) => self.advance_with(Not),
 
-            ('(', _) => self.advance_with(RawToken::OpenParent),
-            (')', _) => self.advance_with(RawToken::CloseParent),
+            ('(', _) => self.advance_with(OpenParent),
+            (')', _) => self.advance_with(CloseParent),
 
-            ('[', _) => self.advance_with(RawToken::OpenBracket),
-            (']', _) => self.advance_with(RawToken::CloseBracket),
+            ('[', _) => self.advance_with(OpenBracket),
+            (']', _) => self.advance_with(CloseBracket),
 
-            ('$', _) => self.advance_with(RawToken::Dollar),
+            ('$', _) => self.advance_with(Dollar),
 
-            ('{', _) => self.advance_with(RawToken::OpenBrace),
-            ('}', _) => self.advance_with(RawToken::CloseBrace),
+            ('{', _) => self.advance_with(OpenBrace),
+            ('}', _) => self.advance_with(CloseBrace),
 
-            (',', _) => self.advance_with(RawToken::Comma),
-            (';', _) => self.advance_with(RawToken::Semicolon),
+            (',', _) => self.advance_with(Comma),
+            (';', _) => self.advance_with(Semicolon),
 
-            ('%', _) => self.advance_with(RawToken::Percent),
+            ('%', _) => self.advance_with(Percent),
 
             (c, n) => {
                 if number::decimal(c) || (c == '.' && number::decimal(n)) {
@@ -539,10 +538,10 @@ impl<'c> Iterator for Lexer<'c> {
                 } else if c.is_alphanumeric() || c == '_' {
                     return self.scan_name();
                 } else if c == '.' {
-                    return self.advance_with(RawToken::Dot);
+                    return self.advance_with(Dot);
                 }
 
-                self.advance_with(RawToken::Invalid(LexerError::UnexpectedChar(c)))
+                self.advance_with(Invalid(LexerError::UnexpectedChar(c)))
             }
         }
     }

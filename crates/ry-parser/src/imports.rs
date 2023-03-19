@@ -1,36 +1,34 @@
 use crate::{error::ParserError, macros::*, Parser, ParserResult};
-
-use ry_ast::token::RawToken;
-use ry_ast::*;
+use ry_ast::token::RawToken::*;
 
 impl<'c> Parser<'c> {
     /// TODO: fix the problem with comments and imports messed up
-    pub(crate) fn parse_imports(&mut self) -> ParserResult<Vec<Import>> {
+    pub(crate) fn parse_imports(&mut self) -> ParserResult<Vec<ry_ast::Import>> {
         let mut imports = vec![];
 
-        while self.current.value.is(RawToken::Import) {
+        while self.current.value.is(Import) {
             imports.push(self.parse_import()?);
-            self.advance(false)?; // ';'
+            self.advance(false)?; // `;`
         }
 
         Ok(imports)
     }
 
-    pub(crate) fn parse_import(&mut self) -> ParserResult<Import> {
-        self.advance(false)?; // import
+    pub(crate) fn parse_import(&mut self) -> ParserResult<ry_ast::Import> {
+        self.advance(false)?; // `import`
 
         check_token0!(
             self,
             "path (for example: `std::io`)",
-            RawToken::Identifier(_),
+            Identifier(_),
             "import"
         )?;
 
         let path = self.parse_name()?;
 
-        check_token!(self, RawToken::Semicolon, "import")?;
+        check_token!(self, Semicolon, "import")?;
 
-        Ok(Import { path })
+        Ok(ry_ast::Import { path })
     }
 }
 

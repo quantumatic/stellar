@@ -1,7 +1,10 @@
-use ry_ast::{visitor::{walk_import, walk_static_name, Visitor}, ProgramUnit, EnumDecl, Items};
-use string_interner::{DefaultSymbol, StringInterner};
 use ry_ast::location::WithSpan;
 use ry_ast::visitor::walk_items;
+use ry_ast::{
+    visitor::{walk_import, walk_static_name, Visitor},
+    EnumDecl, FunctionDecl, Items, ProgramUnit,
+};
+use string_interner::{DefaultSymbol, StringInterner};
 
 pub struct ASTSerializer<'a> {
     content: String,
@@ -23,9 +26,8 @@ impl<'a> ASTSerializer<'a> {
     }
 
     fn write_ident(&mut self, symbol: DefaultSymbol) {
-        self.content.push_str(
-            self.identifier_interner.resolve(symbol).unwrap()
-        );
+        self.content
+            .push_str(self.identifier_interner.resolve(symbol).unwrap());
     }
 
     fn serialize(&mut self, ast: &ProgramUnit) -> &String {
@@ -43,8 +45,8 @@ impl<'a> Visitor for ASTSerializer<'a> {
     }
 
     fn visit_static_name(&mut self, node: &WithSpan<Vec<DefaultSymbol>>) {
-        for ident in node.value {
-            self.write_ident(ident);
+        for ident in &node.value {
+            self.write_ident(*ident);
             self.content.push_str("::");
         }
 
@@ -57,18 +59,27 @@ impl<'a> Visitor for ASTSerializer<'a> {
     }
 
     fn visit_enum_decl(&mut self, node: (&str, &EnumDecl)) {
-        if node.1.public {
+        if node.1.public.is_some() {
             self.content.push_str("pub ");
         }
         self.content.push_str("enum ");
         self.write_ident(node.1.name.value);
         self.content.push_str(" {\n");
-        for variant in node.1.variants {
+        for variant in &node.1.variants {
             self.write_ident(variant.1.value);
             self.content.push_str(",\n");
         }
 
         self.content.split_off(self.content.len() - 2);
         self.content.push_str("\n}\n");
+    }
+
+    fn visit_function_decl(&mut self, node: (&str, &FunctionDecl)) {
+        if node.1.def.public.is_some() {
+            self.content.push_str("pub ");
+        }
+
+        self.content.push_str("fun ");
+        self.write_ident(node.1.def.name.value);
     }
 }

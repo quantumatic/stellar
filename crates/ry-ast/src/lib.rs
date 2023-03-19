@@ -225,7 +225,7 @@ pub type Type = WithSpan<Box<RawType>>;
 #[derive(Debug, PartialEq)]
 pub enum RawType {
     Array(Type),
-    Pointer(Type),
+    Reference(bool, Type),
     Primary(WithSpan<Vec<DefaultSymbol>>, Vec<Type>),
     Generic(WithSpan<DefaultSymbol>),
     Option(Type),

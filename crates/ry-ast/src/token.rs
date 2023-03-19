@@ -137,6 +137,8 @@ pub enum RawToken {
     As,
     #[display(fmt = "`for`")]
     For,
+    #[display(fmt = "`mut`")]
+    Mut,
 
     #[display(fmt = "`?`")]
     QuestionMark,

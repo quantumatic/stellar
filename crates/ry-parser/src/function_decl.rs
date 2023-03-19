@@ -1,20 +1,18 @@
 use crate::{error::ParserError, macros::*, Parser, ParserResult};
-
 use num_traits::ToPrimitive;
-
-use ry_ast::{location::Span, precedence::Precedence, token::RawToken, *};
+use ry_ast::{location::Span, precedence::Precedence, token::RawToken::*, *};
 
 impl<'c> Parser<'c> {
     pub(crate) fn parse_function_declaration(
         &mut self,
         public: Option<Span>,
     ) -> ParserResult<Item> {
-        self.advance(false)?; // 'fun'
+        self.advance(false)?; // `fun`
 
         check_token0!(
             self,
             "identifier for function name",
-            RawToken::Identifier(_),
+            Identifier(_),
             "function declaration"
         )?;
 
@@ -24,21 +22,16 @@ impl<'c> Parser<'c> {
 
         let generic_annotations = self.parse_generic_annotations()?;
 
-        check_token!(self, RawToken::OpenParent, "function declaration")?;
+        check_token!(self, OpenParent, "function declaration")?;
 
-        self.advance(false)?; // '('
+        self.advance(false)?; // `(`
 
-        let arguments = parse_list!(
-            self,
-            "function arguments",
-            RawToken::CloseParent,
-            false,
-            || self.parse_function_argument()
-        );
+        let arguments = parse_list!(self, "function arguments", CloseParent, false, || self
+            .parse_function_argument());
 
         let mut return_type = None;
 
-        if !self.current.value.is(RawToken::OpenBrace) {
+        if !self.current.value.is(OpenBrace) {
             return_type = Some(self.parse_type()?);
         }
 
@@ -57,21 +50,17 @@ impl<'c> Parser<'c> {
     }
 
     pub(crate) fn parse_function_argument(&mut self) -> ParserResult<FunctionParam> {
-        check_token0!(
-            self,
-            "identifier for argument name",
-            RawToken::Identifier(_)
-        )?;
+        check_token0!(self, "identifier for argument name", Identifier(_))?;
 
         let name = self.current_ident_with_span();
 
-        self.advance(false)?; // name
+        self.advance(false)?; // ident
 
         let r#type = self.parse_type()?;
 
         let mut default_value = None;
 
-        if self.current.value.is(RawToken::Assign) {
+        if self.current.value.is(Assign) {
             self.advance(false)?;
 
             default_value = Some(self.parse_expression(Precedence::Lowest.to_i8().unwrap())?);

@@ -1,9 +1,9 @@
 use clap::{arg, Command};
 use codespan_reporting::files::SimpleFiles;
-use string_interner::StringInterner;
 use ry_parser::Parser;
 use ry_report::{Reporter, ReporterState};
 use std::{fs, process::exit};
+use string_interner::StringInterner;
 
 fn cli() -> Command {
     Command::new("ry")
@@ -56,7 +56,7 @@ fn main() {
         //             loop {
         //                 let token = lexer.next().unwrap();
 
-        //                 if token.value.is(RawToken::EndOfFile) {
+        //                 if token.value.is(EndOfFile) {
         //                     break;
         //                 }
 

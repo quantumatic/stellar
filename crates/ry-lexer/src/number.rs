@@ -1,7 +1,5 @@
-use ry_ast::{
-    location::Span,
-    token::{LexerError, NumberKind, RawToken, Token},
-};
+use ry_ast::{location::*, token::RawToken::*, token::*};
+use std::string::String;
 
 use crate::{IterElem, Lexer};
 
@@ -131,7 +129,7 @@ impl Lexer<'_> {
 
             if prefix == 'o' || prefix == 'b' || prefix == 'x' {
                 return Some(Token::new(
-                    RawToken::Invalid(LexerError::InvalidRadixPoint),
+                    Invalid(LexerError::InvalidRadixPoint),
                     self.span_from_start(),
                 ));
             }
@@ -143,7 +141,7 @@ impl Lexer<'_> {
 
         if digit_separator & 1 == 0 {
             return Some(Token::new(
-                RawToken::Invalid(LexerError::HasNoDigits),
+                Invalid(LexerError::HasNoDigits),
                 self.span_from_start(),
             ));
         }
@@ -152,7 +150,7 @@ impl Lexer<'_> {
         if l == 'e' {
             if prefix != '\0' && prefix != '0' {
                 return Some(Token::new(
-                    RawToken::Invalid(LexerError::ExponentRequiresDecimalMantissa),
+                    Invalid(LexerError::ExponentRequiresDecimalMantissa),
                     self.span_from_start(),
                 ));
             }
@@ -171,7 +169,7 @@ impl Lexer<'_> {
 
             if ds & 1 == 0 {
                 return Some(Token::new(
-                    RawToken::Invalid(LexerError::ExponentHasNoDigits),
+                    Invalid(LexerError::ExponentHasNoDigits),
                     self.span_from_start(),
                 ));
             }
@@ -187,7 +185,7 @@ impl Lexer<'_> {
         if let Some(location) = invalid_digit_location {
             if number_kind == NumberKind::Int {
                 return Some(Token::new(
-                    RawToken::Invalid(LexerError::InvalidDigit),
+                    Invalid(LexerError::InvalidDigit),
                     Span::from_location(location, 1),
                 ));
             }
@@ -197,7 +195,7 @@ impl Lexer<'_> {
 
         if digit_separator & 2 != 0 && s >= 0 {
             return Some(Token::new(
-                RawToken::Invalid(LexerError::UnderscoreMustSeperateSuccessiveDigits),
+                Invalid(LexerError::UnderscoreMustSeperateSuccessiveDigits),
                 Span::from_location(s as usize + self.start_location, 1),
             ));
         }
@@ -208,19 +206,19 @@ impl Lexer<'_> {
                     (if base == 10 { buffer } else { &buffer[2..] }).as_bytes(),
                     base,
                 ) {
-                    Some(n) => Some(Token::new(RawToken::Int(n), self.span_from_start())),
+                    Some(n) => Some(Token::new(Int(n), self.span_from_start())),
                     None => Some(Token::new(
-                        RawToken::Invalid(LexerError::NumberParserError),
+                        Invalid(LexerError::NumberParserError),
                         self.span_from_start(),
                     )),
                 }
             }
             NumberKind::Float => Some(Token::new(
-                RawToken::Float(match buffer.parse::<f64>() {
+                Float(match buffer.parse::<f64>() {
                     Ok(n) => n,
                     Err(_) => {
                         return Some(Token::new(
-                            RawToken::Invalid(LexerError::NumberParserError),
+                            Invalid(LexerError::NumberParserError),
                             self.span_from_start(),
                         ));
                     }
@@ -228,11 +226,11 @@ impl Lexer<'_> {
                 self.span_from_start(),
             )),
             NumberKind::Imag => Some(Token::new(
-                RawToken::Imag(match buffer[..buffer.len() - 1].parse::<f64>() {
+                Imag(match buffer[..buffer.len() - 1].parse::<f64>() {
                     Ok(n) => n,
                     Err(_) => {
                         return Some(Token::new(
-                            RawToken::Invalid(LexerError::NumberParserError),
+                            Invalid(LexerError::NumberParserError),
                             self.span_from_start(),
                         ));
                     }

@@ -1,34 +1,33 @@
 use crate::{error::ParserError, macros::*, Parser, ParserResult};
-
-use ry_ast::*;
-use ry_ast::{location::*, token::*};
+use ry_ast::{location::Span, token::RawToken::*, *};
+use std::string::String;
 
 impl<'c> Parser<'c> {
     pub(crate) fn parse_struct_declaration(&mut self, public: Option<Span>) -> ParserResult<Item> {
-        self.advance(false)?; // 'struct'
+        self.advance(false)?; // `struct`
 
         check_token0!(
             self,
             "identifier for struct name",
-            RawToken::Identifier(_),
+            Identifier(_),
             "struct declaration"
         )?;
 
         let name = self.current_ident_with_span();
 
-        self.advance(false)?; // 'name'
+        self.advance(false)?; // name
 
         let generic_annotations = self.parse_generic_annotations()?;
 
-        check_token!(self, RawToken::OpenBrace, "struct declaration")?;
+        check_token!(self, OpenBrace, "struct declaration")?;
 
-        self.advance(true)?; // '{'
+        self.advance(true)?; // `{`
 
         let members = self.parse_struct_members()?;
 
-        check_token!(self, RawToken::CloseBrace, "struct declaration")?;
+        check_token!(self, CloseBrace, "struct declaration")?;
 
-        self.advance(true)?; // '}'
+        self.advance(true)?; // `}`
 
         Ok(Item::StructDecl(StructDecl {
             generic_annotations,
@@ -41,7 +40,7 @@ impl<'c> Parser<'c> {
     fn parse_struct_member(&mut self) -> ParserResult<StructMemberDef> {
         let mut public = None;
 
-        if self.current.value.is(RawToken::Pub) {
+        if self.current.value.is(Pub) {
             public = Some(self.current.span);
             self.advance(false)?;
         }
@@ -49,7 +48,7 @@ impl<'c> Parser<'c> {
         check_token0!(
             self,
             "identifier for struct member name or '}'",
-            RawToken::Identifier(_),
+            Identifier(_),
             "struct definition"
         )?;
 
@@ -59,9 +58,9 @@ impl<'c> Parser<'c> {
 
         let r#type = self.parse_type()?;
 
-        check_token!(self, RawToken::Semicolon, "struct member definition")?;
+        check_token!(self, Semicolon, "struct member definition")?;
 
-        self.advance(true)?; // ';'
+        self.advance(true)?; // `;`
 
         Ok(StructMemberDef {
             public,
@@ -73,7 +72,7 @@ impl<'c> Parser<'c> {
     fn parse_struct_members(&mut self) -> ParserResult<Vec<(String, StructMemberDef)>> {
         let mut members = vec![];
 
-        while !self.current.value.is(RawToken::CloseBrace) {
+        while !self.current.value.is(CloseBrace) {
             members.push((self.consume_local_docstring()?, self.parse_struct_member()?));
         }
 

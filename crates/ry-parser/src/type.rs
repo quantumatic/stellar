@@ -1,9 +1,8 @@
 use crate::{error::ParserError, macros::*, Parser, ParserResult};
-
-use ry_ast::*;
 use ry_ast::{
     location::{Span, WithSpan},
-    token::*,
+    token::RawToken::*,
+    *,
 };
 use string_interner::symbol::SymbolU32;
 
@@ -19,10 +18,10 @@ impl<'c> Parser<'c> {
 
         self.advance(false)?; // id
 
-        while self.current.value.is(RawToken::DoubleColon) {
-            self.advance(false)?; // '::'
+        while self.current.value.is(DoubleColon) {
+            self.advance(false)?; // `::`
 
-            check_token0!(self, "identifier", RawToken::Identifier(_), "name")?;
+            check_token0!(self, "identifier", Identifier(_), "name")?;
 
             name.push(self.current_ident());
 
@@ -38,9 +37,9 @@ impl<'c> Parser<'c> {
         let start = self.current.span.start;
 
         let mut lhs = match &self.current.value {
-            RawToken::Identifier(_) => self.parse_primary_type(),
-            RawToken::Asterisk => self.parse_pointer_type(),
-            RawToken::OpenBracket => self.parse_array_type(),
+            Identifier(_) => self.parse_primary_type(),
+            And => self.parse_reference_type(),
+            OpenBracket => self.parse_array_type(),
             _ => Err(ParserError::UnexpectedToken(
                 self.current.clone(),
                 "type".into(),
@@ -48,7 +47,7 @@ impl<'c> Parser<'c> {
             )),
         }?;
 
-        while self.current.value.is(RawToken::QuestionMark) {
+        while self.current.value.is(QuestionMark) {
             lhs = Box::new(RawType::Option(lhs)).with_span(start..self.current.span.end);
             self.advance(false)?;
         }
@@ -81,13 +80,13 @@ impl<'c> Parser<'c> {
     }
 
     pub(crate) fn parse_type_generic_part(&mut self) -> ParserResult<Option<Vec<Type>>> {
-        if self.current.value.is(RawToken::LessThan) {
-            self.advance(false)?; // '<'
+        if self.current.value.is(LessThan) {
+            self.advance(false)?; // `<`
 
             Ok(Some(parse_list!(
                 self,
                 "generics",
-                RawToken::GreaterThan,
+                GreaterThan,
                 false,
                 || self.parse_type()
             )))
@@ -99,15 +98,15 @@ impl<'c> Parser<'c> {
     fn parse_array_type(&mut self) -> ParserResult<Type> {
         let start = self.current.span.start;
 
-        self.advance(false)?; // '['
+        self.advance(false)?; // `[`
 
         let inner_type = self.parse_type()?;
 
-        check_token!(self, RawToken::CloseBracket, "array type")?;
+        check_token!(self, CloseBracket, "array type")?;
 
         let end = self.current.span.end;
 
-        self.advance(false)?; // ']'
+        self.advance(false)?; // `]`
 
         Ok(WithSpan::new(
             Box::new(RawType::Array(inner_type)),
@@ -115,17 +114,25 @@ impl<'c> Parser<'c> {
         ))
     }
 
-    fn parse_pointer_type(&mut self) -> ParserResult<Type> {
+    fn parse_reference_type(&mut self) -> ParserResult<Type> {
         let start = self.current.span.start;
 
-        self.advance(false)?; // '*'
+        self.advance(false)?; // `&`
+
+        let mut mutable = false;
+
+        if self.current.value.is(Mut) {
+            mutable = true;
+
+            self.advance(false)?; // `mut`
+        }
 
         let inner_type = self.parse_type()?;
 
         let end = self.current.span.end;
 
         Ok(WithSpan::new(
-            Box::new(RawType::Pointer(inner_type)),
+            Box::new(RawType::Reference(mutable, inner_type)),
             Span::new(start, end),
         ))
     }
@@ -133,39 +140,32 @@ impl<'c> Parser<'c> {
     pub(crate) fn parse_generic_annotations(&mut self) -> ParserResult<GenericAnnotations> {
         let mut generics = vec![];
 
-        if !self.current.value.is(RawToken::LessThan) {
+        if !self.current.value.is(LessThan) {
             return Ok(generics);
         }
 
         self.advance(false)?; // '<'
 
-        if self.current.value.is(RawToken::GreaterThan) {
+        if self.current.value.is(GreaterThan) {
             self.advance(false)?; // '>'
             return Ok(generics);
         }
 
         loop {
-            check_token0!(
-                self,
-                "identifier",
-                RawToken::Identifier(_),
-                "generic annotation"
-            )?;
+            check_token0!(self, "identifier", Identifier(_), "generic annotation")?;
 
             let generic = self.parse_generic()?;
 
             let mut constraint = None;
 
-            if !self.current.value.is(RawToken::Comma)
-                && !self.current.value.is(RawToken::GreaterThan)
-            {
+            if !self.current.value.is(Comma) && !self.current.value.is(GreaterThan) {
                 constraint = Some(self.parse_type()?);
             }
 
             generics.push((generic, constraint));
 
-            if !self.current.value.is(RawToken::Comma) {
-                check_token!(self, RawToken::GreaterThan, "generic annotations")?;
+            if !self.current.value.is(Comma) {
+                check_token!(self, GreaterThan, "generic annotations")?;
 
                 self.advance(false)?; // >
 

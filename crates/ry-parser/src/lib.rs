@@ -1,11 +1,12 @@
 //! `lib.rs` - implements parser for Ry source files.
-use std::mem::take;
-
-use ry_ast::*;
-use ry_ast::{location::WithSpan, token::*};
-use ry_lexer::Lexer;
-
 use error::ParserError;
+use ry_ast::{
+    location::WithSpan,
+    token::{RawToken::*, Token},
+    *,
+};
+use ry_lexer::Lexer;
+use std::{mem::take, string::String};
 use string_interner::{DefaultSymbol, StringInterner};
 
 pub mod error;
@@ -45,7 +46,7 @@ impl<'a> Parser<'a> {
     }
 
     fn check_scanning_error(&mut self) -> ParserResult<()> {
-        if let RawToken::Invalid(e) = self.current.value {
+        if let Invalid(e) = self.current.value {
             Err(ParserError::ErrorToken(e.with_span(self.current.span)))
         } else {
             Ok(())
@@ -68,7 +69,7 @@ impl<'a> Parser<'a> {
 
     fn current_ident_with_span(&self) -> WithSpan<DefaultSymbol> {
         match self.current.value {
-            RawToken::Identifier(i) => i,
+            Identifier(i) => i,
             _ => unreachable!(),
         }
         .with_span(self.current.span)
@@ -76,7 +77,7 @@ impl<'a> Parser<'a> {
 
     fn current_ident(&self) -> DefaultSymbol {
         match self.current.value {
-            RawToken::Identifier(i) => i,
+            Identifier(i) => i,
             _ => unreachable!(),
         }
     }
@@ -84,7 +85,7 @@ impl<'a> Parser<'a> {
     pub(crate) fn consume_fst_docstring(&mut self) -> ParserResult<(String, String)> {
         let (mut module_docstring, mut local_docstring) = ("".to_owned(), "".to_owned());
         loop {
-            if let RawToken::Comment(s) = &self.current.value {
+            if let Comment(s) = &self.current.value {
                 if let Some(stripped) = s.strip_prefix('!') {
                     module_docstring.push_str(stripped.trim());
                     module_docstring.push('\n');
@@ -106,7 +107,7 @@ impl<'a> Parser<'a> {
         let mut result = "".to_owned();
 
         loop {
-            if let RawToken::Comment(s) = &self.current.value {
+            if let Comment(s) = &self.current.value {
                 if let Some(stripped) = s.strip_prefix('/') {
                     result.push_str(stripped.trim());
                     result.push('\n');
@@ -136,22 +137,22 @@ impl<'a> Parser<'a> {
             top_level_statements.push((
                 local_docstring,
                 match self.current.value {
-                    RawToken::Fun => self.parse_function_declaration(None)?,
-                    RawToken::Struct => self.parse_struct_declaration(None)?,
-                    RawToken::Trait => self.parse_trait_declaration(None)?,
-                    RawToken::Enum => self.parse_enum_declaration(None)?,
-                    RawToken::Impl => self.parse_impl()?,
-                    RawToken::Pub => {
+                    Fun => self.parse_function_declaration(None)?,
+                    Struct => self.parse_struct_declaration(None)?,
+                    Trait => self.parse_trait_declaration(None)?,
+                    Enum => self.parse_enum_declaration(None)?,
+                    Impl => self.parse_impl()?,
+                    Pub => {
                         let pub_span = self.current.span;
                         self.advance(false)?;
 
                         self.check_scanning_error()?;
 
                         match self.current.value {
-                            RawToken::Fun => self.parse_function_declaration(Some(pub_span))?,
-                            RawToken::Struct => self.parse_struct_declaration(Some(pub_span))?,
-                            RawToken::Trait => self.parse_trait_declaration(Some(pub_span))?,
-                            RawToken::Enum => self.parse_enum_declaration(Some(pub_span))?,
+                            Fun => self.parse_function_declaration(Some(pub_span))?,
+                            Struct => self.parse_struct_declaration(Some(pub_span))?,
+                            Trait => self.parse_trait_declaration(Some(pub_span))?,
+                            Enum => self.parse_enum_declaration(Some(pub_span))?,
                             _ => {
                                 return Err(ParserError::UnexpectedToken(
                                     self.current.clone(),
@@ -161,14 +162,14 @@ impl<'a> Parser<'a> {
                             }
                         }
                     }
-                    RawToken::Import => {
+                    Import => {
                         let import = self.parse_import()?;
 
-                        self.advance(false)?; // ';'
+                        self.advance(false)?; // `;`
 
                         Item::Import(import)
                     }
-                    RawToken::EndOfFile => break,
+                    EndOfFile => break,
                     _ => {
                         let err = Err(ParserError::UnexpectedToken(
                             self.current.clone(),

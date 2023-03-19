@@ -1,6 +1,6 @@
 macro_rules! check_token {
     ($p: ident, $expected: expr, $expected_for: literal) => {
-        if let RawToken::Invalid(e) = $p.current.value {
+        if let Invalid(e) = $p.current.value {
             Err(ParserError::ErrorToken((e, $p.current.span.clone()).into()))
         } else if !&$p.current.value.is($expected) {
             Err(ParserError::UnexpectedTokenExpectedX(
@@ -16,7 +16,7 @@ macro_rules! check_token {
 
 macro_rules! check_token0 {
     ($p: ident, $t_dump: expr, $expected: pat, $expected_for: expr) => {
-        if let RawToken::Invalid(e) = $p.current.value {
+        if let Invalid(e) = $p.current.value {
             Err(ParserError::ErrorToken((e, $p.current.span.clone()).into()))
         } else if let $expected = $p.current.value {
             Ok(())
@@ -29,7 +29,7 @@ macro_rules! check_token0 {
         }
     };
     ($p: ident, $expected_for: expr, $expected: pat) => {
-        if let RawToken::Invalid(e) = $p.current.value {
+        if let Invalid(e) = $p.current.value {
             Err(ParserError::ErrorToken((e, $p.current.span.clone()).into()))
         } else if let $expected = $p.current.value {
             Ok(())
@@ -58,7 +58,7 @@ macro_rules! parse_list {
                     if $p.current.value.is($closing_token) {
                         break
                     } else {
-                        check_token0!($p, format!("`,` or {}", $closing_token), RawToken::Comma, $name)?;
+                        check_token0!($p, format!("`,` or {}", $closing_token), Comma, $name)?;
 
                         $p.advance($top_level)?; // ','
 
@@ -78,39 +78,38 @@ macro_rules! parse_list {
 
 macro_rules! binop_pattern {
     () => {
-        RawToken::Plus
-            | RawToken::Minus
-            | RawToken::Asterisk
-            | RawToken::Slash
-            | RawToken::Eq
-            | RawToken::NotEq
-            | RawToken::LessThan
-            | RawToken::LessThanOrEq
-            | RawToken::GreaterThan
-            | RawToken::GreaterThanOrEq
-            | RawToken::Assign
-            | RawToken::OrEq
-            | RawToken::XorEq
-            | RawToken::PlusEq
-            | RawToken::MinusEq
-            | RawToken::SlashEq
-            | RawToken::AsteriskEq
-            | RawToken::AsteriskAsterisk
-            | RawToken::Percent
-            | RawToken::And
-            | RawToken::Xor
-            | RawToken::Or
-            | RawToken::OrOr
-            | RawToken::Elvis
-            | RawToken::AndAnd
-            | RawToken::LeftShift
-            | RawToken::RightShift
+        Plus | Minus
+            | Asterisk
+            | Slash
+            | Eq
+            | NotEq
+            | LessThan
+            | LessThanOrEq
+            | GreaterThan
+            | GreaterThanOrEq
+            | Assign
+            | OrEq
+            | XorEq
+            | PlusEq
+            | MinusEq
+            | SlashEq
+            | AsteriskEq
+            | AsteriskAsterisk
+            | Percent
+            | And
+            | Xor
+            | Or
+            | OrOr
+            | Elvis
+            | AndAnd
+            | LeftShift
+            | RightShift
     };
 }
 
 macro_rules! postfixop_pattern {
     () => {
-        RawToken::QuestionMark | RawToken::PlusPlus | RawToken::MinusMinus | RawToken::BangBang
+        QuestionMark | PlusPlus | MinusMinus | BangBang
     };
 }
 
