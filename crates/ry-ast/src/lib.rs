@@ -2,10 +2,12 @@
 pub mod location;
 pub mod precedence;
 pub mod token;
+pub mod visitor;
 
 use std::collections::HashMap;
 
 use location::{Span, WithSpan};
+use string_interner::DefaultSymbol;
 use token::Token;
 
 /// Represents Ry source file.
@@ -15,8 +17,10 @@ pub struct ProgramUnit {
     pub docstring: String,
 
     pub imports: Vec<Import>,
-    pub top_level_statements: Vec<(String, TopLevelStatement)>,
+    pub items: Items,
 }
+
+pub type Items = Vec<(String, Item)>;
 
 /// Import
 ///
@@ -26,11 +30,11 @@ pub struct ProgramUnit {
 /// ```
 #[derive(Debug, PartialEq)]
 pub struct Import {
-    pub path: WithSpan<String>,
+    pub path: WithSpan<Vec<DefaultSymbol>>,
 }
 
 #[derive(Debug, PartialEq)]
-pub enum TopLevelStatement {
+pub enum Item {
     FunctionDecl(FunctionDecl),
     StructDecl(StructDecl),
     TraitDecl(TraitDecl),
@@ -57,7 +61,7 @@ pub struct FunctionDecl {
     pub stmts: Vec<Statement>,
 }
 
-pub type GenericAnnotation = (WithSpan<String>, Option<Type>);
+pub type GenericAnnotation = (WithSpan<DefaultSymbol>, Option<Type>);
 pub type GenericAnnotations = Vec<GenericAnnotation>;
 
 /// Function definition
@@ -73,7 +77,7 @@ pub type GenericAnnotations = Vec<GenericAnnotation>;
 pub struct FunctionDef {
     pub public: Option<Span>,
     pub generic_annotations: GenericAnnotations,
-    pub name: WithSpan<String>,
+    pub name: WithSpan<DefaultSymbol>,
     pub params: Vec<FunctionParam>,
     pub return_type: Option<Type>,
 }
@@ -98,7 +102,7 @@ pub struct FunctionDef {
 pub struct StructDecl {
     pub public: Option<Span>,
     pub generic_annotations: GenericAnnotations,
-    pub name: WithSpan<String>,
+    pub name: WithSpan<DefaultSymbol>,
     pub members: Vec<(String, StructMemberDef)>,
 }
 
@@ -137,7 +141,7 @@ pub struct Impl {
 #[derive(Debug, PartialEq)]
 pub struct TraitDecl {
     pub public: Option<Span>,
-    pub name: WithSpan<String>,
+    pub name: WithSpan<DefaultSymbol>,
     pub generic_annotations: GenericAnnotations,
     pub methods: Vec<(String, TraitMethod)>,
 }
@@ -155,7 +159,7 @@ pub struct TraitDecl {
 #[derive(Debug, PartialEq)]
 pub struct TraitMethod {
     pub public: Option<Span>,
-    pub name: WithSpan<String>,
+    pub name: WithSpan<DefaultSymbol>,
     pub generic_annotations: GenericAnnotations,
     pub params: Vec<FunctionParam>,
     pub return_type: Option<Type>,
@@ -181,9 +185,11 @@ pub struct TraitMethod {
 #[derive(Debug, PartialEq)]
 pub struct EnumDecl {
     pub public: Option<Span>,
-    pub name: WithSpan<String>,
-    pub variants: Vec<(String, WithSpan<String>)>,
+    pub name: WithSpan<DefaultSymbol>,
+    pub variants: Vec<(String, EnumVariant)>,
 }
+
+pub type EnumVariant = WithSpan<DefaultSymbol>;
 
 /// ```ry
 /// pub a [i32];
@@ -195,7 +201,7 @@ pub struct EnumDecl {
 #[derive(Debug, PartialEq)]
 pub struct StructMemberDef {
     pub public: Option<Span>,
-    pub name: WithSpan<String>,
+    pub name: WithSpan<DefaultSymbol>,
     pub r#type: Type,
 }
 
@@ -209,7 +215,7 @@ pub struct StructMemberDef {
 /// ```
 #[derive(Debug, PartialEq)]
 pub struct FunctionParam {
-    pub name: WithSpan<String>,
+    pub name: WithSpan<DefaultSymbol>,
     pub r#type: Type,
     pub default_value: Option<Expression>,
 }
@@ -220,8 +226,8 @@ pub type Type = WithSpan<Box<RawType>>;
 pub enum RawType {
     Array(Type),
     Pointer(Type),
-    Primary(WithSpan<String>, Vec<Type>),
-    Generic(WithSpan<String>),
+    Primary(WithSpan<Vec<DefaultSymbol>>, Vec<Type>),
+    Generic(WithSpan<DefaultSymbol>),
     Option(Type),
 }
 
@@ -233,7 +239,7 @@ pub enum Statement {
     ExpressionWithoutSemicolon(Expression),
     Return(Expression),
     Defer(Expression),
-    Var(WithSpan<String>, Option<Type>, Expression),
+    Var(WithSpan<DefaultSymbol>, Option<Type>, Expression),
 }
 
 impl Statement {
@@ -255,17 +261,17 @@ pub enum RawExpression {
     Imag(f64),
     Bool(bool),
     Char(char),
-    StaticName(String),
+    StaticName(Vec<DefaultSymbol>),
     List(Vec<Expression>),
     Binary(Expression, Token, Expression),
     As(Expression, Type),
     PrefixOrPostfix(Token, Expression),
-    Property(Expression, WithSpan<String>),
+    Property(Expression, WithSpan<DefaultSymbol>),
     Struct(
-        WithSpan<String>,
-        HashMap<String, (Span, WithSpan<Expression>)>,
+        WithSpan<DefaultSymbol>,
+        HashMap<DefaultSymbol, (Span, WithSpan<Expression>)>,
     ),
-    Map(HashMap<String, (Span, WithSpan<Expression>)>),
+    Map(HashMap<DefaultSymbol, (Span, WithSpan<Expression>)>),
     Call(Vec<Type>, Expression, Vec<Expression>),
     Index(Expression, Expression),
     If(

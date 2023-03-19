@@ -4,10 +4,7 @@ use ry_ast::*;
 use ry_ast::{location::*, token::*};
 
 impl<'c> Parser<'c> {
-    pub(crate) fn parse_struct_declaration(
-        &mut self,
-        public: Option<Span>,
-    ) -> ParserResult<TopLevelStatement> {
+    pub(crate) fn parse_struct_declaration(&mut self, public: Option<Span>) -> ParserResult<Item> {
         self.advance(false)?; // 'struct'
 
         check_token0!(
@@ -17,7 +14,7 @@ impl<'c> Parser<'c> {
             "struct declaration"
         )?;
 
-        let name = self.get_name();
+        let name = self.current_ident_with_span();
 
         self.advance(false)?; // 'name'
 
@@ -33,7 +30,7 @@ impl<'c> Parser<'c> {
 
         self.advance(true)?; // '}'
 
-        Ok(TopLevelStatement::StructDecl(StructDecl {
+        Ok(Item::StructDecl(StructDecl {
             generic_annotations,
             public,
             name,
@@ -56,7 +53,7 @@ impl<'c> Parser<'c> {
             "struct definition"
         )?;
 
-        let name = self.get_name();
+        let name = self.current_ident_with_span();
 
         self.advance(false)?;
 

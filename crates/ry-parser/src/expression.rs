@@ -78,7 +78,7 @@ impl<'c> Parser<'c> {
                             "property"
                         )?;
 
-                        let name = self.get_name();
+                        let name = self.current_ident_with_span();
                         let end = self.current.span.end;
 
                         self.advance(false)?; // id

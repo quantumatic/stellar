@@ -4,10 +4,7 @@ use ry_ast::*;
 use ry_ast::{location::Span, token::RawToken};
 
 impl<'c> Parser<'c> {
-    pub(crate) fn parse_enum_declaration(
-        &mut self,
-        public: Option<Span>,
-    ) -> ParserResult<TopLevelStatement> {
+    pub(crate) fn parse_enum_declaration(&mut self, public: Option<Span>) -> ParserResult<Item> {
         self.advance(false)?; // 'enum'
 
         check_token0!(
@@ -17,7 +14,7 @@ impl<'c> Parser<'c> {
             "enum declaration"
         )?;
 
-        let name = self.get_name();
+        let name = self.current_ident_with_span();
 
         self.advance(false)?; // 'name'
 
@@ -35,7 +32,7 @@ impl<'c> Parser<'c> {
 
                 check_token0!(self, "identifier", RawToken::Identifier(_), "enum variant")?;
 
-                let variant = self.get_name();
+                let variant = self.current_ident_with_span();
 
                 self.advance(false)?; // id
 
@@ -43,7 +40,7 @@ impl<'c> Parser<'c> {
             }
         );
 
-        Ok(TopLevelStatement::EnumDecl(EnumDecl {
+        Ok(Item::EnumDecl(EnumDecl {
             public,
             name,
             variants,

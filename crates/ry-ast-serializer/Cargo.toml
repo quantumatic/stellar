@@ -1,5 +1,5 @@
 [package]
-name = "ry-lexer"
+name = "ry-ast-serializer"
 version = "0.1.0"
 edition = "2021"
 

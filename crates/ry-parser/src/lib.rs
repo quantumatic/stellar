@@ -1,11 +1,12 @@
 //! `lib.rs` - implements parser for Ry source files.
 use std::mem::take;
 
-use ry_ast::token::*;
 use ry_ast::*;
+use ry_ast::{location::WithSpan, token::*};
 use ry_lexer::Lexer;
 
 use error::ParserError;
+use string_interner::{DefaultSymbol, StringInterner};
 
 pub mod error;
 
@@ -22,17 +23,17 @@ mod r#type;
 #[macro_use]
 mod macros;
 
-pub struct Parser<'c> {
-    lexer: Lexer<'c>,
+pub struct Parser<'a> {
+    lexer: Lexer<'a>,
     previous: Option<Token>,
     current: Token,
 }
 
 pub(crate) type ParserResult<T> = Result<T, ParserError>;
 
-impl<'c> Parser<'c> {
-    pub fn new(contents: &'c str) -> Self {
-        let mut lexer = Lexer::new(contents);
+impl<'a> Parser<'a> {
+    pub fn new(contents: &'a str, identifier_interner: &'a mut StringInterner) -> Self {
+        let mut lexer = Lexer::new(contents, identifier_interner);
 
         let current = lexer.next().unwrap();
 
@@ -63,6 +64,21 @@ impl<'c> Parser<'c> {
         };
 
         Ok(())
+    }
+
+    fn current_ident_with_span(&self) -> WithSpan<DefaultSymbol> {
+        match self.current.value {
+            RawToken::Identifier(i) => i,
+            _ => unreachable!(),
+        }
+        .with_span(self.current.span)
+    }
+
+    fn current_ident(&self) -> DefaultSymbol {
+        match self.current.value {
+            RawToken::Identifier(i) => i,
+            _ => unreachable!(),
+        }
     }
 
     pub(crate) fn consume_fst_docstring(&mut self) -> ParserResult<(String, String)> {
@@ -109,14 +125,11 @@ impl<'c> Parser<'c> {
         Ok(ProgramUnit {
             docstring: module_docstring.0,
             imports: self.parse_imports()?,
-            top_level_statements: self.parse_top_level_statements(module_docstring.1)?,
+            items: self.parse_items(module_docstring.1)?,
         })
     }
 
-    fn parse_top_level_statements(
-        &mut self,
-        mut local_docstring: String,
-    ) -> ParserResult<Vec<(String, TopLevelStatement)>> {
+    fn parse_items(&mut self, mut local_docstring: String) -> ParserResult<Vec<(String, Item)>> {
         let mut top_level_statements = vec![];
 
         loop {
@@ -153,7 +166,7 @@ impl<'c> Parser<'c> {
 
                         self.advance(false)?; // ';'
 
-                        TopLevelStatement::Import(import)
+                        Item::Import(import)
                     }
                     RawToken::EndOfFile => break,
                     _ => {

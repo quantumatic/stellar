@@ -5,13 +5,15 @@ use ry_ast::{
     location::{Span, WithSpan},
     token::*,
 };
+use string_interner::symbol::SymbolU32;
 
 impl<'c> Parser<'c> {
-    pub(crate) fn parse_name(&mut self) -> ParserResult<WithSpan<String>> {
+    pub(crate) fn parse_name(&mut self) -> ParserResult<WithSpan<Vec<SymbolU32>>> {
         let start = self.current.span.start;
 
-        let mut name = self.current.value.ident().unwrap();
-        name.push_str("::");
+        let mut name = vec![];
+
+        name.push(self.current_ident());
 
         let mut end = self.current.span.end;
 
@@ -22,26 +24,14 @@ impl<'c> Parser<'c> {
 
             check_token0!(self, "identifier", RawToken::Identifier(_), "name")?;
 
-            name.push_str(&self.current.value.ident().unwrap());
-            name.push_str("::");
+            name.push(self.current_ident());
 
             end = self.current.span.end;
 
             self.advance(false)?; // id
         }
 
-        name.pop();
-        name.pop();
-
         Ok(name.with_span(start..end))
-    }
-
-    pub fn get_name(&mut self) -> WithSpan<String> {
-        self.current
-            .value
-            .ident()
-            .unwrap()
-            .with_span(self.current.span)
     }
 
     pub(crate) fn parse_type(&mut self) -> ParserResult<Type> {
@@ -186,14 +176,11 @@ impl<'c> Parser<'c> {
         }
     }
 
-    pub fn parse_generic(&mut self) -> ParserResult<WithSpan<String>> {
-        let start = self.current.span.start;
-
-        let name = self.current.value.ident().unwrap();
-        let end = self.current.span.end;
+    pub fn parse_generic(&mut self) -> ParserResult<WithSpan<SymbolU32>> {
+        let name = self.current_ident_with_span();
 
         self.advance(false)?; // id
 
-        Ok(name.with_span(start..end))
+        Ok(name)
     }
 }

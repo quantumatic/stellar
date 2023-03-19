@@ -63,7 +63,7 @@ impl<'c> Parser<'c> {
 
                 check_token0!(self, "identifier", RawToken::Identifier(_), "var statement")?;
 
-                let name = self.get_name();
+                let name = self.current_ident_with_span();
 
                 self.advance(false)?; // id
 

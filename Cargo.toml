@@ -1,0 +1,10 @@
+[workspace]
+members = [
+    "crates/ry",
+    "crates/ry-ast",
+    "crates/ry-ast-to-graphviz",
+    "crates/ry-ast-serializer",
+    "crates/ry-lexer",
+    "crates/ry-parser",
+    "crates/ry-report",
+]

@@ -8,7 +8,7 @@ impl<'c> Parser<'c> {
     pub(crate) fn parse_function_declaration(
         &mut self,
         public: Option<Span>,
-    ) -> ParserResult<TopLevelStatement> {
+    ) -> ParserResult<Item> {
         self.advance(false)?; // 'fun'
 
         check_token0!(
@@ -18,7 +18,7 @@ impl<'c> Parser<'c> {
             "function declaration"
         )?;
 
-        let name = self.get_name();
+        let name = self.current_ident_with_span();
 
         self.advance(false)?; // name
 
@@ -44,7 +44,7 @@ impl<'c> Parser<'c> {
 
         let stmts = self.parse_statements_block(true)?;
 
-        Ok(TopLevelStatement::FunctionDecl(FunctionDecl {
+        Ok(Item::FunctionDecl(FunctionDecl {
             def: FunctionDef {
                 name,
                 generic_annotations,
@@ -63,7 +63,7 @@ impl<'c> Parser<'c> {
             RawToken::Identifier(_)
         )?;
 
-        let name = self.get_name();
+        let name = self.current_ident_with_span();
 
         self.advance(false)?; // name
 

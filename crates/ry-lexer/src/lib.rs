@@ -16,48 +16,55 @@
 //! ```
 //! use ry_lexer::Lexer;
 //! use ry_ast::token::RawToken;
+//! use string_interner::StringInterner;
 //!
-//! let mut lexer = Lexer::new("");
+//! let mut string_interner = StringInterner::default();
+//! let mut lexer = Lexer::new("", &mut string_interner);
 //!
 //! assert_eq!(lexer.next().unwrap().value, RawToken::EndOfFile);
 //! assert_eq!(lexer.next().unwrap().value, RawToken::EndOfFile); // ok
 //! ```
+//!
+//! Quick note here: Ry lexer uses string_interner crate to intern (i.e., deduplicate)
+//! strings, which can be usefull when working with identifiers.
 //!
 //! If error appeared in the process, [`RawToken::Invalid`] will be returned:
 //!
 //! ```
 //! use ry_lexer::Lexer;
 //! use ry_ast::token::{RawToken, LexerError};
+//! use string_interner::StringInterner;
 //!
-//! let mut lexer = Lexer::new("#");
+//! let mut string_interner = StringInterner::default();
+//! let mut lexer = Lexer::new("#", &mut string_interner);
 //!
 //! assert_eq!(lexer.next().unwrap().value, RawToken::Invalid(LexerError::UnexpectedChar('#')));
 //! ```
 //!
 //! Lexer doesn't emit diagnostics in the process.
 
-use ry_ast::location::*;
-use ry_ast::token::*;
+use ry_ast::{location::*, token::*};
 
-use std::char::from_u32;
-use std::str::Chars;
+use std::{char::from_u32, str::Chars};
+use string_interner::StringInterner;
 
 mod number;
 mod tests;
 
-pub struct Lexer<'c> {
+pub struct Lexer<'a> {
+    pub identifier_interner: &'a mut StringInterner,
     current: char,
     next: char,
-    contents: &'c str,
-    chars: Chars<'c>,
+    contents: &'a str,
+    chars: Chars<'a>,
     location: usize,
     start_location: usize,
 }
 
 type IterElem = Option<Token>;
 
-impl<'c> Lexer<'c> {
-    pub fn new(contents: &'c str) -> Self {
+impl<'a> Lexer<'a> {
+    pub fn new(contents: &'a str, identifier_interner: &'a mut StringInterner) -> Self {
         let mut chars = contents.chars();
 
         let current = chars.next().unwrap_or('\0');
@@ -70,6 +77,7 @@ impl<'c> Lexer<'c> {
             chars,
             location: 0,
             start_location: 0,
+            identifier_interner,
         }
     }
 
@@ -113,7 +121,7 @@ impl<'c> Lexer<'c> {
         r
     }
 
-    fn advance_while<F>(&mut self, mut f: F) -> &'c str
+    fn advance_while<F>(&mut self, mut f: F) -> &'a str
     where
         F: FnMut(char, char) -> bool,
     {
@@ -363,7 +371,7 @@ impl<'c> Lexer<'c> {
         self.advance(); // '`'
 
         Some(Token::new(
-            RawToken::Identifier(name.to_owned()),
+            RawToken::Identifier(self.identifier_interner.get_or_intern(name)),
             self.span_from_start(),
         ))
     }
@@ -388,7 +396,7 @@ impl<'c> Lexer<'c> {
         match RESERVED.get(name) {
             Some(reserved) => Some(Token::new(reserved.clone(), self.span_from_start())),
             None => Some(Token::new(
-                RawToken::Identifier(name.to_owned()),
+                RawToken::Identifier(self.identifier_interner.get_or_intern(name)),
                 self.span_from_start(),
             )),
         }

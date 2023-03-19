@@ -4,7 +4,7 @@ use ry_ast::token::RawToken;
 use ry_ast::*;
 
 impl<'c> Parser<'c> {
-    pub(crate) fn parse_impl(&mut self) -> ParserResult<TopLevelStatement> {
+    pub(crate) fn parse_impl(&mut self) -> ParserResult<Item> {
         let mut public = None;
 
         if self.current.value.is(RawToken::Pub) {
@@ -36,7 +36,7 @@ impl<'c> Parser<'c> {
 
         self.advance(true)?; // '}'
 
-        Ok(TopLevelStatement::Impl(Impl {
+        Ok(Item::Impl(Impl {
             public,
             global_generic_annotations: generic_annotations,
             r#type,

@@ -33,3 +33,5 @@ impl<'c> Parser<'c> {
         Ok(Import { path })
     }
 }
+
+mod import_tests {}

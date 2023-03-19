@@ -1,18 +1,14 @@
 //! `token.rs` - defines the token which represents grammatical unit of Ry
 //! source text.
 
-use std::mem::{discriminant, replace};
-
-use phf::phf_map;
-
 use derive_more::Display;
-
 use num_traits::ToPrimitive;
-
+use phf::phf_map;
+use std::mem::discriminant;
+use string_interner::DefaultSymbol;
 use thiserror::Error;
 
-use crate::location::WithSpan;
-use crate::precedence::Precedence;
+use crate::{location::WithSpan, precedence::Precedence};
 
 /// Represents error that lexer can fail with.
 #[derive(Error, Copy, Clone, Debug, PartialEq, Eq)]
@@ -80,7 +76,7 @@ pub enum NumberKind {
 #[derive(Clone, Debug, PartialEq, Display, Default)]
 pub enum RawToken {
     #[display(fmt = "identifier")]
-    Identifier(String),
+    Identifier(DefaultSymbol),
     #[display(fmt = "string literal")]
     String(String),
     #[display(fmt = "integer literal")]
@@ -315,23 +311,7 @@ impl RawToken {
         .unwrap()
     }
 
-    pub fn ident(&mut self) -> Option<String> {
-        if let RawToken::Identifier(i) = self {
-            Some(replace(i, "".to_owned()))
-        } else {
-            None
-        }
-    }
-
-    pub fn string(&mut self) -> Option<String> {
-        if let RawToken::String(s) = self {
-            Some(replace(s, "".to_owned()))
-        } else {
-            None
-        }
-    }
-
-    pub fn is<'a, T: AsRef<Self>>(&self, raw: T) -> bool {
+    pub fn is<T: AsRef<Self>>(&self, raw: T) -> bool {
         discriminant(self) == discriminant(raw.as_ref())
     }
 }

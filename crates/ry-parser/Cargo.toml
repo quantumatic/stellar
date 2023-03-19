@@ -10,3 +10,4 @@ ry-report = {path = "../ry-report"}
 codespan-reporting = "0.11.1"
 num-traits = "0.2.15"
 thiserror = "1.0.40"
+string-interner = "0.14.0"

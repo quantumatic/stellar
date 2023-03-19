@@ -9,6 +9,6 @@ ry-lexer = {path = "../ry-lexer"}
 ry-report = {path = "../ry-report"}
 ry-ast = {path = "../ry-ast"}
 ry-ast-to-graphviz = {path = "../ry-ast-to-graphviz"}
-ry-static-analyzer = {path = "../ry-static-analyzer"}
 codespan-reporting = "0.11.1"
 clap = "4.1.4"
+string-interner = "0.14.0"

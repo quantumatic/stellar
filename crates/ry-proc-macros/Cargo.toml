@@ -1,0 +1,11 @@
+[package]
+name = "ry-proc-macros"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+syn = "2.0.2"
+quote = "1.0.21"
+
+[lib]
+proc-macro = true

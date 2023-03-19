@@ -4,10 +4,7 @@ use ry_ast::*;
 use ry_ast::{location::Span, token::RawToken};
 
 impl<'c> Parser<'c> {
-    pub(crate) fn parse_trait_declaration(
-        &mut self,
-        public: Option<Span>,
-    ) -> ParserResult<TopLevelStatement> {
+    pub(crate) fn parse_trait_declaration(&mut self, public: Option<Span>) -> ParserResult<Item> {
         self.advance(false)?; // 'trait'
 
         check_token0!(
@@ -17,7 +14,7 @@ impl<'c> Parser<'c> {
             "trait declaration"
         )?;
 
-        let name = self.get_name();
+        let name = self.current_ident_with_span();
 
         self.advance(false)?; // 'name'
 
@@ -33,7 +30,7 @@ impl<'c> Parser<'c> {
 
         self.advance(true)?; // '}'
 
-        Ok(TopLevelStatement::TraitDecl(TraitDecl {
+        Ok(Item::TraitDecl(TraitDecl {
             public,
             generic_annotations,
             name,
@@ -73,7 +70,7 @@ impl<'c> Parser<'c> {
             "trait method"
         )?;
 
-        let name = self.get_name();
+        let name = self.current_ident_with_span();
 
         self.advance(false)?; // name
 
