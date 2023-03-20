@@ -1,7 +1,7 @@
 # Ry programming language
 My toy programming language written in Rust.
 
-![](https://img.shields.io/github/commit-activity/m/vertexgmd/ry)
+![](https://img.shields.io/github/commit-activity/m/abs0luty/ry)
 ![](https://img.shields.io/badge/version-0.0.1%20alpha-red.svg)
 
 <table>
@@ -9,7 +9,7 @@ My toy programming language written in Rust.
 <td>Linux - Ubuntu (latest)</td>
 <td>
 
-![](https://img.shields.io/github/actions/workflow/status/vertexgmd/ry/ry-ubuntu.yml)
+![](https://img.shields.io/github/actions/workflow/status/abs0luty/ry/ry-ubuntu.yml)
 
 </td>
 </tr>
@@ -17,7 +17,7 @@ My toy programming language written in Rust.
 <td>Windows (latest)</td>
 <td>
 
-![](https://img.shields.io/github/actions/workflow/status/vertexgmd/ry/ry-windows.yml)
+![](https://img.shields.io/github/actions/workflow/status/abs0luty/ry/ry-windows.yml)
 
 </td>
 </tr>
