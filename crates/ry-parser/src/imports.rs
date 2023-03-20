@@ -32,4 +32,11 @@ impl<'c> Parser<'c> {
     }
 }
 
-mod import_tests {}
+#[cfg(test)]
+mod import_tests {
+    use crate::{macros::parser_test, Parser};
+    use string_interner::StringInterner;
+
+    parser_test!(single_import, "import test;");
+    parser_test!(imports, "import test; import test2::test;");
+}

@@ -73,3 +73,13 @@ impl<'c> Parser<'c> {
         })
     }
 }
+
+#[cfg(test)]
+mod function_decl_tests {
+    use crate::{macros::parser_test, Parser};
+    use string_interner::StringInterner;
+
+    parser_test!(function1, "pub fun test() {}");
+    parser_test!(function2, "pub fun test[A](a A) A { a }");
+    parser_test!(function3, "fun unwrap[T, B T?](a B) T { a.unwrap() }");
+}

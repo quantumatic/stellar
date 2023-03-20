@@ -43,3 +43,13 @@ impl<'c> Parser<'c> {
         }))
     }
 }
+
+#[cfg(test)]
+mod impl_tests {
+    use crate::{macros::parser_test, Parser};
+    use string_interner::StringInterner;
+
+    parser_test!(impl1, "impl[T] NotOption for T {}");
+    parser_test!(impl2, "impl[T] !NotOption for T? {}");
+    parser_test!(impl3, "impl[T, M Into[T]] Into[M?] for Tuple[T, M] {}");
+}

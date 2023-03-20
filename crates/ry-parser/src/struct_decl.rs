@@ -39,15 +39,26 @@ impl<'c> Parser<'c> {
 
     fn parse_struct_member(&mut self) -> ParserResult<StructMemberDef> {
         let mut public = None;
+        let mut r#mut = None;
+
+        if self.current.value.is(Mut) {
+            r#mut = Some(self.current.span);
+            self.advance(false)?;
+        }
 
         if self.current.value.is(Pub) {
             public = Some(self.current.span);
             self.advance(false)?;
         }
 
+        if self.current.value.is(Mut) {
+            r#mut = Some(self.current.span);
+            self.advance(false)?;
+        }
+
         check_token0!(
             self,
-            "identifier for struct member name or '}'",
+            "identifier for struct member name or `}`",
             Identifier(_),
             "struct definition"
         )?;
@@ -64,6 +75,7 @@ impl<'c> Parser<'c> {
 
         Ok(StructMemberDef {
             public,
+            r#mut,
             name,
             r#type,
         })
@@ -78,4 +90,16 @@ impl<'c> Parser<'c> {
 
         Ok(members)
     }
+}
+
+#[cfg(test)]
+mod struct_tests {
+    use crate::{macros::parser_test, Parser};
+    use string_interner::StringInterner;
+
+    parser_test!(empty_struct, "struct test {}");
+    parser_test!(
+        r#struct,
+        "struct test[T, M] { pub mut a i32; mut pub b T; pub c T; d M; }"
+    );
 }

@@ -37,7 +37,7 @@ impl<'c> Parser<'c> {
                 Dot => {
                     self.advance(false)?; // `.`
 
-                    if self.current.value.is(LessThan) {
+                    if self.current.value.is(OpenBracket) {
                         let start = left.span.start;
 
                         let generics = self.parse_type_generic_part()?;
@@ -261,4 +261,30 @@ impl<'c> Parser<'c> {
             )),
         }
     }
+}
+
+#[cfg(test)]
+mod expression_tests {
+    use crate::{macros::parser_test, Parser};
+    use string_interner::StringInterner;
+
+    parser_test!(literal1, "fun test() i32 { 3 }");
+    parser_test!(literal2, "fun test() string { \"hello\" }");
+    parser_test!(literal3, "fun test() bool { true }");
+    parser_test!(binary1, "fun test() i32 { 2 + 3 }");
+    parser_test!(binary2, "fun test() f32 { 1 + 2 / 3 + 3 * 4 }");
+    parser_test!(r#as, "fun test() f32 { 1 as f32 }");
+    parser_test!(call, "fun test() f32 { l(2 + 3).a() }");
+    parser_test!(
+        call_with_generics,
+        "fun test() f32 { l.[i32](2 + 3).a.[]() }"
+    );
+    parser_test!(index, "fun test() f32 { a[0] }");
+    parser_test!(
+        ifelse,
+        "fun test() f32 { if false { 2.3 } else if false { 5 as f32 } else { 2.0 } }"
+    );
+    parser_test!(r#while, "fun test() { while true { print(\"hello\"); } }");
+    parser_test!(postfix, "fun test() i32? { Some(a() ?: 0 + b()?) }");
+    parser_test!(parent, "fun test() i32 { ((b + c) * d) }");
 }

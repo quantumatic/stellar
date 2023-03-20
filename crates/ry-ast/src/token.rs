@@ -270,6 +270,7 @@ pub static RESERVED: phf::Map<&'static str, RawToken> = phf_map! {
     "var" => RawToken::Var,
     "as" => RawToken::As,
     "for" => RawToken::For,
+    "mut" => RawToken::Mut,
 };
 
 impl RawToken {
@@ -315,5 +316,15 @@ impl RawToken {
 
     pub fn is<T: AsRef<Self>>(&self, raw: T) -> bool {
         discriminant(self) == discriminant(raw.as_ref())
+    }
+
+    pub fn is_one_of<T: AsRef<Self>>(&self, raws: &[T]) -> bool {
+        for raw in raws {
+            if discriminant(self) == discriminant(raw.as_ref()) {
+                return true;
+            }
+        }
+
+        false
     }
 }

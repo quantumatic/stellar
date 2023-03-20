@@ -192,15 +192,18 @@ pub struct EnumDecl {
 pub type EnumVariant = WithSpan<DefaultSymbol>;
 
 /// ```ry
-/// pub a [i32];
-/// --- - ----- `type`
-/// |   |
-/// |   `name`
+/// pub mut a [i32];
+/// --- --- - ----- `type`
+/// |   |   |
+/// |   |   `name`
 /// `public`
+///     |
+///     `mut`
 /// ```
 #[derive(Debug, PartialEq)]
 pub struct StructMemberDef {
     pub public: Option<Span>,
+    pub r#mut: Option<Span>,
     pub name: WithSpan<DefaultSymbol>,
     pub r#type: Type,
 }
@@ -229,6 +232,7 @@ pub enum RawType {
     Primary(WithSpan<Vec<DefaultSymbol>>, Vec<Type>),
     Generic(WithSpan<DefaultSymbol>),
     Option(Type),
+    NegativeTrait(Type),
 }
 
 pub type StatementsBlock = Vec<Statement>;
@@ -239,7 +243,12 @@ pub enum Statement {
     ExpressionWithoutSemicolon(Expression),
     Return(Expression),
     Defer(Expression),
-    Var(WithSpan<DefaultSymbol>, Option<Type>, Expression),
+    Var(
+        Option<Span>,
+        WithSpan<DefaultSymbol>,
+        Option<Type>,
+        Expression,
+    ),
 }
 
 impl Statement {

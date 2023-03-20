@@ -57,6 +57,14 @@ impl<'c> Parser<'c> {
             Var => {
                 self.advance(false)?; // `var`
 
+                let mut r#mut = None;
+
+                if self.current.value.is(Mut) {
+                    r#mut = Some(self.current.span);
+
+                    self.advance(false)?; // `mut`
+                }
+
                 check_token0!(self, "identifier", Identifier(_), "var statement")?;
 
                 let name = self.current_ident_with_span();
@@ -75,7 +83,7 @@ impl<'c> Parser<'c> {
 
                 let value = self.parse_expression(Precedence::Lowest.to_i8().unwrap())?;
 
-                Ok(Statement::Var(name, r#type, value))
+                Ok(Statement::Var(r#mut, name, r#type, value))
             }
             _ => {
                 let expression = self.parse_expression(Precedence::Lowest.to_i8().unwrap())?;
@@ -102,4 +110,18 @@ impl<'c> Parser<'c> {
 
         Ok((statement, last_statement_in_block))
     }
+}
+
+#[cfg(test)]
+mod statement_tests {
+    use crate::{macros::parser_test, Parser};
+    use string_interner::StringInterner;
+
+    parser_test!(imut_var, "fun test() { var a = 3; }");
+    parser_test!(mut_var, "fun test() { var mut a = 3; }");
+    parser_test!(
+        defer,
+        "fun test() { var f = open(\"test\"); defer f.close(); }"
+    );
+    parser_test!(r#return, "fun test() i32 { return 2; }");
 }

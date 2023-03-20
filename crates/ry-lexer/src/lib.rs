@@ -16,6 +16,7 @@
 //! ```
 //! use ry_lexer::Lexer;
 //! use ry_ast::token::RawToken;
+//! use ry_ast::token::RawToken::EndOfFile;
 //! use string_interner::StringInterner;
 //!
 //! let mut string_interner = StringInterner::default();
@@ -33,7 +34,7 @@
 //!
 //! ```
 //! use ry_lexer::Lexer;
-//! use ry_ast::token::{RawToken, LexerError};
+//! use ry_ast::token::{LexerError, RawToken::Invalid};
 //! use string_interner::StringInterner;
 //!
 //! let mut string_interner = StringInterner::default();
@@ -42,8 +43,8 @@
 //! assert_eq!(lexer.next().unwrap().value, Invalid(LexerError::UnexpectedChar('#')));
 //! ```
 
-use std::{string::String, str::Chars, char::from_u32};
 use ry_ast::{location::*, token::RawToken::*, token::*};
+use std::{char::from_u32, str::Chars, string::String};
 
 use string_interner::StringInterner;
 
