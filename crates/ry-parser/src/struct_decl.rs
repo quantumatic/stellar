@@ -6,12 +6,7 @@ impl<'c> Parser<'c> {
     pub(crate) fn parse_struct_declaration(&mut self, public: Option<Span>) -> ParserResult<Item> {
         self.advance(false)?; // `struct`
 
-        check_token0!(
-            self,
-            "identifier for struct name",
-            Identifier(_),
-            "struct declaration"
-        )?;
+        check_token!(self, Identifier => "struct name in struct declaration")?;
 
         let name = self.current_ident_with_span();
 
@@ -19,13 +14,13 @@ impl<'c> Parser<'c> {
 
         let generic_annotations = self.parse_generic_annotations()?;
 
-        check_token!(self, OpenBrace, "struct declaration")?;
+        check_token!(self, OpenBrace => "struct declaration")?;
 
         self.advance(true)?; // `{`
 
         let members = self.parse_struct_members()?;
 
-        check_token!(self, CloseBrace, "struct declaration")?;
+        check_token!(self, CloseBrace => "struct declaration")?;
 
         self.advance(true)?; // `}`
 
@@ -56,12 +51,7 @@ impl<'c> Parser<'c> {
             self.advance(false)?;
         }
 
-        check_token0!(
-            self,
-            "identifier for struct member name or `}`",
-            Identifier(_),
-            "struct definition"
-        )?;
+        check_token!(self, Identifier => "struct member name in struct definition")?;
 
         let name = self.current_ident_with_span();
 
@@ -69,7 +59,7 @@ impl<'c> Parser<'c> {
 
         let r#type = self.parse_type()?;
 
-        check_token!(self, Semicolon, "struct member definition")?;
+        check_token!(self, Semicolon => "struct member definition")?;
 
         self.advance(true)?; // `;`
 

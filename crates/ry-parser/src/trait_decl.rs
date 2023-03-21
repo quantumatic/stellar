@@ -6,12 +6,7 @@ impl<'c> Parser<'c> {
     pub(crate) fn parse_trait_declaration(&mut self, public: Option<Span>) -> ParserResult<Item> {
         self.advance(false)?; // `trait`
 
-        check_token0!(
-            self,
-            "identifier for trait name",
-            Identifier(_),
-            "trait declaration"
-        )?;
+        check_token!(self, Identifier => "trait name in trait declaration")?;
 
         let name = self.current_ident_with_span();
 
@@ -19,13 +14,13 @@ impl<'c> Parser<'c> {
 
         let generic_annotations = self.parse_generic_annotations()?;
 
-        check_token!(self, OpenBrace, "trait declaration")?;
+        check_token!(self, OpenBrace => "trait declaration")?;
 
         self.advance(true)?; // `{`
 
         let methods = self.parse_trait_methods()?;
 
-        check_token!(self, CloseBrace, "trait declaration")?;
+        check_token!(self, CloseBrace => "trait declaration")?;
 
         self.advance(true)?; // `}`
 
@@ -58,15 +53,13 @@ impl<'c> Parser<'c> {
             self.advance(false)?; // `pub`
         }
 
-        check_token!(self, Fun, "trait method")?;
+        check_token!(self, Fun => "trait method")?;
 
         self.advance(false)?; // `fun`
 
-        check_token0!(
+        check_token!(
             self,
-            "identifier for method name",
-            Identifier(_),
-            "trait method"
+            Identifier => "trait method name"
         )?;
 
         let name = self.current_ident_with_span();
@@ -75,7 +68,7 @@ impl<'c> Parser<'c> {
 
         let generic_annotations = self.parse_generic_annotations()?;
 
-        check_token!(self, OpenParent, "trait method")?;
+        check_token!(self, OpenParent => "trait method")?;
 
         self.advance(false)?; // `(`
 
@@ -122,5 +115,8 @@ mod trait_tests {
 
     parser_test!(empty_trait, "trait test {}");
     parser_test!(r#trait, "trait test { fun f(); }");
-    parser_test!(r#trait_with_generics, "trait Into[T] { fun into(self &Self) T; }");
+    parser_test!(
+        r#trait_with_generics,
+        "trait Into[T] { fun into(self &Self) T; }"
+    );
 }

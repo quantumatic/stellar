@@ -9,12 +9,7 @@ impl<'c> Parser<'c> {
     ) -> ParserResult<Item> {
         self.advance(false)?; // `fun`
 
-        check_token0!(
-            self,
-            "identifier for function name",
-            Identifier(_),
-            "function declaration"
-        )?;
+        check_token!(self, Identifier => "function name")?;
 
         let name = self.current_ident_with_span();
 
@@ -22,7 +17,7 @@ impl<'c> Parser<'c> {
 
         let generic_annotations = self.parse_generic_annotations()?;
 
-        check_token!(self, OpenParent, "function declaration")?;
+        check_token!(self, OpenParent => "function declaration")?;
 
         self.advance(false)?; // `(`
 
@@ -50,7 +45,7 @@ impl<'c> Parser<'c> {
     }
 
     pub(crate) fn parse_function_argument(&mut self) -> ParserResult<FunctionParam> {
-        check_token0!(self, "identifier for argument name", Identifier(_))?;
+        check_token!(self, Identifier => "function argument name")?;
 
         let name = self.current_ident_with_span();
 

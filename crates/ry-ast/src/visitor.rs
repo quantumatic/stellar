@@ -51,6 +51,14 @@ pub trait Visitor: Sized {
         self.visit_type(node);
     });
 
+    visit_fn!(arguments for &Vec<FunctionParam> {
+        for argument in node {
+            self.visit_argument(argument);
+        }
+    });
+
+    visit_fn!(argument for &FunctionParam);
+
     visit_fn!(r#type for &Type {
         match &*node.value {
             RawType::Array(inner) => self.visit_array(inner),
@@ -64,16 +72,15 @@ pub trait Visitor: Sized {
     visit_fn!(array for &Type);
     visit_fn!(option for &Type);
     visit_fn!(reference for (bool, &Type));
+    visit_fn!(generic_annotations_in_type for &Vec<Type>);
     visit_fn!(primary for (&WithSpan<Vec<DefaultSymbol>>, &Vec<Type>) {
         self.visit_static_name(node.0);
 
-        for generic in node.1 {
-            self.visit_type(generic);
-        }
+        self.visit_generic_annotations_in_type(node.1);
     });
     visit_fn!(negative_trait for &Type);
 
-    visit_fn!(expr for &Expression);
+    visit_fn!(expression for &Expression);
 
     visit_fn!(bool_literal for bool);
     visit_fn!(integer_literal for u64);
@@ -81,7 +88,43 @@ pub trait Visitor: Sized {
     visit_fn!(imaginary_literal for f64);
     visit_fn!(string_literal for &str);
 
-    visit_fn!(binary_expr for (&Expression, &Token, &Expression));
+    visit_fn!(binary_expression for (&Expression, &Token, &Expression));
+
+    visit_fn!(block for &Vec<Statement> {
+        for statement in node {
+            self.visit_statement(statement);
+        }
+    });
+
+    visit_fn!(statement for &Statement {
+        match node {
+            Statement::Expression(e) => self.visit_expression_statement((true, e)),
+            Statement::ExpressionWithoutSemicolon(e) => self.visit_expression_statement((false, e)),
+            Statement::Return(r) => self.visit_return_statement(r),
+            Statement::Defer(d) => self.visit_defer_statement(d),
+            Statement::Var(mutable, name, ty, value) => self.visit_var_statement((mutable, name, ty, value)),
+        }
+    });
+
+    visit_fn!(expression_statement for (bool, &Expression) {
+        self.visit_expression(node.1);
+    });
+
+    visit_fn!(return_statement for &Expression {
+        self.visit_expression(node);
+    });
+
+    visit_fn!(defer_statement for &Expression {
+        self.visit_expression(node);
+    });
+
+    visit_fn!(var_statement for (&Option<Span>, &WithSpan<DefaultSymbol>, &Option<Type>, &Expression) {
+        if let Some(ty) = node.2 {
+            self.visit_type(ty);
+        }
+
+        self.visit_expression(node.3);
+    });
 
     visit_fn!(op for &Token);
     visit_fn!(static_name for &WithSpan<Vec<DefaultSymbol>>);

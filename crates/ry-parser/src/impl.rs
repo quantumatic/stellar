@@ -24,13 +24,13 @@ impl<'c> Parser<'c> {
             r#type = self.parse_type()?;
         }
 
-        check_token!(self, OpenBrace, "type implementation")?;
+        check_token!(self, OpenBrace => "type implementation")?;
 
         self.advance(false)?; // '{'
 
         let methods = self.parse_trait_methods()?;
 
-        check_token!(self, CloseBrace, "type implementation")?;
+        check_token!(self, CloseBrace => "type implementation")?;
 
         self.advance(true)?; // '}'
 

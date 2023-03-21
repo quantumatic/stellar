@@ -9,6 +9,7 @@ ry-lexer = {path = "../ry-lexer"}
 ry-report = {path = "../ry-report"}
 ry-ast = {path = "../ry-ast"}
 ry-ast-to-graphviz = {path = "../ry-ast-to-graphviz"}
+ry-ast-serializer = {path = "../ry-ast-serializer"}
 codespan-reporting = "0.11.1"
-clap = "4.1.4"
+clap = {version = "4.1.4", features = ["derive"]}
 string-interner = "0.14.0"

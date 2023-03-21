@@ -8,7 +8,7 @@ impl<'c> Parser<'c> {
         &mut self,
         top_level: bool,
     ) -> ParserResult<StatementsBlock> {
-        check_token!(self, OpenBrace, "statements block")?;
+        check_token!(self, OpenBrace => "statements block")?;
 
         self.advance(false)?; // `{`
 
@@ -24,7 +24,7 @@ impl<'c> Parser<'c> {
             }
         }
 
-        check_token!(self, CloseBrace, "statements block")?;
+        check_token!(self, CloseBrace => "statements block")?;
 
         if top_level {
             self.advance(true)?;
@@ -65,7 +65,7 @@ impl<'c> Parser<'c> {
                     self.advance(false)?; // `mut`
                 }
 
-                check_token0!(self, "identifier", Identifier(_), "var statement")?;
+                check_token!(self, Identifier => "variable name in var statement")?;
 
                 let name = self.current_ident_with_span();
 
@@ -77,7 +77,7 @@ impl<'c> Parser<'c> {
                     r#type = Some(self.parse_type()?);
                 }
 
-                check_token!(self, Assign, "var statement")?;
+                check_token!(self, Assign => "var statement")?;
 
                 self.advance(false)?; // `=`
 
@@ -104,7 +104,7 @@ impl<'c> Parser<'c> {
         }?;
 
         if !last_statement_in_block && must_have_semicolon_at_the_end {
-            check_token!(self, Semicolon, "end of the statement")?;
+            check_token!(self, Semicolon => "end of the statement")?;
             self.advance(false)?; // `;`
         }
 

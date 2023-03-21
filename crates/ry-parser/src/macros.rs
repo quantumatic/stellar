@@ -1,5 +1,18 @@
 macro_rules! check_token {
-    ($p:ident, $expected:expr, $expected_for:literal) => {
+    ($p:ident, Identifier => $expected_for:expr) => {
+        if let Invalid(e) = $p.current.value {
+            Err(ParserError::ErrorToken((e, $p.current.span.clone()).into()))
+        } else if let Identifier(_) = $p.current.value {
+            Ok(())
+        } else {
+            Err(ParserError::UnexpectedToken(
+                $p.current.clone(),
+                "identifier".to_owned(),
+                Some($expected_for.into()),
+            ))
+        }
+    };
+    ($p:ident, $expected:expr => $expected_for:expr) => {
         if let Invalid(e) = $p.current.value {
             Err(ParserError::ErrorToken((e, $p.current.span.clone()).into()))
         } else if !&$p.current.value.is($expected) {
@@ -10,35 +23,6 @@ macro_rules! check_token {
             ))
         } else {
             Ok(())
-        }
-    };
-}
-
-macro_rules! check_token0 {
-    ($p:ident, $t_dump:expr, $expected:pat, $expected_for:expr) => {
-        if let Invalid(e) = $p.current.value {
-            Err(ParserError::ErrorToken((e, $p.current.span.clone()).into()))
-        } else if let $expected = $p.current.value {
-            Ok(())
-        } else {
-            Err(ParserError::UnexpectedToken(
-                $p.current.clone(),
-                $t_dump.into(),
-                Some($expected_for.into()),
-            ))
-        }
-    };
-    ($p:ident, $expected_for:expr, $expected:pat) => {
-        if let Invalid(e) = $p.current.value {
-            Err(ParserError::ErrorToken((e, $p.current.span.clone()).into()))
-        } else if let $expected = $p.current.value {
-            Ok(())
-        } else {
-            Err(ParserError::UnexpectedToken(
-                $p.current.clone(),
-                $expected_for.into(),
-                None,
-            ))
         }
     };
 }
@@ -70,7 +54,7 @@ macro_rules! parse_list {
                     if $p.current.value.is($closing_token) {
                         break
                     } else {
-                        check_token0!($p, format!("`,` or {}", $closing_token), Comma, $name)?;
+                        check_token!($p, Comma => $name)?;
 
                         $p.advance($top_level)?; // ','
 
@@ -125,7 +109,7 @@ macro_rules! postfixop_pattern {
     };
 }
 
-pub(crate) use {binop_pattern, check_token, check_token0, parse_list, postfixop_pattern};
+pub(crate) use {binop_pattern, check_token, parse_list, postfixop_pattern};
 
 #[cfg(test)]
 pub(crate) use parser_test;

@@ -42,7 +42,7 @@ impl<'c> Parser<'c> {
 
                         let generics = self.parse_type_generic_part()?;
 
-                        check_token!(self, OpenParent, "call")?;
+                        check_token!(self, OpenParent => "call")?;
 
                         self.advance(false)?; // `)`
 
@@ -61,12 +61,7 @@ impl<'c> Parser<'c> {
                     } else {
                         let start = left.span.start;
 
-                        check_token0!(
-                            self,
-                            "identifier for property name",
-                            Identifier(_),
-                            "property"
-                        )?;
+                        check_token!(self, Identifier => "property")?;
 
                         let name = self.current_ident_with_span();
                         let end = self.current.span.end;
@@ -83,7 +78,7 @@ impl<'c> Parser<'c> {
 
                     let inner_expr = self.parse_expression(Precedence::Lowest.to_i8().unwrap())?;
 
-                    check_token!(self, CloseBracket, "index")?;
+                    check_token!(self, CloseBracket => "index")?;
 
                     let end = self.current.span.end;
 
@@ -182,7 +177,7 @@ impl<'c> Parser<'c> {
 
                 let expr = self.parse_expression(Precedence::Lowest.to_i8().unwrap())?;
 
-                check_token!(self, CloseParent, "parenthesized expression")?;
+                check_token!(self, CloseParent => "parenthesized expression")?;
 
                 self.advance(false)?; // `)`
 

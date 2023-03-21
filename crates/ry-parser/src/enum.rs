@@ -5,30 +5,25 @@ impl<'c> Parser<'c> {
     pub(crate) fn parse_enum_declaration(&mut self, public: Option<Span>) -> ParserResult<Item> {
         self.advance(false)?; // `enum`
 
-        check_token0!(
-            self,
-            "identifier for enum name",
-            Identifier(_),
-            "enum declaration"
-        )?;
+        check_token!(self, Identifier => "enum declaration")?;
 
         let name = self.current_ident_with_span();
 
         self.advance(false)?; // ident
 
-        check_token!(self, OpenBrace, "enum declaration")?;
+        check_token!(self, OpenBrace => "enum declaration")?;
 
         self.advance(true)?; // `{`
 
         let variants = parse_list!(
             self,
-            "enum variant",
+            "enum declaration",
             CloseBrace,
             true, // top level
             || {
                 let doc = self.consume_local_docstring()?;
 
-                check_token0!(self, "identifier", Identifier(_), "enum variant")?;
+                check_token!(self, Identifier => "enum variant")?;
 
                 let variant = self.current_ident_with_span();
 

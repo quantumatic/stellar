@@ -17,16 +17,11 @@ impl<'c> Parser<'c> {
     pub(crate) fn parse_import(&mut self) -> ParserResult<ry_ast::Import> {
         self.advance(false)?; // `import`
 
-        check_token0!(
-            self,
-            "path (for example: `std::io`)",
-            Identifier(_),
-            "import"
-        )?;
+        check_token!(self, Identifier => "path (for example: `std::io`)")?;
 
         let path = self.parse_name()?;
 
-        check_token!(self, Semicolon, "import")?;
+        check_token!(self, Semicolon => "import")?;
 
         Ok(ry_ast::Import { path })
     }

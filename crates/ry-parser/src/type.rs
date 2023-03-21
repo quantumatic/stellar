@@ -17,7 +17,7 @@ impl<'c> Parser<'c> {
         while self.current.value.is(DoubleColon) {
             self.advance(false)?; // `::`
 
-            check_token0!(self, "identifier", Identifier(_), "name")?;
+            check_token!(self, Identifier => "namespace member/namespace")?;
 
             name.push(self.current_ident());
 
@@ -80,7 +80,7 @@ impl<'c> Parser<'c> {
 
                 let inner_type = self.parse_type()?;
 
-                check_token!(self, CloseBracket, "array type")?;
+                check_token!(self, CloseBracket => "array type")?;
 
                 let end = self.current.span.end;
 
@@ -145,7 +145,7 @@ impl<'c> Parser<'c> {
             CloseBracket,
             false, // top level
             || {
-                check_token0!(self, "identifier", Identifier(_), "generic annotation")?;
+                check_token!(self, Identifier => "generic name in generic annotation")?;
 
                 let generic = self.current_ident_with_span();
 
