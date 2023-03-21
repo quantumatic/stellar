@@ -59,11 +59,11 @@ pub enum LexerError {
     InvalidDigit,
     #[error("number parsing error (overflow is possible)")]
     NumberParserError,
-    #[error("underscore must seperate successive digits")]
-    UnderscoreMustSeperateSuccessiveDigits,
+    #[error("underscore must separate successive digits")]
+    UnderscoreMustSeparateSuccessiveDigits,
 }
 
-/// Wether the number is integer, float or imaginary literal.
+/// Either the number is integer, float or imaginary literal.
 #[derive(PartialEq, Debug)]
 pub enum NumberKind {
     Invalid,

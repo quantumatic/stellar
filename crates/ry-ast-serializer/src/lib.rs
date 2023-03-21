@@ -1,9 +1,4 @@
-use ry_ast::location::WithSpan;
-use ry_ast::visitor::walk_items;
-use ry_ast::{
-    visitor::{walk_import, walk_static_name, Visitor},
-    EnumDecl, FunctionDecl, Items, ProgramUnit,
-};
+use ry_ast::{location::WithSpan, visitor::Visitor, *};
 use string_interner::{DefaultSymbol, StringInterner};
 
 pub struct ASTSerializer<'a> {
@@ -41,7 +36,8 @@ impl<'a> Visitor for ASTSerializer<'a> {
         self.content.push_str("import ");
         self.visit_static_name(&node.path);
         self.content.push_str(";\n");
-        walk_import(self, node);
+
+        self.walk_import(node);
     }
 
     fn visit_static_name(&mut self, node: &WithSpan<Vec<DefaultSymbol>>) {
@@ -50,12 +46,13 @@ impl<'a> Visitor for ASTSerializer<'a> {
             self.content.push_str("::");
         }
 
-        self.content.split_off(self.content.len() - 2);
+        self.content.truncate(self.content.len() - 2);
     }
 
     fn visit_items(&mut self, node: &Items) {
         self.content.push('\n');
-        walk_items(self, node);
+
+        self.walk_items(node);
     }
 
     fn visit_enum_decl(&mut self, node: (&str, &EnumDecl)) {
@@ -70,7 +67,7 @@ impl<'a> Visitor for ASTSerializer<'a> {
             self.content.push_str(",\n");
         }
 
-        self.content.split_off(self.content.len() - 2);
+        self.content.truncate(self.content.len() - 2);
         self.content.push_str("\n}\n");
     }
 
@@ -81,5 +78,26 @@ impl<'a> Visitor for ASTSerializer<'a> {
 
         self.content.push_str("fun ");
         self.write_ident(node.1.def.name.value);
+    }
+
+    fn visit_generic_annotations(&mut self, node: &ry_ast::GenericAnnotations) {
+        if node.len() != 0 {
+            self.content.push('[');
+
+            for annotation in node {
+                self.walk_generic_annotation(annotation);
+            }
+
+            self.content.push(']');
+        }
+    }
+
+    fn visit_generic_annotation(&mut self, node: &ry_ast::GenericAnnotation) {
+        self.content
+            .push_str(self.identifier_interner.resolve(node.0.value).unwrap());
+
+        if let Some(constraint) = &node.1 {
+            self.visit_type(constraint);
+        }
     }
 }

@@ -230,7 +230,6 @@ pub enum RawType {
     Array(Type),
     Reference(bool, Type),
     Primary(WithSpan<Vec<DefaultSymbol>>, Vec<Type>),
-    Generic(WithSpan<DefaultSymbol>),
     Option(Type),
     NegativeTrait(Type),
 }

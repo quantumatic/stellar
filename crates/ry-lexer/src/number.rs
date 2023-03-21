@@ -195,7 +195,7 @@ impl Lexer<'_> {
 
         if digit_separator & 2 != 0 && s >= 0 {
             return Some(Token::new(
-                Invalid(LexerError::UnderscoreMustSeperateSuccessiveDigits),
+                Invalid(LexerError::UnderscoreMustSeparateSuccessiveDigits),
                 Span::from_location(s as usize + self.start_location, 1),
             ));
         }
