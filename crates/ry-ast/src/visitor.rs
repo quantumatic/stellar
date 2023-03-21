@@ -80,13 +80,26 @@ pub trait Visitor: Sized {
     });
     visit_fn!(negative_trait for &Type);
 
-    visit_fn!(expression for &Expression);
+    visit_fn!(expression for &Expression {
+        match &*node.value {
+            RawExpression::Bool(b) => self.visit_bool_literal(*b),
+            RawExpression::String(s) => self.visit_string_literal(s),
+            RawExpression::Int(i) => self.visit_integer_literal(*i),
+            RawExpression::Float(f) => self.visit_float_literal(*f),
+            RawExpression::Char(c) => self.visit_char_literal(*c),
+            RawExpression::Binary(l, op, r) => self.visit_binary_expression((l, op, r)),
+            RawExpression::StaticName(s) => self.visit_static_name(&(*s).clone().with_span(node.span)),
+            RawExpression::Imag(i) => self.visit_imaginary_literal(*i),
+            _ => todo!(),
+        }
+    });
 
     visit_fn!(bool_literal for bool);
     visit_fn!(integer_literal for u64);
     visit_fn!(float_literal for f64);
     visit_fn!(imaginary_literal for f64);
     visit_fn!(string_literal for &str);
+    visit_fn!(char_literal for char);
 
     visit_fn!(binary_expression for (&Expression, &Token, &Expression));
 

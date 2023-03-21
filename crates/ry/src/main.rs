@@ -1,6 +1,6 @@
 use clap::{arg, Parser, Subcommand};
 use codespan_reporting::files::SimpleFiles;
-use ry_ast::{token::RawToken::EndOfFile, visitor::Visitor};
+use ry_ast::token::RawToken::EndOfFile;
 use ry_lexer::Lexer;
 use ry_report::{Reporter, ReporterState};
 use std::{fs, process::exit};

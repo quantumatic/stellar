@@ -124,6 +124,7 @@ impl<'a> Visitor for ASTSerializer<'a> {
 
     fn visit_generic_annotation(&mut self, node: &GenericAnnotation) {
         self.content += self.identifier_interner.resolve(node.0.value).unwrap();
+        self.content += " ";
 
         if let Some(constraint) = &node.1 {
             self.visit_type(constraint);
@@ -212,5 +213,41 @@ impl<'a> Visitor for ASTSerializer<'a> {
 
             self.content += "]";
         }
+    }
+
+    fn visit_bool_literal(&mut self, node: bool) {
+        if node {
+            self.content += "true";
+        } else {
+            self.content += "false";
+        }
+    }
+
+    fn visit_float_literal(&mut self, node: f64) {
+        self.content += &node.to_string();
+    }
+
+    fn visit_integer_literal(&mut self, node: u64) {
+        self.content += &node.to_string();
+    }
+
+    // TODO: process escape sequences
+    fn visit_string_literal(&mut self, node: &str) {
+        self.content += node;
+    }
+
+    // TODO: process escape sequences
+    fn visit_char_literal(&mut self, node: char) {
+        self.content += "'";
+        self.content += &node.to_string();
+        self.content += "'";
+    }
+
+    fn visit_binary_expression(&mut self, node: (&Expression, &token::Token, &Expression)) {
+        self.visit_expression(node.0);
+        self.content += " ";
+        self.content += &node.1.value.to_string()[1..2];
+        self.content += " ";
+        self.visit_expression(node.2);
     }
 }
