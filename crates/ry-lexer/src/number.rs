@@ -1,4 +1,4 @@
-use ry_ast::{location::*, token::RawToken::*, token::*};
+use ry_ast::{location::*, token::RawToken::*, token::*, WithSpannable};
 use std::string::String;
 
 use crate::{IterElem, Lexer};
@@ -80,7 +80,7 @@ fn invalid_separator(buffer: String) -> i32 {
 
 impl Lexer<'_> {
     pub(crate) fn scan_number(&mut self) -> IterElem {
-        self.start_location = self.location;
+        let start_location = self.location;
 
         let mut number_kind = NumberKind::Invalid;
 
@@ -128,10 +128,9 @@ impl Lexer<'_> {
             number_kind = NumberKind::Float;
 
             if prefix == 'o' || prefix == 'b' || prefix == 'x' {
-                return Some(Token::new(
-                    Invalid(LexerError::InvalidRadixPoint),
-                    self.span_from_start(),
-                ));
+                return Some(
+                    Invalid(LexerError::InvalidRadixPoint).with_span(start_location..self.location),
+                );
             }
 
             self.advance();
@@ -140,19 +139,16 @@ impl Lexer<'_> {
         }
 
         if digit_separator & 1 == 0 {
-            return Some(Token::new(
-                Invalid(LexerError::HasNoDigits),
-                self.span_from_start(),
-            ));
+            return Some(Invalid(LexerError::HasNoDigits).with_span(start_location..self.location));
         }
 
         let l = self.current.to_ascii_lowercase();
         if l == 'e' {
             if prefix != '\0' && prefix != '0' {
-                return Some(Token::new(
-                    Invalid(LexerError::ExponentRequiresDecimalMantissa),
-                    self.span_from_start(),
-                ));
+                return Some(
+                    Invalid(LexerError::ExponentRequiresDecimalMantissa)
+                        .with_span(start_location..self.location),
+                );
             }
 
             self.advance();
@@ -168,10 +164,10 @@ impl Lexer<'_> {
             digit_separator |= ds;
 
             if ds & 1 == 0 {
-                return Some(Token::new(
-                    Invalid(LexerError::ExponentHasNoDigits),
-                    self.span_from_start(),
-                ));
+                return Some(
+                    Invalid(LexerError::ExponentHasNoDigits)
+                        .with_span(start_location..self.location),
+                );
             }
         }
 
@@ -180,7 +176,7 @@ impl Lexer<'_> {
             self.advance();
         }
 
-        let buffer = &self.contents[self.start_location..self.location];
+        let buffer = &self.contents[start_location..self.location];
 
         if let Some(location) = invalid_digit_location {
             if number_kind == NumberKind::Int {
@@ -196,7 +192,7 @@ impl Lexer<'_> {
         if digit_separator & 2 != 0 && s >= 0 {
             return Some(Token::new(
                 Invalid(LexerError::UnderscoreMustSeparateSuccessiveDigits),
-                Span::from_location(s as usize + self.start_location, 1),
+                Span::from_location(s as usize + start_location, 1),
             ));
         }
 
@@ -206,37 +202,37 @@ impl Lexer<'_> {
                     (if base == 10 { buffer } else { &buffer[2..] }).as_bytes(),
                     base,
                 ) {
-                    Some(n) => Some(Token::new(Int(n), self.span_from_start())),
-                    None => Some(Token::new(
-                        Invalid(LexerError::NumberParserError),
-                        self.span_from_start(),
-                    )),
+                    Some(n) => Some(Int(n).with_span(start_location..self.location)),
+                    None => Some(
+                        Invalid(LexerError::NumberParserError)
+                            .with_span(start_location..self.location),
+                    ),
                 }
             }
-            NumberKind::Float => Some(Token::new(
+            NumberKind::Float => Some(
                 Float(match buffer.parse::<f64>() {
                     Ok(n) => n,
                     Err(_) => {
-                        return Some(Token::new(
-                            Invalid(LexerError::NumberParserError),
-                            self.span_from_start(),
-                        ));
+                        return Some(
+                            Invalid(LexerError::NumberParserError)
+                                .with_span(start_location..self.location),
+                        );
                     }
-                }),
-                self.span_from_start(),
-            )),
-            NumberKind::Imag => Some(Token::new(
+                })
+                .with_span(start_location..self.location),
+            ),
+            NumberKind::Imag => Some(
                 Imag(match buffer[..buffer.len() - 1].parse::<f64>() {
                     Ok(n) => n,
                     Err(_) => {
-                        return Some(Token::new(
-                            Invalid(LexerError::NumberParserError),
-                            self.span_from_start(),
-                        ));
+                        return Some(
+                            Invalid(LexerError::NumberParserError)
+                                .with_span(start_location..self.location),
+                        );
                     }
-                }),
-                self.span_from_start(),
-            )),
+                })
+                .with_span(start_location..self.location),
+            ),
             NumberKind::Invalid => unimplemented!(),
         }
     }

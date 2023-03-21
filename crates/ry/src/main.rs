@@ -42,7 +42,7 @@ enum Commands {
 fn main() {
     let reporter = ReporterState::default();
 
-    let mut identifier_interner = StringInterner::new();
+    let mut string_interner = StringInterner::new();
     let mut files = SimpleFiles::<&str, &str>::new();
 
     match Cli::parse().command {
@@ -51,7 +51,7 @@ fn main() {
             show_locations,
         } => match fs::read_to_string(filepath) {
             Ok(contents) => {
-                let mut lexer = Lexer::new(&contents, &mut identifier_interner);
+                let mut lexer = Lexer::new(&contents, &mut string_interner);
                 let mut current_token_index = 0;
 
                 loop {
@@ -84,8 +84,7 @@ fn main() {
             match fs::read_to_string(filepath) {
                 Ok(contents) => {
                     let file_id = files.add(&filepath, &contents);
-                    let mut identifier_interner = StringInterner::default();
-                    let mut parser = ry_parser::Parser::new(&contents, &mut identifier_interner);
+                    let mut parser = ry_parser::Parser::new(&contents, &mut string_interner);
 
                     let ast = parser.parse();
 
@@ -115,14 +114,14 @@ fn main() {
             match fs::read_to_string(filepath) {
                 Ok(contents) => {
                     let file_id = files.add(&filepath, &contents);
-                    let mut parser = ry_parser::Parser::new(&contents, &mut identifier_interner);
+                    let mut parser = ry_parser::Parser::new(&contents, &mut string_interner);
 
                     let ast = parser.parse();
 
                     match ast {
                         Ok(program_unit) => {
                             let mut serializer =
-                                ry_ast_serializer::ASTSerializer::new(&identifier_interner);
+                                ry_ast_serializer::ASTSerializer::new(&string_interner);
                             println!("{}", serializer.serialize(&program_unit));
                         }
                         Err(e) => {

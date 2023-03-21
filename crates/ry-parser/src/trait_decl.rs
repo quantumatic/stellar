@@ -1,6 +1,5 @@
 use crate::{error::ParserError, macros::*, Parser, ParserResult};
 use ry_ast::{location::Span, token::RawToken::*, *};
-use std::string::String;
 
 impl<'c> Parser<'c> {
     pub(crate) fn parse_trait_declaration(&mut self, public: Option<Span>) -> ParserResult<Item> {
@@ -32,7 +31,7 @@ impl<'c> Parser<'c> {
         }))
     }
 
-    pub(crate) fn parse_trait_methods(&mut self) -> ParserResult<Vec<(String, TraitMethod)>> {
+    pub(crate) fn parse_trait_methods(&mut self) -> ParserResult<Vec<(Docstring, TraitMethod)>> {
         let mut definitions = vec![];
 
         while !self.current.value.is(CloseBrace) {

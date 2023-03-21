@@ -22,7 +22,7 @@ pub trait Visitor: Sized {
             self.visit_item((&item.0, &item.1));
         }
     });
-    visit_fn!(item for (&str, &Item) {
+    visit_fn!(item for (&Docstring, &Item) {
         match node.1 {
             Item::EnumDecl(e) => self.visit_enum_decl((node.0, e)),
             Item::FunctionDecl(f) => self.visit_function_decl((node.0, f)),
@@ -33,11 +33,11 @@ pub trait Visitor: Sized {
         }
     });
 
-    visit_fn!(enum_decl for (&str, &EnumDecl));
-    visit_fn!(function_decl for (&str, &FunctionDecl));
-    visit_fn!(struct_decl for (&str, &StructDecl));
-    visit_fn!(trait_decl for (&str, &TraitDecl));
-    visit_fn!(r#impl for (&str, &Impl));
+    visit_fn!(enum_decl for (&Docstring, &EnumDecl));
+    visit_fn!(function_decl for (&Docstring, &FunctionDecl));
+    visit_fn!(struct_decl for (&Docstring, &StructDecl));
+    visit_fn!(trait_decl for (&Docstring, &TraitDecl));
+    visit_fn!(r#impl for (&Docstring, &Impl));
 
     visit_fn!(generic_annotations for &GenericAnnotations);
     visit_fn!(generic_annotation for &GenericAnnotation);
@@ -83,7 +83,7 @@ pub trait Visitor: Sized {
     visit_fn!(expression for &Expression {
         match &*node.value {
             RawExpression::Bool(b) => self.visit_bool_literal(*b),
-            RawExpression::String(s) => self.visit_string_literal(s),
+            RawExpression::String(s) => self.visit_string_literal(*s),
             RawExpression::Int(i) => self.visit_integer_literal(*i),
             RawExpression::Float(f) => self.visit_float_literal(*f),
             RawExpression::Char(c) => self.visit_char_literal(*c),
@@ -98,7 +98,7 @@ pub trait Visitor: Sized {
     visit_fn!(integer_literal for u64);
     visit_fn!(float_literal for f64);
     visit_fn!(imaginary_literal for f64);
-    visit_fn!(string_literal for &str);
+    visit_fn!(string_literal for DefaultSymbol);
     visit_fn!(char_literal for char);
 
     visit_fn!(binary_expression for (&Expression, &Token, &Expression));

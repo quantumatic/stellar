@@ -28,7 +28,7 @@
 //!
 //! Note: the Ry lexer makes use of the `string_interner` crate to perform string interning,
 //! a process of deduplicating strings, which can be highly beneficial when dealing with
-//! identifiers.
+//! identifiers, strings and comments.
 //!
 //! If error appeared in the process, [`Invalid`] will be returned:
 //!
@@ -43,7 +43,7 @@
 //! assert_eq!(lexer.next().unwrap().value, Invalid(LexerError::UnexpectedChar('#')));
 //! ```
 
-use ry_ast::{location::*, token::RawToken::*, token::*};
+use ry_ast::{location::*, token::RawToken::*, token::*, WithSpannable};
 use std::{char::from_u32, str::Chars, string::String};
 
 use string_interner::StringInterner;
@@ -52,19 +52,18 @@ mod number;
 mod tests;
 
 pub struct Lexer<'a> {
-    pub identifier_interner: &'a mut StringInterner,
+    pub string_interner: &'a mut StringInterner,
     current: char,
     next: char,
     contents: &'a str,
     chars: Chars<'a>,
     location: usize,
-    start_location: usize,
 }
 
 type IterElem = Option<Token>;
 
 impl<'a> Lexer<'a> {
-    pub fn new(contents: &'a str, identifier_interner: &'a mut StringInterner) -> Self {
+    pub fn new(contents: &'a str, string_interner: &'a mut StringInterner) -> Self {
         let mut chars = contents.chars();
 
         let current = chars.next().unwrap_or('\0');
@@ -76,8 +75,7 @@ impl<'a> Lexer<'a> {
             contents,
             chars,
             location: 0,
-            start_location: 0,
-            identifier_interner,
+            string_interner,
         }
     }
 
@@ -121,7 +119,7 @@ impl<'a> Lexer<'a> {
         r
     }
 
-    fn advance_while<F>(&mut self, mut f: F) -> &'a str
+    fn advance_while<F>(&mut self, start_location: usize, mut f: F) -> &'a str
     where
         F: FnMut(char, char) -> bool,
     {
@@ -129,11 +127,7 @@ impl<'a> Lexer<'a> {
             self.advance();
         }
 
-        &self.contents[self.start_location..self.location]
-    }
-
-    fn span_from_start(&self) -> Span {
-        (self.start_location..self.location).into()
+        &self.contents[start_location..self.location]
     }
 
     fn scan_escape(&mut self) -> Result<char, (LexerError, Span)> {
@@ -238,7 +232,7 @@ impl<'a> Lexer<'a> {
     }
 
     fn scan_char(&mut self) -> IterElem {
-        self.start_location = self.location;
+        let start_location = self.location;
 
         self.advance(); // `'`
 
@@ -248,8 +242,6 @@ impl<'a> Lexer<'a> {
 
         while self.current != '\'' {
             if self.current == '\\' {
-                self.start_location = self.location;
-
                 let e = self.scan_escape();
 
                 if let Err(e) = e {
@@ -263,11 +255,8 @@ impl<'a> Lexer<'a> {
 
             if self.current == '\n' || self.eof() {
                 return Some(
-                    (
-                        Invalid(LexerError::UnterminatedCharLiteral),
-                        self.span_from_start(),
-                    )
-                        .into(),
+                    Invalid(LexerError::UnterminatedCharLiteral)
+                        .with_span(start_location..self.location),
                 );
             }
 
@@ -281,30 +270,23 @@ impl<'a> Lexer<'a> {
         match size {
             2..=i32::MAX => {
                 return Some(
-                    (
-                        Invalid(LexerError::MoreThanOneCharInCharLiteral),
-                        self.span_from_start(),
-                    )
-                        .into(),
+                    Invalid(LexerError::MoreThanOneCharInCharLiteral)
+                        .with_span(start_location..self.location),
                 );
             }
             0 => {
                 return Some(
-                    (
-                        Invalid(LexerError::EmptyCharLiteral),
-                        self.span_from_start(),
-                    )
-                        .into(),
+                    Invalid(LexerError::EmptyCharLiteral).with_span(start_location..self.location),
                 );
             }
             _ => {}
         }
 
-        Some((Char(result), self.span_from_start()).into())
+        Some(Char(result).with_span(start_location..self.location))
     }
 
     fn scan_string(&mut self) -> IterElem {
-        self.start_location = self.location;
+        let start_location = self.location;
 
         self.advance(); // '"'
 
@@ -320,8 +302,6 @@ impl<'a> Lexer<'a> {
             self.advance();
 
             if c == '\\' {
-                self.start_location = self.location;
-
                 let e = self.scan_escape();
 
                 if let Err(e) = e {
@@ -335,70 +315,79 @@ impl<'a> Lexer<'a> {
         }
 
         if self.eof() || self.current == '\n' {
-            return Some(Token::new(
-                Invalid(LexerError::UnterminatedStringLiteral),
-                self.span_from_start(),
-            ));
+            return Some(
+                Invalid(LexerError::UnterminatedStringLiteral)
+                    .with_span(start_location..self.location),
+            );
         }
 
         self.advance(); // '"'
 
-        Some(Token::new(String(buffer), self.span_from_start()))
+        Some(
+            String(
+                self.string_interner
+                    .get_or_intern(&self.contents[start_location + 1..self.location - 1]),
+            )
+            .with_span(start_location..self.location),
+        )
     }
 
     fn scan_wrapped_id(&mut self) -> IterElem {
-        self.start_location = self.location;
+        let start_location = self.location;
 
         self.advance(); // '`'
 
-        let name =
-            &self.advance_while(|current, _| current.is_alphanumeric() || current == '_')[1..];
+        let name = &self.advance_while(start_location, |current, _| {
+            current.is_alphanumeric() || current == '_'
+        })[1..];
 
         if self.current != '`' {
-            return Some(Token::new(
-                Invalid(LexerError::UnterminatedWrappedIdentifierLiteral),
-                self.span_from_start(),
-            ));
+            return Some(
+                Invalid(LexerError::UnterminatedWrappedIdentifierLiteral)
+                    .with_span(start_location..self.location),
+            );
         }
 
         if name.is_empty() {
-            return Some(Token::new(
-                Invalid(LexerError::EmptyWrappedIdentifierLiteral),
-                self.span_from_start(),
-            ));
+            return Some(
+                Invalid(LexerError::EmptyWrappedIdentifierLiteral)
+                    .with_span(start_location..self.location),
+            );
         }
 
         self.advance(); // '`'
 
-        Some(Token::new(
-            Identifier(self.identifier_interner.get_or_intern(name)),
-            self.span_from_start(),
-        ))
+        Some(
+            Identifier(self.string_interner.get_or_intern(name))
+                .with_span(start_location..self.location),
+        )
     }
 
     fn scan_single_line_comment(&mut self) -> IterElem {
-        self.start_location = self.location;
+        let start_location = self.location;
 
         self.advance_twice(); // '//'
 
-        let content = self.advance_while(|current, _| (current != '\n'));
+        let content = self.advance_while(start_location, |current, _| (current != '\n'));
 
-        Some(Token::new(
-            Comment(content[2..].replace('\r', "")),
-            self.span_from_start(),
-        ))
+        Some(
+            Comment(self.string_interner.get_or_intern(&content[2..]))
+                .with_span(start_location..self.location),
+        )
     }
 
     fn scan_name(&mut self) -> IterElem {
-        self.start_location = self.location;
-        let name = self.advance_while(|current, _| current.is_alphanumeric() || current == '_');
+        let start_location = self.location;
+        let name = self.advance_while(start_location, |current, _| {
+            current.is_alphanumeric() || current == '_'
+        });
 
         match RESERVED.get(name) {
-            Some(reserved) => Some(Token::new(reserved.clone(), self.span_from_start())),
-            None => Some(Token::new(
-                Identifier(self.identifier_interner.get_or_intern(name)),
-                self.span_from_start(),
-            )),
+            Some(reserved) => Some(reserved.clone().with_span(start_location..self.location)),
+            None => Some(
+                Identifier(self.string_interner.get_or_intern(name))
+                    .with_span(start_location..self.location),
+            ),
         }
     }
 

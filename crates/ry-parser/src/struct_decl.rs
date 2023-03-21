@@ -1,6 +1,5 @@
 use crate::{error::ParserError, macros::*, Parser, ParserResult};
 use ry_ast::{location::Span, token::RawToken::*, *};
-use std::string::String;
 
 impl<'c> Parser<'c> {
     pub(crate) fn parse_struct_declaration(&mut self, public: Option<Span>) -> ParserResult<Item> {
@@ -71,7 +70,7 @@ impl<'c> Parser<'c> {
         })
     }
 
-    fn parse_struct_members(&mut self) -> ParserResult<Vec<(String, StructMemberDef)>> {
+    fn parse_struct_members(&mut self) -> ParserResult<Vec<(Docstring, StructMemberDef)>> {
         let mut members = vec![];
 
         while !self.current.value.is(CloseBrace) {

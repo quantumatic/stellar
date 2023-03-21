@@ -6,7 +6,7 @@ use ry_ast::{
     *,
 };
 use ry_lexer::Lexer;
-use std::{mem::take, string::String};
+use std::mem::take;
 use string_interner::{DefaultSymbol, StringInterner};
 
 pub mod error;
@@ -33,8 +33,8 @@ pub struct Parser<'a> {
 pub(crate) type ParserResult<T> = Result<T, ParserError>;
 
 impl<'a> Parser<'a> {
-    pub fn new(contents: &'a str, identifier_interner: &'a mut StringInterner) -> Self {
-        let mut lexer = Lexer::new(contents, identifier_interner);
+    pub fn new(contents: &'a str, string_interner: &'a mut StringInterner) -> Self {
+        let mut lexer = Lexer::new(contents, string_interner);
 
         let current = lexer.next().unwrap();
 
@@ -82,16 +82,16 @@ impl<'a> Parser<'a> {
         }
     }
 
-    pub(crate) fn consume_fst_docstring(&mut self) -> ParserResult<(String, String)> {
-        let (mut module_docstring, mut local_docstring) = ("".to_owned(), "".to_owned());
+    pub(crate) fn consume_fst_docstring(&mut self) -> ParserResult<(Docstring, Docstring)> {
+        let (mut module_docstring, mut local_docstring) = (vec![], vec![]);
         loop {
-            if let Comment(s) = &self.current.value {
-                if let Some(stripped) = s.strip_prefix('!') {
-                    module_docstring.push_str(stripped.trim());
-                    module_docstring.push('\n');
-                } else if let Some(stripped) = s.strip_prefix('/') {
-                    local_docstring.push_str(stripped.trim());
-                    local_docstring.push('\n');
+            if let Comment(s) = self.current.value {
+                let str = self.lexer.string_interner.resolve(s).unwrap();
+
+                if str.starts_with('!') {
+                    module_docstring.push(s);
+                } else if str.starts_with('/') {
+                    local_docstring.push(s);
                 }
             } else {
                 module_docstring.pop();
@@ -103,17 +103,17 @@ impl<'a> Parser<'a> {
         }
     }
 
-    pub(crate) fn consume_local_docstring(&mut self) -> ParserResult<String> {
-        let mut result = "".to_owned();
+    pub(crate) fn consume_local_docstring(&mut self) -> ParserResult<Docstring> {
+        let mut result = vec![];
 
         loop {
-            if let Comment(s) = &self.current.value {
-                if let Some(stripped) = s.strip_prefix('/') {
-                    result.push_str(stripped.trim());
-                    result.push('\n');
+            if let Comment(s) = self.current.value {
+                let str = self.lexer.string_interner.resolve(s).unwrap();
+
+                if str.starts_with('/') {
+                    result.push(s);
                 }
             } else {
-                result.pop();
                 return Ok(result);
             }
 
@@ -122,15 +122,18 @@ impl<'a> Parser<'a> {
     }
 
     pub fn parse(&mut self) -> ParserResult<ProgramUnit> {
-        let module_docstring = self.consume_fst_docstring()?;
+        let (module_docstring, fst_docstring) = self.consume_fst_docstring()?;
         Ok(ProgramUnit {
-            docstring: module_docstring.0,
+            docstring: module_docstring,
             imports: self.parse_imports()?,
-            items: self.parse_items(module_docstring.1)?,
+            items: self.parse_items(fst_docstring)?,
         })
     }
 
-    fn parse_items(&mut self, mut local_docstring: String) -> ParserResult<Vec<(String, Item)>> {
+    fn parse_items(
+        &mut self,
+        mut local_docstring: Docstring,
+    ) -> ParserResult<Vec<(Docstring, Item)>> {
         let mut top_level_statements = vec![];
 
         loop {

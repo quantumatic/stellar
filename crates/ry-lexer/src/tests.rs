@@ -40,14 +40,20 @@ mod lexer_tests {
     lexer_test!(
         comment,
         "//test comment",
-        Comment("test comment".to_owned())
+        Comment(string_interner.get_or_intern("test comment")),
+        string_interner
     );
     lexer_test!(
         unexpected_char,
         "#",
         Invalid(LexerError::UnexpectedChar('#'))
     );
-    lexer_test!(string, "\"test\"", String("test".to_owned()));
+    lexer_test!(
+        string,
+        "\"test\"",
+        String(string_interner.get_or_intern("test")),
+        string_interner
+    );
     lexer_test!(
         string2,
         "\"test",

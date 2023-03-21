@@ -78,7 +78,7 @@ pub enum RawToken {
     #[display(fmt = "identifier")]
     Identifier(DefaultSymbol),
     #[display(fmt = "string literal")]
-    String(String),
+    String(DefaultSymbol),
     #[display(fmt = "integer literal")]
     Int(u64),
     #[display(fmt = "float literal")]
@@ -232,7 +232,7 @@ pub enum RawToken {
     AtSign,
 
     #[display(fmt = "comment")]
-    Comment(String),
+    Comment(DefaultSymbol),
 
     #[default]
     #[display(fmt = "end of file")]

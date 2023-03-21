@@ -14,13 +14,15 @@ use token::Token;
 #[derive(Debug, PartialEq)]
 pub struct ProgramUnit {
     /// Global source file docstring
-    pub docstring: String,
+    pub docstring: Docstring,
 
     pub imports: Vec<Import>,
     pub items: Items,
 }
 
-pub type Items = Vec<(String, Item)>;
+pub type Docstring = Vec<DefaultSymbol>;
+
+pub type Items = Vec<(Docstring, Item)>;
 
 /// Import
 ///
@@ -103,7 +105,7 @@ pub struct StructDecl {
     pub public: Option<Span>,
     pub generic_annotations: GenericAnnotations,
     pub name: WithSpan<DefaultSymbol>,
-    pub members: Vec<(String, StructMemberDef)>,
+    pub members: Vec<(Docstring, StructMemberDef)>,
 }
 
 /// Trait implementation top level statement
@@ -124,7 +126,7 @@ pub struct Impl {
     pub global_generic_annotations: GenericAnnotations,
     pub r#type: Type,
     pub r#trait: Option<Type>,
-    pub methods: Vec<(String, TraitMethod)>,
+    pub methods: Vec<(Docstring, TraitMethod)>,
 }
 
 /// Trait declaration top level statement
@@ -143,7 +145,7 @@ pub struct TraitDecl {
     pub public: Option<Span>,
     pub name: WithSpan<DefaultSymbol>,
     pub generic_annotations: GenericAnnotations,
-    pub methods: Vec<(String, TraitMethod)>,
+    pub methods: Vec<(Docstring, TraitMethod)>,
 }
 
 /// Trait method
@@ -186,7 +188,7 @@ pub struct TraitMethod {
 pub struct EnumDecl {
     pub public: Option<Span>,
     pub name: WithSpan<DefaultSymbol>,
-    pub variants: Vec<(String, EnumVariant)>,
+    pub variants: Vec<(Docstring, EnumVariant)>,
 }
 
 pub type EnumVariant = WithSpan<DefaultSymbol>;
@@ -263,7 +265,7 @@ pub type Expression = WithSpan<Box<RawExpression>>;
 
 #[derive(Debug, PartialEq)]
 pub enum RawExpression {
-    String(String),
+    String(DefaultSymbol),
     Int(u64),
     Float(f64),
     Imag(f64),

@@ -4,15 +4,15 @@ use string_interner::{DefaultSymbol, StringInterner};
 pub struct ASTSerializer<'a> {
     content: String,
     indent: usize,
-    identifier_interner: &'a StringInterner,
+    string_interner: &'a StringInterner,
 }
 
 impl<'a> ASTSerializer<'a> {
-    pub fn new(identifier_interner: &'a StringInterner) -> Self {
+    pub fn new(string_interner: &'a StringInterner) -> Self {
         Self {
             content: "".to_owned(),
             indent: 0,
-            identifier_interner,
+            string_interner,
         }
     }
 
@@ -28,7 +28,7 @@ impl<'a> ASTSerializer<'a> {
 
     fn write_ident(&mut self, symbol: DefaultSymbol) {
         self.content
-            .push_str(self.identifier_interner.resolve(symbol).unwrap());
+            .push_str(self.string_interner.resolve(symbol).unwrap());
     }
 
     pub fn serialize(&mut self, ast: &ProgramUnit) -> &str {
@@ -55,14 +55,14 @@ impl<'a> Visitor for ASTSerializer<'a> {
         self.content.truncate(self.content.len() - 2);
     }
 
-    fn visit_item(&mut self, node: (&str, &Item)) {
+    fn visit_item(&mut self, node: (&Docstring, &Item)) {
         self.walk_item(node);
 
         self.new_line();
         self.new_line();
     }
 
-    fn visit_enum_decl(&mut self, node: (&str, &EnumDecl)) {
+    fn visit_enum_decl(&mut self, node: (&Docstring, &EnumDecl)) {
         if node.1.public.is_some() {
             self.content += "pub ";
         }
@@ -93,7 +93,7 @@ impl<'a> Visitor for ASTSerializer<'a> {
         }
     }
 
-    fn visit_function_decl(&mut self, node: (&str, &FunctionDecl)) {
+    fn visit_function_decl(&mut self, node: (&Docstring, &FunctionDecl)) {
         if node.1.def.public.is_some() {
             self.content += "pub ";
         }
@@ -123,7 +123,7 @@ impl<'a> Visitor for ASTSerializer<'a> {
     }
 
     fn visit_generic_annotation(&mut self, node: &GenericAnnotation) {
-        self.content += self.identifier_interner.resolve(node.0.value).unwrap();
+        self.content += self.string_interner.resolve(node.0.value).unwrap();
         self.content += " ";
 
         if let Some(constraint) = &node.1 {
@@ -139,7 +139,7 @@ impl<'a> Visitor for ASTSerializer<'a> {
     }
 
     fn visit_argument(&mut self, node: &FunctionParam) {
-        self.content += self.identifier_interner.resolve(node.name.value).unwrap();
+        self.content += self.string_interner.resolve(node.name.value).unwrap();
         self.content += " ";
         self.visit_type(&node.r#type);
 
@@ -232,8 +232,8 @@ impl<'a> Visitor for ASTSerializer<'a> {
     }
 
     // TODO: process escape sequences
-    fn visit_string_literal(&mut self, node: &str) {
-        self.content += node;
+    fn visit_string_literal(&mut self, node: DefaultSymbol) {
+        self.content += self.string_interner.resolve(node).unwrap();
     }
 
     // TODO: process escape sequences
