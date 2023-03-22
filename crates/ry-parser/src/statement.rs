@@ -8,13 +8,11 @@ impl<'c> Parser<'c> {
         &mut self,
         top_level: bool,
     ) -> ParserResult<StatementsBlock> {
-        check_token!(self, OpenBrace => "statements block")?;
-
-        self.advance(false)?; // `{`
+        consume!(self, OpenBrace, "statements block"); // `{`
 
         let mut stmts = vec![];
 
-        while !self.current.value.is(CloseBrace) {
+        while !self.next.value.is(CloseBrace) {
             let (stmt, last) = self.parse_statement()?;
 
             stmts.push(stmt);
@@ -24,12 +22,10 @@ impl<'c> Parser<'c> {
             }
         }
 
-        check_token!(self, CloseBrace => "statements block")?;
-
         if top_level {
-            self.advance(true)?;
+            self.advance_with_comments()?;
         } else {
-            self.advance(false)?;
+            self.advance()?;
         }
 
         Ok(stmts)
@@ -39,47 +35,41 @@ impl<'c> Parser<'c> {
         let mut last_statement_in_block = false;
         let mut must_have_semicolon_at_the_end = true;
 
-        let statement = match self.current.value {
+        let statement = match self.next.value {
             Return => {
-                self.advance(false)?; // `return`
+                self.advance()?; // `return`
 
                 let expr = self.parse_expression(Precedence::Lowest.to_i8().unwrap())?;
 
                 Ok(Statement::Return(expr))
             }
             Defer => {
-                self.advance(false)?; // `defer`
+                self.advance()?; // `defer`
 
                 let expr = self.parse_expression(Precedence::Lowest.to_i8().unwrap())?;
 
                 Ok(Statement::Defer(expr))
             }
             Var => {
-                self.advance(false)?; // `var`
+                self.advance()?; // `var`
 
                 let mut r#mut = None;
 
-                if self.current.value.is(Mut) {
+                if self.next.value.is(Mut) {
                     r#mut = Some(self.current.span);
 
-                    self.advance(false)?; // `mut`
+                    self.advance()?; // `mut`
                 }
 
-                check_token!(self, Identifier => "variable name in var statement")?;
-
-                let name = self.current_ident_with_span();
-
-                self.advance(false)?; // id
+                let name = consume_ident!(self, "variable name in var statement");
 
                 let mut r#type = None;
 
-                if !self.current.value.is(Assign) {
+                if !self.next.value.is(Assign) {
                     r#type = Some(self.parse_type()?);
                 }
 
-                check_token!(self, Assign => "var statement")?;
-
-                self.advance(false)?; // `=`
+                consume!(self, Assign, "var statement");
 
                 let value = self.parse_expression(Precedence::Lowest.to_i8().unwrap())?;
 
@@ -91,7 +81,7 @@ impl<'c> Parser<'c> {
                 must_have_semicolon_at_the_end =
                     expression.value.deref().must_have_semicolon_at_the_end();
 
-                if !self.current.value.is(Semicolon) && must_have_semicolon_at_the_end {
+                if !self.next.value.is(Semicolon) && must_have_semicolon_at_the_end {
                     last_statement_in_block = true;
                 }
 
@@ -104,8 +94,7 @@ impl<'c> Parser<'c> {
         }?;
 
         if !last_statement_in_block && must_have_semicolon_at_the_end {
-            check_token!(self, Semicolon => "end of the statement")?;
-            self.advance(false)?; // `;`
+            consume!(self, Semicolon, "end of the statement");
         }
 
         Ok((statement, last_statement_in_block))

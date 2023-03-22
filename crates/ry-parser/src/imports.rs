@@ -8,20 +8,16 @@ impl<'c> Parser<'c> {
 
         while self.current.value.is(Import) {
             imports.push(self.parse_import()?);
-            self.advance(false)?; // `;`
+            self.advance()?;
         }
 
         Ok(imports)
     }
 
     pub(crate) fn parse_import(&mut self) -> ParserResult<ry_ast::Import> {
-        self.advance(false)?; // `import`
-
-        check_token!(self, Identifier => "namespace (for example: `std::io`)")?;
-
         let path = self.parse_name()?;
 
-        check_token!(self, Semicolon => "import")?;
+        consume!(self, Semicolon, "import");
 
         Ok(ry_ast::Import { path })
     }

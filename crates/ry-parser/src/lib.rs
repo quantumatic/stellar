@@ -1,13 +1,11 @@
 //! `lib.rs` - implements parser for Ry source files.
 use error::ParserError;
 use ry_ast::{
-    location::WithSpan,
     token::{RawToken::*, Token},
     *,
 };
 use ry_lexer::Lexer;
-use std::mem::take;
-use string_interner::{DefaultSymbol, StringInterner};
+use string_interner::StringInterner;
 
 pub mod error;
 
@@ -26,8 +24,8 @@ mod macros;
 
 pub struct Parser<'a> {
     lexer: Lexer<'a>,
-    previous: Option<Token>,
     current: Token,
+    next: Token,
 }
 
 pub(crate) type ParserResult<T> = Result<T, ParserError>;
@@ -38,14 +36,16 @@ impl<'a> Parser<'a> {
 
         let current = lexer.next().unwrap();
 
+        let next = lexer.next().unwrap();
+
         Self {
             lexer,
-            previous: None,
             current,
+            next,
         }
     }
 
-    fn check_scanning_error(&mut self) -> ParserResult<()> {
+    fn check_scanning_error_for_current_token(&mut self) -> ParserResult<()> {
         if let Invalid(e) = self.current.value {
             Err(ParserError::ErrorToken(e.with_span(self.current.span)))
         } else {
@@ -53,39 +53,51 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn advance(&mut self, consume_comment: bool) -> ParserResult<()> {
-        self.check_scanning_error()?;
-
-        self.previous = Some(take(&mut self.current));
-
-        self.current = if consume_comment {
-            self.lexer.next().unwrap()
+    fn check_scanning_error_for_next_token(&mut self) -> ParserResult<()> {
+        if let Invalid(e) = self.next.value {
+            Err(ParserError::ErrorToken(e.with_span(self.next.span)))
         } else {
-            self.lexer.next_no_comments().unwrap()
-        };
+            Ok(())
+        }
+    }
+
+    fn advance(&mut self) -> ParserResult<()> {
+        self.check_scanning_error_for_next_token()?;
+
+        self.current = self.next.clone();
+
+        self.next = self.lexer.next_no_comments().unwrap();
 
         Ok(())
     }
 
-    fn current_ident_with_span(&self) -> WithSpan<DefaultSymbol> {
-        match self.current.value {
-            Identifier(i) => i,
-            _ => unreachable!(),
-        }
-        .with_span(self.current.span)
-    }
+    fn advance_with_comments(&mut self) -> ParserResult<()> {
+        self.check_scanning_error_for_next_token()?;
 
-    fn current_ident(&self) -> DefaultSymbol {
-        match self.current.value {
-            Identifier(i) => i,
-            _ => unreachable!(),
-        }
+        self.current = self.next.clone();
+
+        self.next = self.lexer.next().unwrap();
+
+        Ok(())
     }
 
     pub(crate) fn consume_fst_docstring(&mut self) -> ParserResult<(Docstring, Docstring)> {
         let (mut module_docstring, mut local_docstring) = (vec![], vec![]);
+
+        if let Comment(s) = self.current.value {
+            let str = self.lexer.string_interner.resolve(s).unwrap();
+
+            if str.starts_with('!') {
+                module_docstring.push(s);
+            } else if str.starts_with('/') {
+                local_docstring.push(s);
+            }
+        } else {
+            return Ok((module_docstring, local_docstring));
+        }
+
         loop {
-            if let Comment(s) = self.current.value {
+            if let Comment(s) = self.next.value {
                 let str = self.lexer.string_interner.resolve(s).unwrap();
 
                 if str.starts_with('!') {
@@ -94,12 +106,10 @@ impl<'a> Parser<'a> {
                     local_docstring.push(s);
                 }
             } else {
-                module_docstring.pop();
-                local_docstring.pop();
                 return Ok((module_docstring, local_docstring));
             }
 
-            self.advance(true)?;
+            self.advance_with_comments()?;
         }
     }
 
@@ -117,11 +127,13 @@ impl<'a> Parser<'a> {
                 return Ok(result);
             }
 
-            self.advance(true)?;
+            self.advance_with_comments()?;
         }
     }
 
     pub fn parse(&mut self) -> ParserResult<ProgramUnit> {
+        self.check_scanning_error_for_current_token()?;
+
         let (module_docstring, fst_docstring) = self.consume_fst_docstring()?;
         Ok(ProgramUnit {
             docstring: module_docstring,
@@ -144,23 +156,24 @@ impl<'a> Parser<'a> {
                     Struct => self.parse_struct_declaration(None)?,
                     Trait => self.parse_trait_declaration(None)?,
                     Enum => self.parse_enum_declaration(None)?,
-                    Impl => self.parse_impl()?,
+                    Impl => self.parse_impl(None)?,
                     Pub => {
                         let pub_span = self.current.span;
-                        self.advance(false)?;
 
-                        self.check_scanning_error()?;
+                        self.check_scanning_error_for_next_token()?;
+                        self.advance()?;
 
                         match self.current.value {
                             Fun => self.parse_function_declaration(Some(pub_span))?,
                             Struct => self.parse_struct_declaration(Some(pub_span))?,
                             Trait => self.parse_trait_declaration(Some(pub_span))?,
                             Enum => self.parse_enum_declaration(Some(pub_span))?,
+                            Impl => self.parse_impl(Some(pub_span))?,
                             _ => {
                                 return Err(ParserError::UnexpectedToken(
                                     self.current.clone(),
-                                    "top level declaration after `pub`".to_owned(),
-                                    None,
+                                    "`fun`, `trait`, `enum`, `struct`".to_owned(),
+                                    "item after `pub`".to_owned(),
                                 ));
                             }
                         }
@@ -168,7 +181,7 @@ impl<'a> Parser<'a> {
                     Import => {
                         let import = self.parse_import()?;
 
-                        self.advance(false)?; // `;`
+                        self.advance()?; // `;`
 
                         Item::Import(import)
                     }
@@ -176,10 +189,10 @@ impl<'a> Parser<'a> {
                     _ => {
                         let err = Err(ParserError::UnexpectedToken(
                             self.current.clone(),
-                            "top level declaration".to_owned(),
-                            None,
+                            "`fun`, `trait`, `enum`, `struct`".to_owned(),
+                            "item".to_owned(),
                         ));
-                        self.advance(false)?;
+                        self.advance()?;
                         return err;
                     }
                 },

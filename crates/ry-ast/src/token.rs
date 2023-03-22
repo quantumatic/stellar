@@ -139,6 +139,8 @@ pub enum RawToken {
     For,
     #[display(fmt = "`mut`")]
     Mut,
+    #[display(fmt = "`where`")]
+    Where,
 
     #[display(fmt = "`?`")]
     QuestionMark,
@@ -271,6 +273,7 @@ pub static RESERVED: phf::Map<&'static str, RawToken> = phf_map! {
     "as" => RawToken::As,
     "for" => RawToken::For,
     "mut" => RawToken::Mut,
+    "where" => RawToken::Where,
 };
 
 impl RawToken {

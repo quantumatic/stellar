@@ -3,38 +3,32 @@ use ry_ast::{location::Span, token::RawToken::*, *};
 
 impl<'c> Parser<'c> {
     pub(crate) fn parse_trait_declaration(&mut self, public: Option<Span>) -> ParserResult<Item> {
-        self.advance(false)?; // `trait`
-
-        check_token!(self, Identifier => "trait name in trait declaration")?;
-
-        let name = self.current_ident_with_span();
-
-        self.advance(false)?; // name
+        let name = consume_ident!(self, "trait name in trait declaration");
 
         let generic_annotations = self.parse_generic_annotations()?;
 
-        check_token!(self, OpenBrace => "trait declaration")?;
+        let r#where = self.parse_where_clause()?;
 
-        self.advance(true)?; // `{`
+        consume!(self, OpenBrace, "trait declaration");
 
         let methods = self.parse_trait_methods()?;
 
-        check_token!(self, CloseBrace => "trait declaration")?;
-
-        self.advance(true)?; // `}`
+        consume!(self, CloseBrace, "trait declaration");
+        self.advance()?;
 
         Ok(Item::TraitDecl(TraitDecl {
             public,
             generic_annotations,
             name,
             methods,
+            r#where,
         }))
     }
 
     pub(crate) fn parse_trait_methods(&mut self) -> ParserResult<Vec<(Docstring, TraitMethod)>> {
         let mut definitions = vec![];
 
-        while !self.current.value.is(CloseBrace) {
+        while !self.next.value.is(CloseBrace) {
             self.consume_local_docstring()?;
 
             let trait_def = self.parse_trait_method()?;
@@ -47,53 +41,41 @@ impl<'c> Parser<'c> {
     fn parse_trait_method(&mut self) -> ParserResult<TraitMethod> {
         let mut public = None;
 
-        if self.current.value.is(Pub) {
+        if self.next.value.is(Pub) {
+            self.advance()?;
             public = Some(self.current.span);
-            self.advance(false)?; // `pub`
         }
 
-        check_token!(self, Fun => "trait method")?;
+        consume!(self, Fun, "trait method");
 
-        self.advance(false)?; // `fun`
-
-        check_token!(
-            self,
-            Identifier => "trait method name"
-        )?;
-
-        let name = self.current_ident_with_span();
-
-        self.advance(false)?; // name
+        let name = consume_ident!(self, "trait method name");
 
         let generic_annotations = self.parse_generic_annotations()?;
 
-        check_token!(self, OpenParent => "trait method")?;
-
-        self.advance(false)?; // `(`
+        consume!(self, OpenParent, "trait method");
 
         let arguments = parse_list!(self, "trait method arguments", CloseParent, false, || self
             .parse_function_argument());
 
+        self.advance()?;
+
         let mut return_type = None;
 
-        if !self.current.value.is(Semicolon) && !self.current.value.is(OpenBrace) {
+        if !self.next.value.is(Semicolon)
+            && !self.next.value.is(OpenBrace)
+            && !self.next.value.is(Where)
+        {
             return_type = Some(self.parse_type()?);
         }
 
         let mut body = None;
 
-        match self.current.value {
-            Semicolon => self.advance(true)?,
-            OpenBrace => {
-                body = Some(self.parse_statements_block(true)?);
-            }
-            _ => {
-                return Err(ParserError::UnexpectedToken(
-                    self.current.clone(),
-                    "`;` (for method definition) or `{` (for method declaration)".to_owned(),
-                    Some("trait method".to_owned()),
-                ));
-            }
+        let r#where = self.parse_where_clause()?;
+
+        if self.next.value.is(OpenBrace) {
+            body = Some(self.parse_statements_block(true)?);
+        } else {
+            self.advance()?; // `;`
         }
 
         Ok(TraitMethod {
@@ -103,6 +85,7 @@ impl<'c> Parser<'c> {
             params: arguments,
             return_type,
             body,
+            r#where,
         })
     }
 }

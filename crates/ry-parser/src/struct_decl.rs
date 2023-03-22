@@ -3,31 +3,25 @@ use ry_ast::{location::Span, token::RawToken::*, *};
 
 impl<'c> Parser<'c> {
     pub(crate) fn parse_struct_declaration(&mut self, public: Option<Span>) -> ParserResult<Item> {
-        self.advance(false)?; // `struct`
-
-        check_token!(self, Identifier => "struct name in struct declaration")?;
-
-        let name = self.current_ident_with_span();
-
-        self.advance(false)?; // name
+        let name = consume_ident!(self, "struct name in struct declaration");
 
         let generic_annotations = self.parse_generic_annotations()?;
 
-        check_token!(self, OpenBrace => "struct declaration")?;
+        let r#where = self.parse_where_clause()?;
 
-        self.advance(true)?; // `{`
+        self.advance_with_comments()?; // `{`
 
         let members = self.parse_struct_members()?;
 
-        check_token!(self, CloseBrace => "struct declaration")?;
-
-        self.advance(true)?; // `}`
+        consume!(self, CloseBrace, "struct declaration");
+        self.advance()?;
 
         Ok(Item::StructDecl(StructDecl {
             generic_annotations,
             public,
             name,
             members,
+            r#where,
         }))
     }
 
@@ -35,32 +29,26 @@ impl<'c> Parser<'c> {
         let mut public = None;
         let mut r#mut = None;
 
-        if self.current.value.is(Mut) {
+        if self.next.value.is(Mut) {
+            self.advance()?;
             r#mut = Some(self.current.span);
-            self.advance(false)?;
         }
 
-        if self.current.value.is(Pub) {
+        if self.next.value.is(Pub) {
+            self.advance()?;
             public = Some(self.current.span);
-            self.advance(false)?;
         }
 
-        if self.current.value.is(Mut) {
+        if self.next.value.is(Mut) {
+            self.advance()?;
             r#mut = Some(self.current.span);
-            self.advance(false)?;
         }
 
-        check_token!(self, Identifier => "struct member name in struct definition")?;
-
-        let name = self.current_ident_with_span();
-
-        self.advance(false)?;
+        let name = consume_ident!(self, "struct member name in struct definition");
 
         let r#type = self.parse_type()?;
 
-        check_token!(self, Semicolon => "struct member definition")?;
-
-        self.advance(true)?; // `;`
+        consume!(self, Semicolon, "struct member definition");
 
         Ok(StructMemberDef {
             public,
@@ -73,7 +61,7 @@ impl<'c> Parser<'c> {
     fn parse_struct_members(&mut self) -> ParserResult<Vec<(Docstring, StructMemberDef)>> {
         let mut members = vec![];
 
-        while !self.current.value.is(CloseBrace) {
+        while !self.next.value.is(CloseBrace) {
             members.push((self.consume_local_docstring()?, self.parse_struct_member()?));
         }
 

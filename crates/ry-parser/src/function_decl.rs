@@ -7,30 +7,28 @@ impl<'c> Parser<'c> {
         &mut self,
         public: Option<Span>,
     ) -> ParserResult<Item> {
-        self.advance(false)?; // `fun`
-
-        check_token!(self, Identifier => "function name")?;
-
-        let name = self.current_ident_with_span();
-
-        self.advance(false)?; // name
+        let name = consume_ident!(self, "function name in function declaration");
 
         let generic_annotations = self.parse_generic_annotations()?;
 
-        check_token!(self, OpenParent => "function declaration")?;
-
-        self.advance(false)?; // `(`
+        consume!(self, OpenParent, "function declaration");
 
         let arguments = parse_list!(self, "function arguments", CloseParent, false, || self
             .parse_function_argument());
 
+        self.advance()?;
+
         let mut return_type = None;
 
-        if !self.current.value.is(OpenBrace) {
+        if !self.next.value.is(OpenBrace) && !self.next.value.is(Where) {
             return_type = Some(self.parse_type()?);
         }
 
+        let r#where = self.parse_where_clause()?;
+
         let stmts = self.parse_statements_block(true)?;
+
+        self.advance_with_comments()?;
 
         Ok(Item::FunctionDecl(FunctionDecl {
             def: FunctionDef {
@@ -39,24 +37,21 @@ impl<'c> Parser<'c> {
                 params: arguments,
                 public,
                 return_type,
+                r#where,
             },
             stmts,
         }))
     }
 
     pub(crate) fn parse_function_argument(&mut self) -> ParserResult<FunctionParam> {
-        check_token!(self, Identifier => "function argument name")?;
-
-        let name = self.current_ident_with_span();
-
-        self.advance(false)?; // ident
+        let name = consume_ident!(self, "function argument name");
 
         let r#type = self.parse_type()?;
 
         let mut default_value = None;
 
-        if self.current.value.is(Assign) {
-            self.advance(false)?;
+        if self.next.value.is(Assign) {
+            self.advance()?;
 
             default_value = Some(self.parse_expression(Precedence::Lowest.to_i8().unwrap())?);
         }
@@ -76,5 +71,5 @@ mod function_decl_tests {
 
     parser_test!(function1, "pub fun test() {}");
     parser_test!(function2, "pub fun test[A](a A) A { a }");
-    parser_test!(function3, "fun unwrap[T, B T?](a B) T { a.unwrap() }");
+    parser_test!(function3, "fun unwrap[T, B = T?](a B) T { a.unwrap() }");
 }

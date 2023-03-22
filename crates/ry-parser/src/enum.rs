@@ -3,17 +3,9 @@ use ry_ast::{location::*, token::RawToken::*, *};
 
 impl<'c> Parser<'c> {
     pub(crate) fn parse_enum_declaration(&mut self, public: Option<Span>) -> ParserResult<Item> {
-        self.advance(false)?; // `enum`
+        let name = consume_ident!(self, "enum name in enum declaration");
 
-        check_token!(self, Identifier => "enum name in enum declaration")?;
-
-        let name = self.current_ident_with_span();
-
-        self.advance(false)?; // ident
-
-        check_token!(self, OpenBrace => "enum declaration")?;
-
-        self.advance(true)?; // `{`
+        consume!(self, OpenBrace, "enum declaration");
 
         let variants = parse_list!(
             self,
@@ -23,15 +15,14 @@ impl<'c> Parser<'c> {
             || {
                 let doc = self.consume_local_docstring()?;
 
-                check_token!(self, Identifier => "enum variant name")?;
-
-                let variant = self.current_ident_with_span();
-
-                self.advance(false)?; // ident
+                let variant = consume_ident!(self, "enum variant name");
 
                 Ok((doc, variant))
             }
         );
+
+        self.advance()?; // `}`
+        self.advance()?; // `}`
 
         Ok(Item::EnumDecl(EnumDecl {
             public,

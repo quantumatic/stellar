@@ -1,38 +1,28 @@
 use crate::{error::ParserError, macros::*, Parser, ParserResult};
-use ry_ast::{token::RawToken::*, Item};
+use ry_ast::{location::Span, token::RawToken::*, Item};
 
 impl<'c> Parser<'c> {
-    pub(crate) fn parse_impl(&mut self) -> ParserResult<Item> {
-        let mut public = None;
-
-        if self.current.value.is(Pub) {
-            public = Some(self.current.span);
-            self.advance(false)?; // `pub`
-        }
-
-        self.advance(false)?; // `impl`
-
+    pub(crate) fn parse_impl(&mut self, public: Option<Span>) -> ParserResult<Item> {
         let generic_annotations = self.parse_generic_annotations()?;
 
         let mut r#type = self.parse_type()?;
         let mut r#trait = None;
 
-        if self.current.value.is(For) {
-            self.advance(false)?; // `for`
+        if self.next.value.is(For) {
+            self.advance()?; // `for`
 
             r#trait = Some(r#type);
             r#type = self.parse_type()?;
         }
 
-        check_token!(self, OpenBrace => "type implementation")?;
+        let r#where = self.parse_where_clause()?;
 
-        self.advance(false)?; // '{'
+        self.advance()?; // '{'
 
         let methods = self.parse_trait_methods()?;
 
-        check_token!(self, CloseBrace => "type implementation")?;
-
-        self.advance(true)?; // '}'
+        consume!(self, CloseBrace, "type implementation");
+        self.advance()?;
 
         Ok(Item::Impl(ry_ast::Impl {
             public,
@@ -40,6 +30,7 @@ impl<'c> Parser<'c> {
             r#type,
             r#trait,
             methods,
+            r#where,
         }))
     }
 }
@@ -51,5 +42,8 @@ mod impl_tests {
 
     parser_test!(impl1, "impl[T] NotOption for T {}");
     parser_test!(impl2, "impl[T] !NotOption for T? {}");
-    parser_test!(impl3, "impl[T, M Into[T]] Into[M?] for Tuple[T, M] {}");
+    parser_test!(
+        impl3,
+        "impl[T] Into[M?] for Tuple[T, M] where M = Into[T] {}"
+    );
 }

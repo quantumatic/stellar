@@ -47,6 +47,8 @@ pub enum Item {
     Import(Import),
 }
 
+pub type WhereClause = Vec<(Type, Type)>;
+
 /// Function declaration top level statement
 ///
 /// ```ry
@@ -82,6 +84,7 @@ pub struct FunctionDef {
     pub name: WithSpan<DefaultSymbol>,
     pub params: Vec<FunctionParam>,
     pub return_type: Option<Type>,
+    pub r#where: WhereClause,
 }
 
 /// Struct declaration top level statement
@@ -106,6 +109,7 @@ pub struct StructDecl {
     pub generic_annotations: GenericAnnotations,
     pub name: WithSpan<DefaultSymbol>,
     pub members: Vec<(Docstring, StructMemberDef)>,
+    pub r#where: WhereClause,
 }
 
 /// Trait implementation top level statement
@@ -127,6 +131,7 @@ pub struct Impl {
     pub r#type: Type,
     pub r#trait: Option<Type>,
     pub methods: Vec<(Docstring, TraitMethod)>,
+    pub r#where: WhereClause,
 }
 
 /// Trait declaration top level statement
@@ -146,6 +151,7 @@ pub struct TraitDecl {
     pub name: WithSpan<DefaultSymbol>,
     pub generic_annotations: GenericAnnotations,
     pub methods: Vec<(Docstring, TraitMethod)>,
+    pub r#where: WhereClause,
 }
 
 /// Trait method
@@ -166,6 +172,7 @@ pub struct TraitMethod {
     pub params: Vec<FunctionParam>,
     pub return_type: Option<Type>,
     pub body: Option<StatementsBlock>,
+    pub r#where: WhereClause,
 }
 
 /// Enum declaration top level statement

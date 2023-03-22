@@ -1,48 +1,42 @@
 use crate::{error::ParserError, macros::*, Parser, ParserResult};
-use ry_ast::{location::WithSpan, token::RawToken::*, *};
-use string_interner::symbol::SymbolU32;
+use ry_ast::{
+    location::{Span, WithSpan},
+    token::RawToken::*,
+    *,
+};
+use string_interner::DefaultSymbol;
 
 impl<'c> Parser<'c> {
-    pub(crate) fn parse_name(&mut self) -> ParserResult<WithSpan<Vec<SymbolU32>>> {
-        let start = self.current.span.start;
-
+    pub(crate) fn parse_name(&mut self) -> ParserResult<WithSpan<Vec<DefaultSymbol>>> {
         let mut name = vec![];
 
-        name.push(self.current_ident());
+        let first_ident = consume_ident!(self, "namespace member/namespace");
+        name.push(first_ident.value);
 
-        let mut end = self.current.span.end;
+        let Span { start, mut end } = first_ident.span;
 
-        self.advance(false)?; // id
+        while self.next.value.is(DoubleColon) {
+            self.advance()?; // `::`
 
-        while self.current.value.is(DoubleColon) {
-            self.advance(false)?; // `::`
-
-            check_token!(self, Identifier => "namespace member/namespace")?;
-
-            name.push(self.current_ident());
+            name.push(consume_ident!(self, "namespace member/namespace").value);
 
             end = self.current.span.end;
-
-            self.advance(false)?; // id
         }
 
         Ok(name.with_span(start..end))
     }
 
     pub(crate) fn parse_type(&mut self) -> ParserResult<Type> {
-        let start = self.current.span.start;
+        let start = self.next.span.start;
 
-        let mut lhs = match &self.current.value {
+        self.check_scanning_error_for_next_token()?;
+
+        let mut lhs = match &self.next.value {
             Identifier(_) => {
-                let start = self.current.span.end;
                 let name = self.parse_name()?;
                 let generic_part = self.parse_type_generic_part()?;
 
-                let mut end = self.current.span.end;
-
-                if generic_part.is_some() {
-                    end = self.previous.as_ref().unwrap().span.end;
-                }
+                let end = self.current.span.end;
 
                 Box::new(RawType::Primary(
                     name,
@@ -55,16 +49,15 @@ impl<'c> Parser<'c> {
                 .with_span(start..end)
             }
             And => {
+                self.advance()?;
                 let start = self.current.span.start;
-
-                self.advance(false)?; // `&`
 
                 let mut mutable = false;
 
-                if self.current.value.is(Mut) {
+                if self.next.value.is(Mut) {
                     mutable = true;
 
-                    self.advance(false)?; // `mut`
+                    self.advance()?; // `mut`
                 }
 
                 let inner_type = self.parse_type()?;
@@ -74,24 +67,20 @@ impl<'c> Parser<'c> {
                 Box::new(RawType::Reference(mutable, inner_type)).with_span(start..end)
             }
             OpenBracket => {
+                self.advance()?;
                 let start = self.current.span.start;
-
-                self.advance(false)?; // `[`
 
                 let inner_type = self.parse_type()?;
 
-                check_token!(self, CloseBracket => "array type")?;
+                consume!(self, CloseBracket, "array type");
 
                 let end = self.current.span.end;
-
-                self.advance(false)?; // `]`
 
                 Box::new(RawType::Array(inner_type)).with_span(start..end)
             }
             Bang => {
+                self.advance()?;
                 let start = self.current.span.start;
-
-                self.advance(false)?; // '!'
 
                 let inner_type = self.parse_type()?;
 
@@ -101,73 +90,93 @@ impl<'c> Parser<'c> {
             }
             _ => {
                 return Err(ParserError::UnexpectedToken(
-                    self.current.clone(),
-                    "type".into(),
-                    None,
-                ))
+                    self.next.clone(),
+                    "`!` (negative trait), `[` (array type), `&` (reference type) or \n\tidentifier"
+                        .to_owned(),
+                    "type".to_owned(),
+                ));
             }
         };
 
-        while self.current.value.is(QuestionMark) {
-            lhs = Box::new(RawType::Option(lhs)).with_span(start..self.current.span.end);
-            self.advance(false)?;
+        while self.next.value.is(QuestionMark) {
+            lhs = Box::new(RawType::Option(lhs)).with_span(start..self.next.span.end);
+            self.advance()?;
         }
 
         Ok(lhs)
     }
 
     pub(crate) fn parse_type_generic_part(&mut self) -> ParserResult<Option<Vec<Type>>> {
-        if self.current.value.is(OpenBracket) {
-            self.advance(false)?; // `[`
+        Ok(if self.next.value.is(OpenBracket) {
+            self.advance()?; // `[`
 
-            Ok(Some(parse_list!(
-                self,
-                "generics",
-                CloseBracket,
-                false,
-                || self.parse_type()
-            )))
+            let result =
+                Some(parse_list!(self, "generics", CloseBracket, false, || self.parse_type()));
+
+            self.advance()?; // `]`
+
+            result
         } else {
-            Ok(None)
-        }
+            None
+        })
     }
 
     pub(crate) fn parse_generic_annotations(&mut self) -> ParserResult<GenericAnnotations> {
-        if !self.current.value.is(OpenBracket) {
+        if !self.next.value.is(OpenBracket) {
             return Ok(vec![]);
         }
 
-        self.advance(false)?; // `[`
+        self.advance()?; // `[`
 
-        Ok(parse_list!(
+        let result = parse_list!(
             self,
             "generic annotations",
             CloseBracket,
             false, // top level
             || {
-                check_token!(self, Identifier => "generic name in generic annotation")?;
-
-                let generic = self.current_ident_with_span();
-
-                self.advance(false)?; // ident
+                let generic = consume_ident!(self, "generic name in generic annotation");
 
                 let mut constraint = None;
 
-                if !self.current.value.is_one_of(&[CloseBracket, Comma]) {
+                if self.next.value.is(Assign) {
+                    self.advance()?; // =
+
                     constraint = Some(self.parse_type()?);
                 }
 
                 Ok((generic, constraint))
             }
-        ))
+        );
+
+        self.advance()?;
+
+        Ok(result)
     }
 
-    pub fn parse_generic(&mut self) -> ParserResult<WithSpan<SymbolU32>> {
-        let name = self.current_ident_with_span();
+    pub(crate) fn parse_where_clause(&mut self) -> ParserResult<WhereClause> {
+        Ok(if self.next.value.is(Where) {
+            self.advance()?; // `where`
 
-        self.advance(false)?; // id
+            let result = parse_list!(
+                self,
+                "where clause",
+                OpenBrace | Semicolon,
+                false, // top level
+                || {
+                    let left = self.parse_type()?;
 
-        Ok(name)
+                    consume!(self, Assign, "where clause");
+
+                    let right = self.parse_type()?;
+
+                    Ok((left, right))
+                }
+            );
+
+            result
+        } else {
+            vec![]
+        })
     }
 }
 

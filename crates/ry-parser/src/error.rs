@@ -11,8 +11,8 @@ pub enum ParserError {
 
     /// Unexpected token [`Token`] in AST Node called
     /// [`Option<String>`], expected [`String`].
-    #[error("unexpected token `{0:?}`, expected `{1}` for `{2:?}`")]
-    UnexpectedToken(Token, String, Option<String>),
+    #[error("unexpected token `{0:?}`, expected `{1}` for `{2}`")]
+    UnexpectedToken(Token, String, String),
 }
 
 impl<'source> Reporter<'source> for ParserError {
@@ -27,9 +27,7 @@ impl<'source> Reporter<'source> for ParserError {
             Self::UnexpectedToken(got, expected, node_name) => {
                 let mut label_message = format!("expected {expected}");
 
-                if let Some(node_name_s) = node_name {
-                    label_message.push_str(format!(" for {node_name_s}").as_str());
-                }
+                label_message.push_str(format!(" for {node_name}").as_str());
 
                 Diagnostic::error()
                     .with_message(format!("unexpected {}", got.value))
