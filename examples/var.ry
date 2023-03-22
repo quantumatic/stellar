@@ -1,6 +1,0 @@
-pub fun main() {
-    var a = "hello world";
-    var b i32 = 2;
-
-    println("%s %d", a, b);
-}

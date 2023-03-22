@@ -1,9 +1,0 @@
-pub fun sum<T number>(a T, b T) T {
-    a + b
-}
-
-interface Iterator<T> {
-    fun next(self Self) T?;
-}
-
-struct A<B, C> {}

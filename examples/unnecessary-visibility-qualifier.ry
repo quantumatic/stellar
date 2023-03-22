@@ -1,3 +1,0 @@
-pub interface ToString {
-    pub fun to_string(self Self) string;
-}

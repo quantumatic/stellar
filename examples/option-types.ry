@@ -1,8 +1,0 @@
-pub fun div<T number>(a T, b T) T? {
-    if b == 0 {
-        none
-    } else {
-        some(a / b)
-    }
-}
-
