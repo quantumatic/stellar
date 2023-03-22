@@ -7,6 +7,8 @@ impl<'c> Parser<'c> {
         &mut self,
         public: Option<Span>,
     ) -> ParserResult<Item> {
+        self.advance()?;
+
         let name = consume_ident!(self, "function name in function declaration");
 
         let generic_annotations = self.parse_generic_annotations()?;
@@ -27,8 +29,6 @@ impl<'c> Parser<'c> {
         let r#where = self.parse_where_clause()?;
 
         let stmts = self.parse_statements_block(true)?;
-
-        self.advance_with_comments()?;
 
         Ok(Item::FunctionDecl(FunctionDecl {
             def: FunctionDef {

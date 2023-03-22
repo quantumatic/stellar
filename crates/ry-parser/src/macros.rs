@@ -2,12 +2,23 @@ macro_rules! consume {
     ($p:ident) => {
         $p.advance()?;
     };
-    ($p:ident with_comments) => {
+    (with_comments $p:ident) => {
         $p.advance_with_comments()?;
     };
     ($p:ident, $expected:expr, $for:expr) => {
         if $p.next.value.is($expected) {
             $p.advance()?;
+        } else {
+            return Err(ParserError::UnexpectedToken(
+                $p.next.clone(),
+                format!("{}", $expected),
+                $for.into(),
+            ));
+        }
+    };
+    (with_comments $p:ident, $expected:expr, $for:expr) => {
+        if $p.next.value.is($expected) {
+            $p.advance_with_comments()?;
         } else {
             return Err(ParserError::UnexpectedToken(
                 $p.next.clone(),

@@ -6,18 +6,19 @@ impl<'c> Parser<'c> {
     pub(crate) fn parse_imports(&mut self) -> ParserResult<Vec<ry_ast::Import>> {
         let mut imports = vec![];
 
-        while self.current.value.is(Import) {
+        while self.next.value.is(Import) {
             imports.push(self.parse_import()?);
-            self.advance()?;
         }
 
         Ok(imports)
     }
 
     pub(crate) fn parse_import(&mut self) -> ParserResult<ry_ast::Import> {
+        self.advance()?;
+
         let path = self.parse_name()?;
 
-        consume!(self, Semicolon, "import");
+        consume!(with_comments self, Semicolon, "import");
 
         Ok(ry_ast::Import { path })
     }

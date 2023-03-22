@@ -35,8 +35,7 @@ impl<'a> Parser<'a> {
         let mut lexer = Lexer::new(contents, string_interner);
 
         let current = lexer.next().unwrap();
-
-        let next = lexer.next().unwrap();
+        let next = current.clone();
 
         Self {
             lexer,
@@ -84,18 +83,6 @@ impl<'a> Parser<'a> {
     pub(crate) fn consume_fst_docstring(&mut self) -> ParserResult<(Docstring, Docstring)> {
         let (mut module_docstring, mut local_docstring) = (vec![], vec![]);
 
-        if let Comment(s) = self.current.value {
-            let str = self.lexer.string_interner.resolve(s).unwrap();
-
-            if str.starts_with('!') {
-                module_docstring.push(s);
-            } else if str.starts_with('/') {
-                local_docstring.push(s);
-            }
-        } else {
-            return Ok((module_docstring, local_docstring));
-        }
-
         loop {
             if let Comment(s) = self.next.value {
                 let str = self.lexer.string_interner.resolve(s).unwrap();
@@ -117,7 +104,7 @@ impl<'a> Parser<'a> {
         let mut result = vec![];
 
         loop {
-            if let Comment(s) = self.current.value {
+            if let Comment(s) = self.next.value {
                 let str = self.lexer.string_interner.resolve(s).unwrap();
 
                 if str.starts_with('/') {
@@ -151,19 +138,19 @@ impl<'a> Parser<'a> {
         loop {
             top_level_statements.push((
                 local_docstring,
-                match self.current.value {
+                match self.next.value {
                     Fun => self.parse_function_declaration(None)?,
                     Struct => self.parse_struct_declaration(None)?,
                     Trait => self.parse_trait_declaration(None)?,
                     Enum => self.parse_enum_declaration(None)?,
                     Impl => self.parse_impl(None)?,
                     Pub => {
-                        let pub_span = self.current.span;
+                        let pub_span = self.next.span;
 
                         self.check_scanning_error_for_next_token()?;
                         self.advance()?;
 
-                        match self.current.value {
+                        match self.next.value {
                             Fun => self.parse_function_declaration(Some(pub_span))?,
                             Struct => self.parse_struct_declaration(Some(pub_span))?,
                             Trait => self.parse_trait_declaration(Some(pub_span))?,
@@ -181,14 +168,12 @@ impl<'a> Parser<'a> {
                     Import => {
                         let import = self.parse_import()?;
 
-                        self.advance()?; // `;`
-
                         Item::Import(import)
                     }
                     EndOfFile => break,
                     _ => {
                         let err = Err(ParserError::UnexpectedToken(
-                            self.current.clone(),
+                            self.next.clone(),
                             "`fun`, `trait`, `enum`, `struct`".to_owned(),
                             "item".to_owned(),
                         ));

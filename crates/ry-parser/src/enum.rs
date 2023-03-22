@@ -3,6 +3,8 @@ use ry_ast::{location::*, token::RawToken::*, *};
 
 impl<'c> Parser<'c> {
     pub(crate) fn parse_enum_declaration(&mut self, public: Option<Span>) -> ParserResult<Item> {
+        self.advance()?;
+
         let name = consume_ident!(self, "enum name in enum declaration");
 
         consume!(self, OpenBrace, "enum declaration");
@@ -21,8 +23,7 @@ impl<'c> Parser<'c> {
             }
         );
 
-        self.advance()?; // `}`
-        self.advance()?; // `}`
+        self.advance_with_comments()?; // `}`
 
         Ok(Item::EnumDecl(EnumDecl {
             public,

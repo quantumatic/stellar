@@ -3,6 +3,8 @@ use ry_ast::{location::Span, token::RawToken::*, *};
 
 impl<'c> Parser<'c> {
     pub(crate) fn parse_struct_declaration(&mut self, public: Option<Span>) -> ParserResult<Item> {
+        self.advance()?;
+
         let name = consume_ident!(self, "struct name in struct declaration");
 
         let generic_annotations = self.parse_generic_annotations()?;
@@ -14,7 +16,6 @@ impl<'c> Parser<'c> {
         let members = self.parse_struct_members()?;
 
         consume!(self, CloseBrace, "struct declaration");
-        self.advance()?;
 
         Ok(Item::StructDecl(StructDecl {
             generic_annotations,

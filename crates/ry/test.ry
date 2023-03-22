@@ -1,5 +1,0 @@
-pub fun test() {}
-
-import std::io;
-
-pub trait Test {}

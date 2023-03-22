@@ -3,6 +3,8 @@ use ry_ast::{location::Span, token::RawToken::*, *};
 
 impl<'c> Parser<'c> {
     pub(crate) fn parse_trait_declaration(&mut self, public: Option<Span>) -> ParserResult<Item> {
+        self.advance()?;
+
         let name = consume_ident!(self, "trait name in trait declaration");
 
         let generic_annotations = self.parse_generic_annotations()?;
@@ -14,7 +16,6 @@ impl<'c> Parser<'c> {
         let methods = self.parse_trait_methods()?;
 
         consume!(self, CloseBrace, "trait declaration");
-        self.advance()?;
 
         Ok(Item::TraitDecl(TraitDecl {
             public,

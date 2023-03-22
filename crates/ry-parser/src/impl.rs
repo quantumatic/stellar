@@ -3,6 +3,8 @@ use ry_ast::{location::Span, token::RawToken::*, Item};
 
 impl<'c> Parser<'c> {
     pub(crate) fn parse_impl(&mut self, public: Option<Span>) -> ParserResult<Item> {
+        self.advance()?;
+
         let generic_annotations = self.parse_generic_annotations()?;
 
         let mut r#type = self.parse_type()?;
@@ -22,7 +24,6 @@ impl<'c> Parser<'c> {
         let methods = self.parse_trait_methods()?;
 
         consume!(self, CloseBrace, "type implementation");
-        self.advance()?;
 
         Ok(Item::Impl(ry_ast::Impl {
             public,
