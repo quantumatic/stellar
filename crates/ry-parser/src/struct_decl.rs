@@ -15,7 +15,7 @@ impl<'c> Parser<'c> {
 
         let members = self.parse_struct_members()?;
 
-        consume!(self, CloseBrace, "struct declaration");
+        consume!(with_comments self, CloseBrace, "struct declaration");
 
         Ok(Item::StructDecl(StructDecl {
             generic_annotations,

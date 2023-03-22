@@ -30,10 +30,7 @@ impl<'c> Parser<'c> {
         let mut definitions = vec![];
 
         while !self.next.value.is(CloseBrace) {
-            self.consume_local_docstring()?;
-
-            let trait_def = self.parse_trait_method()?;
-            definitions.push((self.consume_local_docstring()?, trait_def));
+            definitions.push((self.consume_local_docstring()?, self.parse_trait_method()?));
         }
 
         Ok(definitions)
@@ -76,7 +73,7 @@ impl<'c> Parser<'c> {
         if self.next.value.is(OpenBrace) {
             body = Some(self.parse_statements_block(true)?);
         } else {
-            self.advance()?; // `;`
+            self.advance_with_comments()?; // `;`
         }
 
         Ok(TraitMethod {

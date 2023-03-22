@@ -23,7 +23,7 @@ impl<'c> Parser<'c> {
 
         let methods = self.parse_trait_methods()?;
 
-        consume!(self, CloseBrace, "type implementation");
+        consume!(with_comments self, CloseBrace, "type implementation");
 
         Ok(Item::Impl(ry_ast::Impl {
             public,
