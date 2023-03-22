@@ -250,6 +250,13 @@ impl AsRef<RawToken> for RawToken {
     }
 }
 
+impl RawToken {
+    pub fn dump_op(&self) -> String {
+        let r = self.to_string();
+        r[1..r.len() - 1].to_owned()
+    }
+}
+
 pub type Token = WithSpan<RawToken>;
 
 /// List of reserved Ry names: keywords, boolean literals & etc..

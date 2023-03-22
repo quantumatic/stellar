@@ -1,0 +1,7 @@
+struct test[T] where T? = Default {
+    a i32;
+}
+
+pub fun sum[T](a T, b T) T  {
+    print.[string]("%d", a + b);
+}

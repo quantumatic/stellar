@@ -105,7 +105,14 @@ impl<'a> Visitor for ASTSerializer<'a> {
 
         self.visit_arguments(&node.1.def.params);
 
+        if let Some(r) = &node.1.def.return_type {
+            self.content += " ";
+            self.visit_type(r);
+        }
+
         self.content += " ";
+
+        self.visit_where_clause(&node.1.def.r#where);
 
         self.visit_block(&node.1.stmts);
     }
@@ -124,9 +131,9 @@ impl<'a> Visitor for ASTSerializer<'a> {
 
     fn visit_generic_annotation(&mut self, node: &GenericAnnotation) {
         self.content += self.string_interner.resolve(node.0.value).unwrap();
-        self.content += " ";
 
         if let Some(constraint) = &node.1 {
+            self.content += " ";
             self.visit_type(constraint);
         }
     }
@@ -154,22 +161,22 @@ impl<'a> Visitor for ASTSerializer<'a> {
     fn visit_block(&mut self, node: &Vec<Statement>) {
         self.content += "{";
         self.indent += 1;
-        self.new_line();
 
         self.walk_block(node);
 
-        self.content += "}";
         self.indent -= 1;
+        self.new_line();
+        self.content += "}";
     }
 
     fn visit_expression_statement(&mut self, node: (bool, &Expression)) {
+        self.new_line();
+
         self.visit_expression(node.1);
 
         if node.0 {
             self.content += ";";
         }
-
-        self.content += "\n";
     }
 
     fn visit_array(&mut self, node: &Type) {
@@ -231,12 +238,12 @@ impl<'a> Visitor for ASTSerializer<'a> {
         self.content += &node.to_string();
     }
 
-    // TODO: process escape sequences
     fn visit_string_literal(&mut self, node: DefaultSymbol) {
+        self.content += "\"";
         self.content += self.string_interner.resolve(node).unwrap();
+        self.content += "\"";
     }
 
-    // TODO: process escape sequences
     fn visit_char_literal(&mut self, node: char) {
         self.content += "'";
         self.content += &node.to_string();
@@ -246,8 +253,111 @@ impl<'a> Visitor for ASTSerializer<'a> {
     fn visit_binary_expression(&mut self, node: (&Expression, &token::Token, &Expression)) {
         self.visit_expression(node.0);
         self.content += " ";
-        self.content += &node.1.value.to_string()[1..2];
+        self.content += &node.1.value.dump_op();
         self.content += " ";
         self.visit_expression(node.2);
+    }
+
+    fn visit_prefix_or_postfix(&mut self, node: (bool, &token::Token, &Expression)) {
+        if node.0 {
+            self.content += &node.1.value.dump_op();
+            self.visit_expression(node.2);
+        } else {
+            self.visit_expression(node.2);
+            self.content += &node.1.value.dump_op();
+        }
+    }
+
+    fn visit_call(&mut self, node: (&Vec<Type>, &Expression, &Vec<Expression>)) {
+        self.visit_expression(node.1);
+        self.visit_generics(node.0);
+        self.visit_call_arguments(node.2);
+    }
+
+    fn visit_call_arguments(&mut self, node: &Vec<Expression>) {
+        self.content += "(";
+
+        for argument in node {
+            self.visit_expression(argument);
+            self.content += ", ";
+        }
+
+        self.content.truncate(self.content.len() - 2);
+
+        self.content += ")";
+    }
+
+    fn visit_where_clause(&mut self, node: &WhereClause) {
+        if node.is_empty() {
+            return;
+        }
+
+        self.content += "where ";
+
+        for cond in node {
+            self.visit_type(&cond.0);
+
+            self.content += " = ";
+
+            self.visit_type(&cond.1);
+        }
+
+        self.content += " ";
+    }
+
+    fn visit_generics(&mut self, node: &Vec<Type>) {
+        if node.is_empty() {
+            return;
+        }
+
+        self.content += ".[";
+
+        for generic in node {
+            self.visit_type(generic);
+            self.content += ", ";
+        }
+
+        self.content.truncate(self.content.len() - 2);
+
+        self.content += "]";
+    }
+
+    fn visit_struct_decl(&mut self, node: (&Docstring, &StructDecl)) {
+        if node.1.public.is_some() {
+            self.content += "pub ";
+        }
+
+        self.content += "struct ";
+        self.content += self.string_interner.resolve(node.1.name.value).unwrap();
+
+        self.visit_generic_annotations(&node.1.generic_annotations);
+
+        self.content += " ";
+
+        self.visit_where_clause(&node.1.r#where);
+
+        self.content += "{";
+        self.indent += 1;
+
+        for member in &node.1.members {
+            self.new_line();
+
+            if member.1.public.is_some() {
+                self.content += "pub ";
+            }
+
+            if member.1.r#mut.is_some() {
+                self.content += "mut ";
+            }
+
+            self.content += self.string_interner.resolve(member.1.name.value).unwrap();
+            self.content += " ";
+            self.visit_type(&member.1.r#type);
+            self.content += ";";
+        }
+
+        self.indent -= 1;
+        self.new_line();
+        self.content += "}";
     }
 }

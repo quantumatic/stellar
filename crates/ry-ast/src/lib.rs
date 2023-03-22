@@ -282,7 +282,7 @@ pub enum RawExpression {
     List(Vec<Expression>),
     Binary(Expression, Token, Expression),
     As(Expression, Type),
-    PrefixOrPostfix(Token, Expression),
+    PrefixOrPostfix(bool, Token, Expression),
     Property(Expression, WithSpan<DefaultSymbol>),
     Struct(
         WithSpan<DefaultSymbol>,

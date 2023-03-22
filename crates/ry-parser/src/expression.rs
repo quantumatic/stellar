@@ -11,8 +11,8 @@ impl<'c> Parser<'c> {
                 binop_pattern!() => {
                     let start = left.span.start;
 
-                    let op = self.current.clone();
-                    let precedence = self.current.value.to_precedence();
+                    let op = self.next.clone();
+                    let precedence = self.next.value.to_precedence();
                     self.advance()?; // op
 
                     let right = self.parse_expression(precedence)?;
@@ -88,7 +88,7 @@ impl<'c> Parser<'c> {
                     let right = self.current.clone();
                     let span = left.span.start..self.current.span.end;
 
-                    Box::new(RawExpression::PrefixOrPostfix(right, left)).with_span(span)
+                    Box::new(RawExpression::PrefixOrPostfix(false, right, left)).with_span(span)
                 }
                 As => {
                     self.advance()?; // `as`
@@ -159,14 +159,14 @@ impl<'c> Parser<'c> {
                 Ok(Box::new(RawExpression::Bool(value)).with_span(span))
             }
             Bang | Not | PlusPlus | MinusMinus | Minus | Plus => {
-                let left = self.current.clone();
+                let left = self.next.clone();
                 let start = left.span.start;
                 self.advance()?; // left
 
                 let expr = self.parse_expression(Precedence::PrefixOrPostfix.to_i8().unwrap())?;
                 let end = expr.span.end;
 
-                Ok(Box::new(RawExpression::PrefixOrPostfix(left, expr)).with_span(start..end))
+                Ok(Box::new(RawExpression::PrefixOrPostfix(true, left, expr)).with_span(start..end))
             }
             OpenParent => {
                 self.advance()?; // `(`

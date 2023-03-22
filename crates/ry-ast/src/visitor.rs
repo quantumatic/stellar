@@ -57,6 +57,8 @@ pub trait Visitor: Sized {
         }
     });
 
+    visit_fn!(where_clause for &WhereClause);
+
     visit_fn!(argument for &FunctionParam);
 
     visit_fn!(r#type for &Type {
@@ -90,7 +92,29 @@ pub trait Visitor: Sized {
             RawExpression::Binary(l, op, r) => self.visit_binary_expression((l, op, r)),
             RawExpression::StaticName(s) => self.visit_static_name(&(*s).clone().with_span(node.span)),
             RawExpression::Imag(i) => self.visit_imaginary_literal(*i),
+            RawExpression::PrefixOrPostfix(prefix, op, r) => self.visit_prefix_or_postfix((*prefix, op, r)),
+            RawExpression::Call(g, l, r) => self.visit_call((g, l, r)),
             _ => todo!(),
+        }
+    });
+
+    visit_fn!(prefix_or_postfix for (bool, &Token, &Expression) {
+        self.visit_expression(node.2);
+    });
+
+    visit_fn!(call for (&Vec<Type>, &Expression, &Vec<Expression>) {
+        for ty in node.0 {
+            self.visit_type(ty);
+        }
+
+        self.visit_expression(node.1);
+
+        self.visit_call_arguments(node.2);
+    });
+
+    visit_fn!(call_arguments for &Vec<Expression> {
+        for argument in node {
+            self.visit_expression(argument);
         }
     });
 
