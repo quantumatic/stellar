@@ -360,4 +360,51 @@ impl<'a> Visitor for ASTSerializer<'a> {
         self.new_line();
         self.content += "}";
     }
+
+    fn visit_impl(&mut self, node: (&Docstring, &Impl)) {
+        self.content += "impl";
+        self.visit_generic_annotations(&node.1.global_generic_annotations);
+        self.content += " ";
+
+        if let Some(t) = &node.1.r#trait {
+            self.visit_type(t);
+            self.content += " for ";
+        }
+
+        self.visit_type(&node.1.r#type);
+        self.content += " {";
+        self.indent += 1;
+
+        self.visit_trait_methods_in_impl(&node.1.methods);
+
+        self.indent -= 1;
+        self.new_line();
+        self.content += "}";
+    }
+
+    fn visit_trait_method_in_impl(&mut self, node: &(Docstring, TraitMethod)) {
+        self.new_line();
+
+        if node.1.public.is_some() {
+            self.content += "pub ";
+        }
+
+        self.content += "fun ";
+        self.content += self.string_interner.resolve(node.1.name.value).unwrap();
+
+        self.visit_generic_annotations(&node.1.generic_annotations);
+
+        self.visit_arguments(&node.1.params);
+
+        self.content += " ";
+
+        if let Some(r) = &node.1.return_type {
+            self.visit_type(r);
+            self.content += " ";
+        }
+
+        self.visit_where_clause(&node.1.r#where);
+
+        self.visit_block(node.1.body.as_ref().unwrap());
+    }
 }

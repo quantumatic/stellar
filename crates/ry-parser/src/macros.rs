@@ -124,7 +124,15 @@ macro_rules! postfixop_pattern {
     };
 }
 
-pub(crate) use {binop_pattern, consume, consume_ident, parse_list, postfixop_pattern};
+macro_rules! prefixop_pattern {
+    () => {
+        Bang | Not | PlusPlus | MinusMinus | Minus | Plus
+    };
+}
+
+pub(crate) use {
+    binop_pattern, consume, consume_ident, parse_list, postfixop_pattern, prefixop_pattern,
+};
 
 #[cfg(test)]
 pub(crate) use parser_test;

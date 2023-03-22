@@ -158,7 +158,7 @@ impl<'c> Parser<'c> {
 
                 Ok(Box::new(RawExpression::Bool(value)).with_span(span))
             }
-            Bang | Not | PlusPlus | MinusMinus | Minus | Plus => {
+            prefixop_pattern!() => {
                 let left = self.next.clone();
                 let start = left.span.start;
                 self.advance()?; // left

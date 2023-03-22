@@ -82,6 +82,20 @@ pub trait Visitor: Sized {
     });
     visit_fn!(negative_trait for &Type);
 
+    visit_fn!(trait_methods for &Vec<(Docstring, TraitMethod)> {
+        for method in node {
+            self.visit_trait_method(method);
+        }
+    });
+    visit_fn!(trait_methods_in_impl for &Vec<(Docstring, TraitMethod)> {
+        for method in node {
+            self.visit_trait_method_in_impl(method);
+        }
+    });
+
+    visit_fn!(trait_method_in_impl for &(Docstring, TraitMethod));
+    visit_fn!(trait_method for &(Docstring, TraitMethod));
+
     visit_fn!(expression for &Expression {
         match &*node.value {
             RawExpression::Bool(b) => self.visit_bool_literal(*b),
