@@ -25,56 +25,80 @@ mod lexer_tests {
 
     lexer_test!(eof, "", EndOfFile);
     lexer_test!(eof2, " \t\n\r", EndOfFile);
+
     lexer_test!(
         identifier,
         "test",
         Identifier(string_interner.get_or_intern("test")),
         string_interner
     );
+
     lexer_test!(
         identifier2,
         "тест",
         Identifier(string_interner.get_or_intern("тест")),
         string_interner
     );
+
     lexer_test!(
         comment,
         "//test comment",
         Comment(string_interner.get_or_intern("test comment")),
         string_interner
     );
+
+    lexer_test!(
+        docstring1,
+        "///test comment",
+        DocstringComment(false, string_interner.get_or_intern("test comment")),
+        string_interner
+    );
+
+    lexer_test!(
+        docstring2,
+        "//!test comment",
+        DocstringComment(true, string_interner.get_or_intern("test comment")),
+        string_interner
+    );
+
     lexer_test!(
         unexpected_char,
         "#",
         Invalid(LexerError::UnexpectedChar('#'))
     );
+
     lexer_test!(
         string,
         "\"test\"",
         String(string_interner.get_or_intern("test")),
         string_interner
     );
+
     lexer_test!(
         string2,
         "\"test",
         Invalid(LexerError::UnterminatedStringLiteral)
     );
+
     lexer_test!(
         string3,
         "\"test\n",
         Invalid(LexerError::UnterminatedStringLiteral)
     );
+
     lexer_test!(
         wrapped_id,
         "`test`",
         Identifier(string_interner.get_or_intern("test")),
         string_interner
     );
+
     lexer_test!(
         wrapped_id2,
         "`test",
         Invalid(LexerError::UnterminatedWrappedIdentifierLiteral)
     );
+
     lexer_test!(
         wrapped_id3,
         "`test\n",

@@ -45,6 +45,6 @@ mod impl_tests {
     parser_test!(impl2, "impl[T] !NotOption for T? {}");
     parser_test!(
         impl3,
-        "impl[T] Into[M?] for Tuple[T, M] where M = Into[T] {}"
+        "impl[T] Into[M?] for Tuple[T, M] where M of Into[T] {}"
     );
 }

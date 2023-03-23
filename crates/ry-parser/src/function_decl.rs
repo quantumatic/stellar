@@ -71,5 +71,5 @@ mod function_decl_tests {
 
     parser_test!(function1, "pub fun test() {}");
     parser_test!(function2, "pub fun test[A](a A) A { a }");
-    parser_test!(function3, "fun unwrap[T, B = T?](a B) T { a.unwrap() }");
+    parser_test!(function3, "fun unwrap[T, B of T?](a B) T { a.unwrap() }");
 }

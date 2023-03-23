@@ -368,7 +368,7 @@ impl<'a> Lexer<'a> {
         let start_location = self.location - 1;
         self.advance(); // `/`
 
-        let content = self.advance_while(start_location, |current, _| (current != '\n'));
+        let content = self.advance_while(start_location + 2, |current, _| (current != '\n'));
 
         Some(
             Comment(self.string_interner.get_or_intern(content))
@@ -385,10 +385,10 @@ impl<'a> Lexer<'a> {
         let start_location = self.location - 1;
         self.advance_twice(); // `/` and (`!` or `/`)
 
-        let content = self.advance_while(start_location, |current, _| (current != '\n'));
+        let content = self.advance_while(start_location + 3, |current, _| (current != '\n'));
 
         Some(
-            DocstringComment(global, self.string_interner.get_or_intern(&content[2..]))
+            DocstringComment(global, self.string_interner.get_or_intern(&content))
                 .with_span(start_location..self.location),
         )
     }
@@ -502,7 +502,7 @@ impl<'c> Iterator for Lexer<'c> {
             ('*', _) => self.advance_with(Asterisk),
 
             ('/', '/') => {
-                self.advance();
+                self.advance(); // first `/` character
 
                 match self.next {
                     '!' => self.scan_docstring(true),
