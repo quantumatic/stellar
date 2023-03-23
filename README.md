@@ -17,7 +17,7 @@ pub fun main() {
 No nulls, we use option types!
 
 ```ry
-pub fun div[T = Numeric](a T, b T) T? {
+pub fun div[T of Numeric](a T, b T) T? {
     if b == 0 {
         None
     } else {
@@ -46,7 +46,7 @@ We use traits like in Rust!
 // example of auto trait
 impl[T] Test for T {} 
 impl[T] !Test for T? {} // trait will NOT be implemented for options
-impl[T] !Test for T where T = Default {} // trait will NOT be implemented for types implementing Default 
+impl[T] !Test for T where T of Default {} // trait will NOT be implemented for types implementing Default 
 ```
 
 Immutability by default!
