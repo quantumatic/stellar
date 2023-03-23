@@ -1,7 +1,31 @@
-struct test[T] where T? = Default {
+//! test
+struct test[T of Numeric] where T? of Default {
     a i32;
 }
 
+enum test {
+    /// some doc for a
+    // a,
+    /// some doc for b
+    a,
+    // b
+}
+
+/// tset
 pub fun sum[T](a T, b T) T  {
     print.[string]("%d", a + b);
+}
+
+/// test
+/// documentation for fun
+impl[T] Into[string] for T {
+    /// Converts self into given T
+    fun into(self &Self) string {
+        format("{}", self);
+    }
+}
+
+trait Into[T] {
+    /// Converts self into given T
+    fun into(self Self) T;
 }
