@@ -141,6 +141,8 @@ pub enum RawToken {
     Mut,
     #[display(fmt = "`where`")]
     Where,
+    #[display(fmt = "`of`")]
+    Of,
 
     #[display(fmt = "`?`")]
     QuestionMark,
@@ -233,6 +235,17 @@ pub enum RawToken {
     #[display(fmt = "`@`")]
     AtSign,
 
+    /// [`bool`] here is either the docstring is declared for the whole module
+    /// or only for a given item, enum variant or trait method.
+    ///
+    /// [`DefaultSymbol`] corresponds to the contents of the docstring but
+    /// without first 3 characters which are:
+    /// - two initial slashes - `//`
+    /// - last character - either `/` or `!`
+    #[display(fmt = "docstring")]
+    DocstringComment(bool, DefaultSymbol),
+
+    /// Corresponds to any comment that is not a docstring.
     #[display(fmt = "comment")]
     Comment(DefaultSymbol),
 
@@ -281,6 +294,7 @@ pub static RESERVED: phf::Map<&'static str, RawToken> = phf_map! {
     "for" => RawToken::For,
     "mut" => RawToken::Mut,
     "where" => RawToken::Where,
+    "of" => RawToken::Of,
 };
 
 impl RawToken {

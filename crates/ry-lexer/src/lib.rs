@@ -363,15 +363,32 @@ impl<'a> Lexer<'a> {
         )
     }
 
-    fn scan_single_line_comment(&mut self) -> IterElem {
-        let start_location = self.location;
-
-        self.advance_twice(); // '//'
+    fn scan_comment(&mut self) -> IterElem {
+        // first `/` character is already advanced
+        let start_location = self.location - 1;
+        self.advance(); // `/`
 
         let content = self.advance_while(start_location, |current, _| (current != '\n'));
 
         Some(
-            Comment(self.string_interner.get_or_intern(&content[2..]))
+            Comment(self.string_interner.get_or_intern(content))
+                .with_span(start_location..self.location),
+        )
+    }
+
+    /// In this case [`bool`] is true when docstring is describing
+    /// the whole module (3-rd character is `!`) and not when
+    /// docstring is corresponding to trait method, enum variant, etc.
+    /// (everything else and the character is `/`).
+    fn scan_docstring(&mut self, global: bool) -> IterElem {
+        // first `/` character is already advanced
+        let start_location = self.location - 1;
+        self.advance_twice(); // `/` and (`!` or `/`)
+
+        let content = self.advance_while(start_location, |current, _| (current != '\n'));
+
+        Some(
+            DocstringComment(global, self.string_interner.get_or_intern(&content[2..]))
                 .with_span(start_location..self.location),
         )
     }
@@ -426,11 +443,24 @@ impl<'a> Lexer<'a> {
         }
     }
 
+    pub fn next_no_docstrings_and_comments(&mut self) -> IterElem {
+        loop {
+            let t = self.next();
+            match t.as_ref().unwrap().value {
+                DocstringComment(..) => {}
+                Comment(..) => {}
+                _ => {
+                    return t;
+                }
+            }
+        }
+    }
+
     pub fn next_no_comments(&mut self) -> IterElem {
         loop {
             let t = self.next();
             match t.as_ref().unwrap().value {
-                Comment(_) => {}
+                Comment(..) => {}
                 _ => {
                     return t;
                 }
@@ -471,7 +501,15 @@ impl<'c> Iterator for Lexer<'c> {
             ('*', '=') => self.advance_twice_with(AsteriskEq),
             ('*', _) => self.advance_with(Asterisk),
 
-            ('/', '/') => self.scan_single_line_comment(),
+            ('/', '/') => {
+                self.advance();
+
+                match self.next {
+                    '!' => self.scan_docstring(true),
+                    '/' => self.scan_docstring(false),
+                    _ => self.scan_comment(),
+                }
+            }
             ('/', '=') => self.advance_twice_with(SlashEq),
             ('/', _) => self.advance_with(Slash),
 

@@ -16,25 +16,20 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
-    #[command(arg_required_else_help = true)]
     Lex {
-        #[arg(required = true)]
         filepath: String,
+        #[arg(long)]
         show_locations: bool,
     },
-    #[command(arg_required_else_help = true)]
     Parse {
-        #[arg(required = true)]
         filepath: String,
     },
-    #[command(arg_required_else_help = true)]
     Serialize {
-        #[arg(required = true)]
         filepath: String,
+        #[arg(long)]
+        resolve_docstrings: bool,
     },
-    #[command(arg_required_else_help = true)]
     Graphviz {
-        #[arg(required = true)]
         filepath: String,
     },
 }
@@ -108,7 +103,10 @@ fn main() {
                 }
             }
         }
-        Commands::Serialize { filepath } => {
+        Commands::Serialize {
+            filepath,
+            resolve_docstrings,
+        } => {
             let filepath = &filepath;
 
             match fs::read_to_string(filepath) {
@@ -120,8 +118,10 @@ fn main() {
 
                     match ast {
                         Ok(program_unit) => {
-                            let mut serializer =
-                                ry_ast_serializer::ASTSerializer::new(&string_interner);
+                            let mut serializer = ry_ast_serializer::ASTSerializer::new(
+                                &string_interner,
+                                resolve_docstrings,
+                            );
                             println!("{}", serializer.serialize(&program_unit));
                         }
                         Err(e) => {

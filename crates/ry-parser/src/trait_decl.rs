@@ -11,7 +11,7 @@ impl<'c> Parser<'c> {
 
         let r#where = self.parse_where_clause()?;
 
-        consume!(self, OpenBrace, "trait declaration");
+        consume!(with_docstring self, OpenBrace, "trait declaration");
 
         let methods = self.parse_trait_methods()?;
 
@@ -73,7 +73,7 @@ impl<'c> Parser<'c> {
         if self.next.value.is(OpenBrace) {
             body = Some(self.parse_statements_block(true)?);
         } else {
-            self.advance_with_comments()?; // `;`
+            self.advance_with_docstring()?; // `;`
         }
 
         Ok(TraitMethod {

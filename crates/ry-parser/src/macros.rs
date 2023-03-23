@@ -2,8 +2,8 @@ macro_rules! consume {
     ($p:ident) => {
         $p.advance()?;
     };
-    (with_comments $p:ident) => {
-        $p.advance_with_comments()?;
+    (with_docstring $p:ident) => {
+        $p.advance_with_docstring()?;
     };
     ($p:ident, $expected:expr, $for:expr) => {
         if $p.next.value.is($expected) {
@@ -16,9 +16,9 @@ macro_rules! consume {
             ));
         }
     };
-    (with_comments $p:ident, $expected:expr, $for:expr) => {
+    (with_docstring $p:ident, $expected:expr, $for:expr) => {
         if $p.next.value.is($expected) {
-            $p.advance_with_comments()?;
+            $p.advance_with_docstring()?;
         } else {
             return Err(ParserError::UnexpectedToken(
                 $p.next.clone(),
@@ -73,7 +73,11 @@ macro_rules! parse_list {
                     if let $closing_token = $p.next.value {
                         break
                     } else {
-                        consume!($p, Comma, $name);
+                        if $top_level {
+                            consume!(with_docstring $p, Comma, $name);
+                        } else {
+                            consume!($p, Comma, $name);
+                        }
 
                         if let $closing_token = $p.next.value {
                             break

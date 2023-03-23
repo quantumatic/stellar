@@ -5,14 +5,16 @@ pub struct ASTSerializer<'a> {
     content: String,
     indent: usize,
     string_interner: &'a StringInterner,
+    resolve_docstrings: bool,
 }
 
 impl<'a> ASTSerializer<'a> {
-    pub fn new(string_interner: &'a StringInterner) -> Self {
+    pub fn new(string_interner: &'a StringInterner, resolve_docstrings: bool) -> Self {
         Self {
             content: "".to_owned(),
             indent: 0,
             string_interner,
+            resolve_docstrings,
         }
     }
 
@@ -35,9 +37,25 @@ impl<'a> ASTSerializer<'a> {
         self.visit_program_unit(ast);
         &self.content
     }
+
+    fn write_docstring(&mut self, docstring: &Vec<DefaultSymbol>) {
+        for symbol in docstring {
+            self.content += "//";
+            self.content += self.string_interner.resolve(*symbol).unwrap();
+            self.new_line();
+        }
+    }
 }
 
 impl<'a> Visitor for ASTSerializer<'a> {
+    fn visit_program_unit(&mut self, node: &ProgramUnit) {
+        if self.resolve_docstrings {
+            self.write_docstring(&node.docstring);
+        }
+
+        self.walk_program_unit(node);
+    }
+
     fn visit_import(&mut self, node: &ry_ast::Import) {
         self.content += "import ";
         self.visit_static_name(&node.path);
@@ -56,6 +74,10 @@ impl<'a> Visitor for ASTSerializer<'a> {
     }
 
     fn visit_item(&mut self, node: (&Docstring, &Item)) {
+        if self.resolve_docstrings {
+            self.write_docstring(node.0);
+        }
+
         self.walk_item(node);
 
         self.new_line();
@@ -78,6 +100,10 @@ impl<'a> Visitor for ASTSerializer<'a> {
             self.indent += 1;
             self.new_line();
             for variant in &node.1.variants {
+                if self.resolve_docstrings {
+                    self.write_docstring(&variant.0);
+                }
+
                 self.write_ident(variant.1.value);
                 self.content += ",";
 
@@ -133,7 +159,7 @@ impl<'a> Visitor for ASTSerializer<'a> {
         self.content += self.string_interner.resolve(node.0.value).unwrap();
 
         if let Some(constraint) = &node.1 {
-            self.content += " ";
+            self.content += " of ";
             self.visit_type(constraint);
         }
     }
@@ -194,10 +220,9 @@ impl<'a> Visitor for ASTSerializer<'a> {
         self.content += "&";
 
         if node.0 {
-            self.content += "mut";
+            self.content += "mut ";
         }
 
-        self.content += " ";
         self.visit_type(node.1);
     }
 
@@ -297,7 +322,7 @@ impl<'a> Visitor for ASTSerializer<'a> {
         for cond in node {
             self.visit_type(&cond.0);
 
-            self.content += " = ";
+            self.content += " of ";
 
             self.visit_type(&cond.1);
         }

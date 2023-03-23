@@ -7,7 +7,7 @@ impl<'c> Parser<'c> {
 
         let name = consume_ident!(self, "enum name in enum declaration");
 
-        consume!(self, OpenBrace, "enum declaration");
+        consume!(with_docstring self, OpenBrace, "enum declaration");
 
         let variants = parse_list!(
             self,
@@ -23,7 +23,7 @@ impl<'c> Parser<'c> {
             }
         );
 
-        self.advance_with_comments()?; // `}`
+        self.advance_with_docstring()?; // `}`
 
         Ok(Item::EnumDecl(EnumDecl {
             public,

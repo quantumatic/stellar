@@ -138,8 +138,8 @@ impl<'c> Parser<'c> {
 
                 let mut constraint = None;
 
-                if self.next.value.is(Assign) {
-                    self.advance()?; // =
+                if self.next.value.is(Of) {
+                    self.advance()?; // `of`
 
                     constraint = Some(self.parse_type()?);
                 }
@@ -165,7 +165,7 @@ impl<'c> Parser<'c> {
                 || {
                     let left = self.parse_type()?;
 
-                    consume!(self, Assign, "where clause");
+                    consume!(self, Of, "where clause");
 
                     let right = self.parse_type()?;
 

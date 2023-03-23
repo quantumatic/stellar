@@ -18,7 +18,7 @@ impl<'c> Parser<'c> {
 
         let path = self.parse_name()?;
 
-        consume!(with_comments self, Semicolon, "import");
+        consume!(with_docstring self, Semicolon, "import");
 
         Ok(ry_ast::Import { path })
     }

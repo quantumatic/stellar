@@ -23,7 +23,7 @@ impl<'c> Parser<'c> {
         }
 
         if top_level {
-            self.advance_with_comments()?;
+            self.advance_with_docstring()?;
         } else {
             self.advance()?;
         }

@@ -65,17 +65,17 @@ impl<'a> Parser<'a> {
 
         self.current = self.next.clone();
 
-        self.next = self.lexer.next_no_comments().unwrap();
+        self.next = self.lexer.next_no_docstrings_and_comments().unwrap();
 
         Ok(())
     }
 
-    fn advance_with_comments(&mut self) -> ParserResult<()> {
+    fn advance_with_docstring(&mut self) -> ParserResult<()> {
         self.check_scanning_error_for_next_token()?;
 
         self.current = self.next.clone();
 
-        self.next = self.lexer.next().unwrap();
+        self.next = self.lexer.next_no_comments().unwrap();
 
         Ok(())
     }
@@ -84,19 +84,17 @@ impl<'a> Parser<'a> {
         let (mut module_docstring, mut local_docstring) = (vec![], vec![]);
 
         loop {
-            if let Comment(s) = self.next.value {
-                let str = self.lexer.string_interner.resolve(s).unwrap();
-
-                if str.starts_with('!') {
-                    module_docstring.push(s);
-                } else if str.starts_with('/') {
-                    local_docstring.push(s);
+            if let DocstringComment(global, comment) = self.next.value {
+                if global {
+                    module_docstring.push(comment);
+                } else {
+                    local_docstring.push(comment);
                 }
             } else {
                 return Ok((module_docstring, local_docstring));
             }
 
-            self.advance_with_comments()?;
+            self.advance_with_docstring()?;
         }
     }
 
@@ -104,17 +102,15 @@ impl<'a> Parser<'a> {
         let mut result = vec![];
 
         loop {
-            if let Comment(s) = self.next.value {
-                let str = self.lexer.string_interner.resolve(s).unwrap();
-
-                if str.starts_with('/') {
-                    result.push(s);
+            if let DocstringComment(global, comment) = self.next.value {
+                if !global {
+                    result.push(comment);
                 }
             } else {
                 return Ok(result);
             }
 
-            self.advance_with_comments()?;
+            self.advance_with_docstring()?;
         }
     }
 

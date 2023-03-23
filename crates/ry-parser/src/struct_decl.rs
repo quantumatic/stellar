@@ -11,11 +11,11 @@ impl<'c> Parser<'c> {
 
         let r#where = self.parse_where_clause()?;
 
-        self.advance_with_comments()?; // `{`
+        self.advance_with_docstring()?; // `{`
 
         let members = self.parse_struct_members()?;
 
-        consume!(with_comments self, CloseBrace, "struct declaration");
+        consume!(with_docstring self, CloseBrace, "struct declaration");
 
         Ok(Item::StructDecl(StructDecl {
             generic_annotations,
