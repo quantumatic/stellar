@@ -119,8 +119,6 @@ pub enum RawToken {
     Defer,
     #[display(fmt = "`impl`")]
     Impl,
-    #[display(fmt = "`impls`")]
-    Impls,
     #[display(fmt = "`enum`")]
     Enum,
     #[display(fmt = "`if`")]
