@@ -1,14 +1,13 @@
 [package]
-name = "ry"
+name = "ry_parser"
 version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-ry_parser = {path = "../ry_parser"}
+ry_ast = {path = "../ry_ast"}
 ry_lexer = {path = "../ry_lexer"}
 ry_report = {path = "../ry_report"}
-ry_ast = {path = "../ry_ast"}
-ry_ast_serializer = {path = "../ry_ast_serializer"}
 codespan-reporting = "0.11.1"
-clap = {version = "4.1.4", features = ["derive"]}
+num-traits = "0.2.15"
+thiserror = "1.0.40"
 string-interner = "0.14.0"

@@ -1,0 +1,7 @@
+[package]
+name = "ry_report"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+codespan-reporting = "0.11.1"

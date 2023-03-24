@@ -1,10 +1,9 @@
 [workspace]
 members = [
     "crates/ry",
-    "crates/ry-ast",
-    "crates/ry-ast-to-graphviz",
-    "crates/ry-ast-serializer",
-    "crates/ry-lexer",
-    "crates/ry-parser",
-    "crates/ry-report",
+    "crates/ry_ast",
+    "crates/ry_ast_serializer",
+    "crates/ry_lexer",
+    "crates/ry_parser",
+    "crates/ry_report",
 ]

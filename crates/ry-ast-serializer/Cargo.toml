@@ -1,8 +1,0 @@
-[package]
-name = "ry-ast-serializer"
-version = "0.1.0"
-edition = "2021"
-
-[dependencies]
-ry-ast = {path = "../ry-ast"}
-string-interner = "0.14.0"
