@@ -15,8 +15,8 @@ impl<'c> Parser<'c> {
 
         let Span { start, mut end } = first_ident.span;
 
-        while self.next.value.is(DoubleColon) {
-            self.advance()?; // `::`
+        while self.next.value.is(Dot) {
+            self.advance()?; // `.`
 
             name.push(consume_ident!(self, "namespace member/namespace").value);
 

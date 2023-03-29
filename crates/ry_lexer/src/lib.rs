@@ -548,8 +548,6 @@ impl<'c> Iterator for Lexer<'c> {
             ('[', _) => self.advance_with(OpenBracket),
             (']', _) => self.advance_with(CloseBracket),
 
-            ('$', _) => self.advance_with(Dollar),
-
             ('{', _) => self.advance_with(OpenBrace),
             ('}', _) => self.advance_with(CloseBrace),
 

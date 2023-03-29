@@ -32,14 +32,14 @@ pub enum Precedence {
     Mod,
     // !a | a?
     PrefixOrPostfix,
+    // a[i32]()
+    Generics,
     // ?:
     Elvis,
     // a()
     Call,
-    // a[0], a.b
-    Index,
+    // a.b
+    Property,
     // a as i32
     As,
-    // a$<i32>()
-    Dollar,
 }

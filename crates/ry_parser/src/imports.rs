@@ -2,17 +2,6 @@ use crate::{error::ParserError, macros::*, Parser, ParserResult};
 use ry_ast::token::RawToken::*;
 
 impl<'c> Parser<'c> {
-    /// TODO: fix the problem with comments and imports messed up
-    pub(crate) fn parse_imports(&mut self) -> ParserResult<Vec<ry_ast::Import>> {
-        let mut imports = vec![];
-
-        while self.next.value.is(Import) {
-            imports.push(self.parse_import()?);
-        }
-
-        Ok(imports)
-    }
-
     pub(crate) fn parse_import(&mut self) -> ParserResult<ry_ast::Import> {
         self.advance()?;
 
@@ -30,5 +19,5 @@ mod import_tests {
     use string_interner::StringInterner;
 
     parser_test!(single_import, "import test;");
-    parser_test!(imports, "import test; import test2::test;");
+    parser_test!(imports, "import test; import test2.test;");
 }

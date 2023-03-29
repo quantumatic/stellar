@@ -176,9 +176,6 @@ pub enum RawToken {
     #[display(fmt = "`&&`")]
     AndAnd,
 
-    #[display(fmt = "`$`")]
-    Dollar,
-
     #[display(fmt = "`+=`")]
     PlusEq,
     #[display(fmt = "`-=`")]
@@ -312,14 +309,14 @@ impl RawToken {
             Self::LessThan | Self::LessThanOrEq | Self::GreaterThan | Self::GreaterThanOrEq => {
                 Precedence::LessOrGreater
             }
-            Self::Dollar => Precedence::Dollar,
+            Self::OpenBracket => Precedence::Generics,
             Self::LeftShift | Self::RightShift => Precedence::LeftRightShift,
             Self::Plus | Self::Minus => Precedence::Sum,
             Self::Asterisk | Self::Slash => Precedence::Product,
             Self::AsteriskAsterisk => Precedence::Power,
             Self::Percent => Precedence::Mod,
             Self::OpenParent => Precedence::Call,
-            Self::OpenBracket | Self::Dot => Precedence::Index,
+            Self::Dot => Precedence::Property,
             Self::Not
             | Self::PlusPlus
             | Self::MinusMinus

@@ -5,8 +5,6 @@ use crate::*;
 
 pub trait Visitor: Sized {
     visit_fn!(program_unit for &ProgramUnit {
-        self.visit_imports(&node.imports);
-
         for item in &node.items {
             self.visit_item((&item.0, &item.1));
         }
@@ -103,7 +101,6 @@ pub trait Visitor: Sized {
             RawExpression::Float(f) => self.visit_float_literal(*f),
             RawExpression::Char(c) => self.visit_char_literal(*c),
             RawExpression::Binary(l, op, r) => self.visit_binary_expression((l, op, r)),
-            RawExpression::StaticName(s) => self.visit_static_name(&(*s).clone().with_span(node.span)),
             RawExpression::Imag(i) => self.visit_imaginary_literal(*i),
             RawExpression::PrefixOrPostfix(prefix, op, r) => self.visit_prefix_or_postfix((*prefix, op, r)),
             RawExpression::Call(g, l, r) => self.visit_call((g, l, r)),

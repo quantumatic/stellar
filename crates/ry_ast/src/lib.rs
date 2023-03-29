@@ -15,8 +15,6 @@ use token::Token;
 pub struct ProgramUnit {
     /// Global source file docstring
     pub docstring: Docstring,
-
-    pub imports: Vec<Import>,
     pub items: Items,
 }
 
@@ -278,7 +276,7 @@ pub enum RawExpression {
     Imag(f64),
     Bool(bool),
     Char(char),
-    StaticName(Vec<DefaultSymbol>),
+    Name(DefaultSymbol),
     List(Vec<Expression>),
     Binary(Expression, Token, Expression),
     As(Expression, Type),
@@ -290,7 +288,7 @@ pub enum RawExpression {
     ),
     Map(HashMap<DefaultSymbol, (Span, WithSpan<Expression>)>),
     Call(Vec<Type>, Expression, Vec<Expression>),
-    Index(Expression, Expression),
+    Generics(Expression, Vec<Type>),
     If(
         (Expression, Vec<Statement>),
         Vec<(Expression, Vec<Statement>)>,

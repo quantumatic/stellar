@@ -145,7 +145,6 @@ impl<'a> Parser<'a> {
         let (module_docstring, fst_docstring) = self.consume_module_and_first_item_docstrings()?;
         Ok(ProgramUnit {
             docstring: module_docstring,
-            imports: self.parse_imports()?,
             items: self.parse_items(fst_docstring)?,
         })
     }

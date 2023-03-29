@@ -39,48 +39,27 @@ impl<'c> Parser<'c> {
                 Dot => {
                     self.advance()?; // `.`
 
-                    if self.next.value.is(OpenBracket) {
-                        let start = left.span.start;
+                    let start = left.span.start;
 
-                        let generics = self.parse_type_generic_part()?;
+                    let name = consume_ident!(self, "property");
+                    let end = name.span.end;
 
-                        consume!(self, OpenParent, "call");
-
-                        let arguments =
-                            parse_list!(self, "generics for call", CloseParent, false, || self
-                                .parse_expression(Precedence::Lowest.to_i8().unwrap()));
-
-                        self.advance()?;
-
-                        let end = self.current.span.end;
-
-                        Box::new(RawExpression::Call(
-                            if let Some(v) = generics { v } else { vec![] },
-                            left,
-                            arguments,
-                        ))
-                        .with_span(start..end)
-                    } else {
-                        let start = left.span.start;
-
-                        let name = consume_ident!(self, "property");
-                        let end = name.span.end;
-
-                        Box::new(RawExpression::Property(left, name)).with_span(start..end)
-                    }
+                    Box::new(RawExpression::Property(left, name)).with_span(start..end)
                 }
                 OpenBracket => {
                     let start = left.span.start;
 
                     self.advance()?; // `[`
 
-                    let inner_expr = self.parse_expression(Precedence::Lowest.to_i8().unwrap())?;
-
-                    consume!(self, CloseBracket, "index");
+                    let generics = parse_list!(self, "list literal", CloseBracket, false, || {
+                        self.parse_type()
+                    });
 
                     let end = self.current.span.end;
 
-                    Box::new(RawExpression::Index(left, inner_expr)).with_span(start..end)
+                    self.advance()?;
+
+                    Box::new(RawExpression::Generics(left, generics)).with_span(start..end)
                 }
                 postfixop_pattern!() => {
                     self.advance()?; // `?`
@@ -189,10 +168,12 @@ impl<'c> Parser<'c> {
 
                 Ok(Box::new(RawExpression::List(list)).with_span(start..end))
             }
-            Identifier(_) => {
-                let n = self.parse_name()?;
+            Identifier(n) => {
+                let result = Box::new(RawExpression::Name(*n)).with_span(self.current.span);
 
-                Ok(Box::new(RawExpression::StaticName(n.value)).with_span(n.span))
+                self.advance()?;
+
+                Ok(result)
             }
             If => {
                 self.advance()?;
@@ -264,11 +245,7 @@ mod expression_tests {
     parser_test!(binary2, "fun test() f32 { 1 + 2 / 3 + 3 * 4 }");
     parser_test!(r#as, "fun test() f32 { 1 as f32 }");
     parser_test!(call, "fun test() f32 { l(2 + 3).a() }");
-    parser_test!(
-        call_with_generics,
-        "fun test() f32 { l.[i32](2 + 3).a.[]() }"
-    );
-    parser_test!(index, "fun test() f32 { a[0] }");
+    parser_test!(call_with_generics, "fun test() f32 { l[i32](2 + 3).a[]() }");
     parser_test!(
         ifelse,
         "fun test() f32 { if false { 2.3 } else if false { 5 as f32 } else { 2.0 } }"
