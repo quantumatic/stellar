@@ -96,11 +96,11 @@ impl<'a> Parser<'a> {
         let (mut module_docstring, mut local_docstring) = (vec![], vec![]);
 
         loop {
-            if let DocstringComment(global, comment) = self.next.value {
-                if global {
-                    module_docstring.push(comment);
+            if let DocstringComment { global, content } = &self.next.value {
+                if *global {
+                    module_docstring.push(content.clone());
                 } else {
-                    local_docstring.push(comment);
+                    local_docstring.push(content.clone());
                 }
             } else {
                 return Ok((module_docstring, local_docstring));
@@ -117,9 +117,9 @@ impl<'a> Parser<'a> {
         let mut result = vec![];
 
         loop {
-            if let DocstringComment(global, comment) = self.next.value {
+            if let DocstringComment { global, content } = &self.next.value {
                 if !global {
-                    result.push(comment);
+                    result.push(content.clone());
                 }
             } else {
                 return Ok(result);
@@ -154,10 +154,10 @@ impl<'a> Parser<'a> {
         &mut self,
         mut local_docstring: Docstring,
     ) -> ParserResult<Vec<(Docstring, Item)>> {
-        let mut top_level_statements = vec![];
+        let mut items = vec![];
 
         loop {
-            top_level_statements.push((
+            items.push((
                 local_docstring,
                 match self.next.value {
                     Fun => self.parse_function_declaration(None)?,
@@ -207,6 +207,6 @@ impl<'a> Parser<'a> {
             local_docstring = self.consume_non_module_docstring()?;
         }
 
-        Ok(top_level_statements)
+        Ok(items)
     }
 }

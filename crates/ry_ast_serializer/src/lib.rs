@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use ry_ast::{location::WithSpan, visitor::Visitor, *};
 use string_interner::{DefaultSymbol, StringInterner};
 
@@ -38,10 +40,10 @@ impl<'a> ASTSerializer<'a> {
         &self.content
     }
 
-    fn write_docstring(&mut self, docstring: &Vec<DefaultSymbol>) {
-        for symbol in docstring {
+    fn write_docstring(&mut self, docstring: &Docstring) {
+        for comment in docstring {
             self.content += "//";
-            self.content += self.string_interner.resolve(*symbol).unwrap();
+            self.content += comment;
             self.new_line();
         }
     }
@@ -269,9 +271,9 @@ impl<'a> Visitor for ASTSerializer<'a> {
         self.content += &node.to_string();
     }
 
-    fn visit_string_literal(&mut self, node: DefaultSymbol) {
+    fn visit_string_literal(&mut self, node: &Arc<str>) {
         self.content += "\"";
-        self.content += self.string_interner.resolve(node).unwrap();
+        self.content += node;
         self.content += "\"";
     }
 

@@ -40,24 +40,25 @@ mod lexer_tests {
         string_interner
     );
 
-    lexer_test!(
-        comment,
-        "//test comment",
-        Comment(string_interner.get_or_intern("test comment")),
-        string_interner
-    );
+    lexer_test!(comment, "//test comment", Comment, string_interner);
 
     lexer_test!(
         docstring1,
         "///test comment",
-        DocstringComment(false, string_interner.get_or_intern("test comment")),
+        DocstringComment {
+            global: false,
+            content: "test comment".into()
+        },
         string_interner
     );
 
     lexer_test!(
         docstring2,
         "//!test comment",
-        DocstringComment(true, string_interner.get_or_intern("test comment")),
+        DocstringComment {
+            global: true,
+            content: "test comment".into()
+        },
         string_interner
     );
 
@@ -70,7 +71,7 @@ mod lexer_tests {
     lexer_test!(
         string,
         "\"test\"",
-        String(string_interner.get_or_intern("test")),
+        String("test".into()),
         string_interner
     );
 

@@ -4,7 +4,7 @@ pub mod precedence;
 pub mod token;
 pub mod visitor;
 
-use std::collections::HashMap;
+use std::{collections::HashMap, sync::Arc};
 
 use location::{Span, WithSpan};
 use string_interner::DefaultSymbol;
@@ -20,7 +20,7 @@ pub struct ProgramUnit {
     pub items: Items,
 }
 
-pub type Docstring = Vec<DefaultSymbol>;
+pub type Docstring = Vec<Arc<str>>;
 
 pub type Items = Vec<(Docstring, Item)>;
 
@@ -272,7 +272,7 @@ pub type Expression = WithSpan<Box<RawExpression>>;
 
 #[derive(Debug, PartialEq)]
 pub enum RawExpression {
-    String(DefaultSymbol),
+    String(Arc<str>),
     Int(u64),
     Float(f64),
     Imag(f64),

@@ -135,7 +135,7 @@ impl<'c> Parser<'c> {
                 Ok(Box::new(RawExpression::Imag(value)).with_span(span))
             }
             String(s) => {
-                let value = s.to_owned();
+                let value = s.clone();
                 let span = self.current.span;
 
                 self.advance()?; // string

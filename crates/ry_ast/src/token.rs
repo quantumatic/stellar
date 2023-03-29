@@ -4,7 +4,7 @@
 use derive_more::Display;
 use num_traits::ToPrimitive;
 use phf::phf_map;
-use std::mem::discriminant;
+use std::{mem::discriminant, sync::Arc};
 use string_interner::DefaultSymbol;
 use thiserror::Error;
 
@@ -78,7 +78,7 @@ pub enum RawToken {
     #[display(fmt = "identifier")]
     Identifier(DefaultSymbol),
     #[display(fmt = "string literal")]
-    String(DefaultSymbol),
+    String(Arc<str>),
     #[display(fmt = "integer literal")]
     Int(u64),
     #[display(fmt = "float literal")]
@@ -231,19 +231,19 @@ pub enum RawToken {
     #[display(fmt = "`@`")]
     AtSign,
 
-    /// [`bool`] here is either the docstring is declared for the whole module
+    /// [`global`] here is either the docstring is declared for the whole module
     /// or only for a given item, enum variant or trait method.
     ///
-    /// [`DefaultSymbol`] corresponds to the contents of the docstring but
+    /// [`content`] corresponds to the contents of the docstring but
     /// without first 3 characters which are:
     /// - two initial slashes - `//`
     /// - last character - either `/` or `!`
     #[display(fmt = "docstring")]
-    DocstringComment(bool, DefaultSymbol),
+    DocstringComment { global: bool, content: Arc<str> },
 
     /// Corresponds to any comment that is not a docstring.
     #[display(fmt = "comment")]
-    Comment(DefaultSymbol),
+    Comment,
 
     #[default]
     #[display(fmt = "end of file")]

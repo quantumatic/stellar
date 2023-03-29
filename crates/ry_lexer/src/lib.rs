@@ -329,11 +329,8 @@ impl<'a> Lexer<'a> {
         self.advance(); // '"'
 
         Some(
-            String(
-                self.string_interner
-                    .get_or_intern(&self.contents[start_location + 1..self.location - 1]),
-            )
-            .with_span(start_location..self.location),
+            String(self.contents[start_location + 1..self.location - 1].into())
+                .with_span(start_location..self.location),
         )
     }
 
@@ -373,12 +370,9 @@ impl<'a> Lexer<'a> {
         let start_location = self.location - 1;
         self.advance(); // `/`
 
-        let content = self.advance_while(start_location + 2, |current, _| (current != '\n'));
+        self.advance_while(start_location + 2, |current, _| (current != '\n'));
 
-        Some(
-            Comment(self.string_interner.get_or_intern(content))
-                .with_span(start_location..self.location),
-        )
+        Some(Comment.with_span(start_location..self.location))
     }
 
     /// In this case [`bool`] is true when docstring is describing
@@ -393,8 +387,11 @@ impl<'a> Lexer<'a> {
         let content = self.advance_while(start_location + 3, |current, _| (current != '\n'));
 
         Some(
-            DocstringComment(global, self.string_interner.get_or_intern(&content))
-                .with_span(start_location..self.location),
+            DocstringComment {
+                global,
+                content: content.into(),
+            }
+            .with_span(start_location..self.location),
         )
     }
 
@@ -450,8 +447,8 @@ impl<'a> Lexer<'a> {
         loop {
             let t = self.next();
             match t.as_ref().unwrap().value {
-                DocstringComment(..) => {}
-                Comment(..) => {}
+                DocstringComment { .. } => {}
+                Comment => {}
                 _ => {
                     return t;
                 }
@@ -463,7 +460,7 @@ impl<'a> Lexer<'a> {
         loop {
             let t = self.next();
             match t.as_ref().unwrap().value {
-                Comment(..) => {}
+                Comment => {}
                 _ => {
                     return t;
                 }
