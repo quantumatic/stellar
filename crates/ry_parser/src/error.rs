@@ -1,5 +1,5 @@
 use codespan_reporting::diagnostic::{Diagnostic, Label};
-use ry_ast::{location::*, token::*};
+use ry_ast::{span::*, token::*};
 use ry_report::Reporter;
 use thiserror::Error;
 
@@ -18,11 +18,11 @@ pub enum ParserError {
 impl<'source> Reporter<'source> for ParserError {
     fn build_diagnostic(&self, file_id: usize) -> Diagnostic<usize> {
         match self {
-            Self::ErrorToken(t) => Diagnostic::error()
+            Self::ErrorToken(token) => Diagnostic::error()
                 .with_message("scanning error occured")
                 .with_code("E000")
                 .with_labels(vec![
-                    Label::primary(file_id, t.span).with_message(t.value.to_string())
+                    Label::primary(file_id, token.span()).with_message(token.value().to_string())
                 ]),
             Self::UnexpectedToken(got, expected, node_name) => {
                 let mut label_message = format!("expected {expected}");
@@ -30,10 +30,10 @@ impl<'source> Reporter<'source> for ParserError {
                 label_message.push_str(format!(" for {node_name}").as_str());
 
                 Diagnostic::error()
-                    .with_message(format!("unexpected {}", got.value))
+                    .with_message(format!("unexpected {}", got.unwrap()))
                     .with_code("E001")
                     .with_labels(vec![
-                        Label::primary(file_id, got.span).with_message(label_message)
+                        Label::primary(file_id, got.span()).with_message(label_message)
                     ])
             }
         }

@@ -1,8 +1,15 @@
 use crate::{error::ParserError, macros::*, Parser, ParserResult};
-use ry_ast::{location::Span, token::RawToken::*, *};
+use ry_ast::{
+    span::{Span, WithSpannable},
+    token::RawToken::*,
+    *,
+};
 
 impl<'c> Parser<'c> {
-    pub(crate) fn parse_trait_declaration(&mut self, public: Option<Span>) -> ParserResult<Item> {
+    pub(crate) fn parse_trait_declaration(
+        &mut self,
+        visibility: Option<Span>,
+    ) -> ParserResult<Item> {
         self.advance()?;
 
         let name = consume_ident!(self, "trait name in trait declaration");
@@ -29,7 +36,7 @@ impl<'c> Parser<'c> {
     pub(crate) fn parse_trait_methods(&mut self) -> ParserResult<Vec<(Docstring, TraitMethod)>> {
         let mut definitions = vec![];
 
-        while !self.next.value.is(CloseBrace) {
+        while !self.next.unwrap().is(CloseBrace) {
             definitions.push((
                 self.consume_non_module_docstring()?,
                 self.parse_trait_method()?,
@@ -42,9 +49,9 @@ impl<'c> Parser<'c> {
     fn parse_trait_method(&mut self) -> ParserResult<TraitMethod> {
         let mut public = None;
 
-        if self.next.value.is(Pub) {
+        if self.next.unwrap().is(Pub) {
             self.advance()?;
-            public = Some(self.current.span);
+            public = Some(self.current.span());
         }
 
         consume!(self, Fun, "trait method");
@@ -62,10 +69,7 @@ impl<'c> Parser<'c> {
 
         let mut return_type = None;
 
-        if !self.next.value.is(Semicolon)
-            && !self.next.value.is(OpenBrace)
-            && !self.next.value.is(Where)
-        {
+        if !self.next.unwrap().is_one_of(&[Semicolon, OpenBrace, Where]) {
             return_type = Some(self.parse_type()?);
         }
 
@@ -73,7 +77,7 @@ impl<'c> Parser<'c> {
 
         let r#where = self.parse_where_clause()?;
 
-        if self.next.value.is(OpenBrace) {
+        if self.next.unwrap().is(OpenBrace) {
             body = Some(self.parse_statements_block(true)?);
         } else {
             self.advance_with_docstring()?; // `;`

@@ -8,7 +8,7 @@ use std::{mem::discriminant, sync::Arc};
 use string_interner::DefaultSymbol;
 use thiserror::Error;
 
-use crate::{location::WithSpan, precedence::Precedence};
+use crate::{precedence::Precedence, span::WithSpan};
 
 /// Represents error that lexer can fail with.
 #[derive(Error, Copy, Clone, Debug, PartialEq, Eq)]

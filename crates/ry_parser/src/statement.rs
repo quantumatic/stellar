@@ -1,6 +1,6 @@
 use crate::{error::ParserError, macros::*, Parser, ParserResult};
 use num_traits::ToPrimitive;
-use ry_ast::{precedence::Precedence, token::RawToken::*, *};
+use ry_ast::{precedence::Precedence, span::WithSpannable, token::RawToken::*, *};
 use std::ops::Deref;
 
 impl<'c> Parser<'c> {
@@ -12,7 +12,7 @@ impl<'c> Parser<'c> {
 
         let mut stmts = vec![];
 
-        while !self.next.value.is(CloseBrace) {
+        while !self.next.unwrap().is(CloseBrace) {
             let (stmt, last) = self.parse_statement()?;
 
             stmts.push(stmt);
@@ -35,7 +35,7 @@ impl<'c> Parser<'c> {
         let mut last_statement_in_block = false;
         let mut must_have_semicolon_at_the_end = true;
 
-        let statement = match self.next.value {
+        let statement = match self.next.unwrap() {
             Return => {
                 self.advance()?; // `return`
 
@@ -55,8 +55,8 @@ impl<'c> Parser<'c> {
 
                 let mut r#mut = None;
 
-                if self.next.value.is(Mut) {
-                    r#mut = Some(self.current.span);
+                if self.next.unwrap().is(Mut) {
+                    r#mut = Some(self.current.span());
 
                     self.advance()?; // `mut`
                 }
@@ -65,7 +65,7 @@ impl<'c> Parser<'c> {
 
                 let mut r#type = None;
 
-                if !self.next.value.is(Assign) {
+                if !self.next.unwrap().is(Assign) {
                     r#type = Some(self.parse_type()?);
                 }
 
@@ -79,9 +79,9 @@ impl<'c> Parser<'c> {
                 let expression = self.parse_expression(Precedence::Lowest.to_i8().unwrap())?;
 
                 must_have_semicolon_at_the_end =
-                    expression.value.deref().must_have_semicolon_at_the_end();
+                    expression.unwrap().deref().must_have_semicolon_at_the_end();
 
-                if !self.next.value.is(Semicolon) && must_have_semicolon_at_the_end {
+                if !self.next.unwrap().is(Semicolon) && must_have_semicolon_at_the_end {
                     last_statement_in_block = true;
                 }
 

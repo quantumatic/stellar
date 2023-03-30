@@ -1,4 +1,4 @@
-use ry_ast::{location::*, token::RawToken::*, token::*, WithSpannable};
+use ry_ast::{span::*, token::RawToken::*, token::*};
 use std::string::String;
 
 use crate::{IterElem, Lexer};

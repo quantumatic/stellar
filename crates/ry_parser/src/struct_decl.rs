@@ -1,8 +1,15 @@
 use crate::{error::ParserError, macros::*, Parser, ParserResult};
-use ry_ast::{location::Span, token::RawToken::*, *};
+use ry_ast::{
+    span::{Span, WithSpannable},
+    token::RawToken::*,
+    *,
+};
 
 impl<'c> Parser<'c> {
-    pub(crate) fn parse_struct_declaration(&mut self, public: Option<Span>) -> ParserResult<Item> {
+    pub(crate) fn parse_struct_declaration(
+        &mut self,
+        visiblity: Option<Span>,
+    ) -> ParserResult<Item> {
         self.advance()?;
 
         let name = consume_ident!(self, "struct name in struct declaration");
@@ -30,19 +37,19 @@ impl<'c> Parser<'c> {
         let mut public = None;
         let mut r#mut = None;
 
-        if self.next.value.is(Mut) {
+        if self.next.unwrap().is(Mut) {
             self.advance()?;
-            r#mut = Some(self.current.span);
+            r#mut = Some(self.current.span());
         }
 
-        if self.next.value.is(Pub) {
+        if self.next.unwrap().is(Pub) {
             self.advance()?;
-            public = Some(self.current.span);
+            public = Some(self.current.span());
         }
 
-        if self.next.value.is(Mut) {
+        if self.next.unwrap().is(Mut) {
             self.advance()?;
-            r#mut = Some(self.current.span);
+            r#mut = Some(self.current.span());
         }
 
         let name = consume_ident!(self, "struct member name in struct definition");
@@ -62,7 +69,7 @@ impl<'c> Parser<'c> {
     fn parse_struct_members(&mut self) -> ParserResult<Vec<(Docstring, StructMemberDef)>> {
         let mut members = vec![];
 
-        while !self.next.value.is(CloseBrace) {
+        while !self.next.unwrap().is(CloseBrace) {
             members.push((
                 self.consume_non_module_docstring()?,
                 self.parse_struct_member()?,

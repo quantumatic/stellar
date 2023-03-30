@@ -4,6 +4,7 @@
 //! code and produces an Abstract Syntax Tree (AST) that represents the parsed code.
 use error::ParserError;
 use ry_ast::{
+    span::WithSpannable,
     token::{RawToken::*, Token},
     *,
 };
@@ -50,8 +51,8 @@ impl<'a> Parser<'a> {
     /// Checks if the current token being parsed is invalid, and returns
     /// an error if so.
     fn check_scanning_error_for_current_token(&mut self) -> ParserResult<()> {
-        if let Invalid(e) = self.current.value {
-            Err(ParserError::ErrorToken(e.with_span(self.current.span)))
+        if let Invalid(e) = self.current.unwrap() {
+            Err(ParserError::ErrorToken(e.with_span(self.current.span())))
         } else {
             Ok(())
         }
@@ -60,8 +61,8 @@ impl<'a> Parser<'a> {
     /// Checks if the next token being parsed is invalid, and returns
     /// an error if so.
     fn check_scanning_error_for_next_token(&mut self) -> ParserResult<()> {
-        if let Invalid(e) = self.next.value {
-            Err(ParserError::ErrorToken(e.with_span(self.next.span)))
+        if let Invalid(e) = self.next.unwrap() {
+            Err(ParserError::ErrorToken(e.with_span(self.next.span())))
         } else {
             Ok(())
         }
@@ -96,11 +97,11 @@ impl<'a> Parser<'a> {
         let (mut module_docstring, mut local_docstring) = (vec![], vec![]);
 
         loop {
-            if let DocstringComment { global, content } = &self.next.value {
-                if *global {
-                    module_docstring.push(content.clone());
+            if let DocstringComment { global, content } = self.next.unwrap() {
+                if global {
+                    module_docstring.push(content);
                 } else {
-                    local_docstring.push(content.clone());
+                    local_docstring.push(content);
                 }
             } else {
                 return Ok((module_docstring, local_docstring));
@@ -117,9 +118,9 @@ impl<'a> Parser<'a> {
         let mut result = vec![];
 
         loop {
-            if let DocstringComment { global, content } = &self.next.value {
+            if let DocstringComment { global, content } = self.next.unwrap() {
                 if !global {
-                    result.push(content.clone());
+                    result.push(content);
                 }
             } else {
                 return Ok(result);
@@ -149,33 +150,29 @@ impl<'a> Parser<'a> {
         })
     }
 
-    fn parse_items(
-        &mut self,
-        mut local_docstring: Docstring,
-    ) -> ParserResult<Vec<(Docstring, Item)>> {
+    fn parse_items(&mut self, mut local_docstring: Docstring) -> ParserResult<Items> {
         let mut items = vec![];
 
         loop {
-            items.push((
-                local_docstring,
-                match self.next.value {
+            items.push(
+                match self.next.unwrap() {
                     Fun => self.parse_function_declaration(None)?,
                     Struct => self.parse_struct_declaration(None)?,
                     Trait => self.parse_trait_declaration(None)?,
                     Enum => self.parse_enum_declaration(None)?,
                     Impl => self.parse_impl(None)?,
                     Pub => {
-                        let pub_span = self.next.span;
+                        let visiblity = self.next.span();
 
                         self.check_scanning_error_for_next_token()?;
                         self.advance()?;
 
-                        match self.next.value {
-                            Fun => self.parse_function_declaration(Some(pub_span))?,
-                            Struct => self.parse_struct_declaration(Some(pub_span))?,
-                            Trait => self.parse_trait_declaration(Some(pub_span))?,
-                            Enum => self.parse_enum_declaration(Some(pub_span))?,
-                            Impl => self.parse_impl(Some(pub_span))?,
+                        match self.next.span() {
+                            Fun => self.parse_function_declaration(Some(visiblity))?,
+                            Struct => self.parse_struct_declaration(Some(visiblity))?,
+                            Trait => self.parse_trait_declaration(Some(visiblity))?,
+                            Enum => self.parse_enum_declaration(Some(visiblity))?,
+                            Impl => self.parse_impl(Some(visiblity))?,
                             _ => {
                                 return Err(ParserError::UnexpectedToken(
                                     self.current.clone(),
@@ -200,8 +197,9 @@ impl<'a> Parser<'a> {
                         self.advance()?;
                         return err;
                     }
-                },
-            ));
+                }
+                .with_docstring(local_docstring),
+            );
 
             local_docstring = self.consume_non_module_docstring()?;
         }

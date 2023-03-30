@@ -9,5 +9,4 @@ num-derive = "0.3.3"
 phf = {version = "0.11.1", features = ["macros"]}
 derive_more = "0.99.17"
 thiserror = "1.0.40"
-ry_proc_macros = {path = "../ry_proc_macros"}
 string-interner = "0.14.0"

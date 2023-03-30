@@ -1,11 +1,16 @@
 use crate::{error::ParserError, macros::*, Parser, ParserResult};
 use num_traits::ToPrimitive;
-use ry_ast::{location::Span, precedence::Precedence, token::RawToken::*, *};
+use ry_ast::{
+    precedence::Precedence,
+    span::{Span, WithSpannable},
+    token::RawToken::*,
+    *,
+};
 
 impl<'c> Parser<'c> {
     pub(crate) fn parse_function_declaration(
         &mut self,
-        public: Option<Span>,
+        visiblity: Option<Span>,
     ) -> ParserResult<Item> {
         self.advance()?;
 
@@ -22,7 +27,7 @@ impl<'c> Parser<'c> {
 
         let mut return_type = None;
 
-        if !self.next.value.is(OpenBrace) && !self.next.value.is(Where) {
+        if !self.next.unwrap().is_one_of(&[OpenBrace, Where]) {
             return_type = Some(self.parse_type()?);
         }
 
@@ -50,7 +55,7 @@ impl<'c> Parser<'c> {
 
         let mut default_value = None;
 
-        if self.next.value.is(Assign) {
+        if self.next.unwrap().is(Assign) {
             self.advance()?;
 
             default_value = Some(self.parse_expression(Precedence::Lowest.to_i8().unwrap())?);

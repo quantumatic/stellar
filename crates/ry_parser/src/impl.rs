@@ -1,5 +1,5 @@
 use crate::{error::ParserError, macros::*, Parser, ParserResult};
-use ry_ast::{location::Span, token::RawToken::*, Item};
+use ry_ast::{span::Span, token::RawToken::*, Item};
 
 impl<'c> Parser<'c> {
     pub(crate) fn parse_impl(&mut self, public: Option<Span>) -> ParserResult<Item> {
@@ -10,7 +10,7 @@ impl<'c> Parser<'c> {
         let mut r#type = self.parse_type()?;
         let mut r#trait = None;
 
-        if self.next.value.is(For) {
+        if self.next.unwrap().is(For) {
             self.advance()?; // `for`
 
             r#trait = Some(r#type);

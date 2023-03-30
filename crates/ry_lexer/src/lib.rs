@@ -48,7 +48,7 @@
 //! assert_eq!(lexer.next().unwrap().value, Invalid(LexerError::UnexpectedChar('#')));
 //! ```
 
-use ry_ast::{location::*, token::RawToken::*, token::*, WithSpannable};
+use ry_ast::{span::*, token::RawToken::*, token::*};
 use std::{char::from_u32, str::Chars, string::String};
 
 use string_interner::StringInterner;
@@ -446,7 +446,7 @@ impl<'a> Lexer<'a> {
     pub fn next_no_docstrings_and_comments(&mut self) -> IterElem {
         loop {
             let t = self.next();
-            match t.as_ref().unwrap().value {
+            match t.as_ref().unwrap().unwrap() {
                 DocstringComment { .. } => {}
                 Comment => {}
                 _ => {
@@ -459,7 +459,7 @@ impl<'a> Lexer<'a> {
     pub fn next_no_comments(&mut self) -> IterElem {
         loop {
             let t = self.next();
-            match t.as_ref().unwrap().value {
+            match t.as_ref().unwrap().unwrap() {
                 Comment => {}
                 _ => {
                     return t;
