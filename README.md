@@ -7,7 +7,7 @@ An open source programming language for web development with expressive type sys
 
 Example of hello world program:
 ```ry
-import std::io::println;
+import std.io.println;
 
 pub fun main() {
     println("hello world");
@@ -29,14 +29,14 @@ pub fun div[T of Numeric](a T, b T) T? {
 We use result types as well with elvis `?:` and postfix `?` and `!` operators!
 
 ```ry
-import std::fs::File;
+import std.fs.File;
 
 pub fun main() {
-    var a = File::open("test.txt")?; // returns (Unit type in this case) if error will occur
+    var a = new File("test.txt")?; // returns (Unit type in this case) if error will occur
 
-    File::open("test2.txt")!; // panics if error will occur
+    new File("test2.txt")!; // panics if error will occur
 
-    var num = "27".parse.[i32]() ?: 0; // if error will occur, num will be set to 0
+    var num = "27".parse[i32]() ?: 0; // if error will occur, num will be set to 0
 }
 ```
 
