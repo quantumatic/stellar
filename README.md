@@ -17,7 +17,7 @@ pub fun main() {
 No nulls, we use option types!
 
 ```ry
-pub fun div[T of Numeric](a T, b T) T? {
+pub fun div[T: Numeric](a: T, b: T): T? {
     if b == 0 {
         None
     } else {
@@ -45,8 +45,8 @@ We use traits like in Rust!
 ```ry
 // example of auto trait
 impl[T] Test for T {} 
-impl[T] !Test for T? {} // trait will NOT be implemented for options
-impl[T] !Test for T where T of Default {} // trait will NOT be implemented for types implementing Default 
+impl[T] Negative[Test] for T? {} // trait will NOT be implemented for options
+impl[T] Negative[Test] for T where T: Default {} // trait will NOT be implemented for types implementing Default 
 ```
 
 Immutability by default!
@@ -63,6 +63,13 @@ fun main() {
     test(&mut b); // ok
     b += 2; // ok
 }
+```
+
+Sum types and general traits as well as type aliases!
+
+```ry
+pub type A = Sum[B, C];
+pub type E = General[D, F];
 ```
 
 # Builds
