@@ -162,7 +162,7 @@ impl<'c> Parser<'c> {
                 let left = self.next.clone();
                 self.advance()?; // left
 
-                let right = self.parse_expression(Precedence::PrefixOrPostfix.to_i8().unwrap())?;
+                let right = self.parse_expression(Precedence::Unary.to_i8().unwrap())?;
                 let span = left.span().start()..right.span().end();
 
                 Ok(Box::<RawExpression>::new(UnaryExpression::new(right, left, false).into()).with_span(

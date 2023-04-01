@@ -309,7 +309,7 @@ impl RawToken {
             Self::LessThan | Self::LessThanOrEq | Self::GreaterThan | Self::GreaterThanOrEq => {
                 Precedence::LessOrGreater
             }
-            Self::OpenBracket => Precedence::Generics,
+            Self::OpenBracket => Precedence::TypeAnnotations,
             Self::LeftShift | Self::RightShift => Precedence::LeftRightShift,
             Self::Plus | Self::Minus => Precedence::Sum,
             Self::Asterisk | Self::Slash => Precedence::Product,
@@ -322,7 +322,7 @@ impl RawToken {
             | Self::MinusMinus
             | Self::Bang
             | Self::QuestionMark
-            | Self::BangBang => Precedence::PrefixOrPostfix,
+            | Self::BangBang => Precedence::Unary,
             Self::As => Precedence::As,
             _ => Precedence::Lowest,
         }

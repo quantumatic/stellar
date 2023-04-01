@@ -31,9 +31,9 @@ pub enum Precedence {
     // a % b
     Mod,
     // !a | a?
-    PrefixOrPostfix,
-    // a[i32]()
-    Generics,
+    Unary,
+    // a[i32]
+    TypeAnnotations,
     // ?:
     Elvis,
     // a()

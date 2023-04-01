@@ -1,7 +1,10 @@
+//! Defines `Expression` AST Node, as defined by the [spec].
+use super::Statement;
 use crate::expression::Expression;
 
-use super::Statement;
-
+/// The `Expression` AST Node.
+///
+/// See the [module level documentation][self].
 #[derive(Debug, PartialEq)]
 pub struct ExpressionStatement {
     has_semicolon: bool,
