@@ -1,8 +1,12 @@
 use crate::{error::ParserError, macros::*, Parser, ParserResult};
 use ry_ast::{
+    declaration::{
+        docstring::{WithDocstring, WithDocstringable},
+        r#struct::{StructDeclarationItem, StructMemberDeclaration},
+        Item,
+    },
     span::{Span, WithSpannable},
     token::RawToken::*,
-    *,
 };
 
 impl<'c> Parser<'c> {
@@ -14,7 +18,7 @@ impl<'c> Parser<'c> {
 
         let name = consume_ident!(self, "struct name in struct declaration");
 
-        let generic_annotations = self.parse_generic_annotations()?;
+        let generics = self.parse_generics()?;
 
         let r#where = self.parse_where_clause()?;
 
@@ -24,56 +28,51 @@ impl<'c> Parser<'c> {
 
         consume!(with_docstring self, CloseBrace, "struct declaration");
 
-        Ok(Item::StructDecl(StructDecl {
-            generic_annotations,
-            public,
-            name,
-            members,
-            r#where,
-        }))
+        Ok(StructDeclarationItem::new(visiblity, name, generics, r#where, members).into())
     }
 
-    fn parse_struct_member(&mut self) -> ParserResult<StructMemberDef> {
-        let mut public = None;
-        let mut r#mut = None;
+    fn parse_struct_member(&mut self) -> ParserResult<StructMemberDeclaration> {
+        let mut visibility = None;
+        let mut mutability = None;
 
         if self.next.unwrap().is(Mut) {
             self.advance()?;
-            r#mut = Some(self.current.span());
+            mutability = Some(self.current.span());
         }
 
         if self.next.unwrap().is(Pub) {
             self.advance()?;
-            public = Some(self.current.span());
+            visibility = Some(self.current.span());
         }
 
         if self.next.unwrap().is(Mut) {
             self.advance()?;
-            r#mut = Some(self.current.span());
+            mutability = Some(self.current.span());
         }
 
         let name = consume_ident!(self, "struct member name in struct definition");
+
+        consume!(self, Colon, "struct member definition");
 
         let r#type = self.parse_type()?;
 
         consume!(self, Semicolon, "struct member definition");
 
-        Ok(StructMemberDef {
-            public,
-            r#mut,
-            name,
-            r#type,
-        })
+        Ok(StructMemberDeclaration::new(
+            visibility, mutability, name, r#type,
+        ))
     }
 
-    fn parse_struct_members(&mut self) -> ParserResult<Vec<(Docstring, StructMemberDef)>> {
+    fn parse_struct_members(
+        &mut self,
+    ) -> ParserResult<Vec<WithDocstring<StructMemberDeclaration>>> {
         let mut members = vec![];
 
         while !self.next.unwrap().is(CloseBrace) {
-            members.push((
-                self.consume_non_module_docstring()?,
-                self.parse_struct_member()?,
-            ));
+            let docstring = self.consume_non_module_docstring()?;
+            let member = self.parse_struct_member()?;
+
+            members.push(member.with_docstring(docstring));
         }
 
         Ok(members)
@@ -88,6 +87,6 @@ mod struct_tests {
     parser_test!(empty_struct, "struct test {}");
     parser_test!(
         r#struct,
-        "struct test[T, M] { pub mut a i32; mut pub b T; pub c T; d M; }"
+        "struct test[T, M] { pub mut a: i32; mut pub b: T; pub c: T; d: M; }"
     );
 }

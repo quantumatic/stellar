@@ -39,8 +39,10 @@ impl<'c> Parser<'c> {
 
                     let right = self.parse_expression(precedence)?;
 
+                    let span = left.span().start()..self.current.span().end();
+
                     Box::<RawExpression>::new(BinaryExpression::new(left, right, op).into())
-                        .with_span(left.span().start()..self.current.span().end())
+                        .with_span(span)
                 }
                 OpenParent => {
                     self.advance()?; // `(`
@@ -51,16 +53,20 @@ impl<'c> Parser<'c> {
 
                     self.advance()?; // `)`
 
+                    let span = left.span().start()..self.current.span().end();
+
                     Box::<RawExpression>::new(CallExpression::new(left, arguments).into())
-                        .with_span(left.span().start()..self.current.span().end())
+                        .with_span(span)
                 }
                 Dot => {
                     self.advance()?; // `.`
 
                     let name = consume_ident!(self, "property");
 
+                    let span = left.span().start()..name.span().end();
+
                     Box::<RawExpression>::new(PropertyAccessExpression::new(left, name).into())
-                        .with_span(left.span().start()..name.span().end())
+                        .with_span(span)
                 }
                 OpenBracket => {
                     self.advance()?; // `[`
@@ -70,30 +76,34 @@ impl<'c> Parser<'c> {
                             self.parse_type()
                         });
 
-                    let end = self.current.span().end();
+                    let span = left.span().start()..self.current.span().end();
 
                     self.advance()?;
 
                     Box::<RawExpression>::new(
                         TypeAnnotationsExpression::new(left, type_annotations).into(),
                     )
-                    .with_span(left.span().start()..end)
+                    .with_span(span)
                 }
                 postfixop_pattern!() => {
                     self.advance()?; // `?`
 
                     let right = self.current.clone();
 
+                    let span = left.span().start()..right.span().end();
+
                     Box::<RawExpression>::new(UnaryExpression::new(left, right, true).into())
-                        .with_span(left.span().start()..right.span().end())
+                        .with_span(span)
                 }
                 As => {
                     self.advance()?; // `as`
 
                     let r#type = self.parse_type()?;
 
+                    let span = left.span().start()..self.current.span().end();
+
                     Box::<RawExpression>::new(AsExpression::new(left, r#type).into())
-                        .with_span(left.span().start()..self.current.span().end())
+                        .with_span(span)
                 }
                 _ => break,
             };
@@ -153,9 +163,10 @@ impl<'c> Parser<'c> {
                 self.advance()?; // left
 
                 let right = self.parse_expression(Precedence::PrefixOrPostfix.to_i8().unwrap())?;
+                let span = left.span().start()..right.span().end();
 
                 Ok(Box::<RawExpression>::new(UnaryExpression::new(right, left, false).into()).with_span(
-                    left.span().start()..right.span().end()))
+                    span))
             }
             OpenParent => {
                 self.advance()?; // `(`
@@ -245,19 +256,22 @@ mod expression_tests {
     use crate::{macros::parser_test, Parser};
     use string_interner::StringInterner;
 
-    parser_test!(literal1, "fun test() i32 { 3 }");
-    parser_test!(literal2, "fun test() string { \"hello\" }");
-    parser_test!(literal3, "fun test() bool { true }");
-    parser_test!(binary1, "fun test() i32 { 2 + 3 }");
-    parser_test!(binary2, "fun test() f32 { 1 + 2 / 3 + 3 * 4 }");
-    parser_test!(r#as, "fun test() f32 { 1 as f32 }");
-    parser_test!(call, "fun test() f32 { l(2 + 3).a() }");
-    parser_test!(call_with_generics, "fun test() f32 { l[i32](2 + 3).a[]() }");
+    parser_test!(literal1, "fun test(): i32 { 3 }");
+    parser_test!(literal2, "fun test(): string { \"hello\" }");
+    parser_test!(literal3, "fun test(): bool { true }");
+    parser_test!(binary1, "fun test(): i32 { 2 + 3 }");
+    parser_test!(binary2, "fun test(): f32 { 1 + 2 / 3 + 3 * 4 }");
+    parser_test!(r#as, "fun test(): f32 { 1 as f32 }");
+    parser_test!(call, "fun test(): f32 { l(2 + 3).a() }");
+    parser_test!(
+        call_with_generics,
+        "fun test(): f32 { l[i32](2 + 3).a[]() }"
+    );
     parser_test!(
         ifelse,
-        "fun test() f32 { if false { 2.3 } else if false { 5 as f32 } else { 2.0 } }"
+        "fun test(): f32 { if false { 2.3 } else if false { 5 as f32 } else { 2.0 } }"
     );
     parser_test!(r#while, "fun test() { while true { print(\"hello\"); } }");
-    parser_test!(postfix, "fun test() i32? { Some(a() ?: 0 + b()?) }");
-    parser_test!(parent, "fun test() i32 { ((b + c) * d) }");
+    parser_test!(postfix, "fun test(): i32? { Some(a() ?: 0 + b()?) }");
+    parser_test!(parent, "fun test(): i32 { ((b + c) * d) }");
 }

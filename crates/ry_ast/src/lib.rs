@@ -25,6 +25,11 @@ pub type Items = Vec<WithDocstring<Item>>;
 
 impl ProgramUnit {
     #[inline]
+    pub const fn new(docstring: Docstring, items: Items) -> Self {
+        Self { docstring, items }
+    }
+
+    #[inline]
     pub const fn docstring(&self) -> &Docstring {
         &self.docstring
     }

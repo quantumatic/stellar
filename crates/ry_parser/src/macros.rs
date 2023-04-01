@@ -32,8 +32,11 @@ macro_rules! consume {
 macro_rules! consume_ident {
     ($p:ident, $for:expr) => {{
         if let Identifier(i) = $p.next.unwrap() {
+            let identifier = *i;
+
             $p.advance()?;
-            (*i).with_span($p.current.span())
+
+            identifier.with_span($p.current.span())
         } else {
             return Err(ParserError::UnexpectedToken(
                 $p.next.clone(),

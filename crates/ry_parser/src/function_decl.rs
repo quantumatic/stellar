@@ -1,22 +1,53 @@
 use crate::{error::ParserError, macros::*, Parser, ParserResult};
 use num_traits::ToPrimitive;
 use ry_ast::{
+    declaration::{
+        function::{Function, FunctionArgument, FunctionDeclaration, FunctionDefinition},
+        Item,
+    },
     precedence::Precedence,
-    span::{Span, WithSpannable},
+    span::WithSpannable,
     token::RawToken::*,
     *,
 };
 
 impl<'c> Parser<'c> {
+    pub(crate) fn parse_function_item(&mut self, visibility: Visibility) -> ParserResult<Item> {
+        Ok(self.parse_function(visibility)?.into())
+    }
+
+    pub(crate) fn parse_function(&mut self, visibility: Visibility) -> ParserResult<Function> {
+        let definition = self.parse_function_definition(visibility)?;
+
+        if self.next.unwrap().is(Semicolon) {
+            self.advance()?;
+
+            Ok(definition.into())
+        } else {
+            Ok(FunctionDeclaration::new(definition, self.parse_statements_block(true)?).into())
+        }
+    }
+
     pub(crate) fn parse_function_declaration(
         &mut self,
-        visiblity: Option<Span>,
-    ) -> ParserResult<Item> {
+        visibility: Visibility,
+    ) -> ParserResult<FunctionDeclaration> {
+        Ok(FunctionDeclaration::new(
+            self.parse_function_definition(visibility)?,
+            self.parse_statements_block(true)?,
+        )
+        .into())
+    }
+
+    fn parse_function_definition(
+        &mut self,
+        visibility: Visibility,
+    ) -> ParserResult<FunctionDefinition> {
         self.advance()?;
 
         let name = consume_ident!(self, "function name in function declaration");
 
-        let generic_annotations = self.parse_generic_annotations()?;
+        let generics = self.parse_generics()?;
 
         consume!(self, OpenParent, "function declaration");
 
@@ -25,31 +56,32 @@ impl<'c> Parser<'c> {
 
         self.advance()?;
 
+        dbg!(&self.next);
+
         let mut return_type = None;
 
-        if !self.next.unwrap().is_one_of(&[OpenBrace, Where]) {
+        if self.next.unwrap().is(Colon) {
+            self.advance()?; // `:`
+
             return_type = Some(self.parse_type()?);
         }
 
         let r#where = self.parse_where_clause()?;
 
-        let stmts = self.parse_statements_block(true)?;
-
-        Ok(Item::FunctionDecl(FunctionDecl {
-            def: FunctionDef {
-                name,
-                generic_annotations,
-                params: arguments,
-                public,
-                return_type,
-                r#where,
-            },
-            stmts,
-        }))
+        Ok(FunctionDefinition::new(
+            visibility,
+            name,
+            generics,
+            arguments,
+            return_type,
+            r#where,
+        ))
     }
 
-    pub(crate) fn parse_function_argument(&mut self) -> ParserResult<FunctionParam> {
+    pub(crate) fn parse_function_argument(&mut self) -> ParserResult<FunctionArgument> {
         let name = consume_ident!(self, "function argument name");
+
+        consume!(self, Colon, "function argument name");
 
         let r#type = self.parse_type()?;
 
@@ -61,11 +93,7 @@ impl<'c> Parser<'c> {
             default_value = Some(self.parse_expression(Precedence::Lowest.to_i8().unwrap())?);
         }
 
-        Ok(FunctionParam {
-            name,
-            r#type,
-            default_value,
-        })
+        Ok(FunctionArgument::new(name, r#type, default_value))
     }
 }
 
@@ -75,6 +103,6 @@ mod function_decl_tests {
     use string_interner::StringInterner;
 
     parser_test!(function1, "pub fun test() {}");
-    parser_test!(function2, "pub fun test[A](a A) A { a }");
-    parser_test!(function3, "fun unwrap[T, B of T?](a B) T { a.unwrap() }");
+    parser_test!(function2, "pub fun test[A](a: A): A { a }");
+    parser_test!(function3, "fun unwrap[T, B: T?](a: B): T { a.unwrap() }");
 }

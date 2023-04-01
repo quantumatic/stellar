@@ -9,7 +9,7 @@ use ry_ast::{
         where_clause::{WhereClause, WhereClauseUnit},
         RawType, Type,
     },
-    span::{Span, WithSpan, WithSpannable},
+    span::{WithSpan, WithSpannable},
     token::RawToken::*,
 };
 use string_interner::DefaultSymbol;
@@ -21,7 +21,7 @@ impl<'c> Parser<'c> {
         let first_ident = consume_ident!(self, "namespace member/namespace");
         name.push(*first_ident.unwrap());
 
-        let Span { start, mut end } = first_ident.span();
+        let (start, mut end) = (first_ident.span().start(), first_ident.span().end());
 
         while self.next.unwrap().is(Dot) {
             self.advance()?; // `.`
@@ -135,8 +135,8 @@ impl<'c> Parser<'c> {
 
                 let mut constraint = None;
 
-                if self.next.unwrap().is(Of) {
-                    self.advance()?; // `of`
+                if self.next.unwrap().is(Colon) {
+                    self.advance()?; // `:`
 
                     constraint = Some(self.parse_type()?);
                 }
@@ -162,7 +162,7 @@ impl<'c> Parser<'c> {
                 || {
                     let left = self.parse_type()?;
 
-                    consume!(self, Of, "where clause");
+                    consume!(self, Colon, "where clause");
 
                     let right = self.parse_type()?;
 
@@ -182,12 +182,12 @@ mod type_tests {
     use crate::{macros::parser_test, Parser};
     use string_interner::StringInterner;
 
-    parser_test!(primary_type1, "pub fun test() i32 {}");
+    parser_test!(primary_type1, "pub fun test(): i32 {}");
     parser_test!(
         primary_type2,
-        "pub fun div[T](a T, b T) Result[T, DivisionError] {}"
+        "pub fun div[T](a: T, b: T): Result[T, DivisionError] {}"
     );
-    parser_test!(array_type, "pub fun test(a [i32]) {}");
-    parser_test!(reference_type, "pub fun test(a &mut i32) i32 {}");
-    parser_test!(negative_trait_type, "pub fun test(a !Into[string]) {}");
+    parser_test!(array_type, "pub fun test(a: [i32]) {}");
+    parser_test!(reference_type, "pub fun test(a: &mut i32): i32 {}");
+    parser_test!(negative_trait_type, "pub fun test(a: Into[string]) {}");
 }

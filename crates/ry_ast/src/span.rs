@@ -29,12 +29,12 @@ impl Span {
     }
 
     #[inline]
-    pub const fn start(self) -> usize {
+    pub const fn start(&self) -> usize {
         self.start
     }
 
     #[inline]
-    pub const fn end(self) -> usize {
+    pub const fn end(&self) -> usize {
         self.end
     }
 }

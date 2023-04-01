@@ -1,11 +1,20 @@
 use crate::{error::ParserError, macros::*, Parser, ParserResult};
-use ry_ast::{span::Span, token::RawToken::*, declaration::Item};
+use ry_ast::{
+    declaration::{
+        docstring::{WithDocstring, WithDocstringable},
+        function::FunctionDeclaration,
+        r#impl::ImplItem,
+        Item,
+    },
+    token::RawToken::*,
+    Visibility,
+};
 
 impl<'c> Parser<'c> {
-    pub(crate) fn parse_impl(&mut self, public: Option<Span>) -> ParserResult<Item> {
+    pub(crate) fn parse_impl(&mut self, visibility: Visibility) -> ParserResult<Item> {
         self.advance()?;
 
-        let generic_annotations = self.parse_generic_annotations()?;
+        let generics = self.parse_generics()?;
 
         let mut r#type = self.parse_type()?;
         let mut r#trait = None;
@@ -21,18 +30,42 @@ impl<'c> Parser<'c> {
 
         self.advance()?; // '{'
 
-        let methods = self.parse_trait_methods()?;
+        let implementations = self.parse_associated_functions_implementations()?;
 
         consume!(with_docstring self, CloseBrace, "type implementation");
 
-        Ok(Item::Impl(ry_ast::Impl {
-            public,
-            global_generic_annotations: generic_annotations,
+        Ok(ImplItem::new(
+            visibility,
+            generics,
             r#type,
             r#trait,
-            methods,
             r#where,
-        }))
+            implementations,
+        )
+        .into())
+    }
+
+    pub(crate) fn parse_associated_functions_implementations(
+        &mut self,
+    ) -> ParserResult<Vec<WithDocstring<FunctionDeclaration>>> {
+        let mut associated_functions = vec![];
+
+        while !self.next.unwrap().is(CloseBrace) {
+            let docstring = self.consume_non_module_docstring()?;
+
+            let mut visibility = None;
+
+            if self.next.unwrap().is(Pub) {
+                visibility = Some(self.next.span())
+            }
+
+            associated_functions.push(
+                self.parse_function_declaration(visibility)?
+                    .with_docstring(docstring),
+            );
+        }
+
+        Ok(associated_functions)
     }
 }
 
@@ -42,9 +75,8 @@ mod impl_tests {
     use string_interner::StringInterner;
 
     parser_test!(impl1, "impl[T] NotOption for T {}");
-    parser_test!(impl2, "impl[T] !NotOption for T? {}");
     parser_test!(
-        impl3,
-        "impl[T] Into[M?] for Tuple[T, M] where M of Into[T] {}"
+        impl2,
+        "impl[T] Into[M?] for Tuple[T, M] where M: Into[T] {}"
     );
 }

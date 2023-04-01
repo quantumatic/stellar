@@ -27,8 +27,8 @@
 //! let mut string_interner = StringInterner::default();
 //! let mut lexer = Lexer::new("", &mut string_interner);
 //!
-//! assert_eq!(lexer.next().unwrap().value, EndOfFile);
-//! assert_eq!(lexer.next().unwrap().value, EndOfFile); // ok
+//! assert_eq!(lexer.next().unwrap().unwrap(), &EndOfFile);
+//! assert_eq!(lexer.next().unwrap().unwrap(), &EndOfFile); // ok
 //! ```
 //!
 //! Note: the Ry lexer makes use of the `string_interner` crate to perform string interning,
@@ -45,7 +45,7 @@
 //! let mut string_interner = StringInterner::default();
 //! let mut lexer = Lexer::new("#", &mut string_interner);
 //!
-//! assert_eq!(lexer.next().unwrap().value, Invalid(LexerError::UnexpectedChar('#')));
+//! assert_eq!(lexer.next().unwrap().unwrap(), &Invalid(LexerError::UnexpectedChar('#')));
 //! ```
 
 use ry_ast::{span::*, token::RawToken::*, token::*};

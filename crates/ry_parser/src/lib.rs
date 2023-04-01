@@ -4,7 +4,7 @@
 //! code and produces an Abstract Syntax Tree (AST) that represents the parsed code.
 use error::ParserError;
 use ry_ast::{
-    declaration::docstring::Docstring,
+    declaration::docstring::{Docstring, WithDocstringable},
     span::WithSpannable,
     token::{RawToken::*, Token},
     *,
@@ -100,9 +100,9 @@ impl<'a> Parser<'a> {
         loop {
             if let DocstringComment { global, content } = self.next.unwrap() {
                 if *global {
-                    module_docstring.push(*content);
+                    module_docstring.push(content.clone());
                 } else {
-                    local_docstring.push(*content);
+                    local_docstring.push(content.clone());
                 }
             } else {
                 return Ok((module_docstring, local_docstring));
@@ -121,7 +121,7 @@ impl<'a> Parser<'a> {
         loop {
             if let DocstringComment { global, content } = self.next.unwrap() {
                 if !global {
-                    result.push(*content);
+                    result.push(content.clone());
                 }
             } else {
                 return Ok(result);
@@ -145,10 +145,10 @@ impl<'a> Parser<'a> {
         self.check_scanning_error_for_current_token()?;
 
         let (module_docstring, fst_docstring) = self.consume_module_and_first_item_docstrings()?;
-        Ok(ProgramUnit {
-            docstring: module_docstring,
-            items: self.parse_items(fst_docstring)?,
-        })
+        Ok(ProgramUnit::new(
+            module_docstring,
+            self.parse_items(fst_docstring)?,
+        ))
     }
 
     fn parse_items(&mut self, mut local_docstring: Docstring) -> ParserResult<Items> {
@@ -157,7 +157,7 @@ impl<'a> Parser<'a> {
         loop {
             items.push(
                 match self.next.unwrap() {
-                    Fun => self.parse_function_declaration(None)?,
+                    Fun => self.parse_function_item(None)?,
                     Struct => self.parse_struct_declaration(None)?,
                     Trait => self.parse_trait_declaration(None)?,
                     Enum => self.parse_enum_declaration(None)?,
@@ -169,7 +169,7 @@ impl<'a> Parser<'a> {
                         self.advance()?;
 
                         match self.next.unwrap() {
-                            Fun => self.parse_function_declaration(Some(visiblity))?,
+                            Fun => self.parse_function_item(Some(visiblity))?,
                             Struct => self.parse_struct_declaration(Some(visiblity))?,
                             Trait => self.parse_trait_declaration(Some(visiblity))?,
                             Enum => self.parse_enum_declaration(Some(visiblity))?,

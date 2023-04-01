@@ -117,5 +117,5 @@ mod statement_tests {
         defer,
         "fun test() { var f = open(\"test\"); defer f.close(); }"
     );
-    parser_test!(r#return, "fun test() i32 { return 2; }");
+    parser_test!(r#return, "fun test(): i32 { return 2; }");
 }
