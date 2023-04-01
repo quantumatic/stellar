@@ -7,6 +7,11 @@ pub struct ArrayLiteralExpression {
 
 impl ArrayLiteralExpression {
     #[inline]
+    pub const fn new(literal: Vec<Expression>) -> Self {
+        Self { literal }
+    }
+
+    #[inline]
     pub const fn literal(&self) -> &Vec<Expression> {
         &self.literal
     }

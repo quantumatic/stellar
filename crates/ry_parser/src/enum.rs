@@ -1,8 +1,13 @@
 use crate::{error::ParserError, macros::*, Parser, ParserResult};
-use ry_ast::{span::*, token::RawToken::*, *};
+use ry_ast::{
+    declaration::{docstring::WithDocstringable, r#enum::EnumDeclarationItem, Item},
+    span::*,
+    token::RawToken::*,
+    Visibility,
+};
 
 impl<'c> Parser<'c> {
-    pub(crate) fn parse_enum_declaration(&mut self, visiblity: Option<Span>) -> ParserResult<Item> {
+    pub(crate) fn parse_enum_declaration(&mut self, visibility: Visibility) -> ParserResult<Item> {
         self.advance()?;
 
         let name = consume_ident!(self, "enum name in enum declaration");
@@ -19,17 +24,13 @@ impl<'c> Parser<'c> {
 
                 let variant = consume_ident!(self, "enum variant name");
 
-                Ok((doc, variant))
+                Ok(variant.with_docstring(doc))
             }
         );
 
         self.advance_with_docstring()?; // `}`
 
-        Ok(Item::EnumDecl(EnumDecl {
-            public,
-            name,
-            variants,
-        }))
+        Ok(EnumDeclarationItem::new(visibility, name, variants).into())
     }
 }
 

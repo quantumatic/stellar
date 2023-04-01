@@ -10,6 +10,11 @@ pub struct BinaryExpression {
 
 impl BinaryExpression {
     #[inline]
+    pub const fn new(left: Expression, right: Expression, op: Token) -> Self {
+        Self { left, right, op }
+    }
+
+    #[inline]
     pub const fn left(&self) -> &Expression {
         &self.left
     }

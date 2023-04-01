@@ -9,6 +9,11 @@ pub struct AsExpression {
 
 impl AsExpression {
     #[inline]
+    pub const fn new(left: Expression, right: Type) -> Self {
+        Self { left, right }
+    }
+
+    #[inline]
     pub const fn left(&self) -> &Expression {
         &self.left
     }

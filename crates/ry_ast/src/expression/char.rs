@@ -7,6 +7,11 @@ pub struct CharLiteralExpression {
 
 impl CharLiteralExpression {
     #[inline]
+    pub const fn new(literal: char) -> Self {
+        Self { literal }
+    }
+
+    #[inline]
     pub const fn literal(&self) -> char {
         self.literal
     }

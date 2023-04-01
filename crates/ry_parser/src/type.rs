@@ -1,8 +1,16 @@
 use crate::{error::ParserError, macros::*, Parser, ParserResult};
 use ry_ast::{
+    r#type::{
+        array::ArrayType,
+        generics::{Generic, Generics},
+        option::OptionType,
+        primary::PrimaryType,
+        reference::ReferenceType,
+        where_clause::{WhereClause, WhereClauseUnit},
+        RawType, Type,
+    },
     span::{Span, WithSpan, WithSpannable},
     token::RawToken::*,
-    *,
 };
 use string_interner::DefaultSymbol;
 
@@ -11,14 +19,14 @@ impl<'c> Parser<'c> {
         let mut name = vec![];
 
         let first_ident = consume_ident!(self, "namespace member/namespace");
-        name.push(first_ident.unwrap());
+        name.push(*first_ident.unwrap());
 
         let Span { start, mut end } = first_ident.span();
 
         while self.next.unwrap().is(Dot) {
             self.advance()?; // `.`
 
-            name.push(consume_ident!(self, "namespace member/namespace").unwrap());
+            name.push(*consume_ident!(self, "namespace member/namespace").unwrap());
 
             end = self.current.span().end();
         }
@@ -31,36 +39,39 @@ impl<'c> Parser<'c> {
 
         self.check_scanning_error_for_next_token()?;
 
-        let mut lhs = match self.next.unwrap() {
+        let mut left = match self.next.unwrap() {
             Identifier(_) => {
                 let name = self.parse_name()?;
                 let generic_part = self.parse_type_generic_part()?;
 
-                Box::new(RawType::Primary(
-                    name,
-                    if let Some(v) = generic_part {
-                        v
-                    } else {
-                        vec![]
-                    },
-                ))
+                Box::<RawType>::new(
+                    PrimaryType::new(
+                        name,
+                        if let Some(v) = generic_part {
+                            v
+                        } else {
+                            vec![]
+                        },
+                    )
+                    .into(),
+                )
                 .with_span(start..self.current.span().end())
             }
             And => {
                 self.advance()?;
                 let start = self.current.span().start();
 
-                let mut mutable = false;
+                let mut mutability = None;
 
                 if self.next.unwrap().is(Mut) {
-                    mutable = true;
+                    mutability = Some(self.next.span());
 
                     self.advance()?; // `mut`
                 }
 
                 let inner_type = self.parse_type()?;
 
-                Box::new(RawType::Reference(mutable, inner_type))
+                Box::<RawType>::new(ReferenceType::new(mutability, inner_type).into())
                     .with_span(start..self.current.span().end())
             }
             OpenBracket => {
@@ -71,33 +82,25 @@ impl<'c> Parser<'c> {
 
                 consume!(self, CloseBracket, "array type");
 
-                Box::new(RawType::Array(inner_type)).with_span(start..self.current.span().end())
-            }
-            Bang => {
-                self.advance()?;
-                let start = self.current.span().start();
-
-                let inner_type = self.parse_type()?;
-
-                Box::new(RawType::NegativeTrait(inner_type))
+                Box::<RawType>::new(ArrayType::new(inner_type).into())
                     .with_span(start..self.current.span().end())
             }
             _ => {
                 return Err(ParserError::UnexpectedToken(
                     self.next.clone(),
-                    "`!` (negative trait), `[` (array type), `&` (reference type) or \n\tidentifier"
-                        .to_owned(),
+                    "`[` (array type), `&` (reference type) or \n\tidentifier".to_owned(),
                     "type".to_owned(),
                 ));
             }
         };
 
         while self.next.unwrap().is(QuestionMark) {
-            lhs = Box::new(RawType::Option(lhs)).with_span(start..self.next.span().end());
+            left = Box::<RawType>::new(OptionType::new(left).into())
+                .with_span(start..self.next.span().end());
             self.advance()?;
         }
 
-        Ok(lhs)
+        Ok(left)
     }
 
     pub(crate) fn parse_type_generic_part(&mut self) -> ParserResult<Option<Vec<Type>>> {
@@ -115,7 +118,7 @@ impl<'c> Parser<'c> {
         })
     }
 
-    pub(crate) fn parse_generic_annotations(&mut self) -> ParserResult<GenericAnnotations> {
+    pub(crate) fn parse_generics(&mut self) -> ParserResult<Generics> {
         if !self.next.unwrap().is(OpenBracket) {
             return Ok(vec![]);
         }
@@ -124,11 +127,11 @@ impl<'c> Parser<'c> {
 
         let result = parse_list!(
             self,
-            "generic annotations",
+            "generics",
             CloseBracket,
             false, // top level
             || {
-                let generic = consume_ident!(self, "generic name in generic annotation");
+                let generic = consume_ident!(self, "generic name");
 
                 let mut constraint = None;
 
@@ -138,7 +141,7 @@ impl<'c> Parser<'c> {
                     constraint = Some(self.parse_type()?);
                 }
 
-                Ok((generic, constraint))
+                Ok(Generic::new(generic, constraint))
             }
         );
 
@@ -163,7 +166,7 @@ impl<'c> Parser<'c> {
 
                     let right = self.parse_type()?;
 
-                    Ok((left, right))
+                    Ok(WhereClauseUnit::new(left, right))
                 }
             );
 

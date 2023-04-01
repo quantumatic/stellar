@@ -1,5 +1,5 @@
 use crate::{error::ParserError, macros::*, Parser, ParserResult};
-use ry_ast::{span::Span, token::RawToken::*, Item};
+use ry_ast::{span::Span, token::RawToken::*, declaration::Item};
 
 impl<'c> Parser<'c> {
     pub(crate) fn parse_impl(&mut self, public: Option<Span>) -> ParserResult<Item> {

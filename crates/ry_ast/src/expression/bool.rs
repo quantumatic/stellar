@@ -7,6 +7,11 @@ pub struct BoolLiteralExpression {
 
 impl BoolLiteralExpression {
     #[inline]
+    pub const fn new(literal: bool) -> Self {
+        Self { literal }
+    }
+
+    #[inline]
     pub const fn literal(&self) -> bool {
         self.literal
     }

@@ -10,6 +10,11 @@ pub struct WhereClauseUnit {
 
 impl WhereClauseUnit {
     #[inline]
+    pub const fn new(r#type: Type, constraint: Type) -> Self {
+        Self { r#type, constraint }
+    }
+
+    #[inline]
     pub const fn r#type(&self) -> &Type {
         &self.r#type
     }

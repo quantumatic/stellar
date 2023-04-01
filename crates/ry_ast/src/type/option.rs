@@ -7,6 +7,11 @@ pub struct OptionType {
 
 impl OptionType {
     #[inline]
+    pub const fn new(inner: Type) -> Self {
+        Self { inner }
+    }
+
+    #[inline]
     pub const fn inner(&self) -> &Type {
         &self.inner
     }

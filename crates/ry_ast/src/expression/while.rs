@@ -9,6 +9,11 @@ pub struct WhileExpression {
 
 impl WhileExpression {
     #[inline]
+    pub const fn new(condition: Expression, body: StatementsBlock) -> Self {
+        Self { condition, body }
+    }
+
+    #[inline]
     pub const fn condition(&self) -> &Expression {
         &self.condition
     }

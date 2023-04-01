@@ -7,6 +7,11 @@ pub struct IntegerLiteralExpression {
 
 impl IntegerLiteralExpression {
     #[inline]
+    pub const fn new(literal: u64) -> Self {
+        Self { literal }
+    }
+
+    #[inline]
     pub const fn literal(&self) -> u64 {
         self.literal
     }

@@ -1,29 +1,38 @@
-use string_interner::DefaultSymbol;
-
-use crate::{
-    expression::Expression,
-    r#type::Type,
-    span::{Span, WithSpan},
-};
+use crate::{expression::Expression, name::Name, r#type::Type, Mutability};
 
 use super::Statement;
 
 #[derive(Debug, PartialEq)]
 pub struct VarStatement {
-    mutable: Option<Span>,
-    name: WithSpan<DefaultSymbol>,
+    mutability: Mutability,
+    name: Name,
     r#type: Option<Type>,
     value: Expression,
 }
 
 impl VarStatement {
     #[inline]
-    pub const fn mutable(&self) -> Option<Span> {
-        self.mutable
+    pub const fn new(
+        mutability: Mutability,
+        name: Name,
+        r#type: Option<Type>,
+        value: Expression,
+    ) -> Self {
+        Self {
+            mutability,
+            name,
+            r#type,
+            value,
+        }
     }
 
     #[inline]
-    pub const fn name(&self) -> &WithSpan<DefaultSymbol> {
+    pub const fn mutability(&self) -> Mutability {
+        self.mutability
+    }
+
+    #[inline]
+    pub const fn name(&self) -> &Name {
         &self.name
     }
 

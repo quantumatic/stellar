@@ -1,15 +1,18 @@
 use crate::{error::ParserError, macros::*, Parser, ParserResult};
-use ry_ast::token::RawToken::*;
+use ry_ast::{
+    declaration::{import::ImportItem, Item},
+    token::RawToken::*,
+};
 
 impl<'c> Parser<'c> {
-    pub(crate) fn parse_import(&mut self) -> ParserResult<ry_ast::Import> {
+    pub(crate) fn parse_import(&mut self) -> ParserResult<Item> {
         self.advance()?;
 
         let path = self.parse_name()?;
 
         consume!(with_docstring self, Semicolon, "import");
 
-        Ok(ry_ast::Import { path })
+        Ok(ImportItem::new(path).into())
     }
 }
 

@@ -1,19 +1,16 @@
 pub mod array;
-pub mod negative_trait;
+pub mod generics;
 pub mod option;
 pub mod primary;
 pub mod reference;
 pub mod where_clause;
-pub mod generics;
 
 use super::span::WithSpan;
 
-use self::{
-    array::ArrayType, negative_trait::NegativeTraitType, option::OptionType, primary::PrimaryType,
-    reference::ReferenceType,
-};
+use self::{array::ArrayType, option::OptionType, primary::PrimaryType, reference::ReferenceType};
 
 pub type Type = WithSpan<Box<RawType>>;
+pub type TypeAnnotations = Vec<Type>;
 
 #[derive(Debug, PartialEq)]
 pub enum RawType {
@@ -21,5 +18,4 @@ pub enum RawType {
     Reference(ReferenceType),
     Primary(PrimaryType),
     Option(OptionType),
-    NegativeTrait(NegativeTraitType),
 }

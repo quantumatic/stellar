@@ -1,7 +1,14 @@
 use crate::{error::ParserError, macros::*, Parser, ParserResult};
 use num_traits::ToPrimitive;
-use ry_ast::{precedence::Precedence, span::WithSpannable, token::RawToken::*, *};
-use std::ops::Deref;
+use ry_ast::{
+    precedence::Precedence,
+    span::WithSpannable,
+    statement::{
+        defer::DeferStatement, expression::ExpressionStatement, r#return::ReturnStatement,
+        var::VarStatement, Statement, StatementsBlock,
+    },
+    token::RawToken::*,
+};
 
 impl<'c> Parser<'c> {
     pub(crate) fn parse_statements_block(
@@ -39,24 +46,22 @@ impl<'c> Parser<'c> {
             Return => {
                 self.advance()?; // `return`
 
-                let expr = self.parse_expression(Precedence::Lowest.to_i8().unwrap())?;
-
-                Ok(Statement::Return(expr))
+                ReturnStatement::new(self.parse_expression(Precedence::Lowest.to_i8().unwrap())?)
+                    .into()
             }
             Defer => {
                 self.advance()?; // `defer`
 
-                let expr = self.parse_expression(Precedence::Lowest.to_i8().unwrap())?;
-
-                Ok(Statement::Defer(expr))
+                DeferStatement::new(self.parse_expression(Precedence::Lowest.to_i8().unwrap())?)
+                    .into()
             }
             Var => {
                 self.advance()?; // `var`
 
-                let mut r#mut = None;
+                let mut mutability = None;
 
                 if self.next.unwrap().is(Mut) {
-                    r#mut = Some(self.current.span());
+                    mutability = Some(self.current.span());
 
                     self.advance()?; // `mut`
                 }
@@ -73,25 +78,25 @@ impl<'c> Parser<'c> {
 
                 let value = self.parse_expression(Precedence::Lowest.to_i8().unwrap())?;
 
-                Ok(Statement::Var(r#mut, name, r#type, value))
+                VarStatement::new(mutability, name, r#type, value).into()
             }
             _ => {
                 let expression = self.parse_expression(Precedence::Lowest.to_i8().unwrap())?;
 
                 must_have_semicolon_at_the_end =
-                    expression.unwrap().deref().must_have_semicolon_at_the_end();
+                    (*expression.unwrap()).must_have_semicolon_at_the_end();
 
                 if !self.next.unwrap().is(Semicolon) && must_have_semicolon_at_the_end {
                     last_statement_in_block = true;
                 }
 
                 if last_statement_in_block || !must_have_semicolon_at_the_end {
-                    Ok(Statement::ExpressionWithoutSemicolon(expression))
+                    ExpressionStatement::new(false, expression).into()
                 } else {
-                    Ok(Statement::Expression(expression))
+                    ExpressionStatement::new(true, expression).into()
                 }
             }
-        }?;
+        };
 
         if !last_statement_in_block && must_have_semicolon_at_the_end {
             consume!(self, Semicolon, "end of the statement");

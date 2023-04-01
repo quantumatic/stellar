@@ -4,13 +4,18 @@ use super::Statement;
 
 #[derive(Debug, PartialEq)]
 pub struct ReturnStatement {
-    value: Expression,
+    return_value: Expression,
 }
 
 impl ReturnStatement {
     #[inline]
-    pub const fn value(&self) -> &Expression {
-        &self.value
+    pub const fn new(return_value: Expression) -> Self {
+        Self { return_value }
+    }
+
+    #[inline]
+    pub const fn return_value(&self) -> &Expression {
+        &self.return_value
     }
 }
 

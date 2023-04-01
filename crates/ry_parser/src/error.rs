@@ -22,7 +22,7 @@ impl<'source> Reporter<'source> for ParserError {
                 .with_message("scanning error occured")
                 .with_code("E000")
                 .with_labels(vec![
-                    Label::primary(file_id, token.span()).with_message(token.value().to_string())
+                    Label::primary(file_id, token.span()).with_message(token.unwrap().to_string())
                 ]),
             Self::UnexpectedToken(got, expected, node_name) => {
                 let mut label_message = format!("expected {expected}");

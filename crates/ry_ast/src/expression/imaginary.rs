@@ -7,6 +7,11 @@ pub struct ImaginaryNumberLiteralExpression {
 
 impl ImaginaryNumberLiteralExpression {
     #[inline]
+    pub const fn new(literal: f64) -> Self {
+        Self { literal }
+    }
+
+    #[inline]
     pub const fn literal(&self) -> f64 {
         self.literal
     }

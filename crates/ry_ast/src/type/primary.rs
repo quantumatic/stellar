@@ -1,24 +1,30 @@
-use string_interner::DefaultSymbol;
+use crate::name::Path;
 
-use crate::span::WithSpan;
-
-use super::{RawType, Type};
+use super::{RawType, Type, TypeAnnotations};
 
 #[derive(Debug, PartialEq)]
 pub struct PrimaryType {
-    name: WithSpan<Vec<DefaultSymbol>>,
-    generics: Vec<Type>,
+    name: Path,
+    type_annotations: TypeAnnotations,
 }
 
 impl PrimaryType {
     #[inline]
-    pub const fn name(&self) -> &WithSpan<Vec<DefaultSymbol>> {
+    pub const fn new(name: Path, type_annotations: Vec<Type>) -> Self {
+        Self {
+            name,
+            type_annotations,
+        }
+    }
+
+    #[inline]
+    pub const fn name(&self) -> &Path {
         &self.name
     }
 
     #[inline]
-    pub const fn generics(&self) -> &Vec<Type> {
-        &self.generics
+    pub const fn generics(&self) -> &TypeAnnotations {
+        &self.type_annotations
     }
 }
 

@@ -3,9 +3,12 @@ use string_interner::DefaultSymbol;
 use crate::{
     expression::Expression,
     r#type::{generics::Generics, where_clause::WhereClause, Type},
-    span::{Span, WithSpan},
+    span::WithSpan,
     statement::StatementsBlock,
+    Visibility,
 };
+
+use super::Item;
 
 #[derive(Debug, PartialEq)]
 pub struct FunctionDeclarationItem {
@@ -23,9 +26,15 @@ impl FunctionDeclarationItem {
     }
 }
 
+impl From<FunctionDeclarationItem> for Item {
+    fn from(function_declaration: FunctionDeclarationItem) -> Self {
+        Self::FunctionDeclaration(function_declaration)
+    }
+}
+
 #[derive(Debug, PartialEq)]
 pub struct FunctionDefition {
-    public: Option<Span>,
+    public: Visibility,
     generics: Generics,
     name: WithSpan<DefaultSymbol>,
     arguments: Vec<FunctionArgument>,
@@ -35,7 +44,7 @@ pub struct FunctionDefition {
 
 impl FunctionDefition {
     #[inline]
-    pub const fn public(&self) -> Option<Span> {
+    pub const fn public(&self) -> Visibility {
         self.public
     }
 

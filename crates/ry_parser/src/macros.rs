@@ -6,7 +6,7 @@ macro_rules! consume {
         $p.advance_with_docstring()?;
     };
     ($p:ident, $expected:expr, $for:expr) => {
-        if $p.next.value().is($expected) {
+        if $p.next.unwrap().is($expected) {
             $p.advance()?;
         } else {
             return Err(ParserError::UnexpectedToken(
@@ -17,7 +17,7 @@ macro_rules! consume {
         }
     };
     (with_docstring $p:ident, $expected:expr, $for:expr) => {
-        if $p.next.value().is($expected) {
+        if $p.next.unwrap().is($expected) {
             $p.advance_with_docstring()?;
         } else {
             return Err(ParserError::UnexpectedToken(
@@ -30,10 +30,10 @@ macro_rules! consume {
 }
 
 macro_rules! consume_ident {
-    ($p:ident, $for:expr) => {
-        if let Identifier(i) = $p.next.value() {
+    ($p:ident, $for:expr) => {{
+        if let Identifier(i) = $p.next.unwrap() {
             $p.advance()?;
-            i.with_span($p.current.span())
+            (*i).with_span($p.current.span())
         } else {
             return Err(ParserError::UnexpectedToken(
                 $p.next.clone(),
@@ -41,7 +41,7 @@ macro_rules! consume_ident {
                 $for.into(),
             ));
         }
-    };
+    }};
 }
 
 #[cfg(test)]
@@ -64,13 +64,13 @@ macro_rules! parse_list {
         {
             let mut result = vec![];
 
-            if let $closing_token = $p.next.value() {
+            if let $closing_token = $p.next.unwrap() {
 
             } else {
                 loop {
                     result.push($fn($($fn_arg)*)?);
 
-                    if let $closing_token = $p.next.value() {
+                    if let $closing_token = $p.next.unwrap() {
                         break
                     } else {
                         if $top_level {
@@ -79,7 +79,7 @@ macro_rules! parse_list {
                             consume!($p, Comma, $name);
                         }
 
-                        if let $closing_token = $p.next.value() {
+                        if let $closing_token = $p.next.unwrap() {
                             break
                         }
                     }

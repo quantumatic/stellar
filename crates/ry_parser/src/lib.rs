@@ -4,6 +4,7 @@
 //! code and produces an Abstract Syntax Tree (AST) that represents the parsed code.
 use error::ParserError;
 use ry_ast::{
+    declaration::docstring::Docstring,
     span::WithSpannable,
     token::{RawToken::*, Token},
     *,
@@ -52,7 +53,7 @@ impl<'a> Parser<'a> {
     /// an error if so.
     fn check_scanning_error_for_current_token(&mut self) -> ParserResult<()> {
         if let Invalid(e) = self.current.unwrap() {
-            Err(ParserError::ErrorToken(e.with_span(self.current.span())))
+            Err(ParserError::ErrorToken((*e).with_span(self.current.span())))
         } else {
             Ok(())
         }
@@ -62,7 +63,7 @@ impl<'a> Parser<'a> {
     /// an error if so.
     fn check_scanning_error_for_next_token(&mut self) -> ParserResult<()> {
         if let Invalid(e) = self.next.unwrap() {
-            Err(ParserError::ErrorToken(e.with_span(self.next.span())))
+            Err(ParserError::ErrorToken((*e).with_span(self.next.span())))
         } else {
             Ok(())
         }
@@ -98,10 +99,10 @@ impl<'a> Parser<'a> {
 
         loop {
             if let DocstringComment { global, content } = self.next.unwrap() {
-                if global {
-                    module_docstring.push(content);
+                if *global {
+                    module_docstring.push(*content);
                 } else {
-                    local_docstring.push(content);
+                    local_docstring.push(*content);
                 }
             } else {
                 return Ok((module_docstring, local_docstring));
@@ -120,7 +121,7 @@ impl<'a> Parser<'a> {
         loop {
             if let DocstringComment { global, content } = self.next.unwrap() {
                 if !global {
-                    result.push(content);
+                    result.push(*content);
                 }
             } else {
                 return Ok(result);
@@ -167,7 +168,7 @@ impl<'a> Parser<'a> {
                         self.check_scanning_error_for_next_token()?;
                         self.advance()?;
 
-                        match self.next.span() {
+                        match self.next.unwrap() {
                             Fun => self.parse_function_declaration(Some(visiblity))?,
                             Struct => self.parse_struct_declaration(Some(visiblity))?,
                             Trait => self.parse_trait_declaration(Some(visiblity))?,
@@ -182,11 +183,7 @@ impl<'a> Parser<'a> {
                             }
                         }
                     }
-                    Import => {
-                        let import = self.parse_import()?;
-
-                        Item::Import(import)
-                    }
+                    Import => self.parse_import()?,
                     EndOfFile => break,
                     _ => {
                         let err = Err(ParserError::UnexpectedToken(

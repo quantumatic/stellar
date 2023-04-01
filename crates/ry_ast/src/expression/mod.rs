@@ -2,6 +2,7 @@ pub mod array;
 pub mod r#as;
 pub mod binary;
 pub mod bool;
+pub mod call;
 pub mod char;
 pub mod float;
 pub mod r#if;
@@ -10,14 +11,17 @@ pub mod integer;
 pub mod name;
 pub mod property;
 pub mod string;
+pub mod type_annotations;
+pub mod unary;
 pub mod r#while;
 
 use self::{
     array::ArrayLiteralExpression, binary::BinaryExpression, bool::BoolLiteralExpression,
-    char::CharLiteralExpression, float::FloatLiteralExpression,
+    call::CallExpression, char::CharLiteralExpression, float::FloatLiteralExpression,
     imaginary::ImaginaryNumberLiteralExpression, integer::IntegerLiteralExpression,
-    name::NameExpression, property::PropertyAccessExpression, r#as::AsExpression,
+    name::IdentifierExpression, property::PropertyAccessExpression, r#as::AsExpression,
     r#if::IfExpression, r#while::WhileExpression, string::StringLiteralExpression,
+    type_annotations::TypeAnnotationsExpression, unary::UnaryExpression,
 };
 use crate::span::WithSpan;
 
@@ -32,10 +36,10 @@ pub enum RawExpression {
     Bool(BoolLiteralExpression),
     Char(CharLiteralExpression),
     Array(ArrayLiteralExpression),
-    Name(NameExpression),
+    Identifier(IdentifierExpression),
     Binary(BinaryExpression),
     As(AsExpression),
-    // PrefixOrPostfix(bool, Token, Expression),
+    Unary(UnaryExpression),
     Property(PropertyAccessExpression),
     // Struct(
     // WithSpan<DefaultSymbol>,
@@ -46,6 +50,8 @@ pub enum RawExpression {
     // Generics(Expression, Vec<Type>),
     If(IfExpression),
     While(WhileExpression),
+    Call(CallExpression),
+    TypeAnnotations(TypeAnnotationsExpression),
 }
 
 impl RawExpression {

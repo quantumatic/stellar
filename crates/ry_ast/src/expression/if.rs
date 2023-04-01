@@ -2,12 +2,17 @@ use super::{Expression, RawExpression};
 use crate::statement::StatementsBlock;
 
 #[derive(Debug, PartialEq)]
-pub struct IfElseBlock {
+pub struct IfBlock {
     condition: Expression,
     body: StatementsBlock,
 }
 
-impl IfElseBlock {
+impl IfBlock {
+    #[inline]
+    pub const fn new(condition: Expression, body: StatementsBlock) -> Self {
+        Self { condition, body }
+    }
+
     #[inline]
     pub const fn condition(&self) -> &Expression {
         &self.condition
@@ -21,14 +26,19 @@ impl IfElseBlock {
 
 #[derive(Debug, PartialEq)]
 pub struct IfExpression {
-    if_else: Vec<IfElseBlock>,
+    if_blocks: Vec<IfBlock>,
     r#else: Option<StatementsBlock>,
 }
 
 impl IfExpression {
     #[inline]
-    pub const fn if_else(&self) -> &Vec<IfElseBlock> {
-        &self.if_else
+    pub const fn new(if_blocks: Vec<IfBlock>, r#else: Option<StatementsBlock>) -> Self {
+        Self { if_blocks, r#else }
+    }
+
+    #[inline]
+    pub const fn if_blocks(&self) -> &Vec<IfBlock> {
+        &self.if_blocks
     }
 
     #[inline]

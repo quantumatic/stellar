@@ -1,20 +1,22 @@
-use string_interner::DefaultSymbol;
-
-use crate::span::WithSpan;
-
 use super::Type;
+use crate::name::Name;
 
 pub type Generics = Vec<Generic>;
 
 #[derive(Debug, PartialEq)]
 pub struct Generic {
-    name: WithSpan<DefaultSymbol>,
+    name: Name,
     constraint: Option<Type>,
 }
 
 impl Generic {
     #[inline]
-    pub const fn name(&self) -> &WithSpan<DefaultSymbol> {
+    pub const fn new(name: Name, constraint: Option<Type>) -> Self {
+        Self { name, constraint }
+    }
+
+    #[inline]
+    pub const fn name(&self) -> &Name {
         &self.name
     }
 
