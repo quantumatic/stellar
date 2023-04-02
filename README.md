@@ -32,9 +32,9 @@ We use result types as well with elvis `?:` and postfix `?` and `!` operators!
 import std.fs.File;
 
 pub fun main() {
-    var a = new File("test.txt")?; // returns (Unit type in this case) if error will occur
+    var a = File.open("test.txt")?; // returns (Unit type in this case) if error will occur
 
-    new File("test2.txt")!; // panics if error will occur
+    File.open("test2.txt").unwrap(); // panics if error will occur
 
     var num = "27".parse[i32]() ?: 0; // if error will occur, num will be set to 0
 }
