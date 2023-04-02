@@ -8,3 +8,5 @@
 > RAW_IDENTIFIER : `` ` `` IDENTIFIER_OR_KEYWORD `` ` ``
 >
 > NON_KEYWORD_IDENTIFIER : IDENTIFIER_OR_KEYWORD <sub>*Except keyword*</sub>
+
+> Normalization is planned to be here

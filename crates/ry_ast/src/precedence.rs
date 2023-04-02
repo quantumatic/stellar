@@ -4,6 +4,8 @@ use num_derive::{FromPrimitive, ToPrimitive};
 #[derive(FromPrimitive, ToPrimitive)]
 pub enum Precedence {
     Lowest,
+    // ?:
+    Elvis,
     // a = b | a += b | a -= b | a *= b | a /= b | a ^= b | a |= b
     Assign,
     // a || b
@@ -32,14 +34,12 @@ pub enum Precedence {
     Mod,
     // !a | a?
     Unary,
-    // a[i32]
-    TypeAnnotations,
-    // ?:
-    Elvis,
+    // a as i32
+    As,
     // a()
     Call,
     // a.b
     Property,
-    // a as i32
-    As,
+    // a[i32]
+    TypeAnnotations,
 }

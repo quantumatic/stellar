@@ -3,6 +3,7 @@ use self::{
     r#struct::StructDeclarationItem, r#trait::TraitDeclarationItem,
 };
 
+pub mod attribute;
 pub mod docstring;
 pub mod r#enum;
 pub mod function;
