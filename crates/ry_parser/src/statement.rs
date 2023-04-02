@@ -30,9 +30,9 @@ impl<'c> Parser<'c> {
         }
 
         if top_level {
-            self.advance_with_docstring()?;
+            consume!(with_docstring self, CloseBrace, "end of the statement block");
         } else {
-            self.advance()?;
+            consume!(self, CloseBrace, "end of the statement block");
         }
 
         Ok(stmts)
