@@ -4,8 +4,8 @@ use ry_ast::{
     precedence::Precedence,
     span::WithSpannable,
     statement::{
-        defer::DeferStatement, expression::ExpressionStatement, r#return::ReturnStatement,
-        var::VarStatement, Statement, StatementsBlock,
+        DeferStatement, ExpressionStatement, ReturnStatement, Statement, StatementsBlock,
+        VarStatement,
     },
     token::RawToken::*,
 };

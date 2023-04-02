@@ -1,17 +1,13 @@
 use crate::{error::ParserError, macros::*, Parser, ParserResult};
 use ry_ast::{
     r#type::{
-        array::ArrayType,
-        generics::{Generic, Generics},
-        option::OptionType,
-        primary::PrimaryType,
-        reference::ReferenceType,
-        where_clause::{WhereClause, WhereClauseUnit},
-        RawType, Type,
+        ArrayType, Generic, Generics, OptionType, PrimaryType, RawType, ReferenceType, Type,
+        WhereClause, WhereClauseUnit,
     },
     span::{WithSpan, WithSpannable},
     token::RawToken::*,
 };
+
 use string_interner::DefaultSymbol;
 
 impl<'c> Parser<'c> {

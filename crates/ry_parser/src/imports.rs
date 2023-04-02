@@ -1,6 +1,6 @@
 use crate::{error::ParserError, macros::*, Parser, ParserResult};
 use ry_ast::{
-    declaration::{import::ImportItem, Item},
+    declaration::{ImportItem, Item},
     token::RawToken::*,
 };
 

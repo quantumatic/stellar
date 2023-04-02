@@ -1,6 +1,6 @@
 use crate::{error::ParserError, macros::*, Parser, ParserResult};
 use ry_ast::{
-    declaration::{docstring::WithDocstringable, r#enum::EnumDeclarationItem, Item},
+    declaration::{EnumDeclarationItem, Item, WithDocstringable},
     span::*,
     token::RawToken::*,
     Visibility,

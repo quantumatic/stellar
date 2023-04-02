@@ -1,11 +1,6 @@
 use crate::{error::ParserError, macros::*, Parser, ParserResult};
 use ry_ast::{
-    declaration::{
-        docstring::{WithDocstring, WithDocstringable},
-        function::FunctionDeclaration,
-        r#impl::ImplItem,
-        Item,
-    },
+    declaration::{FunctionDeclaration, ImplItem, Item, WithDocstring, WithDocstringable},
     token::RawToken::*,
     Visibility,
 };

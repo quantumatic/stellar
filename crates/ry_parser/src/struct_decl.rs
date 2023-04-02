@@ -1,9 +1,7 @@
 use crate::{error::ParserError, macros::*, Parser, ParserResult};
 use ry_ast::{
     declaration::{
-        docstring::{WithDocstring, WithDocstringable},
-        r#struct::{StructDeclarationItem, StructMemberDeclaration},
-        Item,
+        Item, StructDeclarationItem, StructMemberDeclaration, WithDocstring, WithDocstringable,
     },
     span::{Span, WithSpannable},
     token::RawToken::*,

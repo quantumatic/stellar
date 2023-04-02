@@ -1,11 +1,6 @@
 use crate::{error::ParserError, macros::*, Parser, ParserResult};
 use ry_ast::{
-    declaration::{
-        docstring::{WithDocstring, WithDocstringable},
-        function::Function,
-        r#trait::TraitDeclarationItem,
-        Item,
-    },
+    declaration::{Function, Item, TraitDeclarationItem, WithDocstring, WithDocstringable},
     span::{Span, WithSpannable},
     token::RawToken::*,
 };

@@ -1,4 +1,4 @@
-use self::{
+pub use self::{
     defer::DeferStatement, expression::ExpressionStatement, r#return::ReturnStatement,
     var::VarStatement,
 };

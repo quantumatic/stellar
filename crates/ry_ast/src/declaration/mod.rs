@@ -1,6 +1,11 @@
-use self::{
-    function::Function, import::ImportItem, r#enum::EnumDeclarationItem, r#impl::ImplItem,
-    r#struct::StructDeclarationItem, r#trait::TraitDeclarationItem,
+pub use self::{
+    docstring::{Docstring, WithDocstring, WithDocstringable},
+    function::{Function, FunctionArgument, FunctionDeclaration, FunctionDefinition},
+    import::ImportItem,
+    r#enum::EnumDeclarationItem,
+    r#impl::ImplItem,
+    r#struct::{StructDeclarationItem, StructMemberDeclaration},
+    r#trait::TraitDeclarationItem,
 };
 
 pub mod attribute;

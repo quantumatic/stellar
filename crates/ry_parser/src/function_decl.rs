@@ -1,10 +1,7 @@
 use crate::{error::ParserError, macros::*, Parser, ParserResult};
 use num_traits::ToPrimitive;
 use ry_ast::{
-    declaration::{
-        function::{Function, FunctionArgument, FunctionDeclaration, FunctionDefinition},
-        Item,
-    },
+    declaration::{Function, FunctionArgument, FunctionDeclaration, FunctionDefinition, Item},
     precedence::Precedence,
     span::WithSpannable,
     token::RawToken::*,

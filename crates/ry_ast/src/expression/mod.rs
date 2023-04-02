@@ -15,13 +15,23 @@ pub mod type_annotations;
 pub mod unary;
 pub mod r#while;
 
-use self::{
-    array::ArrayLiteralExpression, binary::BinaryExpression, bool::BoolLiteralExpression,
-    call::CallExpression, char::CharLiteralExpression, float::FloatLiteralExpression,
-    imaginary::ImaginaryNumberLiteralExpression, integer::IntegerLiteralExpression,
-    name::IdentifierExpression, property::PropertyAccessExpression, r#as::AsExpression,
-    r#if::IfExpression, r#while::WhileExpression, string::StringLiteralExpression,
-    type_annotations::TypeAnnotationsExpression, unary::UnaryExpression,
+pub use self::{
+    array::ArrayLiteralExpression,
+    binary::BinaryExpression,
+    bool::BoolLiteralExpression,
+    call::CallExpression,
+    char::CharLiteralExpression,
+    float::FloatLiteralExpression,
+    imaginary::ImaginaryNumberLiteralExpression,
+    integer::IntegerLiteralExpression,
+    name::IdentifierExpression,
+    property::PropertyAccessExpression,
+    r#as::AsExpression,
+    r#if::{IfBlock, IfExpression},
+    r#while::WhileExpression,
+    string::StringLiteralExpression,
+    type_annotations::TypeAnnotationsExpression,
+    unary::UnaryExpression,
 };
 use crate::span::WithSpan;
 

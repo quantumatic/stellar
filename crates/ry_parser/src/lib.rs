@@ -4,7 +4,7 @@
 //! code and produces an Abstract Syntax Tree (AST) that represents the parsed code.
 use error::ParserError;
 use ry_ast::{
-    declaration::docstring::{Docstring, WithDocstringable},
+    declaration::{Docstring, WithDocstringable},
     span::WithSpannable,
     token::{RawToken::*, Token},
     *,
