@@ -56,8 +56,6 @@ impl<'c> Parser<'c> {
 
         self.advance()?;
 
-        dbg!(&self.next);
-
         let mut return_type = None;
 
         if self.next.unwrap().is(Colon) {

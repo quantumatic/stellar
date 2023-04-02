@@ -100,8 +100,6 @@ pub enum RawToken {
     Slash,
     #[display(fmt = "`!`")]
     Bang,
-    #[display(fmt = "`!!`")]
-    BangBang,
 
     #[display(fmt = "`import`")]
     Import,
@@ -317,12 +315,9 @@ impl RawToken {
             Self::Percent => Precedence::Mod,
             Self::OpenParent => Precedence::Call,
             Self::Dot => Precedence::Property,
-            Self::Not
-            | Self::PlusPlus
-            | Self::MinusMinus
-            | Self::Bang
-            | Self::QuestionMark
-            | Self::BangBang => Precedence::Unary,
+            Self::Not | Self::PlusPlus | Self::MinusMinus | Self::Bang | Self::QuestionMark => {
+                Precedence::Unary
+            }
             Self::As => Precedence::As,
             _ => Precedence::Lowest,
         }

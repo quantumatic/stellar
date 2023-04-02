@@ -512,7 +512,6 @@ impl<'c> Iterator for Lexer<'c> {
             ('/', _) => self.advance_with(Slash),
 
             ('!', '=') => self.advance_twice_with(NotEq),
-            ('!', '!') => self.advance_twice_with(BangBang),
             ('!', _) => self.advance_with(Bang),
 
             ('>', '>') => self.advance_twice_with(RightShift),

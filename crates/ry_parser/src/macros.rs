@@ -127,7 +127,7 @@ macro_rules! binop_pattern {
 
 macro_rules! postfixop_pattern {
     () => {
-        QuestionMark | PlusPlus | MinusMinus | BangBang
+        QuestionMark | PlusPlus | MinusMinus
     };
 }
 

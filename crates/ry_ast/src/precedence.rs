@@ -32,10 +32,10 @@ pub enum Precedence {
     Power,
     // a % b
     Mod,
-    // !a | a?
-    Unary,
     // a as i32
     As,
+    // !a | a?
+    Unary,
     // a()
     Call,
     // a.b
