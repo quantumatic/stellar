@@ -1,3 +1,7 @@
+use std::ops::ControlFlow;
+
+use crate::visitor::{VisitWith, Visitor, VisitorMut};
+
 pub use self::{
     docstring::{Docstring, WithDocstring, WithDocstringable},
     function::{Function, FunctionArgument, FunctionDeclaration, FunctionDefinition},
@@ -25,4 +29,20 @@ pub enum Item {
     TraitDeclaration(TraitDeclarationItem),
     StructDeclaration(StructDeclarationItem),
     Impl(ImplItem),
+}
+
+impl VisitWith for WithDocstring<Item> {
+    fn visit_with<V>(&self, _visitor: &mut V) -> ControlFlow<V::BreakTy>
+    where
+        V: Visitor,
+    {
+        ControlFlow::Continue(())
+    }
+
+    fn visit_with_mut<V>(&mut self, _visitor: &mut V) -> ControlFlow<V::BreakTy>
+    where
+        V: VisitorMut,
+    {
+        ControlFlow::Continue(())
+    }
 }

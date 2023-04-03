@@ -9,14 +9,15 @@ pub mod token;
 pub mod r#type;
 pub mod visitor;
 
-use declaration::docstring::{Docstring, WithDocstring};
-use declaration::Item;
+use std::ops::ControlFlow;
+
+use declaration::{docstring::*, Item};
 use span::Span;
+use visitor::*;
 
 /// Represents Ry source file.
 #[derive(Debug, PartialEq)]
 pub struct ProgramUnit {
-    /// Global source file docstring
     pub docstring: Docstring,
     pub items: Items,
 }
@@ -32,3 +33,27 @@ impl ProgramUnit {
 
 pub type Visibility = Option<Span>;
 pub type Mutability = Option<Span>;
+
+impl VisitWith for ProgramUnit {
+    fn visit_with<V>(&self, visitor: &mut V) -> std::ops::ControlFlow<V::BreakTy>
+    where
+        V: Visitor,
+    {
+        for item in &self.items {
+            try_break!(item.visit_with(visitor));
+        }
+
+        ControlFlow::Continue(())
+    }
+
+    fn visit_with_mut<V>(&mut self, visitor: &mut V) -> std::ops::ControlFlow<V::BreakTy>
+    where
+        V: VisitorMut,
+    {
+        for item in &mut self.items {
+            try_break!(item.visit_with_mut(visitor));
+        }
+
+        ControlFlow::Continue(())
+    }
+}
