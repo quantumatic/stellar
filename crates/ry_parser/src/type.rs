@@ -153,7 +153,7 @@ impl<'c> Parser<'c> {
             let result = parse_list!(
                 self,
                 "where clause",
-                Punctuator(OpenBrace) | Punctuator(Semicolon),
+                Punctuator(OpenBrace | Semicolon),
                 false, // top level
                 || {
                     let left = self.parse_type()?;
