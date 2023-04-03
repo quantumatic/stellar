@@ -77,9 +77,9 @@ macro_rules! parse_list {
                         break
                     } else {
                         if $top_level {
-                            consume!(with_docstring $p, Comma, $name);
+                            consume!(with_docstring $p, Punctuator(Comma), $name);
                         } else {
-                            consume!($p, Comma, $name);
+                            consume!($p, Punctuator(Comma), $name);
                         }
 
                         if let $closing_token = $p.next.unwrap() {
@@ -96,7 +96,7 @@ macro_rules! parse_list {
 
 macro_rules! binop_pattern {
     () => {
-        Plus | Minus
+        Punctuator(Plus | Minus
             | Asterisk
             | Slash
             | Eq
@@ -121,19 +121,19 @@ macro_rules! binop_pattern {
             | Elvis
             | AndAnd
             | LeftShift
-            | RightShift
+            | RightShift)
     };
 }
 
 macro_rules! postfixop_pattern {
     () => {
-        QuestionMark | PlusPlus | MinusMinus
+        Punctuator(QuestionMark | PlusPlus | MinusMinus)
     };
 }
 
 macro_rules! prefixop_pattern {
     () => {
-        Bang | Not | PlusPlus | MinusMinus | Minus | Plus
+        Punctuator(Bang | Not | PlusPlus | MinusMinus | Minus | Plus)
     };
 }
 

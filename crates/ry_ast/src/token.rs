@@ -1,11 +1,9 @@
 //! `token.rs` - defines the token which represents grammatical unit of Ry
 //! source text.
 
-use derive_more::Display;
-use num_traits::ToPrimitive;
 use phf::phf_map;
 use ry_interner::Symbol;
-use std::{mem::discriminant, sync::Arc};
+use std::{fmt::Display, mem::discriminant, sync::Arc};
 use thiserror::Error;
 
 use crate::{precedence::Precedence, span::Spanned};
@@ -64,7 +62,7 @@ pub enum LexerError {
 }
 
 /// Either the number is integer, float or imaginary literal.
-#[derive(PartialEq, Debug)]
+#[derive(Debug, Clone, PartialEq, Copy)]
 pub enum NumberKind {
     Invalid,
     Int,
@@ -72,160 +70,168 @@ pub enum NumberKind {
     Imag,
 }
 
-/// Represents token without a specific location in source text.
-#[derive(Clone, Debug, PartialEq, Display, Default)]
-pub enum RawToken {
-    #[display(fmt = "identifier")]
-    Identifier(Symbol),
-    #[display(fmt = "string literal")]
-    String(Arc<str>),
-    #[display(fmt = "integer literal")]
-    Int(u64),
-    #[display(fmt = "float literal")]
-    Float(f64),
-    #[display(fmt = "imaginary number literal")]
-    Imag(f64),
-    #[display(fmt = "character literal")]
-    Char(char),
-    #[display(fmt = "boolean literal")]
-    Bool(bool),
-
-    #[display(fmt = "`+`")]
-    Plus,
-    #[display(fmt = "`-`")]
-    Minus,
-    #[display(fmt = "`*`")]
-    Asterisk,
-    #[display(fmt = "`/`")]
-    Slash,
-    #[display(fmt = "`!`")]
-    Bang,
-
-    #[display(fmt = "`import`")]
+#[derive(Debug, Clone, PartialEq, Copy)]
+pub enum Keyword {
     Import,
-    #[display(fmt = "`pub`")]
     Pub,
-    #[display(fmt = "`fun`")]
     Fun,
-    #[display(fmt = "`struct`")]
     Struct,
-    #[display(fmt = "`trait`")]
     Trait,
-    #[display(fmt = "`return`")]
     Return,
-    #[display(fmt = "`defer`")]
     Defer,
-    #[display(fmt = "`impl`")]
     Impl,
-    #[display(fmt = "`enum`")]
     Enum,
-    #[display(fmt = "`if`")]
     If,
-    #[display(fmt = "`else`")]
     Else,
-    #[display(fmt = "`while`")]
     While,
-    #[display(fmt = "`var`")]
-    Var,
-    #[display(fmt = "`as`")]
     As,
-    #[display(fmt = "`for`")]
     For,
-    #[display(fmt = "`mut`")]
     Mut,
-    #[display(fmt = "`where`")]
     Where,
-    #[display(fmt = "`of`")]
-    Of,
+    Var,
+}
 
-    #[display(fmt = "`?`")]
+impl AsRef<str> for Keyword {
+    fn as_ref(&self) -> &str {
+        match self {
+            Keyword::Import => "import",
+            Keyword::Pub => "pub",
+            Keyword::Fun => "fun",
+            Keyword::Struct => "struct",
+            Keyword::Trait => "trait",
+            Keyword::Return => "return",
+            Keyword::Defer => "defer",
+            Keyword::Impl => "impl",
+            Keyword::Enum => "enum",
+            Keyword::If => "if",
+            Keyword::Else => "else",
+            Keyword::While => "while",
+            Keyword::As => "as",
+            Keyword::For => "for",
+            Keyword::Mut => "mut",
+            Keyword::Where => "where",
+            Keyword::Var => "var",
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Copy)]
+pub enum Punctuator {
+    Plus,
+    Minus,
+    Asterisk,
+    Slash,
+    Bang,
     QuestionMark,
-
-    #[display(fmt = "`>`")]
     GreaterThan,
-    #[display(fmt = "`>=`")]
     GreaterThanOrEq,
-    #[display(fmt = "`<`")]
     LessThan,
-    #[display(fmt = "`<=`")]
     LessThanOrEq,
-    #[display(fmt = "`=`")]
     Assign,
-    #[display(fmt = "`==`")]
     Eq,
-    #[display(fmt = "`!=`")]
     NotEq,
-
-    #[display(fmt = "`>>`")]
     RightShift,
-    #[display(fmt = "`<<`")]
     LeftShift,
-    #[display(fmt = "`|`")]
     Or,
-    #[display(fmt = "`&`")]
     And,
-    #[display(fmt = "`^`")]
     Xor,
-    #[display(fmt = "`~`")]
     Not,
-
-    #[display(fmt = "`||`")]
     OrOr,
-    #[display(fmt = "`&&`")]
     AndAnd,
-
-    #[display(fmt = "`+=`")]
     PlusEq,
-    #[display(fmt = "`-=`")]
     MinusEq,
-    #[display(fmt = "`*=`")]
     AsteriskEq,
-    #[display(fmt = "`/=`")]
     SlashEq,
-    #[display(fmt = "`^=`")]
     XorEq,
-    #[display(fmt = "`|=`")]
     OrEq,
-
-    #[display(fmt = "`(`")]
     OpenParent,
-    #[display(fmt = "`)`")]
     CloseParent,
-    #[display(fmt = "`[`")]
     OpenBracket,
-    #[display(fmt = "`]`")]
     CloseBracket,
-    #[display(fmt = "`{{`")]
     OpenBrace,
-    #[display(fmt = "`}}`")]
     CloseBrace,
-
-    #[display(fmt = "`,`")]
     Comma,
-    #[display(fmt = "`.`")]
     Dot,
-    #[display(fmt = "`;`")]
     Semicolon,
-    #[display(fmt = "`:`")]
     Colon,
-    #[display(fmt = "`::`")]
-    DoubleColon,
-
-    #[display(fmt = "`++`")]
     PlusPlus,
-    #[display(fmt = "`--`")]
     MinusMinus,
-    #[display(fmt = "`**`")]
     AsteriskAsterisk,
-
-    #[display(fmt = "`%`")]
     Percent,
-    #[display(fmt = "`?:`")]
     Elvis,
-
-    #[display(fmt = "`@`")]
     AtSign,
+}
 
+impl AsRef<str> for Punctuator {
+    fn as_ref(&self) -> &str {
+        match self {
+            Self::Plus => "+",
+            Self::Minus => "-",
+            Self::Asterisk => "*",
+            Self::Slash => "/",
+            Self::Bang => "!",
+            Self::QuestionMark => "?",
+            Self::GreaterThan => ">",
+            Self::GreaterThanOrEq => ">=",
+            Self::LessThan => "<",
+            Self::LessThanOrEq => "<=",
+            Self::Assign => "=",
+            Self::Eq => "==",
+            Self::NotEq => "!=",
+            Self::RightShift => ">>",
+            Self::LeftShift => "<<",
+            Self::Or => "|",
+            Self::And => "&",
+            Self::Xor => "^",
+            Self::Not => "~",
+            Self::OrOr => "||",
+            Self::AndAnd => "&&",
+            Self::PlusEq => "+=",
+            Self::MinusEq => "-=",
+            Self::AsteriskEq => "*=",
+            Self::SlashEq => "/=",
+            Self::XorEq => "^=",
+            Self::OrEq => "|=",
+            Self::OpenParent => "(",
+            Self::CloseParent => ")",
+            Self::OpenBracket => "[",
+            Self::CloseBracket => "]",
+            Self::OpenBrace => "{",
+            Self::CloseBrace => "}",
+            Self::Comma => ",",
+            Self::Dot => ".",
+            Self::Semicolon => ";",
+            Self::Colon => ":",
+            Self::PlusPlus => "++",
+            Self::MinusMinus => "--",
+            Self::AsteriskAsterisk => "**",
+            Self::Percent => "%",
+            Self::Elvis => "?:",
+            Self::AtSign => "@",
+        }
+    }
+}
+
+impl Display for Punctuator {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(self.as_ref())?;
+
+        Ok(())
+    }
+}
+
+/// Represents token without a specific location in source text.
+#[derive(Clone, Debug, PartialEq, Default)]
+pub enum RawToken {
+    Identifier(Symbol),
+    StringLiteral(Arc<str>),
+    IntegerLiteral(u64),
+    FloatLiteral(f64),
+    ImaginaryNumberLiteral(f64),
+    CharLiteral(char),
+    BoolLiteral(bool),
+    Punctuator(Punctuator),
+    Keyword(Keyword),
     /// [`global`] here is either the docstring is declared for the whole module
     /// or only for a given item, enum variant or trait method.
     ///
@@ -233,18 +239,14 @@ pub enum RawToken {
     /// without first 3 characters which are:
     /// - two initial slashes - `//`
     /// - last character - either `/` or `!`
-    #[display(fmt = "docstring")]
-    DocstringComment { global: bool, content: Arc<str> },
-
+    DocstringComment {
+        global: bool,
+        content: Arc<str>,
+    },
     /// Corresponds to any comment that is not a docstring.
-    #[display(fmt = "comment")]
     Comment,
-
     #[default]
-    #[display(fmt = "end of file")]
     EndOfFile,
-
-    #[display(fmt = "invalid token")]
     Invalid(LexerError),
 }
 
@@ -254,10 +256,30 @@ impl AsRef<RawToken> for RawToken {
     }
 }
 
-impl RawToken {
-    pub fn dump_op(&self) -> String {
-        let r = self.to_string();
-        r[1..r.len() - 1].to_owned()
+impl AsRef<str> for RawToken {
+    fn as_ref(&self) -> &str {
+        match self {
+            Self::Identifier(..) => "identifier",
+            Self::StringLiteral(..) => "string literal",
+            Self::IntegerLiteral(..) => "integer literal",
+            Self::FloatLiteral(..) => "float literal",
+            Self::ImaginaryNumberLiteral(..) => "imaginary number literal",
+            Self::CharLiteral(..) => "character literal",
+            Self::BoolLiteral(..) => "bool literal",
+            Self::Keyword(keyword) => keyword.as_ref(),
+            Self::Punctuator(punctuator) => punctuator.as_ref(),
+            Self::DocstringComment { .. } | Self::Comment => "comment",
+            Self::EndOfFile => "end of file",
+            RawToken::Invalid(..) => "invalid token",
+        }
+    }
+}
+
+impl Display for RawToken {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(self.as_ref())?;
+
+        Ok(())
     }
 }
 
@@ -265,31 +287,30 @@ pub type Token = Spanned<RawToken>;
 
 /// List of reserved Ry names: keywords, boolean literals & etc..
 pub static RESERVED: phf::Map<&'static str, RawToken> = phf_map! {
-    "true" => RawToken::Bool(true),
-    "false" => RawToken::Bool(false),
-    "import" => RawToken::Import,
-    "pub" => RawToken::Pub,
-    "fun" => RawToken::Fun,
-    "struct" => RawToken::Struct,
-    "trait" => RawToken::Trait,
-    "return" => RawToken::Return,
-    "defer" => RawToken::Defer,
-    "impl" => RawToken::Impl,
-    "enum" => RawToken::Enum,
-    "if" => RawToken::If,
-    "else" => RawToken::Else,
-    "while" => RawToken::While,
-    "var" => RawToken::Var,
-    "as" => RawToken::As,
-    "for" => RawToken::For,
-    "mut" => RawToken::Mut,
-    "where" => RawToken::Where,
-    "of" => RawToken::Of,
+    "true" => RawToken::BoolLiteral(true),
+    "false" => RawToken::BoolLiteral(false),
+    "import" => RawToken::Keyword(Keyword::Import),
+    "pub" => RawToken::Keyword(Keyword::Pub),
+    "fun" => RawToken::Keyword(Keyword::Fun),
+    "struct" => RawToken::Keyword(Keyword::Struct),
+    "trait" => RawToken::Keyword(Keyword::Trait),
+    "return" => RawToken::Keyword(Keyword::Return),
+    "defer" => RawToken::Keyword(Keyword::Defer),
+    "impl" => RawToken::Keyword(Keyword::Impl),
+    "enum" => RawToken::Keyword(Keyword::Enum),
+    "if" => RawToken::Keyword(Keyword::If),
+    "else" => RawToken::Keyword(Keyword::Else),
+    "while" => RawToken::Keyword(Keyword::While),
+    "var" => RawToken::Keyword(Keyword::Var),
+    "as" => RawToken::Keyword(Keyword::As),
+    "for" => RawToken::Keyword(Keyword::For),
+    "mut" => RawToken::Keyword(Keyword::Mut),
+    "where" => RawToken::Keyword(Keyword::Where)
 };
 
-impl RawToken {
+impl Punctuator {
     pub fn to_precedence(&self) -> i8 {
-        match self {
+        (match self {
             Self::Elvis => Precedence::Elvis,
             Self::OrOr => Precedence::OrOr,
             Self::AndAnd => Precedence::AndAnd,
@@ -318,15 +339,36 @@ impl RawToken {
             Self::Not | Self::PlusPlus | Self::MinusMinus | Self::Bang | Self::QuestionMark => {
                 Precedence::Unary
             }
-            Self::As => Precedence::As,
             _ => Precedence::Lowest,
+        }) as i8
+    }
+}
+
+impl RawToken {
+    pub fn to_precedence(&self) -> i8 {
+        match self {
+            Self::Punctuator(punctuator) => punctuator.to_precedence(),
+            Self::Keyword(Keyword::As) => Precedence::As as i8,
+            _ => unreachable!(),
         }
-        .to_i8()
-        .unwrap()
     }
 
     pub fn is<T: AsRef<Self>>(&self, raw: T) -> bool {
-        discriminant(self) == discriminant(raw.as_ref())
+        if let Self::Punctuator(p) = self {
+            if let Self::Punctuator(p2) = raw.as_ref() {
+                discriminant(p) == discriminant(p2)
+            } else {
+                false
+            }
+        } else if let Self::Keyword(k) = self {
+            if let Self::Keyword(k2) = raw.as_ref() {
+                discriminant(k) == discriminant(k2)
+            } else {
+                false
+            }
+        } else {
+            discriminant(self) == discriminant(raw.as_ref())
+        }
     }
 
     pub fn is_one_of<T: AsRef<Self>>(&self, raws: &[T]) -> bool {

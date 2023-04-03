@@ -202,7 +202,7 @@ impl Lexer<'_> {
                     (if base == 10 { buffer } else { &buffer[2..] }).as_bytes(),
                     base,
                 ) {
-                    Some(n) => Some(Int(n).with_span(start_location..self.location)),
+                    Some(n) => Some(IntegerLiteral(n).with_span(start_location..self.location)),
                     None => Some(
                         Invalid(LexerError::NumberParserError)
                             .with_span(start_location..self.location),
@@ -210,7 +210,7 @@ impl Lexer<'_> {
                 }
             }
             NumberKind::Float => Some(
-                Float(match buffer.parse::<f64>() {
+                FloatLiteral(match buffer.parse::<f64>() {
                     Ok(n) => n,
                     Err(_) => {
                         return Some(
@@ -222,7 +222,7 @@ impl Lexer<'_> {
                 .with_span(start_location..self.location),
             ),
             NumberKind::Imag => Some(
-                Imag(match buffer[..buffer.len() - 1].parse::<f64>() {
+                ImaginaryNumberLiteral(match buffer[..buffer.len() - 1].parse::<f64>() {
                     Ok(n) => n,
                     Err(_) => {
                         return Some(

@@ -68,7 +68,7 @@ mod lexer_tests {
         Invalid(LexerError::UnexpectedChar('#'))
     );
 
-    lexer_test!(string, "\"test\"", String("test".into()), interner);
+    lexer_test!(string, "\"test\"", StringLiteral("test".into()), interner);
 
     lexer_test!(
         string2,

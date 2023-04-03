@@ -6,11 +6,11 @@ use error::ParserError;
 use ry_ast::{
     declaration::{Docstring, WithDocstringable},
     span::WithSpan,
-    token::{RawToken::*, Token},
+    token::{Keyword::*, RawToken::*, Token},
     *,
 };
-use ry_lexer::Lexer;
 use ry_interner::Interner;
+use ry_lexer::Lexer;
 
 pub mod error;
 
@@ -157,33 +157,33 @@ impl<'a> Parser<'a> {
         loop {
             items.push(
                 match self.next.unwrap() {
-                    Fun => self.parse_function_item(None)?,
-                    Struct => self.parse_struct_declaration(None)?,
-                    Trait => self.parse_trait_declaration(None)?,
-                    Enum => self.parse_enum_declaration(None)?,
-                    Impl => self.parse_impl(None)?,
-                    Pub => {
+                    Keyword(Fun) => self.parse_function_item(None)?,
+                    Keyword(Struct) => self.parse_struct_declaration(None)?,
+                    Keyword(Trait) => self.parse_trait_declaration(None)?,
+                    Keyword(Enum) => self.parse_enum_declaration(None)?,
+                    Keyword(Impl) => self.parse_impl(None)?,
+                    Keyword(Pub) => {
                         let visiblity = self.next.span();
 
                         self.check_scanning_error_for_next_token()?;
                         self.advance()?;
 
                         match self.next.unwrap() {
-                            Fun => self.parse_function_item(Some(visiblity))?,
-                            Struct => self.parse_struct_declaration(Some(visiblity))?,
-                            Trait => self.parse_trait_declaration(Some(visiblity))?,
-                            Enum => self.parse_enum_declaration(Some(visiblity))?,
-                            Impl => self.parse_impl(Some(visiblity))?,
+                            Keyword(Fun) => self.parse_function_item(Some(visiblity))?,
+                            Keyword(Struct) => self.parse_struct_declaration(Some(visiblity))?,
+                            Keyword(Trait) => self.parse_trait_declaration(Some(visiblity))?,
+                            Keyword(Enum) => self.parse_enum_declaration(Some(visiblity))?,
+                            Keyword(Impl) => self.parse_impl(Some(visiblity))?,
                             _ => {
                                 return Err(ParserError::UnexpectedToken(
-                                    self.current.clone(),
+                                    self.next.clone(),
                                     "`fun`, `trait`, `enum`, `struct`".to_owned(),
                                     "item after `pub`".to_owned(),
                                 ));
                             }
                         }
                     }
-                    Import => self.parse_import()?,
+                    Keyword(Import) => self.parse_import()?,
                     EndOfFile => break,
                     _ => {
                         let err = Err(ParserError::UnexpectedToken(

@@ -4,7 +4,7 @@ use ry_ast::{
     declaration::{Function, FunctionArgument, FunctionDeclaration, FunctionDefinition, Item},
     precedence::Precedence,
     span::WithSpan,
-    token::RawToken::*,
+    token::{Punctuator::*, RawToken::*},
     Visibility,
 };
 
@@ -16,7 +16,7 @@ impl<'c> Parser<'c> {
     pub(crate) fn parse_function(&mut self, visibility: Visibility) -> ParserResult<Function> {
         let definition = self.parse_function_definition(visibility)?;
 
-        if self.next.unwrap().is(Semicolon) {
+        if self.next.unwrap().is(Punctuator(Semicolon)) {
             self.advance()?;
 
             Ok(definition.into())
@@ -46,16 +46,21 @@ impl<'c> Parser<'c> {
 
         let generics = self.parse_generics()?;
 
-        consume!(self, OpenParent, "function declaration");
+        consume!(self, Punctuator(OpenParent), "function declaration");
 
-        let arguments = parse_list!(self, "function arguments", CloseParent, false, || self
-            .parse_function_argument());
+        let arguments = parse_list!(
+            self,
+            "function arguments",
+            Punctuator(CloseParent),
+            false,
+            || self.parse_function_argument()
+        );
 
         self.advance()?;
 
         let mut return_type = None;
 
-        if self.next.unwrap().is(Colon) {
+        if self.next.unwrap().is(Punctuator(Colon)) {
             self.advance()?; // `:`
 
             return_type = Some(self.parse_type()?);
@@ -76,13 +81,13 @@ impl<'c> Parser<'c> {
     pub(crate) fn parse_function_argument(&mut self) -> ParserResult<FunctionArgument> {
         let name = consume_ident!(self, "function argument name");
 
-        consume!(self, Colon, "function argument name");
+        consume!(self, Punctuator(Colon), "function argument name");
 
         let r#type = self.parse_type()?;
 
         let mut default_value = None;
 
-        if self.next.unwrap().is(Assign) {
+        if self.next.unwrap().is(Punctuator(Assign)) {
             self.advance()?;
 
             default_value = Some(self.parse_expression(Precedence::Lowest.to_i8().unwrap())?);

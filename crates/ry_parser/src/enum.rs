@@ -2,7 +2,7 @@ use crate::{error::ParserError, macros::*, Parser, ParserResult};
 use ry_ast::{
     declaration::{EnumDeclarationItem, Item, WithDocstringable},
     span::*,
-    token::RawToken::*,
+    token::{Punctuator::*, RawToken::*},
     Visibility,
 };
 
@@ -12,12 +12,12 @@ impl<'c> Parser<'c> {
 
         let name = consume_ident!(self, "enum name in enum declaration");
 
-        consume!(with_docstring self, OpenBrace, "enum declaration");
+        consume!(with_docstring self, Punctuator(OpenBrace), "enum declaration");
 
         let variants = parse_list!(
             self,
             "enum declaration",
-            CloseBrace,
+            Punctuator(CloseBrace),
             true, // top level
             || {
                 let doc = self.consume_non_module_docstring()?;

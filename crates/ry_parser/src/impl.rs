@@ -1,7 +1,7 @@
 use crate::{error::ParserError, macros::*, Parser, ParserResult};
 use ry_ast::{
     declaration::{FunctionDeclaration, ImplItem, Item, WithDocstring, WithDocstringable},
-    token::RawToken::*,
+    token::{Keyword::*, Punctuator::*, RawToken::*},
     Visibility,
 };
 
@@ -14,7 +14,7 @@ impl<'c> Parser<'c> {
         let mut r#type = self.parse_type()?;
         let mut r#trait = None;
 
-        if self.next.unwrap().is(For) {
+        if self.next.unwrap().is(Keyword(For)) {
             self.advance()?; // `for`
 
             r#trait = Some(r#type);
@@ -27,7 +27,7 @@ impl<'c> Parser<'c> {
 
         let implementations = self.parse_associated_functions_implementations()?;
 
-        consume!(with_docstring self, CloseBrace, "type implementation");
+        consume!(with_docstring self, Punctuator(CloseBrace), "type implementation");
 
         Ok(ImplItem::new(
             visibility,
@@ -45,12 +45,12 @@ impl<'c> Parser<'c> {
     ) -> ParserResult<Vec<WithDocstring<FunctionDeclaration>>> {
         let mut associated_functions = vec![];
 
-        while !self.next.unwrap().is(CloseBrace) {
+        while !self.next.unwrap().is(Punctuator(CloseBrace)) {
             let docstring = self.consume_non_module_docstring()?;
 
             let mut visibility = None;
 
-            if self.next.unwrap().is(Pub) {
+            if self.next.unwrap().is(Keyword(Pub)) {
                 visibility = Some(self.next.span())
             }
 

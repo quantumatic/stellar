@@ -1,7 +1,7 @@
 use crate::{error::ParserError, macros::*, Parser, ParserResult};
 use ry_ast::{
     declaration::{ImportItem, Item},
-    token::RawToken::*,
+    token::{RawToken::Punctuator, Punctuator::Semicolon},
 };
 
 impl<'c> Parser<'c> {
@@ -10,7 +10,7 @@ impl<'c> Parser<'c> {
 
         let path = self.parse_name()?;
 
-        consume!(with_docstring self, Semicolon, "import");
+        consume!(with_docstring self, Punctuator(Semicolon), "import");
 
         Ok(ImportItem::new(path).into())
     }

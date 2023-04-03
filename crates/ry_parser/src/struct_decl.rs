@@ -4,7 +4,7 @@ use ry_ast::{
         Item, StructDeclarationItem, StructMemberDeclaration, WithDocstring, WithDocstringable,
     },
     span::{Span, WithSpan},
-    token::RawToken::*,
+    token::{Keyword::*, Punctuator::*, RawToken::*},
 };
 
 impl<'c> Parser<'c> {
@@ -24,7 +24,7 @@ impl<'c> Parser<'c> {
 
         let members = self.parse_struct_members()?;
 
-        consume!(with_docstring self, CloseBrace, "struct declaration");
+        consume!(with_docstring self, Punctuator(CloseBrace), "struct declaration");
 
         Ok(StructDeclarationItem::new(visiblity, name, generics, r#where, members).into())
     }
@@ -33,28 +33,28 @@ impl<'c> Parser<'c> {
         let mut visibility = None;
         let mut mutability = None;
 
-        if self.next.unwrap().is(Mut) {
+        if self.next.unwrap().is(Keyword(Mut)) {
             self.advance()?;
             mutability = Some(self.current.span());
         }
 
-        if self.next.unwrap().is(Pub) {
+        if self.next.unwrap().is(Keyword(Pub)) {
             self.advance()?;
             visibility = Some(self.current.span());
         }
 
-        if self.next.unwrap().is(Mut) {
+        if self.next.unwrap().is(Keyword(Mut)) {
             self.advance()?;
             mutability = Some(self.current.span());
         }
 
         let name = consume_ident!(self, "struct member name in struct definition");
 
-        consume!(self, Colon, "struct member definition");
+        consume!(self, Punctuator(Colon), "struct member definition");
 
         let r#type = self.parse_type()?;
 
-        consume!(self, Semicolon, "struct member definition");
+        consume!(self, Punctuator(Semicolon), "struct member definition");
 
         Ok(StructMemberDeclaration::new(
             visibility, mutability, name, r#type,
@@ -66,7 +66,7 @@ impl<'c> Parser<'c> {
     ) -> ParserResult<Vec<WithDocstring<StructMemberDeclaration>>> {
         let mut members = vec![];
 
-        while !self.next.unwrap().is(CloseBrace) {
+        while !self.next.unwrap().is(Punctuator(CloseBrace)) {
             let docstring = self.consume_non_module_docstring()?;
             let member = self.parse_struct_member()?;
 

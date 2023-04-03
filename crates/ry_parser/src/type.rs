@@ -5,10 +5,9 @@ use ry_ast::{
         WhereClause, WhereClauseUnit,
     },
     span::{Spanned, WithSpan},
-    token::RawToken::*,
+    token::{Keyword::*, Punctuator::*, RawToken::*},
 };
 use ry_interner::Symbol;
-
 
 impl<'c> Parser<'c> {
     pub(crate) fn parse_name(&mut self) -> ParserResult<Spanned<Vec<Symbol>>> {
@@ -19,7 +18,7 @@ impl<'c> Parser<'c> {
 
         let (start, mut end) = (first_ident.span().start(), first_ident.span().end());
 
-        while self.next.unwrap().is(Dot) {
+        while self.next.unwrap().is(Punctuator(Dot)) {
             self.advance()?; // `.`
 
             name.push(*consume_ident!(self, "namespace member/namespace").unwrap());
@@ -50,13 +49,13 @@ impl<'c> Parser<'c> {
                 ))
                 .with_span(start..self.current.span().end())
             }
-            And => {
+            Punctuator(And) => {
                 self.advance()?;
                 let start = self.current.span().start();
 
                 let mut mutability = None;
 
-                if self.next.unwrap().is(Mut) {
+                if self.next.unwrap().is(Keyword(Mut)) {
                     mutability = Some(self.next.span());
 
                     self.advance()?; // `mut`
@@ -67,13 +66,13 @@ impl<'c> Parser<'c> {
                 RawType::from(ReferenceType::new(mutability, inner_type))
                     .with_span(start..self.current.span().end())
             }
-            OpenBracket => {
+            Punctuator(OpenBracket) => {
                 self.advance()?;
                 let start = self.current.span().start();
 
                 let inner_type = self.parse_type()?;
 
-                consume!(self, CloseBracket, "array type");
+                consume!(self, Punctuator(CloseBracket), "array type");
 
                 RawType::from(ArrayType::new(inner_type))
                     .with_span(start..self.current.span().end())
@@ -87,7 +86,7 @@ impl<'c> Parser<'c> {
             }
         };
 
-        while self.next.unwrap().is(QuestionMark) {
+        while self.next.unwrap().is(Punctuator(QuestionMark)) {
             left = RawType::from(OptionType::new(left)).with_span(start..self.next.span().end());
             self.advance()?;
         }
@@ -96,11 +95,16 @@ impl<'c> Parser<'c> {
     }
 
     pub(crate) fn parse_type_generic_part(&mut self) -> ParserResult<Option<Vec<Type>>> {
-        Ok(if self.next.unwrap().is(OpenBracket) {
+        Ok(if self.next.unwrap().is(Punctuator(OpenBracket)) {
             self.advance()?; // `[`
 
-            let result =
-                Some(parse_list!(self, "generics", CloseBracket, false, || self.parse_type()));
+            let result = Some(parse_list!(
+                self,
+                "generics",
+                Punctuator(CloseBracket),
+                false,
+                || self.parse_type()
+            ));
 
             self.advance()?; // `]`
 
@@ -111,7 +115,7 @@ impl<'c> Parser<'c> {
     }
 
     pub(crate) fn parse_generics(&mut self) -> ParserResult<Generics> {
-        if !self.next.unwrap().is(OpenBracket) {
+        if !self.next.unwrap().is(Punctuator(OpenBracket)) {
             return Ok(vec![]);
         }
 
@@ -120,14 +124,14 @@ impl<'c> Parser<'c> {
         let result = parse_list!(
             self,
             "generics",
-            CloseBracket,
+            Punctuator(CloseBracket),
             false, // top level
             || {
                 let generic = consume_ident!(self, "generic name");
 
                 let mut constraint = None;
 
-                if self.next.unwrap().is(Colon) {
+                if self.next.unwrap().is(Punctuator(Colon)) {
                     self.advance()?; // `:`
 
                     constraint = Some(self.parse_type()?);
@@ -143,18 +147,18 @@ impl<'c> Parser<'c> {
     }
 
     pub(crate) fn parse_where_clause(&mut self) -> ParserResult<WhereClause> {
-        Ok(if self.next.unwrap().is(Where) {
+        Ok(if self.next.unwrap().is(Keyword(Where)) {
             self.advance()?; // `where`
 
             let result = parse_list!(
                 self,
                 "where clause",
-                OpenBrace | Semicolon,
+                Punctuator(OpenBrace) | Punctuator(Semicolon),
                 false, // top level
                 || {
                     let left = self.parse_type()?;
 
-                    consume!(self, Colon, "where clause");
+                    consume!(self, Punctuator(Colon), "where clause");
 
                     let right = self.parse_type()?;
 
