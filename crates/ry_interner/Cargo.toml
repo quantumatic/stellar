@@ -1,7 +1,7 @@
 [package]
-name = "ry_ast_serializer"
+name = "ry_interner"
 version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-ry_ast = {path = "../ry_ast"}
+hashbrown = "0.13.2"

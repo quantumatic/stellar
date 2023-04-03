@@ -5,5 +5,5 @@ edition = "2021"
 
 [dependencies]
 ry_ast = {path = "../ry_ast"}
-string-interner = "0.14.0"
 unicode-xid = "0.2.4"
+ry_interner = {path = "../ry_interner"}

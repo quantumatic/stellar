@@ -4,8 +4,8 @@
 use derive_more::Display;
 use num_traits::ToPrimitive;
 use phf::phf_map;
+use ry_interner::Symbol;
 use std::{mem::discriminant, sync::Arc};
-use string_interner::DefaultSymbol;
 use thiserror::Error;
 
 use crate::{precedence::Precedence, span::Spanned};
@@ -76,7 +76,7 @@ pub enum NumberKind {
 #[derive(Clone, Debug, PartialEq, Display, Default)]
 pub enum RawToken {
     #[display(fmt = "identifier")]
-    Identifier(DefaultSymbol),
+    Identifier(Symbol),
     #[display(fmt = "string literal")]
     String(Arc<str>),
     #[display(fmt = "integer literal")]

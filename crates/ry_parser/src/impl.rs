@@ -67,7 +67,7 @@ impl<'c> Parser<'c> {
 #[cfg(test)]
 mod impl_tests {
     use crate::{macros::parser_test, Parser};
-    use string_interner::StringInterner;
+    use ry_interner::Interner;
 
     parser_test!(impl1, "impl[T] NotOption for T {}");
     parser_test!(

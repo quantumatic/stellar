@@ -37,7 +37,7 @@ impl<'c> Parser<'c> {
 #[cfg(test)]
 mod enum_tests {
     use crate::{macros::parser_test, Parser};
-    use string_interner::StringInterner;
+    use ry_interner::Interner;
 
     parser_test!(no_variants, "enum test {}");
     parser_test!(single_variant, "enum test { a }");

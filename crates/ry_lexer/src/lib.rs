@@ -22,42 +22,41 @@
 //! use ry_lexer::Lexer;
 //! use ry_ast::token::RawToken;
 //! use ry_ast::token::RawToken::EndOfFile;
-//! use string_interner::StringInterner;
+//! use ry_interner::Interner;
 //!
-//! let mut string_interner = StringInterner::default();
-//! let mut lexer = Lexer::new("", &mut string_interner);
+//! let mut interner = Interner::default();
+//! let mut lexer = Lexer::new("", &mut interner);
 //!
 //! assert_eq!(lexer.next().unwrap().unwrap(), &EndOfFile);
 //! assert_eq!(lexer.next().unwrap().unwrap(), &EndOfFile); // ok
 //! ```
 //!
-//! Note: the Ry lexer makes use of the `string_interner` crate to perform string interning,
+//! Note: the Ry lexer makes use of the `ry_interner` crate to perform string interning,
 //! a process of deduplicating strings, which can be highly beneficial when dealing with
-//! identifiers, strings and comments.
+//! identifiers.
 //!
 //! If error appeared in the process, [`Invalid`] will be returned:
 //!
 //! ```
 //! use ry_lexer::Lexer;
 //! use ry_ast::token::{LexerError, RawToken::Invalid};
-//! use string_interner::StringInterner;
+//! use ry_interner::Interner;
 //!
-//! let mut string_interner = StringInterner::default();
-//! let mut lexer = Lexer::new("#", &mut string_interner);
+//! let mut interner = Interner::default();
+//! let mut lexer = Lexer::new("#", &mut interner);
 //!
 //! assert_eq!(lexer.next().unwrap().unwrap(), &Invalid(LexerError::UnexpectedChar('#')));
 //! ```
 
 use ry_ast::{span::*, token::RawToken::*, token::*};
+use ry_interner::Interner;
 use std::{char::from_u32, str::Chars, string::String};
-
-use string_interner::StringInterner;
 
 mod number;
 mod tests;
 
 pub struct Lexer<'a> {
-    pub string_interner: &'a mut StringInterner,
+    pub interner: &'a mut Interner,
     current: char,
     next: char,
     contents: &'a str,
@@ -68,7 +67,7 @@ pub struct Lexer<'a> {
 type IterElem = Option<Token>;
 
 impl<'a> Lexer<'a> {
-    pub fn new(contents: &'a str, string_interner: &'a mut StringInterner) -> Self {
+    pub fn new(contents: &'a str, interner: &'a mut Interner) -> Self {
         let mut chars = contents.chars();
 
         let current = chars.next().unwrap_or('\0');
@@ -80,7 +79,7 @@ impl<'a> Lexer<'a> {
             contents,
             chars,
             location: 0,
-            string_interner,
+            interner,
         }
     }
 
@@ -359,10 +358,7 @@ impl<'a> Lexer<'a> {
 
         self.advance(); // '`'
 
-        Some(
-            Identifier(self.string_interner.get_or_intern(name))
-                .with_span(start_location..self.location),
-        )
+        Some(Identifier(self.interner.get_or_intern(name)).with_span(start_location..self.location))
     }
 
     fn eat_comment(&mut self) -> IterElem {
@@ -402,7 +398,7 @@ impl<'a> Lexer<'a> {
         match RESERVED.get(name) {
             Some(reserved) => Some(reserved.clone().with_span(start_location..self.location)),
             None => Some(
-                Identifier(self.string_interner.get_or_intern(name))
+                Identifier(self.interner.get_or_intern(name))
                     .with_span(start_location..self.location),
             ),
         }

@@ -5,11 +5,12 @@
 use error::ParserError;
 use ry_ast::{
     declaration::{Docstring, WithDocstringable},
+    span::WithSpan,
     token::{RawToken::*, Token},
-    *, span::WithSpan,
+    *,
 };
 use ry_lexer::Lexer;
-use string_interner::StringInterner;
+use ry_interner::Interner;
 
 pub mod error;
 
@@ -35,8 +36,8 @@ pub struct Parser<'a> {
 pub type ParserResult<T> = Result<T, ParserError>;
 
 impl<'a> Parser<'a> {
-    pub fn new(contents: &'a str, string_interner: &'a mut StringInterner) -> Self {
-        let mut lexer = Lexer::new(contents, string_interner);
+    pub fn new(contents: &'a str, interner: &'a mut Interner) -> Self {
+        let mut lexer = Lexer::new(contents, interner);
 
         let current = lexer.next().unwrap();
         let next = current.clone();
@@ -134,9 +135,9 @@ impl<'a> Parser<'a> {
     /// AST for a Ry module.
     /// ```
     /// use ry_parser::Parser;
-    /// use string_interner::StringInterner;
+    /// use ry_interner::Interner;
     ///
-    /// let mut interner = StringInterner::new();
+    /// let mut interner = Interner::default();
     /// let mut parser = Parser::new("fun test() {}", &mut interner);
     /// assert!(parser.parse().is_ok());
     /// ```

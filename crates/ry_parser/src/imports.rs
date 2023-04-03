@@ -19,7 +19,7 @@ impl<'c> Parser<'c> {
 #[cfg(test)]
 mod import_tests {
     use crate::{macros::parser_test, Parser};
-    use string_interner::StringInterner;
+    use ry_interner::Interner;
 
     parser_test!(single_import, "import test;");
     parser_test!(imports, "import test; import test2.test;");

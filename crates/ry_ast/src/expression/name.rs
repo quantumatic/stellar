@@ -1,15 +1,14 @@
-use string_interner::DefaultSymbol;
-
 use super::RawExpression;
+use ry_interner::Symbol;
 
 #[derive(Debug, PartialEq)]
 pub struct IdentifierExpression {
-    pub name: DefaultSymbol,
+    pub name: Symbol,
 }
 
 impl IdentifierExpression {
     #[inline]
-    pub const fn new(name: DefaultSymbol) -> Self {
+    pub const fn new(name: Symbol) -> Self {
         Self { name }
     }
 }

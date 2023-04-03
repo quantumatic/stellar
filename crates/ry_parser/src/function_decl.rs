@@ -3,9 +3,9 @@ use num_traits::ToPrimitive;
 use ry_ast::{
     declaration::{Function, FunctionArgument, FunctionDeclaration, FunctionDefinition, Item},
     precedence::Precedence,
-    token::RawToken::*,
     span::WithSpan,
-    Visibility
+    token::RawToken::*,
+    Visibility,
 };
 
 impl<'c> Parser<'c> {
@@ -95,7 +95,7 @@ impl<'c> Parser<'c> {
 #[cfg(test)]
 mod function_decl_tests {
     use crate::{macros::parser_test, Parser};
-    use string_interner::StringInterner;
+    use ry_interner::Interner;
 
     parser_test!(function1, "pub fun test() {}");
     parser_test!(function2, "pub fun test[A](a: A): A { a }");

@@ -52,7 +52,7 @@ impl<'c> Parser<'c> {
 #[cfg(test)]
 mod trait_tests {
     use crate::{macros::parser_test, Parser};
-    use string_interner::StringInterner;
+    use ry_interner::Interner;
 
     parser_test!(empty_trait, "trait test {}");
     parser_test!(r#trait, "trait test { fun f(); }");

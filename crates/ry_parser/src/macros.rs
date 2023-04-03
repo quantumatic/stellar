@@ -52,7 +52,7 @@ macro_rules! parser_test {
     ($name:ident, $source:literal) => {
         #[test]
         pub fn $name() {
-            let mut string_interner = StringInterner::default();
+            let mut string_interner = Interner::default();
             let mut parser = Parser::new($source, &mut string_interner);
             assert!(parser.parse().is_ok());
         }

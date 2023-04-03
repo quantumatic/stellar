@@ -5,7 +5,7 @@
 //     visitor::{Visitor, VisitorMut},
 //     *,
 // };
-// use string_interner::{DefaultSymbol, StringInterner};
+// use string_interner::{usize, StringInterner};
 
 // pub struct ASTSerializer<'a> {
 //     content: String,
@@ -34,7 +34,7 @@
 //         self.indent();
 //     }
 
-//     fn write_ident(&mut self, symbol: DefaultSymbol) {
+//     fn write_ident(&mut self, symbol: usize) {
 //         self.content
 //             .push_str(self.string_interner.resolve(symbol).unwrap());
 //     }

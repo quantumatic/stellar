@@ -224,7 +224,7 @@ impl<'c> Parser<'c> {
 #[cfg(test)]
 mod expression_tests {
     use crate::{macros::parser_test, Parser};
-    use string_interner::StringInterner;
+    use ry_interner::Interner;
 
     parser_test!(literal1, "fun test(): i32 { 3 }");
     parser_test!(literal2, "fun test(): string { \"hello\" }");

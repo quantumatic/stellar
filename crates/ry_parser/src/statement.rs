@@ -100,7 +100,7 @@ impl<'c> Parser<'c> {
 #[cfg(test)]
 mod statement_tests {
     use crate::{macros::parser_test, Parser};
-    use string_interner::StringInterner;
+    use ry_interner::Interner;
 
     parser_test!(imut_var, "fun test() { var a = 3; }");
     parser_test!(mut_var, "fun test() { var mut a = 3; }");

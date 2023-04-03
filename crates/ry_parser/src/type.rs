@@ -7,11 +7,11 @@ use ry_ast::{
     span::{Spanned, WithSpan},
     token::RawToken::*,
 };
+use ry_interner::Symbol;
 
-use string_interner::DefaultSymbol;
 
 impl<'c> Parser<'c> {
-    pub(crate) fn parse_name(&mut self) -> ParserResult<Spanned<Vec<DefaultSymbol>>> {
+    pub(crate) fn parse_name(&mut self) -> ParserResult<Spanned<Vec<Symbol>>> {
         let mut name = vec![];
 
         let first_ident = consume_ident!(self, "namespace member/namespace");
@@ -88,8 +88,7 @@ impl<'c> Parser<'c> {
         };
 
         while self.next.unwrap().is(QuestionMark) {
-            left = RawType::from(OptionType::new(left))
-                .with_span(start..self.next.span().end());
+            left = RawType::from(OptionType::new(left)).with_span(start..self.next.span().end());
             self.advance()?;
         }
 
@@ -173,7 +172,7 @@ impl<'c> Parser<'c> {
 #[cfg(test)]
 mod type_tests {
     use crate::{macros::parser_test, Parser};
-    use string_interner::StringInterner;
+    use ry_interner::Interner;
 
     parser_test!(primary_type1, "pub fun test(): i32 {}");
     parser_test!(
