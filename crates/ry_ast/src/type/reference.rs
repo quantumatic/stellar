@@ -3,23 +3,17 @@ use crate::Mutability;
 
 #[derive(Debug, PartialEq)]
 pub struct ReferenceType {
-    mutability: Mutability,
-    inner: Type,
+    pub mutability: Mutability,
+    pub inner: Box<Type>,
 }
 
 impl ReferenceType {
-    pub const fn new(mutability: Mutability, inner: Type) -> Self {
-        Self { mutability, inner }
-    }
-
     #[inline]
-    pub const fn mutability(&self) -> Mutability {
-        self.mutability
-    }
-
-    #[inline]
-    pub const fn inner(&self) -> &Type {
-        &self.inner
+    pub fn new(mutability: Mutability, inner: Type) -> Self {
+        Self {
+            mutability,
+            inner: Box::new(inner),
+        }
     }
 }
 

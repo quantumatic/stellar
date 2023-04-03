@@ -4,18 +4,13 @@ use super::Statement;
 
 #[derive(Debug, PartialEq)]
 pub struct DeferStatement {
-    call: Expression,
+    pub call: Expression,
 }
 
 impl DeferStatement {
     #[inline]
-    pub const fn new(call: Expression) -> Self {
+    pub fn new(call: Expression) -> Self {
         Self { call }
-    }
-
-    #[inline]
-    pub const fn call(&self) -> &Expression {
-        &self.call
     }
 }
 

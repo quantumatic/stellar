@@ -3,24 +3,17 @@ use crate::r#type::Type;
 
 #[derive(Debug, PartialEq)]
 pub struct AsExpression {
-    left: Expression,
+    left: Box<Expression>,
     right: Type,
 }
 
 impl AsExpression {
     #[inline]
-    pub const fn new(left: Expression, right: Type) -> Self {
-        Self { left, right }
-    }
-
-    #[inline]
-    pub const fn left(&self) -> &Expression {
-        &self.left
-    }
-
-    #[inline]
-    pub const fn right(&self) -> &Type {
-        &self.right
+    pub fn new(left: Expression, right: Type) -> Self {
+        Self {
+            left: Box::new(left),
+            right,
+        }
     }
 }
 

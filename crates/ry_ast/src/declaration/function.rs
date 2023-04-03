@@ -9,24 +9,14 @@ use crate::{
 
 #[derive(Debug, PartialEq)]
 pub struct FunctionDeclaration {
-    definition: FunctionDefinition,
-    body: StatementsBlock,
+    pub definition: FunctionDefinition,
+    pub body: StatementsBlock,
 }
 
 impl FunctionDeclaration {
     #[inline]
     pub const fn new(definition: FunctionDefinition, body: StatementsBlock) -> Self {
         Self { definition, body }
-    }
-
-    #[inline]
-    pub const fn definition(&self) -> &FunctionDefinition {
-        &self.definition
-    }
-
-    #[inline]
-    pub const fn body(&self) -> &StatementsBlock {
-        &self.body
     }
 }
 
@@ -38,12 +28,12 @@ impl From<Function> for Item {
 
 #[derive(Debug, PartialEq)]
 pub struct FunctionDefinition {
-    visibility: Visibility,
-    name: Name,
-    generics: Generics,
-    arguments: Vec<FunctionArgument>,
-    return_type: Option<Type>,
-    r#where: WhereClause,
+    pub visibility: Visibility,
+    pub name: Name,
+    pub generics: Generics,
+    pub arguments: Vec<FunctionArgument>,
+    pub return_type: Option<Type>,
+    pub r#where: WhereClause,
 }
 
 impl FunctionDefinition {
@@ -65,43 +55,13 @@ impl FunctionDefinition {
             r#where,
         }
     }
-
-    #[inline]
-    pub const fn visibility(&self) -> Visibility {
-        self.visibility
-    }
-
-    #[inline]
-    pub const fn name(&self) -> &Name {
-        &self.name
-    }
-
-    #[inline]
-    pub const fn generics(&self) -> &Generics {
-        &self.generics
-    }
-
-    #[inline]
-    pub const fn arguments(&self) -> &Vec<FunctionArgument> {
-        &self.arguments
-    }
-
-    #[inline]
-    pub const fn return_type(&self) -> Option<&Type> {
-        self.return_type.as_ref()
-    }
-
-    #[inline]
-    pub const fn r#where(&self) -> &WhereClause {
-        &self.r#where
-    }
 }
 
 #[derive(Debug, PartialEq)]
 pub struct FunctionArgument {
-    name: Name,
-    r#type: Type,
-    default_value: Option<Expression>,
+    pub name: Name,
+    pub r#type: Type,
+    pub default_value: Option<Expression>,
 }
 
 impl FunctionArgument {
@@ -112,21 +72,6 @@ impl FunctionArgument {
             r#type,
             default_value,
         }
-    }
-
-    #[inline]
-    pub const fn name(&self) -> &Name {
-        &self.name
-    }
-
-    #[inline]
-    pub const fn r#type(&self) -> &Type {
-        &self.r#type
-    }
-
-    #[inline]
-    pub const fn default_value(&self) -> Option<&Expression> {
-        self.default_value.as_ref()
     }
 }
 

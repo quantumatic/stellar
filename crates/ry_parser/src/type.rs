@@ -4,14 +4,14 @@ use ry_ast::{
         ArrayType, Generic, Generics, OptionType, PrimaryType, RawType, ReferenceType, Type,
         WhereClause, WhereClauseUnit,
     },
-    span::{WithSpan, WithSpannable},
+    span::{Spanned, WithSpan},
     token::RawToken::*,
 };
 
 use string_interner::DefaultSymbol;
 
 impl<'c> Parser<'c> {
-    pub(crate) fn parse_name(&mut self) -> ParserResult<WithSpan<Vec<DefaultSymbol>>> {
+    pub(crate) fn parse_name(&mut self) -> ParserResult<Spanned<Vec<DefaultSymbol>>> {
         let mut name = vec![];
 
         let first_ident = consume_ident!(self, "namespace member/namespace");
@@ -40,17 +40,14 @@ impl<'c> Parser<'c> {
                 let name = self.parse_name()?;
                 let generic_part = self.parse_type_generic_part()?;
 
-                Box::<RawType>::new(
-                    PrimaryType::new(
-                        name,
-                        if let Some(v) = generic_part {
-                            v
-                        } else {
-                            vec![]
-                        },
-                    )
-                    .into(),
-                )
+                RawType::from(PrimaryType::new(
+                    name,
+                    if let Some(v) = generic_part {
+                        v
+                    } else {
+                        vec![]
+                    },
+                ))
                 .with_span(start..self.current.span().end())
             }
             And => {
@@ -67,7 +64,7 @@ impl<'c> Parser<'c> {
 
                 let inner_type = self.parse_type()?;
 
-                Box::<RawType>::new(ReferenceType::new(mutability, inner_type).into())
+                RawType::from(ReferenceType::new(mutability, inner_type))
                     .with_span(start..self.current.span().end())
             }
             OpenBracket => {
@@ -78,7 +75,7 @@ impl<'c> Parser<'c> {
 
                 consume!(self, CloseBracket, "array type");
 
-                Box::<RawType>::new(ArrayType::new(inner_type).into())
+                RawType::from(ArrayType::new(inner_type))
                     .with_span(start..self.current.span().end())
             }
             _ => {
@@ -91,7 +88,7 @@ impl<'c> Parser<'c> {
         };
 
         while self.next.unwrap().is(QuestionMark) {
-            left = Box::<RawType>::new(OptionType::new(left).into())
+            left = RawType::from(OptionType::new(left))
                 .with_span(start..self.next.span().end());
             self.advance()?;
         }

@@ -1,17 +1,6 @@
 use crate::{error::ParserError, macros::*, Parser, ParserResult};
 use num_traits::ToPrimitive;
-use ry_ast::{
-    expression::{
-        ArrayLiteralExpression, AsExpression, BinaryExpression, BoolLiteralExpression,
-        CallExpression, CharLiteralExpression, Expression, FloatLiteralExpression,
-        IdentifierExpression, IfBlock, IfExpression, ImaginaryNumberLiteralExpression,
-        IntegerLiteralExpression, PropertyAccessExpression, RawExpression, StringLiteralExpression,
-        TypeAnnotationsExpression, UnaryExpression, WhileExpression,
-    },
-    precedence::Precedence,
-    span::WithSpannable,
-    token::RawToken::*,
-};
+use ry_ast::{expression::*, precedence::Precedence, span::WithSpan, token::RawToken::*};
 
 impl<'c> Parser<'c> {
     pub(crate) fn parse_expression(&mut self, precedence: i8) -> ParserResult<Expression> {
@@ -29,8 +18,7 @@ impl<'c> Parser<'c> {
 
                     let span = left.span().start()..self.current.span().end();
 
-                    Box::<RawExpression>::new(BinaryExpression::new(left, right, op).into())
-                        .with_span(span)
+                    RawExpression::from(BinaryExpression::new(left, right, op)).with_span(span)
                 }
                 OpenParent => {
                     self.advance()?; // `(`
@@ -43,8 +31,7 @@ impl<'c> Parser<'c> {
 
                     let span = left.span().start()..self.current.span().end();
 
-                    Box::<RawExpression>::new(CallExpression::new(left, arguments).into())
-                        .with_span(span)
+                    RawExpression::from(CallExpression::new(left, arguments)).with_span(span)
                 }
                 Dot => {
                     self.advance()?; // `.`
@@ -53,8 +40,7 @@ impl<'c> Parser<'c> {
 
                     let span = left.span().start()..name.span().end();
 
-                    Box::<RawExpression>::new(PropertyAccessExpression::new(left, name).into())
-                        .with_span(span)
+                    RawExpression::from(PropertyAccessExpression::new(left, name)).with_span(span)
                 }
                 OpenBracket => {
                     self.advance()?; // `[`
@@ -68,10 +54,8 @@ impl<'c> Parser<'c> {
 
                     self.advance()?;
 
-                    Box::<RawExpression>::new(
-                        TypeAnnotationsExpression::new(left, type_annotations).into(),
-                    )
-                    .with_span(span)
+                    RawExpression::from(TypeAnnotationsExpression::new(left, type_annotations))
+                        .with_span(span)
                 }
                 postfixop_pattern!() => {
                     self.advance()?; // `?`
@@ -80,8 +64,7 @@ impl<'c> Parser<'c> {
 
                     let span = left.span().start()..right.span().end();
 
-                    Box::<RawExpression>::new(UnaryExpression::new(left, right, true).into())
-                        .with_span(span)
+                    RawExpression::from(UnaryExpression::new(left, right, true)).with_span(span)
                 }
                 As => {
                     self.advance()?; // `as`
@@ -90,8 +73,7 @@ impl<'c> Parser<'c> {
 
                     let span = left.span().start()..self.current.span().end();
 
-                    Box::<RawExpression>::new(AsExpression::new(left, r#type).into())
-                        .with_span(span)
+                    RawExpression::from(AsExpression::new(left, r#type)).with_span(span)
                 }
                 _ => break,
             };
@@ -109,42 +91,42 @@ impl<'c> Parser<'c> {
 
                 self.advance()?; // int
 
-                Ok(Box::<RawExpression>::new(IntegerLiteralExpression::new(value).into()).with_span(self.current.span()))
+                Ok(RawExpression::from(IntegerLiteralExpression::new(value)).with_span(self.current.span()))
             }
             Float(f) => {
                 let value = *f;
 
                 self.advance()?; // float
 
-                Ok(Box::<RawExpression>::new(FloatLiteralExpression::new(value).into()).with_span(self.current.span()))
+                Ok(RawExpression::from(FloatLiteralExpression::new(value)).with_span(self.current.span()))
             }
             Imag(i) => {
                 let value = *i;
 
                 self.advance()?; // imag
 
-                Ok(Box::<RawExpression>::new(ImaginaryNumberLiteralExpression::new(value).into()).with_span(self.current.span()))
+                Ok(RawExpression::from(ImaginaryNumberLiteralExpression::new(value)).with_span(self.current.span()))
             }
             String(s) => {
                 let value = s.clone();
 
                 self.advance()?; // string
 
-                Ok(Box::<RawExpression>::new(StringLiteralExpression::new(value).into()).with_span(self.current.span()))
+                Ok(RawExpression::from(StringLiteralExpression::new(value)).with_span(self.current.span()))
             }
             Char(c) => {
                 let value = *c;
 
                 self.advance()?; // char
 
-                Ok(Box::<RawExpression>::new(CharLiteralExpression::new(value).into()).with_span(self.current.span()))
+                Ok(RawExpression::from(CharLiteralExpression::new(value)).with_span(self.current.span()))
             }
             Bool(b) => {
                 let value = *b;
 
                 self.advance()?; // bool
 
-                Ok(Box::<RawExpression>::new(BoolLiteralExpression::new(value).into()).with_span(self.current.span()))
+                Ok(RawExpression::from(BoolLiteralExpression::new(value)).with_span(self.current.span()))
             }
             prefixop_pattern!() => {
                 let left = self.next.clone();
@@ -153,17 +135,16 @@ impl<'c> Parser<'c> {
                 let right = self.parse_expression(Precedence::Unary.to_i8().unwrap())?;
                 let span = left.span().start()..right.span().end();
 
-                Ok(Box::<RawExpression>::new(UnaryExpression::new(right, left, false).into()).with_span(
-                    span))
+                Ok(RawExpression::from(UnaryExpression::new(right, left, false)).with_span(span))
             }
             OpenParent => {
                 self.advance()?; // `(`
 
-                let expr = self.parse_expression(Precedence::Lowest.to_i8().unwrap())?;
+                let expression = self.parse_expression(Precedence::Lowest.to_i8().unwrap())?;
 
                 consume!(self, CloseParent, "parenthesized expression");
 
-                Ok(expr)
+                Ok(expression)
             }
             OpenBracket => {
                 self.advance()?; // `[`
@@ -176,12 +157,12 @@ impl<'c> Parser<'c> {
 
                 let end = self.current.span().end();
 
-                Ok(Box::<RawExpression>::new(ArrayLiteralExpression::new(array).into()).with_span(start..end))
+                Ok(RawExpression::from(ArrayLiteralExpression::new(array)).with_span(start..end))
             }
             Identifier(n) => {
-                let result = Box::<RawExpression>::new(
-                    IdentifierExpression::new(*n).into()
-                ).with_span(self.current.span());
+                let result =
+                RawExpression::from(IdentifierExpression::new(*n))
+                    .with_span(self.current.span());
 
                 self.advance()?;
 
@@ -217,7 +198,7 @@ impl<'c> Parser<'c> {
 
                 let end = self.current.span().end();
 
-                Ok(Box::<RawExpression>::new(IfExpression::new(if_blocks, r#else).into())
+                Ok(RawExpression::from(IfExpression::new(if_blocks, r#else))
                     .with_span(start..end))
             }
             While => {
@@ -227,7 +208,8 @@ impl<'c> Parser<'c> {
                 let condition = self.parse_expression(Precedence::Lowest.to_i8().unwrap())?;
                 let block = self.parse_statements_block(false)?;
 
-                Ok(Box::<RawExpression>::new(WhileExpression::new(condition, block).into()).with_span(start..self.current.span().end()))
+                Ok(RawExpression::from(WhileExpression::new(condition, block))
+                    .with_span(start..self.current.span().end()))
             }
             _ => Err(ParserError::UnexpectedToken(
                 self.next.clone(),

@@ -33,9 +33,9 @@ pub use self::{
     type_annotations::TypeAnnotationsExpression,
     unary::UnaryExpression,
 };
-use crate::span::WithSpan;
+use crate::span::Spanned;
 
-pub type Expression = WithSpan<Box<RawExpression>>;
+pub type Expression = Spanned<RawExpression>;
 
 #[derive(Debug, PartialEq)]
 pub enum RawExpression {
@@ -65,7 +65,9 @@ pub enum RawExpression {
 }
 
 impl RawExpression {
-    pub fn must_have_semicolon_at_the_end(&self) -> bool {
-        !matches!(self, RawExpression::If(..) | RawExpression::While(..))
+    /// Returns `true` if expression contains block on its right
+    /// hand side (last token is `}`).
+    pub fn with_block(&self) -> bool {
+        matches!(self, RawExpression::If(..) | RawExpression::While(..))
     }
 }

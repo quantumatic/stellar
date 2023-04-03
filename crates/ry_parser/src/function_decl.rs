@@ -3,9 +3,9 @@ use num_traits::ToPrimitive;
 use ry_ast::{
     declaration::{Function, FunctionArgument, FunctionDeclaration, FunctionDefinition, Item},
     precedence::Precedence,
-    span::WithSpannable,
     token::RawToken::*,
-    *,
+    span::WithSpan,
+    Visibility
 };
 
 impl<'c> Parser<'c> {

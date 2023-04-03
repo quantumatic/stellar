@@ -2,18 +2,13 @@ use super::RawExpression;
 
 #[derive(Debug, PartialEq)]
 pub struct CharLiteralExpression {
-    literal: char,
+    pub literal: char,
 }
 
 impl CharLiteralExpression {
     #[inline]
     pub const fn new(literal: char) -> Self {
         Self { literal }
-    }
-
-    #[inline]
-    pub const fn literal(&self) -> char {
-        self.literal
     }
 }
 

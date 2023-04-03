@@ -7,12 +7,12 @@ use super::{docstring::WithDocstring, function::FunctionDeclaration, Item};
 
 #[derive(Debug, PartialEq)]
 pub struct ImplItem {
-    visibility: Visibility,
-    generics: Generics,
-    r#type: Type,
-    r#trait: Option<Type>,
-    r#where: WhereClause,
-    methods: Vec<WithDocstring<FunctionDeclaration>>,
+    pub visibility: Visibility,
+    pub generics: Generics,
+    pub r#type: Type,
+    pub r#trait: Option<Type>,
+    pub r#where: WhereClause,
+    pub methods: Vec<WithDocstring<FunctionDeclaration>>,
 }
 
 impl ImplItem {
@@ -33,34 +33,6 @@ impl ImplItem {
             r#where,
             methods,
         }
-    }
-
-    #[inline]
-    pub const fn visibility(&self) -> Visibility {
-        self.visibility
-    }
-
-    #[inline]
-    pub const fn generics(&self) -> &Generics {
-        &self.generics
-    }
-
-    #[inline]
-    pub const fn r#type(&self) -> &Type {
-        &self.r#type
-    }
-
-    #[inline]
-    pub const fn r#trait(&self) -> Option<&Type> {
-        self.r#trait.as_ref()
-    }
-
-    pub const fn r#where(&self) -> &WhereClause {
-        &self.r#where
-    }
-
-    pub const fn methods(&self) -> &Vec<WithDocstring<FunctionDeclaration>> {
-        &self.methods
     }
 }
 

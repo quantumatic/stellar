@@ -5,9 +5,8 @@
 use error::ParserError;
 use ry_ast::{
     declaration::{Docstring, WithDocstringable},
-    span::WithSpannable,
     token::{RawToken::*, Token},
-    *,
+    *, span::WithSpan,
 };
 use ry_lexer::Lexer;
 use string_interner::StringInterner;

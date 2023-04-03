@@ -3,24 +3,14 @@ use crate::r#type::TypeAnnotations;
 
 #[derive(Debug, PartialEq)]
 pub struct TypeAnnotationsExpression {
-    left: Expression,
-    right: TypeAnnotations,
+    pub left: Box<Expression>,
+    pub right: TypeAnnotations,
 }
 
 impl TypeAnnotationsExpression {
     #[inline]
-    pub const fn new(left: Expression, right: TypeAnnotations) -> Self {
-        Self { left, right }
-    }
-
-    #[inline]
-    pub const fn left(&self) -> &Expression {
-        &self.left
-    }
-
-    #[inline]
-    pub const fn right(&self) -> &TypeAnnotations {
-        &self.right
+    pub fn new(left: Expression, right: TypeAnnotations) -> Self {
+        Self { left: Box::new(left), right }
     }
 }
 

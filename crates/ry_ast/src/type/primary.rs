@@ -4,8 +4,8 @@ use super::{RawType, Type, TypeAnnotations};
 
 #[derive(Debug, PartialEq)]
 pub struct PrimaryType {
-    name: Path,
-    type_annotations: TypeAnnotations,
+    pub name: Path,
+    pub type_annotations: TypeAnnotations,
 }
 
 impl PrimaryType {
@@ -15,16 +15,6 @@ impl PrimaryType {
             name,
             type_annotations,
         }
-    }
-
-    #[inline]
-    pub const fn name(&self) -> &Path {
-        &self.name
-    }
-
-    #[inline]
-    pub const fn generics(&self) -> &TypeAnnotations {
-        &self.type_annotations
     }
 }
 

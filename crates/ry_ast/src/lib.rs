@@ -17,8 +17,8 @@ use span::Span;
 #[derive(Debug, PartialEq)]
 pub struct ProgramUnit {
     /// Global source file docstring
-    docstring: Docstring,
-    items: Items,
+    pub docstring: Docstring,
+    pub items: Items,
 }
 
 pub type Items = Vec<WithDocstring<Item>>;
@@ -27,16 +27,6 @@ impl ProgramUnit {
     #[inline]
     pub const fn new(docstring: Docstring, items: Items) -> Self {
         Self { docstring, items }
-    }
-
-    #[inline]
-    pub const fn docstring(&self) -> &Docstring {
-        &self.docstring
-    }
-
-    #[inline]
-    pub const fn items(&self) -> &Items {
-        &self.items
     }
 }
 

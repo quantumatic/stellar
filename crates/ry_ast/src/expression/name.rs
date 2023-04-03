@@ -4,18 +4,13 @@ use super::RawExpression;
 
 #[derive(Debug, PartialEq)]
 pub struct IdentifierExpression {
-    name: DefaultSymbol,
+    pub name: DefaultSymbol,
 }
 
 impl IdentifierExpression {
     #[inline]
     pub const fn new(name: DefaultSymbol) -> Self {
         Self { name }
-    }
-
-    #[inline]
-    pub const fn name(&self) -> DefaultSymbol {
-        self.name
     }
 }
 

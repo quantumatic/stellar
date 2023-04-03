@@ -4,18 +4,13 @@ use super::Item;
 
 #[derive(Debug, PartialEq)]
 pub struct ImportItem {
-    path: Path,
+    pub path: Path,
 }
 
 impl ImportItem {
     #[inline]
     pub const fn new(path: Path) -> Self {
         Self { path }
-    }
-
-    #[inline]
-    pub const fn path(&self) -> &Path {
-        &self.path
     }
 }
 

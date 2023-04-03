@@ -1,9 +1,10 @@
-import std.fs.File;
+/// Trait Test does something
+trait Test {
+	/// ![required]
+	pub fun age(): i32;
+	fun test();
+}
 
 pub fun main() {
-    var a = File.open("test.txt")?; // returns (Unit type in this case) if error will occur
 
-    File.open("test2.txt").unwrap(); // panics if error will occur
-
-    var num = "27".parse[i32]() ?: 0; // if error will occur, num will be set to 0
 }

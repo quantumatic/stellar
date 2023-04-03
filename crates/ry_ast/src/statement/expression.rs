@@ -13,21 +13,11 @@ pub struct ExpressionStatement {
 
 impl ExpressionStatement {
     #[inline]
-    pub const fn new(has_semicolon: bool, expression: Expression) -> Self {
+    pub fn new(has_semicolon: bool, expression: Expression) -> Self {
         Self {
             has_semicolon,
             expression,
         }
-    }
-
-    #[inline]
-    pub const fn has_semicolon(&self) -> bool {
-        self.has_semicolon
-    }
-
-    #[inline]
-    pub const fn expression(&self) -> &Expression {
-        &self.expression
     }
 }
 

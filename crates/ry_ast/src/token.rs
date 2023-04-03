@@ -8,7 +8,7 @@ use std::{mem::discriminant, sync::Arc};
 use string_interner::DefaultSymbol;
 use thiserror::Error;
 
-use crate::{precedence::Precedence, span::WithSpan};
+use crate::{precedence::Precedence, span::Spanned};
 
 /// Represents error that lexer can fail with.
 #[derive(Error, Copy, Clone, Debug, PartialEq, Eq)]
@@ -261,7 +261,7 @@ impl RawToken {
     }
 }
 
-pub type Token = WithSpan<RawToken>;
+pub type Token = Spanned<RawToken>;
 
 /// List of reserved Ry names: keywords, boolean literals & etc..
 pub static RESERVED: phf::Map<&'static str, RawToken> = phf_map! {

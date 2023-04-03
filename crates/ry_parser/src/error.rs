@@ -7,7 +7,7 @@ use thiserror::Error;
 pub enum ParserError {
     /// Error appeared in lexing stage.
     #[error("scanning error appeared in the process")]
-    ErrorToken(WithSpan<LexerError>),
+    ErrorToken(Spanned<LexerError>),
 
     /// Unexpected token [`Token`] in AST Node called
     /// [`Option<String>`], expected [`String`].

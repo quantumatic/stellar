@@ -4,10 +4,10 @@ use super::Statement;
 
 #[derive(Debug, PartialEq)]
 pub struct VarStatement {
-    mutability: Mutability,
-    name: Name,
-    r#type: Option<Type>,
-    value: Expression,
+    pub mutability: Mutability,
+    pub name: Name,
+    pub r#type: Option<Type>,
+    pub value: Expression,
 }
 
 impl VarStatement {
@@ -24,26 +24,6 @@ impl VarStatement {
             r#type,
             value,
         }
-    }
-
-    #[inline]
-    pub const fn mutability(&self) -> Mutability {
-        self.mutability
-    }
-
-    #[inline]
-    pub const fn name(&self) -> &Name {
-        &self.name
-    }
-
-    #[inline]
-    pub const fn r#type(&self) -> Option<&Type> {
-        self.r#type.as_ref()
-    }
-
-    #[inline]
-    pub const fn value(&self) -> &Expression {
-        &self.value
     }
 }
 

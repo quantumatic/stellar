@@ -8,11 +8,11 @@ use super::{docstring::WithDocstring, Item};
 
 #[derive(Debug, PartialEq)]
 pub struct StructDeclarationItem {
-    visibility: Visibility,
-    name: Name,
-    generics: Generics,
-    r#where: WhereClause,
-    members: Vec<WithDocstring<StructMemberDeclaration>>,
+    pub visibility: Visibility,
+    pub name: Name,
+    pub generics: Generics,
+    pub r#where: WhereClause,
+    pub members: Vec<WithDocstring<StructMemberDeclaration>>,
 }
 
 impl StructDeclarationItem {
@@ -32,31 +32,6 @@ impl StructDeclarationItem {
             members,
         }
     }
-
-    #[inline]
-    pub const fn visibility(&self) -> Visibility {
-        self.visibility
-    }
-
-    #[inline]
-    pub const fn name(&self) -> &Name {
-        &self.name
-    }
-
-    #[inline]
-    pub const fn generics(&self) -> &Generics {
-        &self.generics
-    }
-
-    #[inline]
-    pub const fn r#where(&self) -> &WhereClause {
-        &self.r#where
-    }
-
-    #[inline]
-    pub const fn members(&self) -> &Vec<WithDocstring<StructMemberDeclaration>> {
-        &self.members
-    }
 }
 
 impl From<StructDeclarationItem> for Item {
@@ -67,10 +42,10 @@ impl From<StructDeclarationItem> for Item {
 
 #[derive(Debug, PartialEq)]
 pub struct StructMemberDeclaration {
-    visibility: Visibility,
-    mutability: Mutability,
-    name: Name,
-    r#type: Type,
+    pub visibility: Visibility,
+    pub mutability: Mutability,
+    pub name: Name,
+    pub r#type: Type,
 }
 
 impl StructMemberDeclaration {
@@ -87,25 +62,5 @@ impl StructMemberDeclaration {
             name,
             r#type,
         }
-    }
-
-    #[inline]
-    pub const fn visibility(&self) -> Visibility {
-        self.visibility
-    }
-
-    #[inline]
-    pub const fn mutability(&self) -> Mutability {
-        self.mutability
-    }
-
-    #[inline]
-    pub const fn name(&self) -> &Name {
-        &self.name
-    }
-
-    #[inline]
-    pub const fn r#type(&self) -> &Type {
-        &self.r#type
     }
 }

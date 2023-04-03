@@ -8,11 +8,11 @@ use super::{docstring::WithDocstring, function::Method, Item};
 
 #[derive(Debug, PartialEq)]
 pub struct TraitDeclarationItem {
-    visibility: Visibility,
-    name: Name,
-    generics: Generics,
-    r#where: WhereClause,
-    methods: Vec<WithDocstring<Method>>,
+    pub visibility: Visibility,
+    pub name: Name,
+    pub generics: Generics,
+    pub r#where: WhereClause,
+    pub methods: Vec<WithDocstring<Method>>,
 }
 
 impl TraitDeclarationItem {
@@ -31,31 +31,6 @@ impl TraitDeclarationItem {
             r#where,
             methods,
         }
-    }
-
-    #[inline]
-    pub const fn visibility(&self) -> Visibility {
-        self.visibility
-    }
-
-    #[inline]
-    pub const fn name(&self) -> &Name {
-        &self.name
-    }
-
-    #[inline]
-    pub const fn generics(&self) -> &Generics {
-        &self.generics
-    }
-
-    #[inline]
-    pub const fn r#where(&self) -> &WhereClause {
-        &self.r#where
-    }
-
-    #[inline]
-    pub const fn methods(&self) -> &Vec<WithDocstring<Method>> {
-        &self.methods
     }
 }
 

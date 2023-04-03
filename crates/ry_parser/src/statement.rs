@@ -1,14 +1,6 @@
 use crate::{error::ParserError, macros::*, Parser, ParserResult};
 use num_traits::ToPrimitive;
-use ry_ast::{
-    precedence::Precedence,
-    span::WithSpannable,
-    statement::{
-        DeferStatement, ExpressionStatement, ReturnStatement, Statement, StatementsBlock,
-        VarStatement,
-    },
-    token::RawToken::*,
-};
+use ry_ast::{precedence::Precedence, span::WithSpan, statement::*, token::RawToken::*};
 
 impl<'c> Parser<'c> {
     pub(crate) fn parse_statements_block(
@@ -83,8 +75,7 @@ impl<'c> Parser<'c> {
             _ => {
                 let expression = self.parse_expression(Precedence::Lowest.to_i8().unwrap())?;
 
-                must_have_semicolon_at_the_end =
-                    (*expression.unwrap()).must_have_semicolon_at_the_end();
+                must_have_semicolon_at_the_end = !(*expression.unwrap()).with_block();
 
                 if !self.next.unwrap().is(Semicolon) && must_have_semicolon_at_the_end {
                     last_statement_in_block = true;

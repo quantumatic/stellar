@@ -1,7 +1,7 @@
 use crate::{error::ParserError, macros::*, Parser, ParserResult};
 use ry_ast::{
     declaration::{Function, Item, TraitDeclarationItem, WithDocstring, WithDocstringable},
-    span::{Span, WithSpannable},
+    span::{Span, WithSpan},
     token::RawToken::*,
 };
 
@@ -38,7 +38,8 @@ impl<'c> Parser<'c> {
             let mut visibility = None;
 
             if self.next.unwrap().is(Pub) {
-                visibility = Some(self.next.span())
+                visibility = Some(self.next.span());
+                self.advance()?;
             }
 
             associated_functions.push(self.parse_function(visibility)?.with_docstring(docstring));
@@ -58,5 +59,9 @@ mod trait_tests {
     parser_test!(
         r#trait_with_generics,
         "trait Into[T] { fun into(self: &Self): T; }"
+    );
+    parser_test!(
+        unnecessary_visibility_qualifier,
+        "trait Into[T] { pub fun into(self: &Self): T; }"
     );
 }

@@ -4,9 +4,9 @@ use super::{docstring::WithDocstring, Item};
 
 #[derive(Debug, PartialEq)]
 pub struct EnumDeclarationItem {
-    visibility: Visibility,
-    name: Name,
-    variants: Vec<WithDocstring<Name>>,
+    pub visibility: Visibility,
+    pub name: Name,
+    pub variants: Vec<WithDocstring<Name>>,
 }
 
 impl EnumDeclarationItem {
@@ -21,21 +21,6 @@ impl EnumDeclarationItem {
             name,
             variants,
         }
-    }
-
-    #[inline]
-    pub const fn visibility(&self) -> Visibility {
-        self.visibility
-    }
-
-    #[inline]
-    pub const fn variants(&self) -> &Vec<WithDocstring<Name>> {
-        &self.variants
-    }
-
-    #[inline]
-    pub const fn name(&self) -> &Name {
-        &self.name
     }
 }
 

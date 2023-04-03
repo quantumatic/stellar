@@ -4,24 +4,17 @@ use super::{Expression, RawExpression};
 
 #[derive(Debug, PartialEq)]
 pub struct PropertyAccessExpression {
-    left: Expression,
-    right: Name,
+    pub left: Box<Expression>,
+    pub right: Name,
 }
 
 impl PropertyAccessExpression {
     #[inline]
-    pub const fn new(left: Expression, right: Name) -> Self {
-        Self { left, right }
-    }
-
-    #[inline]
-    pub const fn left(&self) -> &Expression {
-        &self.left
-    }
-
-    #[inline]
-    pub const fn right(&self) -> &Name {
-        &self.right
+    pub fn new(left: Expression, right: Name) -> Self {
+        Self {
+            left: Box::new(left),
+            right,
+        }
     }
 }
 

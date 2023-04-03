@@ -2,18 +2,15 @@ use super::{RawType, Type};
 
 #[derive(Debug, PartialEq)]
 pub struct OptionType {
-    inner: Type,
+    pub inner: Box<Type>,
 }
 
 impl OptionType {
     #[inline]
-    pub const fn new(inner: Type) -> Self {
-        Self { inner }
-    }
-
-    #[inline]
-    pub const fn inner(&self) -> &Type {
-        &self.inner
+    pub fn new(inner: Type) -> Self {
+        Self {
+            inner: Box::new(inner),
+        }
     }
 }
 

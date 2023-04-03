@@ -3,7 +3,7 @@ use ry_ast::{
     declaration::{
         Item, StructDeclarationItem, StructMemberDeclaration, WithDocstring, WithDocstringable,
     },
-    span::{Span, WithSpannable},
+    span::{Span, WithSpan},
     token::RawToken::*,
 };
 

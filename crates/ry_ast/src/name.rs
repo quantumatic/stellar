@@ -1,11 +1,11 @@
 use string_interner::DefaultSymbol;
 
 use crate::{
-    span::{WithSpan, WithSpannable},
+    span::{Spanned, WithSpan},
     token::{RawToken, Token},
 };
 
-pub type Name = WithSpan<DefaultSymbol>;
+pub type Name = Spanned<DefaultSymbol>;
 
 impl From<Token> for Option<Name> {
     fn from(token: Token) -> Self {
@@ -16,4 +16,4 @@ impl From<Token> for Option<Name> {
     }
 }
 
-pub type Path = WithSpan<Vec<DefaultSymbol>>;
+pub type Path = Spanned<Vec<DefaultSymbol>>;

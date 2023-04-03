@@ -13,9 +13,9 @@ pub use self::{
     reference::ReferenceType,
     where_clause::{WhereClause, WhereClauseUnit}
 };
-use super::span::WithSpan;
+use super::span::Spanned;
 
-pub type Type = WithSpan<Box<RawType>>;
+pub type Type = Spanned<RawType>;
 pub type TypeAnnotations = Vec<Type>;
 
 #[derive(Debug, PartialEq)]

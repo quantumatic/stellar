@@ -3,24 +3,17 @@ use crate::statement::StatementsBlock;
 
 #[derive(Debug, PartialEq)]
 pub struct WhileExpression {
-    condition: Expression,
-    body: StatementsBlock,
+    pub condition: Box<Expression>,
+    pub body: StatementsBlock,
 }
 
 impl WhileExpression {
     #[inline]
-    pub const fn new(condition: Expression, body: StatementsBlock) -> Self {
-        Self { condition, body }
-    }
-
-    #[inline]
-    pub const fn condition(&self) -> &Expression {
-        &self.condition
-    }
-
-    #[inline]
-    pub const fn body(&self) -> &StatementsBlock {
-        &self.body
+    pub fn new(condition: Expression, body: StatementsBlock) -> Self {
+        Self {
+            condition: Box::new(condition),
+            body,
+        }
     }
 }
 

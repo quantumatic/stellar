@@ -47,12 +47,12 @@ impl From<Range<usize>> for Span {
 
 /// Represents thing located in some [`Span`].
 #[derive(Debug, PartialEq, Clone, Default)]
-pub struct WithSpan<T> {
+pub struct Spanned<T> {
     value: T,
     span: Span,
 }
 
-impl<T> WithSpan<T> {
+impl<T> Spanned<T> {
     pub fn new(value: T, span: Span) -> Self {
         Self { value, span }
     }
@@ -68,9 +68,9 @@ impl<T> WithSpan<T> {
     }
 }
 
-impl<T> From<(T, Span)> for WithSpan<T> {
+impl<T> From<(T, Span)> for Spanned<T> {
     fn from(val: (T, Span)) -> Self {
-        WithSpan::new(val.0, val.1)
+        Spanned::new(val.0, val.1)
     }
 }
 
@@ -79,13 +79,13 @@ impl From<Span> for Range<usize> {
         value.start..value.end
     }
 }
-pub trait WithSpannable {
-    fn with_span(self, span: impl Into<Span>) -> WithSpan<Self>
+pub trait WithSpan {
+    fn with_span(self, span: impl Into<Span>) -> Spanned<Self>
     where
         Self: Sized,
     {
-        WithSpan::new(self, span.into())
+        Spanned::new(self, span.into())
     }
 }
 
-impl<T: Sized> WithSpannable for T {}
+impl<T: Sized> WithSpan for T {}
