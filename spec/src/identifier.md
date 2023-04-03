@@ -2,8 +2,7 @@
 
 > **<sup>Lexer:<sup>**\
 > IDENTIFIER_OR_KEYWORD :\
-> &nbsp;&nbsp; &nbsp;&nbsp; XID_Start XID_Continue<sup>\*</sup>\
-> &nbsp;&nbsp; | `_` XID_Continue<sup>\*</sup>
+> &nbsp;&nbsp; &nbsp;&nbsp; (XID_Start | `_`) XID_Continue<sup>\*</sup>
 >
 > RAW_IDENTIFIER : `` ` `` IDENTIFIER_OR_KEYWORD `` ` ``
 >

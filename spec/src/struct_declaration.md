@@ -16,7 +16,6 @@ A _struct_ is a nominal struct type defined with the keyword `struct`.
 An example of a `struct` item and its use:
 
 ```ry
-@[auto_constructor]
 struct RGB {
     pub red u8;
     pub green u8;
@@ -24,7 +23,11 @@ struct RGB {
 }
 
 pub fun main() {
-    var green = RGB(0, 255, 0);
+    var green = RGB {
+        red: 0,
+        green: 255,
+        blue: 0
+    };
     println("%d", green.red);
 }
 ```
