@@ -1,16 +1,17 @@
-use crate::{error::ParserError, macros::*, Parser, ParserResult};
+use crate::{error::ParseError, macros::*, ParseResult, Parser};
 use ry_ast::{
     r#type::{
-        ArrayType, Generic, Generics, OptionType, PrimaryType, RawType, ReferenceType, Type,
-        WhereClause, WhereClauseUnit,
+        ArrayType, Generic, Generics, PrimaryType, RawType, ReferenceType, Type, WhereClause,
+        WhereClauseUnit,
     },
     span::{Spanned, WithSpan},
     token::{Keyword::*, Punctuator::*, RawToken::*},
+    Mutability,
 };
 use ry_interner::Symbol;
 
-impl<'c> Parser<'c> {
-    pub(crate) fn parse_name(&mut self) -> ParserResult<Spanned<Vec<Symbol>>> {
+impl Parser<'_> {
+    pub(crate) fn parse_name(&mut self) -> ParseResult<Spanned<Vec<Symbol>>> {
         let mut name = vec![];
 
         let first_ident = consume_ident!(self, "namespace member/namespace");
@@ -18,7 +19,7 @@ impl<'c> Parser<'c> {
 
         let (start, mut end) = (first_ident.span().start(), first_ident.span().end());
 
-        while self.next.unwrap().is(Punctuator(Dot)) {
+        while let Punctuator(Dot) = self.next.unwrap() {
             self.advance()?; // `.`
 
             name.push(*consume_ident!(self, "namespace member/namespace").unwrap());
@@ -29,12 +30,10 @@ impl<'c> Parser<'c> {
         Ok(name.with_span(start..end))
     }
 
-    pub(crate) fn parse_type(&mut self) -> ParserResult<Type> {
+    pub(crate) fn parse_type(&mut self) -> ParseResult<Type> {
         let start = self.next.span().start();
 
-        self.check_scanning_error_for_next_token()?;
-
-        let mut left = match self.next.unwrap() {
+        let r#type = match self.next.unwrap() {
             Identifier(_) => {
                 let name = self.parse_name()?;
                 let generic_part = self.parse_type_generic_part()?;
@@ -53,10 +52,10 @@ impl<'c> Parser<'c> {
                 self.advance()?;
                 let start = self.current.span().start();
 
-                let mut mutability = None;
+                let mut mutability = Mutability::immutable();
 
-                if self.next.unwrap().is(Keyword(Mut)) {
-                    mutability = Some(self.next.span());
+                if let Keyword(Mut) = self.next.unwrap() {
+                    mutability = Mutability::mutable(self.next.span());
 
                     self.advance()?; // `mut`
                 }
@@ -78,24 +77,19 @@ impl<'c> Parser<'c> {
                     .with_span(start..self.current.span().end())
             }
             _ => {
-                return Err(ParserError::UnexpectedToken(
+                return Err(ParseError::unexpected_token(
                     self.next.clone(),
-                    "`[` (array type), `&` (reference type) or \n\tidentifier".to_owned(),
-                    "type".to_owned(),
+                    "`[` (array type), `&` (reference type) or \n\tidentifier",
+                    "type",
                 ));
             }
         };
 
-        while self.next.unwrap().is(Punctuator(QuestionMark)) {
-            left = RawType::from(OptionType::new(left)).with_span(start..self.next.span().end());
-            self.advance()?;
-        }
-
-        Ok(left)
+        Ok(r#type)
     }
 
-    pub(crate) fn parse_type_generic_part(&mut self) -> ParserResult<Option<Vec<Type>>> {
-        Ok(if self.next.unwrap().is(Punctuator(OpenBracket)) {
+    pub(crate) fn parse_type_generic_part(&mut self) -> ParseResult<Option<Vec<Type>>> {
+        Ok(if let Punctuator(OpenBracket) = self.next.unwrap() {
             self.advance()?; // `[`
 
             let result = Some(parse_list!(
@@ -114,40 +108,34 @@ impl<'c> Parser<'c> {
         })
     }
 
-    pub(crate) fn parse_generics(&mut self) -> ParserResult<Generics> {
-        if !self.next.unwrap().is(Punctuator(OpenBracket)) {
-            return Ok(vec![]);
+    pub(crate) fn optionally_parse_generics(&mut self) -> ParseResult<Generics> {
+        match self.next.unwrap() {
+            Punctuator(OpenBracket) => {}
+            _ => return Ok(vec![]),
         }
 
         self.advance()?; // `[`
 
-        let result = parse_list!(
-            self,
-            "generics",
-            Punctuator(CloseBracket),
-            false, // top level
-            || {
-                let generic = consume_ident!(self, "generic name");
+        let result = parse_list!(self, "generics", Punctuator(CloseBracket), false, || {
+            let generic = consume_ident!(self, "generic name");
 
-                let mut constraint = None;
+            let mut constraint = None;
 
-                if self.next.unwrap().is(Punctuator(Colon)) {
-                    self.advance()?; // `:`
-
-                    constraint = Some(self.parse_type()?);
-                }
-
-                Ok(Generic::new(generic, constraint))
+            if let Punctuator(Colon) = self.next.unwrap() {
+                self.advance()?;
+                constraint = Some(self.parse_type()?);
             }
-        );
+
+            Ok(Generic::new(generic, constraint))
+        });
 
         self.advance()?;
 
         Ok(result)
     }
 
-    pub(crate) fn parse_where_clause(&mut self) -> ParserResult<WhereClause> {
-        Ok(if self.next.unwrap().is(Keyword(Where)) {
+    pub(crate) fn optionally_parse_where_clause(&mut self) -> ParseResult<WhereClause> {
+        Ok(if let Keyword(Where) = self.next.unwrap() {
             self.advance()?; // `where`
 
             let result = parse_list!(

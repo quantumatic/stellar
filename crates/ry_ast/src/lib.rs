@@ -30,9 +30,39 @@ impl ProgramUnit {
         Self { docstring, items }
     }
 }
+#[derive(Debug, PartialEq)]
+pub struct Visibility(Option<Span>);
 
-pub type Visibility = Option<Span>;
-pub type Mutability = Option<Span>;
+#[derive(Debug, PartialEq)]
+pub struct Mutability(Option<Span>);
+
+impl Visibility {
+    pub fn private() -> Self {
+        Self(None)
+    }
+
+    pub fn public(span: Span) -> Self {
+        Self(Some(span))
+    }
+
+    pub fn span_of_pub(&self) -> Option<Span> {
+        self.0
+    }
+}
+
+impl Mutability {
+    pub fn immutable() -> Self {
+        Self(None)
+    }
+
+    pub fn mutable(span: Span) -> Self {
+        Self(Some(span))
+    }
+
+    pub fn span_of_mut(&self) -> Option<Span> {
+        self.0
+    }
+}
 
 impl VisitWith for ProgramUnit {
     fn visit_with<V>(&self, visitor: &mut V) -> std::ops::ControlFlow<V::BreakTy>

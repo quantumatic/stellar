@@ -1,11 +1,11 @@
-use crate::{error::ParserError, macros::*, Parser, ParserResult};
+use crate::{error::*, macros::*, Parser};
 use ry_ast::{
     declaration::{ImportItem, Item},
-    token::{RawToken::Punctuator, Punctuator::Semicolon},
+    token::{Punctuator::Semicolon, RawToken::Punctuator},
 };
 
-impl<'c> Parser<'c> {
-    pub(crate) fn parse_import(&mut self) -> ParserResult<Item> {
+impl Parser<'_> {
+    pub(crate) fn parse_import(&mut self) -> ParseResult<Item> {
         self.advance()?;
 
         let path = self.parse_name()?;

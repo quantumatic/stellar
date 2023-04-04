@@ -1,6 +1,5 @@
 pub mod array;
 pub mod generics;
-pub mod option;
 pub mod primary;
 pub mod reference;
 pub mod where_clause;
@@ -8,10 +7,9 @@ pub mod where_clause;
 pub use self::{
     array::ArrayType,
     generics::{Generic, Generics},
-    option::OptionType,
     primary::PrimaryType,
     reference::ReferenceType,
-    where_clause::{WhereClause, WhereClauseUnit}
+    where_clause::{WhereClause, WhereClauseUnit},
 };
 use super::span::Spanned;
 
@@ -23,5 +21,4 @@ pub enum RawType {
     Array(ArrayType),
     Reference(ReferenceType),
     Primary(PrimaryType),
-    Option(OptionType),
 }

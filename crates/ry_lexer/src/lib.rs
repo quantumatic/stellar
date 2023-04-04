@@ -20,7 +20,6 @@
 //! never returns [`None`]).
 //! ```
 //! use ry_lexer::Lexer;
-//! use ry_ast::token::RawToken;
 //! use ry_ast::token::RawToken::EndOfFile;
 //! use ry_interner::Interner;
 //!
@@ -35,17 +34,17 @@
 //! a process of deduplicating strings, which can be highly beneficial when dealing with
 //! identifiers.
 //!
-//! If error appeared in the process, [`Invalid`] will be returned:
+//! If error appeared in the process, [`Error`] will be returned:
 //!
 //! ```
 //! use ry_lexer::Lexer;
-//! use ry_ast::token::{LexerError, RawToken::Invalid};
+//! use ry_ast::token::{LexError, RawToken::Error};
 //! use ry_interner::Interner;
 //!
 //! let mut interner = Interner::default();
 //! let mut lexer = Lexer::new("#", &mut interner);
 //!
-//! assert_eq!(lexer.next().unwrap().unwrap(), &Invalid(LexerError::UnexpectedChar('#')));
+//! assert_eq!(lexer.next().unwrap().unwrap(), &Error(LexError::UnexpectedChar));
 //! ```
 
 use ry_ast::{
@@ -58,6 +57,7 @@ use std::{char::from_u32, str::Chars, string::String};
 mod number;
 mod tests;
 
+#[derive(Debug)]
 pub struct Lexer<'a> {
     pub interner: &'a mut Interner,
     current: char,
@@ -137,7 +137,7 @@ impl<'a> Lexer<'a> {
         &self.contents[start_location..self.location]
     }
 
-    fn eat_escape(&mut self) -> Result<char, (LexerError, Span)> {
+    fn eat_escape(&mut self) -> Result<char, (LexError, Span)> {
         let r = match self.current {
             'b' => Ok('\u{0008}'),
             'f' => Ok('\u{000C}'),
@@ -147,13 +147,13 @@ impl<'a> Lexer<'a> {
             '\'' => Ok('\''),
             '"' => Ok('"'),
             '\\' => Ok('\\'),
-            '\0' => Err((LexerError::EmptyEscapeSequence, self.char_location(1))),
+            '\0' => Err((LexError::EmptyEscapeSequence, self.char_location(1))),
             'u' => {
                 self.advance(); // u
 
                 if self.current != '{' {
                     return Err((
-                        LexerError::ExpectedOpenBracketInUnicodeEscapeSequence,
+                        LexError::ExpectedOpenBracketInUnicodeEscapeSequence,
                         self.char_location(1),
                     ));
                 }
@@ -165,7 +165,7 @@ impl<'a> Lexer<'a> {
                 for _ in 0..4 {
                     if !self.current.is_ascii_hexdigit() {
                         return Err((
-                            LexerError::ExpectedDigitInUnicodeEscapeSequence,
+                            LexError::ExpectedDigitInUnicodeEscapeSequence,
                             self.char_location(1),
                         ));
                     }
@@ -176,7 +176,7 @@ impl<'a> Lexer<'a> {
 
                 if self.current != '}' {
                     return Err((
-                        LexerError::ExpectedCloseBracketInUnicodeEscapeSequence,
+                        LexError::ExpectedCloseBracketInUnicodeEscapeSequence,
                         self.char_location(1),
                     ));
                 }
@@ -184,7 +184,7 @@ impl<'a> Lexer<'a> {
                 match char::from_u32(u32::from_str_radix(&buffer, 16).unwrap()) {
                     Some(c) => Ok(c),
                     None => Err((
-                        LexerError::InvalidUnicodeEscapeSequence,
+                        LexError::InvalidUnicodeEscapeSequence,
                         (self.location - 4..self.location).into(),
                     )),
                 }
@@ -194,7 +194,7 @@ impl<'a> Lexer<'a> {
 
                 if self.current != '{' {
                     return Err((
-                        LexerError::ExpectedOpenBracketInByteEscapeSequence,
+                        LexError::ExpectedOpenBracketInByteEscapeSequence,
                         self.char_location(1),
                     ));
                 }
@@ -206,7 +206,7 @@ impl<'a> Lexer<'a> {
                 for _ in 0..2 {
                     if !self.current.is_ascii_hexdigit() {
                         return Err((
-                            LexerError::ExpectedDigitInByteEscapeSequence,
+                            LexError::ExpectedDigitInByteEscapeSequence,
                             self.char_location(1),
                         ));
                     }
@@ -217,7 +217,7 @@ impl<'a> Lexer<'a> {
 
                 if self.current != '}' {
                     return Err((
-                        LexerError::ExpectedCloseBracketInByteEscapeSequence,
+                        LexError::ExpectedCloseBracketInByteEscapeSequence,
                         self.char_location(1),
                     ));
                 }
@@ -225,12 +225,12 @@ impl<'a> Lexer<'a> {
                 match char::from_u32(u32::from_str_radix(&buffer, 16).unwrap()) {
                     Some(c) => Ok(c),
                     None => Err((
-                        LexerError::InvalidByteEscapeSequence,
+                        LexError::InvalidByteEscapeSequence,
                         (self.location - 4..self.location).into(),
                     )),
                 }
             }
-            _ => Err((LexerError::UnknownEscapeSequence, self.char_location(1))),
+            _ => Err((LexError::UnknownEscapeSequence, self.char_location(1))),
         };
 
         self.advance();
@@ -252,7 +252,7 @@ impl<'a> Lexer<'a> {
                 let e = self.eat_escape();
 
                 if let Err(e) = e {
-                    return Some((Invalid(e.0), e.1).into());
+                    return Some((Error(e.0), e.1).into());
                 } else if let Ok(c) = e {
                     result = c;
                 }
@@ -262,7 +262,7 @@ impl<'a> Lexer<'a> {
 
             if self.current == '\n' || self.eof() {
                 return Some(
-                    Invalid(LexerError::UnterminatedCharLiteral)
+                    Error(LexError::UnterminatedCharLiteral)
                         .with_span(start_location..self.location),
                 );
             }
@@ -277,13 +277,13 @@ impl<'a> Lexer<'a> {
         match size {
             2..=i32::MAX => {
                 return Some(
-                    Invalid(LexerError::MoreThanOneCharInCharLiteral)
+                    Error(LexError::MoreThanOneCharInCharLiteral)
                         .with_span(start_location..self.location),
                 );
             }
             0 => {
                 return Some(
-                    Invalid(LexerError::EmptyCharLiteral).with_span(start_location..self.location),
+                    Error(LexError::EmptyCharLiteral).with_span(start_location..self.location),
                 );
             }
             _ => {}
@@ -312,7 +312,7 @@ impl<'a> Lexer<'a> {
                 let e = self.eat_escape();
 
                 if let Err(e) = e {
-                    return Some((Invalid(e.0), e.1).into());
+                    return Some((Error(e.0), e.1).into());
                 } else if let Ok(c) = e {
                     buffer.push(c);
                 }
@@ -323,8 +323,7 @@ impl<'a> Lexer<'a> {
 
         if self.eof() || self.current == '\n' {
             return Some(
-                Invalid(LexerError::UnterminatedStringLiteral)
-                    .with_span(start_location..self.location),
+                Error(LexError::UnterminatedStringLiteral).with_span(start_location..self.location),
             );
         }
 
@@ -347,15 +346,14 @@ impl<'a> Lexer<'a> {
 
         if self.current != '`' {
             return Some(
-                Invalid(LexerError::UnterminatedWrappedIdentifierLiteral)
+                Error(LexError::UnterminatedWrappedIdentifier)
                     .with_span(start_location..self.location),
             );
         }
 
         if name.is_empty() {
             return Some(
-                Invalid(LexerError::EmptyWrappedIdentifierLiteral)
-                    .with_span(start_location..self.location),
+                Error(LexError::EmptyWrappedIdentifier).with_span(start_location..self.location),
             );
         }
 
@@ -562,7 +560,7 @@ impl<'c> Iterator for Lexer<'c> {
                     return self.advance_with(Punctuator(Dot));
                 }
 
-                self.advance_with(Invalid(LexerError::UnexpectedChar(c)))
+                self.advance_with(Error(LexError::UnexpectedChar))
             }
         }
     }

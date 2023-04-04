@@ -1,24 +1,22 @@
-use crate::{error::ParserError, macros::*, Parser, ParserResult};
+use crate::{error::ParseError, macros::*, ParseResult, Parser};
 use ry_ast::{
     declaration::{
         Item, StructDeclarationItem, StructMemberDeclaration, WithDocstring, WithDocstringable,
     },
-    span::{Span, WithSpan},
+    span::WithSpan,
     token::{Keyword::*, Punctuator::*, RawToken::*},
+    Mutability, Visibility,
 };
 
-impl<'c> Parser<'c> {
-    pub(crate) fn parse_struct_declaration(
-        &mut self,
-        visiblity: Option<Span>,
-    ) -> ParserResult<Item> {
+impl Parser<'_> {
+    pub(crate) fn parse_struct_declaration(&mut self, visiblity: Visibility) -> ParseResult<Item> {
         self.advance()?;
 
         let name = consume_ident!(self, "struct name in struct declaration");
 
-        let generics = self.parse_generics()?;
+        let generics = self.optionally_parse_generics()?;
 
-        let r#where = self.parse_where_clause()?;
+        let r#where = self.optionally_parse_where_clause()?;
 
         self.advance_with_docstring()?; // `{`
 
@@ -29,23 +27,23 @@ impl<'c> Parser<'c> {
         Ok(StructDeclarationItem::new(visiblity, name, generics, r#where, members).into())
     }
 
-    fn parse_struct_member(&mut self) -> ParserResult<StructMemberDeclaration> {
-        let mut visibility = None;
-        let mut mutability = None;
+    fn parse_struct_member(&mut self) -> ParseResult<StructMemberDeclaration> {
+        let mut visibility = Visibility::private();
+        let mut mutability = Mutability::immutable();
 
-        if self.next.unwrap().is(Keyword(Mut)) {
+        if let Keyword(Mut) = self.next.unwrap() {
             self.advance()?;
-            mutability = Some(self.current.span());
+            mutability = Mutability::mutable(self.current.span());
         }
 
-        if self.next.unwrap().is(Keyword(Pub)) {
+        if let Keyword(Pub) = self.next.unwrap() {
             self.advance()?;
-            visibility = Some(self.current.span());
+            visibility = Visibility::public(self.current.span());
         }
 
-        if self.next.unwrap().is(Keyword(Mut)) {
+        if let Keyword(Mut) = self.next.unwrap() {
             self.advance()?;
-            mutability = Some(self.current.span());
+            mutability = Mutability::mutable(self.current.span());
         }
 
         let name = consume_ident!(self, "struct member name in struct definition");
@@ -61,12 +59,14 @@ impl<'c> Parser<'c> {
         ))
     }
 
-    fn parse_struct_members(
-        &mut self,
-    ) -> ParserResult<Vec<WithDocstring<StructMemberDeclaration>>> {
+    fn parse_struct_members(&mut self) -> ParseResult<Vec<WithDocstring<StructMemberDeclaration>>> {
         let mut members = vec![];
 
-        while !self.next.unwrap().is(Punctuator(CloseBrace)) {
+        loop {
+            if let Punctuator(CloseBrace) = self.next.unwrap() {
+                break;
+            }
+
             let docstring = self.consume_non_module_docstring()?;
             let member = self.parse_struct_member()?;
 

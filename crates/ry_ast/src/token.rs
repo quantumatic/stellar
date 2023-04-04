@@ -4,61 +4,86 @@
 use phf::phf_map;
 use ry_interner::Symbol;
 use std::{fmt::Display, mem::discriminant, sync::Arc};
-use thiserror::Error;
 
 use crate::{precedence::Precedence, span::Spanned};
 
 /// Represents error that lexer can fail with.
-#[derive(Error, Copy, Clone, Debug, PartialEq, Eq)]
-pub enum LexerError {
-    #[error("unexpected character `{_0}`")]
-    UnexpectedChar(char),
-    #[error("unterminated wrapped identifier literal")]
-    UnterminatedWrappedIdentifierLiteral,
-    #[error("empty wrapped identifier literal")]
-    EmptyWrappedIdentifierLiteral,
-    #[error("unterminated string literal")]
-    UnterminatedStringLiteral,
-    #[error("unknown escape sequence")]
-    UnknownEscapeSequence,
-    #[error("empty escape sequence")]
-    EmptyEscapeSequence,
-    #[error("expected closing bracket (`}}`) in unicode escape sequence")]
-    ExpectedCloseBracketInUnicodeEscapeSequence,
-    #[error("expected opening bracket (`{{`) in unicode escape sequence")]
-    ExpectedOpenBracketInUnicodeEscapeSequence,
-    #[error("expected hexadecimal digit in unicode escape sequence")]
-    ExpectedDigitInUnicodeEscapeSequence,
-    #[error("such unicode character does not exists")]
-    InvalidUnicodeEscapeSequence,
-    #[error("expected closing bracket (`}}`) in byte escape sequence")]
-    ExpectedCloseBracketInByteEscapeSequence,
-    #[error("expected opening bracket (`{{`) in byte escape sequence")]
-    ExpectedOpenBracketInByteEscapeSequence,
-    #[error("expected hexadecimal digit in byte escape sequence")]
-    ExpectedDigitInByteEscapeSequence,
-    #[error("such byte does not exists")]
-    InvalidByteEscapeSequence,
-    #[error("empty character literal")]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum LexError {
+    DigitDoesNotCorrespondToBase,
     EmptyCharLiteral,
-    #[error("unterminated character literal")]
-    UnterminatedCharLiteral,
-    #[error("character literal can only one character long")]
-    MoreThanOneCharInCharLiteral,
-    #[error("invalid radix point")]
-    InvalidRadixPoint,
-    #[error("has no digits")]
-    HasNoDigits,
-    #[error("exponent requires decimal mantissa")]
-    ExponentRequiresDecimalMantissa,
-    #[error("exponent has no digits")]
+    EmptyEscapeSequence,
+    EmptyWrappedIdentifier,
+    ExpectedCloseBracketInByteEscapeSequence,
+    ExpectedCloseBracketInUnicodeEscapeSequence,
+    ExpectedDigitInByteEscapeSequence,
+    ExpectedDigitInUnicodeEscapeSequence,
+    ExpectedOpenBracketInByteEscapeSequence,
+    ExpectedOpenBracketInUnicodeEscapeSequence,
     ExponentHasNoDigits,
-    #[error("digit doesn't correspond to the base")]
+    ExponentRequiresDecimalMantissa,
+    HasNoDigits,
+    InvalidByteEscapeSequence,
     InvalidDigit,
-    #[error("number parsing error (overflow is possible)")]
-    NumberParserError,
-    #[error("underscore must separate successive digits")]
+    InvalidRadixPoint,
+    InvalidUnicodeEscapeSequence,
+    MoreThanOneCharInCharLiteral,
+    NumberParseError,
     UnderscoreMustSeparateSuccessiveDigits,
+    UnexpectedChar,
+    UnknownEscapeSequence,
+    UnterminatedCharLiteral,
+    UnterminatedStringLiteral,
+    UnterminatedWrappedIdentifier,
+}
+
+impl AsRef<str> for LexError {
+    fn as_ref(&self) -> &str {
+        match self {
+            Self::EmptyCharLiteral => "empty character literal",
+            Self::EmptyEscapeSequence => "empty escape sequence",
+            Self::EmptyWrappedIdentifier => "empty wrapped identifier literal",
+            Self::ExpectedCloseBracketInByteEscapeSequence => {
+                "expected `}` in byte escape sequence"
+            }
+            Self::ExpectedCloseBracketInUnicodeEscapeSequence => {
+                "expected `}` in Unicode escape sequence"
+            }
+            Self::ExpectedDigitInByteEscapeSequence => "expected digit in byte escape sequence",
+            Self::ExpectedDigitInUnicodeEscapeSequence => {
+                "expected digit in Unicode escape sequence"
+            }
+            Self::ExpectedOpenBracketInByteEscapeSequence => "expected `{` in byte escape sequence",
+            Self::ExpectedOpenBracketInUnicodeEscapeSequence => {
+                "expected `{` in Unicode escape sequence"
+            }
+            Self::ExponentHasNoDigits => "exponent has no digits",
+            Self::ExponentRequiresDecimalMantissa => "exponent requires decimal mantissa",
+            Self::DigitDoesNotCorrespondToBase => "digit doesn't correspond to the base",
+            Self::HasNoDigits => "has no digits",
+            Self::InvalidByteEscapeSequence => "invalid byte escape sequence",
+            Self::InvalidDigit => "invalid digit",
+            Self::InvalidRadixPoint => "invalid radix point",
+            Self::InvalidUnicodeEscapeSequence => "invalid Unicode escape sequence",
+            Self::MoreThanOneCharInCharLiteral => {
+                "more than one character inside character literal"
+            }
+            Self::UnderscoreMustSeparateSuccessiveDigits => "`_` must separate successive digits",
+            Self::NumberParseError => "number parsing error (overflow is possible)",
+            Self::UnexpectedChar => "unexpected character",
+            Self::UnknownEscapeSequence => "unknown escape sequence",
+            Self::UnterminatedCharLiteral => "unterminated character literal",
+            Self::UnterminatedStringLiteral => "unterminated string literal",
+            Self::UnterminatedWrappedIdentifier => "unterminated wrapper identifier",
+        }
+    }
+}
+
+impl Display for LexError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(self.as_ref())?;
+        Ok(())
+    }
 }
 
 /// Either the number is integer, float or imaginary literal.
@@ -72,23 +97,23 @@ pub enum NumberKind {
 
 #[derive(Debug, Clone, PartialEq, Copy)]
 pub enum Keyword {
-    Import,
-    Pub,
+    As,
+    Defer,
+    Else,
+    Enum,
+    For,
     Fun,
+    If,
+    Impl,
+    Import,
+    Mut,
+    Pub,
+    Return,
     Struct,
     Trait,
-    Return,
-    Defer,
-    Impl,
-    Enum,
-    If,
-    Else,
-    While,
-    As,
-    For,
-    Mut,
-    Where,
     Var,
+    Where,
+    While,
 }
 
 impl AsRef<str> for Keyword {
@@ -115,51 +140,58 @@ impl AsRef<str> for Keyword {
     }
 }
 
+impl Display for Keyword {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(self.as_ref())?;
+        Ok(())
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Copy)]
 pub enum Punctuator {
-    Plus,
-    Minus,
-    Asterisk,
-    Slash,
-    Bang,
-    QuestionMark,
-    GreaterThan,
-    GreaterThanOrEq,
-    LessThan,
-    LessThanOrEq,
-    Assign,
-    Eq,
-    NotEq,
-    RightShift,
-    LeftShift,
-    Or,
     And,
-    Xor,
-    Not,
-    OrOr,
     AndAnd,
-    PlusEq,
-    MinusEq,
+    Assign,
+    Asterisk,
+    AsteriskAsterisk,
     AsteriskEq,
-    SlashEq,
-    XorEq,
-    OrEq,
-    OpenParent,
-    CloseParent,
-    OpenBracket,
-    CloseBracket,
-    OpenBrace,
+    AtSign,
+    Bang,
     CloseBrace,
+    CloseBracket,
+    CloseParent,
+    Colon,
     Comma,
     Dot,
-    Semicolon,
-    Colon,
-    PlusPlus,
-    MinusMinus,
-    AsteriskAsterisk,
-    Percent,
     Elvis,
-    AtSign,
+    Eq,
+    GreaterThan,
+    GreaterThanOrEq,
+    LeftShift,
+    LessThan,
+    LessThanOrEq,
+    Minus,
+    MinusEq,
+    MinusMinus,
+    Not,
+    NotEq,
+    OpenBrace,
+    OpenBracket,
+    OpenParent,
+    Or,
+    OrEq,
+    OrOr,
+    Percent,
+    Plus,
+    PlusEq,
+    PlusPlus,
+    QuestionMark,
+    RightShift,
+    Semicolon,
+    Slash,
+    SlashEq,
+    Xor,
+    XorEq,
 }
 
 impl AsRef<str> for Punctuator {
@@ -215,7 +247,6 @@ impl AsRef<str> for Punctuator {
 impl Display for Punctuator {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str(self.as_ref())?;
-
         Ok(())
     }
 }
@@ -223,15 +254,12 @@ impl Display for Punctuator {
 /// Represents token without a specific location in source text.
 #[derive(Clone, Debug, PartialEq, Default)]
 pub enum RawToken {
-    Identifier(Symbol),
-    StringLiteral(Arc<str>),
-    IntegerLiteral(u64),
-    FloatLiteral(f64),
-    ImaginaryNumberLiteral(f64),
-    CharLiteral(char),
     BoolLiteral(bool),
-    Punctuator(Punctuator),
-    Keyword(Keyword),
+    CharLiteral(char),
+
+    /// Corresponds to any comment that is not a docstring.
+    Comment,
+
     /// [`global`] here is either the docstring is declared for the whole module
     /// or only for a given item, enum variant or trait method.
     ///
@@ -243,11 +271,20 @@ pub enum RawToken {
         global: bool,
         content: Arc<str>,
     },
-    /// Corresponds to any comment that is not a docstring.
-    Comment,
+
     #[default]
     EndOfFile,
-    Invalid(LexerError),
+
+    FloatLiteral(f64),
+    Identifier(Symbol),
+    ImaginaryNumberLiteral(f64),
+    IntegerLiteral(u64),
+
+    Error(LexError),
+
+    Keyword(Keyword),
+    Punctuator(Punctuator),
+    StringLiteral(Arc<str>),
 }
 
 impl AsRef<RawToken> for RawToken {
@@ -270,7 +307,7 @@ impl AsRef<str> for RawToken {
             Self::Punctuator(punctuator) => punctuator.as_ref(),
             Self::DocstringComment { .. } | Self::Comment => "comment",
             Self::EndOfFile => "end of file",
-            RawToken::Invalid(..) => "invalid token",
+            RawToken::Error(..) => "error token",
         }
     }
 }
@@ -278,8 +315,13 @@ impl AsRef<str> for RawToken {
 impl Display for RawToken {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str(self.as_ref())?;
-
         Ok(())
+    }
+}
+
+impl From<RawToken> for String {
+    fn from(value: RawToken) -> Self {
+        value.to_string()
     }
 }
 
@@ -309,8 +351,8 @@ pub static RESERVED: phf::Map<&'static str, RawToken> = phf_map! {
 };
 
 impl Punctuator {
-    pub fn to_precedence(&self) -> i8 {
-        (match self {
+    pub fn to_precedence(&self) -> Precedence {
+        match self {
             Self::Elvis => Precedence::Elvis,
             Self::OrOr => Precedence::OrOr,
             Self::AndAnd => Precedence::AndAnd,
@@ -340,15 +382,15 @@ impl Punctuator {
                 Precedence::Unary
             }
             _ => Precedence::Lowest,
-        }) as i8
+        }
     }
 }
 
 impl RawToken {
-    pub fn to_precedence(&self) -> i8 {
+    pub fn to_precedence(&self) -> Precedence {
         match self {
             Self::Punctuator(punctuator) => punctuator.to_precedence(),
-            Self::Keyword(Keyword::As) => Precedence::As as i8,
+            Self::Keyword(Keyword::As) => Precedence::As,
             _ => unreachable!(),
         }
     }

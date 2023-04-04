@@ -1,29 +1,23 @@
 macro_rules! consume {
-    ($p:ident) => {
-        $p.advance()?;
-    };
-    (with_docstring $p:ident) => {
-        $p.advance_with_docstring()?;
-    };
-    ($p:ident, $expected:expr, $for:expr) => {
+    ($p:ident, $expected:expr, $node:expr) => {
         if $p.next.unwrap().is($expected) {
             $p.advance()?;
         } else {
-            return Err(ParserError::UnexpectedToken(
+            return Err(ParseError::unexpected_token(
                 $p.next.clone(),
-                format!("{}", $expected),
-                $for.into(),
+                $expected,
+                $node,
             ));
         }
     };
-    (with_docstring $p:ident, $expected:expr, $for:expr) => {
+    (with_docstring $p:ident, $expected:expr, $node:expr) => {
         if $p.next.unwrap().is($expected) {
             $p.advance_with_docstring()?;
         } else {
-            return Err(ParserError::UnexpectedToken(
+            return Err(ParseError::unexpected_token(
                 $p.next.clone(),
-                format!("{}", $expected),
-                $for.into(),
+                $expected,
+                $node,
             ));
         }
     };
@@ -38,10 +32,10 @@ macro_rules! consume_ident {
 
             identifier.with_span($p.current.span())
         } else {
-            return Err(ParserError::UnexpectedToken(
+            return Err(ParseError::unexpected_token(
                 $p.next.clone(),
-                "identifier".to_owned(),
-                $for.into(),
+                "identifier",
+                $for,
             ));
         }
     }};
@@ -51,7 +45,7 @@ macro_rules! consume_ident {
 macro_rules! parser_test {
     ($name:ident, $source:literal) => {
         #[test]
-        pub fn $name() {
+        fn $name() {
             let mut string_interner = Interner::default();
             let mut parser = Parser::new($source, &mut string_interner);
             assert!(parser.parse().is_ok());
@@ -96,32 +90,34 @@ macro_rules! parse_list {
 
 macro_rules! binop_pattern {
     () => {
-        Punctuator(Plus | Minus
-            | Asterisk
-            | Slash
-            | Eq
-            | NotEq
-            | LessThan
-            | LessThanOrEq
-            | GreaterThan
-            | GreaterThanOrEq
-            | Assign
-            | OrEq
-            | XorEq
-            | PlusEq
-            | MinusEq
-            | SlashEq
-            | AsteriskEq
-            | AsteriskAsterisk
-            | Percent
-            | And
-            | Xor
-            | Or
-            | OrOr
-            | Elvis
-            | AndAnd
-            | LeftShift
-            | RightShift)
+        Punctuator(
+            Plus | Minus
+                | Asterisk
+                | Slash
+                | Eq
+                | NotEq
+                | LessThan
+                | LessThanOrEq
+                | GreaterThan
+                | GreaterThanOrEq
+                | Assign
+                | OrEq
+                | XorEq
+                | PlusEq
+                | MinusEq
+                | SlashEq
+                | AsteriskEq
+                | AsteriskAsterisk
+                | Percent
+                | And
+                | Xor
+                | Or
+                | OrOr
+                | Elvis
+                | AndAnd
+                | LeftShift
+                | RightShift,
+        )
     };
 }
 

@@ -1,5 +1,4 @@
-use crate::{error::ParserError, macros::*, Parser, ParserResult};
-use num_traits::ToPrimitive;
+use crate::{error::*, macros::*, Parser};
 use ry_ast::{
     expression::*,
     precedence::Precedence,
@@ -7,8 +6,8 @@ use ry_ast::{
     token::{Keyword::*, Punctuator::*, RawToken::*},
 };
 
-impl<'c> Parser<'c> {
-    pub(crate) fn parse_expression(&mut self, precedence: i8) -> ParserResult<Expression> {
+impl Parser<'_> {
+    pub(crate) fn parse_expression(&mut self, precedence: Precedence) -> ParseResult<Expression> {
         let mut left = self.parse_prefix()?;
 
         while precedence < self.next.unwrap().to_precedence() {
@@ -33,7 +32,7 @@ impl<'c> Parser<'c> {
                         "call arguments list",
                         Punctuator(CloseParent),
                         false,
-                        || self.parse_expression(Precedence::Lowest.to_i8().unwrap())
+                        || self.parse_expression(Precedence::Lowest)
                     );
 
                     self.advance()?; // `)`
@@ -94,9 +93,7 @@ impl<'c> Parser<'c> {
         Ok(left)
     }
 
-    pub(crate) fn parse_prefix(&mut self) -> ParserResult<Expression> {
-        self.check_scanning_error_for_next_token()?;
-
+    pub(crate) fn parse_prefix(&mut self) -> ParseResult<Expression> {
         match self.next.unwrap() {
             IntegerLiteral(i) => {
                 let value = *i;
@@ -144,7 +141,7 @@ impl<'c> Parser<'c> {
                 let left = self.next.clone();
                 self.advance()?; // left
 
-                let right = self.parse_expression(Precedence::Unary.to_i8().unwrap())?;
+                let right = self.parse_expression(Precedence::Unary)?;
                 let span = left.span().start()..right.span().end();
 
                 Ok(RawExpression::from(UnaryExpression::new(right, left, false)).with_span(span))
@@ -152,7 +149,7 @@ impl<'c> Parser<'c> {
             Punctuator(OpenParent) => {
                 self.advance()?; // `(`
 
-                let expression = self.parse_expression(Precedence::Lowest.to_i8().unwrap())?;
+                let expression = self.parse_expression(Precedence::Lowest)?;
 
                 consume!(self, Punctuator(CloseParent), "parenthesized expression");
 
@@ -164,7 +161,7 @@ impl<'c> Parser<'c> {
                 let start = self.next.span().start();
 
                 let array = parse_list!(self, "array literal", Punctuator(CloseBracket), false, || {
-                    self.parse_expression(Precedence::Lowest.to_i8().unwrap())
+                    self.parse_expression(Precedence::Lowest)
                 });
 
                 let end = self.current.span().end();
@@ -186,24 +183,27 @@ impl<'c> Parser<'c> {
                 let start = self.current.span().start();
 
                 let mut if_blocks = vec![IfBlock::new(
-                    self.parse_expression(Precedence::Lowest.to_i8().unwrap())?,
+                    self.parse_expression(Precedence::Lowest)?,
                     self.parse_statements_block(false)?
                 )];
 
                 let mut r#else = None;
 
-                while self.next.unwrap().is(Keyword(Else)) {
+                while let Keyword(Else) = self.next.unwrap() {
                     self.advance()?; // `else`
 
-                    if !self.next.unwrap().is(Keyword(If)) {
-                        r#else = Some(self.parse_statements_block(false)?);
-                        break;
+                    match self.next.unwrap() {
+                        Keyword(If) => {},
+                        _ => {
+                            r#else = Some(self.parse_statements_block(false)?);
+                            break;
+                        }
                     }
 
                     self.advance()?; // `if`
 
                     if_blocks.push(IfBlock::new(
-                        self.parse_expression(Precedence::Lowest.to_i8().unwrap())?,
+                        self.parse_expression(Precedence::Lowest)?,
                         self.parse_statements_block(false)?
                     ));
                 }
@@ -217,17 +217,16 @@ impl<'c> Parser<'c> {
                 self.advance()?;
                 let start = self.current.span().start();
 
-                let condition = self.parse_expression(Precedence::Lowest.to_i8().unwrap())?;
+                let condition = self.parse_expression(Precedence::Lowest)?;
                 let block = self.parse_statements_block(false)?;
 
                 Ok(RawExpression::from(WhileExpression::new(condition, block))
                     .with_span(start..self.current.span().end()))
             }
-            _ => Err(ParserError::UnexpectedToken(
+            _ => Err(ParseError::unexpected_token(
                 self.next.clone(),
-                "integer, float, imaginary, string literals, ... or identifier for name, `(`, `[`, `if`, `while`, ..."
-                    .to_owned(),
-                "expression".to_owned(),
+                "integer, float, imaginary, string literals, ... or identifier for name, `(`, `[`, `if`, `while`, ...",
+                "expression"
             )),
         }
     }
@@ -239,7 +238,7 @@ mod expression_tests {
     use ry_interner::Interner;
 
     parser_test!(literal1, "fun test(): i32 { 3 }");
-    parser_test!(literal2, "fun test(): string { \"hello\" }");
+    parser_test!(literal2, "fun test(): String { \"hello\" }");
     parser_test!(literal3, "fun test(): bool { true }");
     parser_test!(binary1, "fun test(): i32 { 2 + 3 }");
     parser_test!(binary2, "fun test(): f32 { 1 + 2 / 3 + 3 * 4 }");
@@ -254,6 +253,6 @@ mod expression_tests {
         "fun test(): f32 { if false { 2.3 } else if false { 5 as f32 } else { 2.0 } }"
     );
     parser_test!(r#while, "fun test() { while true { print(\"hello\"); } }");
-    parser_test!(postfix, "fun test(): i32? { Some(a() ?: 0 + b()?) }");
+    parser_test!(postfix, "fun test(): Option[i32] { Some(a() ?: 0 + b()?) }");
     parser_test!(parent, "fun test(): i32 { ((b + c) * d) }");
 }

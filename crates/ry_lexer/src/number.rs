@@ -129,7 +129,7 @@ impl Lexer<'_> {
 
             if prefix == 'o' || prefix == 'b' || prefix == 'x' {
                 return Some(
-                    Invalid(LexerError::InvalidRadixPoint).with_span(start_location..self.location),
+                    Error(LexError::InvalidRadixPoint).with_span(start_location..self.location),
                 );
             }
 
@@ -139,14 +139,14 @@ impl Lexer<'_> {
         }
 
         if digit_separator & 1 == 0 {
-            return Some(Invalid(LexerError::HasNoDigits).with_span(start_location..self.location));
+            return Some(Error(LexError::HasNoDigits).with_span(start_location..self.location));
         }
 
         let l = self.current.to_ascii_lowercase();
         if l == 'e' {
             if prefix != '\0' && prefix != '0' {
                 return Some(
-                    Invalid(LexerError::ExponentRequiresDecimalMantissa)
+                    Error(LexError::ExponentRequiresDecimalMantissa)
                         .with_span(start_location..self.location),
                 );
             }
@@ -165,8 +165,7 @@ impl Lexer<'_> {
 
             if ds & 1 == 0 {
                 return Some(
-                    Invalid(LexerError::ExponentHasNoDigits)
-                        .with_span(start_location..self.location),
+                    Error(LexError::ExponentHasNoDigits).with_span(start_location..self.location),
                 );
             }
         }
@@ -181,7 +180,7 @@ impl Lexer<'_> {
         if let Some(location) = invalid_digit_location {
             if number_kind == NumberKind::Int {
                 return Some(Token::new(
-                    Invalid(LexerError::InvalidDigit),
+                    Error(LexError::InvalidDigit),
                     Span::from_location(location, 1),
                 ));
             }
@@ -191,7 +190,7 @@ impl Lexer<'_> {
 
         if digit_separator & 2 != 0 && s >= 0 {
             return Some(Token::new(
-                Invalid(LexerError::UnderscoreMustSeparateSuccessiveDigits),
+                Error(LexError::UnderscoreMustSeparateSuccessiveDigits),
                 Span::from_location(s as usize + start_location, 1),
             ));
         }
@@ -204,8 +203,7 @@ impl Lexer<'_> {
                 ) {
                     Some(n) => Some(IntegerLiteral(n).with_span(start_location..self.location)),
                     None => Some(
-                        Invalid(LexerError::NumberParserError)
-                            .with_span(start_location..self.location),
+                        Error(LexError::NumberParseError).with_span(start_location..self.location),
                     ),
                 }
             }
@@ -214,7 +212,7 @@ impl Lexer<'_> {
                     Ok(n) => n,
                     Err(_) => {
                         return Some(
-                            Invalid(LexerError::NumberParserError)
+                            Error(LexError::NumberParseError)
                                 .with_span(start_location..self.location),
                         );
                     }
@@ -226,7 +224,7 @@ impl Lexer<'_> {
                     Ok(n) => n,
                     Err(_) => {
                         return Some(
-                            Invalid(LexerError::NumberParserError)
+                            Error(LexError::NumberParseError)
                                 .with_span(start_location..self.location),
                         );
                     }

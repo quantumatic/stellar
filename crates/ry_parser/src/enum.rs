@@ -1,4 +1,4 @@
-use crate::{error::ParserError, macros::*, Parser, ParserResult};
+use crate::{error::*, macros::*, Parser};
 use ry_ast::{
     declaration::{EnumDeclarationItem, Item, WithDocstringable},
     span::*,
@@ -6,8 +6,8 @@ use ry_ast::{
     Visibility,
 };
 
-impl<'c> Parser<'c> {
-    pub(crate) fn parse_enum_declaration(&mut self, visibility: Visibility) -> ParserResult<Item> {
+impl Parser<'_> {
+    pub(crate) fn parse_enum_declaration(&mut self, visibility: Visibility) -> ParseResult<Item> {
         self.advance()?;
 
         let name = consume_ident!(self, "enum name in enum declaration");

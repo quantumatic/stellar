@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod lexer_tests {
     use crate::Lexer;
-    use ry_ast::token::{LexerError, RawToken::*};
+    use ry_ast::token::{LexError, RawToken::*};
     use ry_interner::Interner;
 
     macro_rules! lexer_test {
@@ -62,24 +62,20 @@ mod lexer_tests {
         interner
     );
 
-    lexer_test!(
-        unexpected_char,
-        "#",
-        Invalid(LexerError::UnexpectedChar('#'))
-    );
+    lexer_test!(unexpected_char, "#", Error(LexError::UnexpectedChar));
 
     lexer_test!(string, "\"test\"", StringLiteral("test".into()), interner);
 
     lexer_test!(
         string2,
         "\"test",
-        Invalid(LexerError::UnterminatedStringLiteral)
+        Error(LexError::UnterminatedStringLiteral)
     );
 
     lexer_test!(
         string3,
         "\"test\n",
-        Invalid(LexerError::UnterminatedStringLiteral)
+        Error(LexError::UnterminatedStringLiteral)
     );
 
     lexer_test!(
@@ -92,12 +88,12 @@ mod lexer_tests {
     lexer_test!(
         wrapped_id2,
         "`test",
-        Invalid(LexerError::UnterminatedWrappedIdentifierLiteral)
+        Error(LexError::UnterminatedWrappedIdentifier)
     );
 
     lexer_test!(
         wrapped_id3,
         "`test\n",
-        Invalid(LexerError::UnterminatedWrappedIdentifierLiteral)
+        Error(LexError::UnterminatedWrappedIdentifier)
     );
 }

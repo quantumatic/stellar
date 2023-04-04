@@ -1,5 +1,4 @@
 use clap::{arg, Parser, Subcommand};
-use codespan_reporting::files::SimpleFiles;
 use ry_ast::token::RawToken::EndOfFile;
 use ry_interner::Interner;
 use ry_lexer::Lexer;
@@ -35,10 +34,9 @@ enum Commands {
 }
 
 fn main() {
-    let reporter = ReporterState::default();
+    let mut reporter = ReporterState::default();
 
     let mut interner = Interner::default();
-    let mut files = SimpleFiles::<&str, &str>::new();
 
     match Cli::parse().command {
         Commands::Lex {
@@ -80,7 +78,7 @@ fn main() {
 
             match fs::read_to_string(filepath) {
                 Ok(contents) => {
-                    let file_id = files.add(&filepath, &contents);
+                    let file_id = reporter.add_file(&filepath, &contents);
                     let mut parser = ry_parser::Parser::new(&contents, &mut interner);
 
                     let ast = parser.parse();
@@ -90,7 +88,7 @@ fn main() {
                             println!("{:?}", program_unit);
                         }
                         Err(e) => {
-                            e.emit_diagnostic(&reporter, &files, file_id);
+                            e.emit_diagnostic(&reporter, file_id);
 
                             reporter
                                 .emit_global_error("cannot output AST due to the previous errors");

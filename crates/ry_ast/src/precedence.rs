@@ -1,7 +1,6 @@
 //! `precedence.rs` - defines `Precedence` enum for different infix expression operator precedences.
-use num_derive::{FromPrimitive, ToPrimitive};
 
-#[derive(FromPrimitive, ToPrimitive)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Precedence {
     Lowest,
     // ?:

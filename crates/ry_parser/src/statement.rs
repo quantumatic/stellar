@@ -1,22 +1,26 @@
-use crate::{error::ParserError, macros::*, Parser, ParserResult};
-use num_traits::ToPrimitive;
+use crate::{error::ParseError, macros::*, ParseResult, Parser};
 use ry_ast::{
     precedence::Precedence,
     span::WithSpan,
     statement::*,
     token::{Keyword::*, Punctuator::*, RawToken::*},
+    Mutability,
 };
 
-impl<'c> Parser<'c> {
+impl Parser<'_> {
     pub(crate) fn parse_statements_block(
         &mut self,
         top_level: bool,
-    ) -> ParserResult<StatementsBlock> {
+    ) -> ParseResult<StatementsBlock> {
         consume!(self, Punctuator(OpenBrace), "statements block"); // `{`
 
         let mut stmts = vec![];
 
-        while !self.next.unwrap().is(Punctuator(CloseBrace)) {
+        loop {
+            if let Punctuator(CloseBrace) = self.next.unwrap() {
+                break;
+            }
+
             let (stmt, last) = self.parse_statement()?;
 
             stmts.push(stmt);
@@ -25,6 +29,8 @@ impl<'c> Parser<'c> {
                 break;
             }
         }
+
+        dbg!(&self.next.unwrap());
 
         if top_level {
             consume!(with_docstring self, Punctuator(CloseBrace), "end of the statement block");
@@ -35,7 +41,7 @@ impl<'c> Parser<'c> {
         Ok(stmts)
     }
 
-    fn parse_statement(&mut self) -> ParserResult<(Statement, bool)> {
+    fn parse_statement(&mut self) -> ParseResult<(Statement, bool)> {
         let mut last_statement_in_block = false;
         let mut must_have_semicolon_at_the_end = true;
 
@@ -43,23 +49,20 @@ impl<'c> Parser<'c> {
             Keyword(Return) => {
                 self.advance()?; // `return`
 
-                ReturnStatement::new(self.parse_expression(Precedence::Lowest.to_i8().unwrap())?)
-                    .into()
+                ReturnStatement::new(self.parse_expression(Precedence::Lowest)?).into()
             }
             Keyword(Defer) => {
                 self.advance()?; // `defer`
 
-                DeferStatement::new(self.parse_expression(Precedence::Lowest.to_i8().unwrap())?)
-                    .into()
+                DeferStatement::new(self.parse_expression(Precedence::Lowest)?).into()
             }
             Keyword(Var) => {
                 self.advance()?; // `var`
 
-                let mut mutability = None;
+                let mut mutability = Mutability::immutable();
 
-                if self.next.unwrap().is(Keyword(Mut)) {
-                    mutability = Some(self.current.span());
-
+                if let Keyword(Mut) = self.next.unwrap() {
+                    mutability = Mutability::mutable(self.current.span());
                     self.advance()?; // `mut`
                 }
 
@@ -67,23 +70,29 @@ impl<'c> Parser<'c> {
 
                 let mut r#type = None;
 
-                if !self.next.unwrap().is(Punctuator(Assign)) {
+                if let Punctuator(Colon) = self.next.unwrap() {
+                    self.advance()?;
                     r#type = Some(self.parse_type()?);
                 }
 
                 consume!(self, Punctuator(Assign), "var statement");
 
-                let value = self.parse_expression(Precedence::Lowest.to_i8().unwrap())?;
+                let value = self.parse_expression(Precedence::Lowest)?;
 
                 VarStatement::new(mutability, name, r#type, value).into()
             }
             _ => {
-                let expression = self.parse_expression(Precedence::Lowest.to_i8().unwrap())?;
+                let expression = self.parse_expression(Precedence::Lowest)?;
 
                 must_have_semicolon_at_the_end = !(*expression.unwrap()).with_block();
 
-                if !self.next.unwrap().is(Punctuator(Semicolon)) && must_have_semicolon_at_the_end {
-                    last_statement_in_block = true;
+                match self.next.unwrap() {
+                    Punctuator(Semicolon) => {}
+                    _ => {
+                        if must_have_semicolon_at_the_end {
+                            last_statement_in_block = true;
+                        }
+                    }
                 }
 
                 if last_statement_in_block || !must_have_semicolon_at_the_end {
