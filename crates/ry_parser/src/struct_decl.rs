@@ -36,7 +36,8 @@ impl Parser<'_> {
 
     fn parse_struct_member(&mut self) -> ParseResult<StructMemberDeclaration> {
         let mut visibility = Visibility::private();
-        let mut mutability = Mutability::immutable();
+        let (mut invalid_mutability, mut mutability) =
+            (Mutability::immutable(), Mutability::immutable());
 
         if let Keyword(Mut) = self.next.unwrap() {
             self.advance()?;
@@ -50,7 +51,7 @@ impl Parser<'_> {
 
         if let Keyword(Mut) = self.next.unwrap() {
             self.advance()?;
-            mutability = Mutability::mutable(self.current.span());
+            invalid_mutability = Mutability::mutable(self.current.span());
         }
 
         let name = consume_ident!(self, "struct member name in struct definition");
@@ -61,9 +62,13 @@ impl Parser<'_> {
 
         consume!(self, Punctuator(Semicolon), "struct member definition");
 
-        Ok(StructMemberDeclaration::new(
-            visibility, mutability, name, r#type,
-        ))
+        Ok(StructMemberDeclaration {
+            visibility,
+            mutability,
+            invalid_mutability,
+            name,
+            r#type,
+        })
     }
 
     fn parse_struct_members(&mut self) -> ParseResult<Vec<Documented<StructMemberDeclaration>>> {

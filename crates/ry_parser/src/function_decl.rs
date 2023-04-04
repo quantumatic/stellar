@@ -21,8 +21,9 @@ impl Parser<'_> {
         } else {
             Ok(FunctionDeclaration {
                 definition,
-                body: self.parse_statements_block(true)?
-            }.into())
+                body: self.parse_statements_block(true)?,
+            }
+            .into())
         }
     }
 
@@ -67,14 +68,14 @@ impl Parser<'_> {
 
         let r#where = self.optionally_parse_where_clause()?;
 
-        Ok(FunctionDefinition::new(
+        Ok(FunctionDefinition {
             visibility,
             name,
             generics,
             arguments,
             return_type,
             r#where,
-        ))
+        })
     }
 
     pub(crate) fn parse_function_argument(&mut self) -> ParseResult<FunctionArgument> {
@@ -91,7 +92,11 @@ impl Parser<'_> {
             default_value = Some(self.parse_expression(Precedence::Lowest)?);
         }
 
-        Ok(FunctionArgument::new(name, r#type, default_value))
+        Ok(FunctionArgument {
+            name,
+            r#type,
+            default_value,
+        })
     }
 }
 
@@ -102,5 +107,8 @@ mod function_decl_tests {
 
     parser_test!(function1, "pub fun test() {}");
     parser_test!(function2, "pub fun test[A](a: A): A { a }");
-    parser_test!(function3, "fun unwrap[T, B: Option[T]](a: B): T { a.unwrap() }");
+    parser_test!(
+        function3,
+        "fun unwrap[T, B: Option[T]](a: B): T { a.unwrap() }"
+    );
 }

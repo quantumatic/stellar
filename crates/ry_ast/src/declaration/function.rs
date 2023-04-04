@@ -29,43 +29,11 @@ pub struct FunctionDefinition {
     pub r#where: WhereClause,
 }
 
-impl FunctionDefinition {
-    #[inline]
-    pub const fn new(
-        visibility: Visibility,
-        name: Name,
-        generics: Generics,
-        arguments: Vec<FunctionArgument>,
-        return_type: Option<Type>,
-        r#where: WhereClause,
-    ) -> Self {
-        Self {
-            visibility,
-            name,
-            generics,
-            arguments,
-            return_type,
-            r#where,
-        }
-    }
-}
-
 #[derive(Debug, PartialEq)]
 pub struct FunctionArgument {
     pub name: Name,
     pub r#type: Type,
     pub default_value: Option<Expression>,
-}
-
-impl FunctionArgument {
-    #[inline]
-    pub const fn new(name: Name, r#type: Type, default_value: Option<Expression>) -> Self {
-        Self {
-            name,
-            r#type,
-            default_value,
-        }
-    }
 }
 
 #[derive(Debug, PartialEq)]

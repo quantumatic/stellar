@@ -25,23 +25,7 @@ impl From<StructDeclarationItem> for Item {
 pub struct StructMemberDeclaration {
     pub visibility: Visibility,
     pub mutability: Mutability,
+    pub invalid_mutability: Mutability,
     pub name: Name,
     pub r#type: Type,
-}
-
-impl StructMemberDeclaration {
-    #[inline]
-    pub const fn new(
-        visibility: Visibility,
-        mutability: Mutability,
-        name: Name,
-        r#type: Type,
-    ) -> Self {
-        Self {
-            visibility,
-            mutability,
-            name,
-            r#type,
-        }
-    }
 }
