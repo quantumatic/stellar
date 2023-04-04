@@ -9,11 +9,4 @@ pub struct Generic {
     pub constraint: Option<Type>,
 }
 
-impl Generic {
-    #[inline]
-    pub const fn new(name: Name, constraint: Option<Type>) -> Self {
-        Self { name, constraint }
-    }
-}
-
 pub type TypeAnnotations = Vec<Type>;

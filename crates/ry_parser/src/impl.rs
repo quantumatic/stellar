@@ -1,6 +1,6 @@
 use crate::{error::*, macros::*, Parser};
 use ry_ast::{
-    declaration::{FunctionDeclaration, ImplItem, Item, WithDocstring, WithDocstringable},
+    declaration::{Documented, FunctionDeclaration, ImplItem, Item, WithDocstring},
     token::{Keyword::*, Punctuator::*, RawToken::*},
     Visibility,
 };
@@ -29,20 +29,20 @@ impl Parser<'_> {
 
         consume!(with_docstring self, Punctuator(CloseBrace), "type implementation");
 
-        Ok(ImplItem::new(
+        Ok(ImplItem {
             visibility,
             generics,
             r#type,
             r#trait,
             r#where,
             implementations,
-        )
+        }
         .into())
     }
 
     pub(crate) fn parse_associated_functions_implementations(
         &mut self,
-    ) -> ParseResult<Vec<WithDocstring<FunctionDeclaration>>> {
+    ) -> ParseResult<Vec<Documented<FunctionDeclaration>>> {
         let mut associated_functions = vec![];
 
         loop {

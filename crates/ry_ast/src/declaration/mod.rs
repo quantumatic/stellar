@@ -1,9 +1,5 @@
-use std::ops::ControlFlow;
-
-use crate::visitor::{VisitWith, Visitor, VisitorMut};
-
 pub use self::{
-    docstring::{Docstring, WithDocstring, WithDocstringable},
+    docstring::*,
     function::{Function, FunctionArgument, FunctionDeclaration, FunctionDefinition},
     import::ImportItem,
     r#enum::EnumDeclarationItem,
@@ -11,6 +7,8 @@ pub use self::{
     r#struct::{StructDeclarationItem, StructMemberDeclaration},
     r#trait::TraitDeclarationItem,
 };
+use crate::visitor::{VisitWith, Visitor, VisitorMut};
+use std::ops::ControlFlow;
 
 pub mod attribute;
 pub mod docstring;
@@ -31,7 +29,7 @@ pub enum Item {
     Impl(ImplItem),
 }
 
-impl VisitWith for WithDocstring<Item> {
+impl VisitWith for Documented<Item> {
     fn visit_with<V>(&self, _visitor: &mut V) -> ControlFlow<V::BreakTy>
     where
         V: Visitor,

@@ -8,11 +8,11 @@ impl Parser<'_> {
     pub(crate) fn parse_import(&mut self) -> ParseResult<Item> {
         self.advance()?;
 
-        let path = self.parse_name()?;
+        let path = self.parse_path()?;
 
         consume!(with_docstring self, Punctuator(Semicolon), "import");
 
-        Ok(ImportItem::new(path).into())
+        Ok(ImportItem { path }.into())
     }
 }
 

@@ -22,7 +22,12 @@ impl Parser<'_> {
 
                     let span = left.span().start()..self.current.span().end();
 
-                    RawExpression::from(BinaryExpression::new(left, right, op)).with_span(span)
+                    RawExpression::from(BinaryExpression {
+                        left: Box::new(left),
+                        right: Box::new(right),
+                        op,
+                    })
+                    .with_span(span)
                 }
                 Punctuator(OpenParent) => {
                     self.advance()?; // `(`
@@ -39,16 +44,24 @@ impl Parser<'_> {
 
                     let span = left.span().start()..self.current.span().end();
 
-                    RawExpression::from(CallExpression::new(left, arguments)).with_span(span)
+                    RawExpression::from(CallExpression {
+                        left: Box::new(left),
+                        arguments,
+                    })
+                    .with_span(span)
                 }
                 Punctuator(Dot) => {
                     self.advance()?; // `.`
 
-                    let name = consume_ident!(self, "property");
+                    let property = consume_ident!(self, "property");
 
-                    let span = left.span().start()..name.span().end();
+                    let span = left.span().start()..property.span().end();
 
-                    RawExpression::from(PropertyAccessExpression::new(left, name)).with_span(span)
+                    RawExpression::from(PropertyAccessExpression {
+                        left: Box::new(left),
+                        property,
+                    })
+                    .with_span(span)
                 }
                 Punctuator(OpenBracket) => {
                     self.advance()?; // `[`
@@ -65,26 +78,38 @@ impl Parser<'_> {
 
                     self.advance()?;
 
-                    RawExpression::from(TypeAnnotationsExpression::new(left, type_annotations))
-                        .with_span(span)
+                    RawExpression::from(TypeAnnotationsExpression {
+                        left: Box::new(left),
+                        type_annotations,
+                    })
+                    .with_span(span)
                 }
                 postfixop_pattern!() => {
                     self.advance()?; // `?`
 
-                    let right = self.current.clone();
+                    let op = self.current.clone();
 
-                    let span = left.span().start()..right.span().end();
+                    let span = left.span().start()..op.span().end();
 
-                    RawExpression::from(UnaryExpression::new(left, right, true)).with_span(span)
+                    RawExpression::from(UnaryExpression {
+                        inner: Box::new(left),
+                        op,
+                        postfix: true,
+                    })
+                    .with_span(span)
                 }
                 Keyword(As) => {
-                    self.advance()?; // `as`
+                    self.advance()?;
 
-                    let r#type = self.parse_type()?;
+                    let right = self.parse_type()?;
 
                     let span = left.span().start()..self.current.span().end();
 
-                    RawExpression::from(AsExpression::new(left, r#type)).with_span(span)
+                    RawExpression::from(AsExpression {
+                        left: Box::new(left),
+                        right,
+                    })
+                    .with_span(span)
                 }
                 _ => break,
             };
@@ -96,55 +121,55 @@ impl Parser<'_> {
     pub(crate) fn parse_prefix(&mut self) -> ParseResult<Expression> {
         match self.next.unwrap() {
             IntegerLiteral(i) => {
-                let value = *i;
+                let literal = *i;
 
                 self.advance()?; // int
 
-                Ok(RawExpression::from(IntegerLiteralExpression::new(value)).with_span(self.current.span()))
+                Ok(RawExpression::from(IntegerLiteralExpression { literal }).with_span(self.current.span()))
             }
             FloatLiteral(f) => {
-                let value = *f;
+                let literal = *f;
 
                 self.advance()?; // float
 
-                Ok(RawExpression::from(FloatLiteralExpression::new(value)).with_span(self.current.span()))
+                Ok(RawExpression::from(FloatLiteralExpression { literal }).with_span(self.current.span()))
             }
             ImaginaryNumberLiteral(i) => {
-                let value = *i;
+                let literal = *i;
 
                 self.advance()?; // imag
 
-                Ok(RawExpression::from(ImaginaryNumberLiteralExpression::new(value)).with_span(self.current.span()))
+                Ok(RawExpression::from(ImaginaryNumberLiteralExpression { literal }).with_span(self.current.span()))
             }
             StringLiteral(s) => {
-                let value = s.clone();
+                let literal = s.clone();
 
                 self.advance()?; // string
 
-                Ok(RawExpression::from(StringLiteralExpression::new(value)).with_span(self.current.span()))
+                Ok(RawExpression::from(StringLiteralExpression { literal }).with_span(self.current.span()))
             }
             CharLiteral(c) => {
-                let value = *c;
+                let literal = *c;
 
                 self.advance()?; // char
 
-                Ok(RawExpression::from(CharLiteralExpression::new(value)).with_span(self.current.span()))
+                Ok(RawExpression::from(CharLiteralExpression { literal }).with_span(self.current.span()))
             }
             BoolLiteral(b) => {
-                let value = *b;
+                let literal = *b;
 
                 self.advance()?; // bool
 
-                Ok(RawExpression::from(BoolLiteralExpression::new(value)).with_span(self.current.span()))
+                Ok(RawExpression::from(BoolLiteralExpression { literal }).with_span(self.current.span()))
             }
             prefixop_pattern!() => {
-                let left = self.next.clone();
-                self.advance()?; // left
+                let op = self.next.clone();
+                self.advance()?;
 
-                let right = self.parse_expression(Precedence::Unary)?;
-                let span = left.span().start()..right.span().end();
+                let inner = self.parse_expression(Precedence::Unary)?;
+                let span = op.span().start()..inner.span().end();
 
-                Ok(RawExpression::from(UnaryExpression::new(right, left, false)).with_span(span))
+                Ok(RawExpression::from(UnaryExpression { inner: Box::new(inner), op, postfix: false }).with_span(span))
             }
             Punctuator(OpenParent) => {
                 self.advance()?; // `(`
@@ -160,17 +185,17 @@ impl Parser<'_> {
 
                 let start = self.next.span().start();
 
-                let array = parse_list!(self, "array literal", Punctuator(CloseBracket), false, || {
+                let literal = parse_list!(self, "array literal", Punctuator(CloseBracket), false, || {
                     self.parse_expression(Precedence::Lowest)
                 });
 
                 let end = self.current.span().end();
 
-                Ok(RawExpression::from(ArrayLiteralExpression::new(array)).with_span(start..end))
+                Ok(RawExpression::from(ArrayLiteralExpression { literal }).with_span(start..end))
             }
-            Identifier(n) => {
+            Identifier(name) => {
                 let result =
-                RawExpression::from(IdentifierExpression::new(*n))
+                RawExpression::from(IdentifierExpression { name: *name })
                     .with_span(self.current.span());
 
                 self.advance()?;
@@ -182,10 +207,10 @@ impl Parser<'_> {
 
                 let start = self.current.span().start();
 
-                let mut if_blocks = vec![IfBlock::new(
-                    self.parse_expression(Precedence::Lowest)?,
-                    self.parse_statements_block(false)?
-                )];
+                let mut if_blocks = vec![IfBlock {
+                    condition: self.parse_expression(Precedence::Lowest)?,
+                    body: self.parse_statements_block(false)?
+                }];
 
                 let mut r#else = None;
 
@@ -202,15 +227,15 @@ impl Parser<'_> {
 
                     self.advance()?; // `if`
 
-                    if_blocks.push(IfBlock::new(
-                        self.parse_expression(Precedence::Lowest)?,
-                        self.parse_statements_block(false)?
-                    ));
+                    if_blocks.push(IfBlock {
+                        condition: self.parse_expression(Precedence::Lowest)?,
+                        body: self.parse_statements_block(false)?
+                    });
                 }
 
                 let end = self.current.span().end();
 
-                Ok(RawExpression::from(IfExpression::new(if_blocks, r#else))
+                Ok(RawExpression::from(IfExpression { if_blocks, r#else })
                     .with_span(start..end))
             }
             Keyword(While) => {
@@ -218,9 +243,9 @@ impl Parser<'_> {
                 let start = self.current.span().start();
 
                 let condition = self.parse_expression(Precedence::Lowest)?;
-                let block = self.parse_statements_block(false)?;
+                let body = self.parse_statements_block(false)?;
 
-                Ok(RawExpression::from(WhileExpression::new(condition, block))
+                Ok(RawExpression::from(WhileExpression { condition: Box::new(condition), body })
                     .with_span(start..self.current.span().end()))
             }
             _ => Err(ParseError::unexpected_token(

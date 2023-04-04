@@ -1,7 +1,7 @@
 use crate::{error::ParseError, macros::*, ParseResult, Parser};
 use ry_ast::{
     declaration::{
-        Item, StructDeclarationItem, StructMemberDeclaration, WithDocstring, WithDocstringable,
+        Documented, Item, StructDeclarationItem, StructMemberDeclaration, WithDocstring,
     },
     span::WithSpan,
     token::{Keyword::*, Punctuator::*, RawToken::*},
@@ -9,7 +9,7 @@ use ry_ast::{
 };
 
 impl Parser<'_> {
-    pub(crate) fn parse_struct_declaration(&mut self, visiblity: Visibility) -> ParseResult<Item> {
+    pub(crate) fn parse_struct_declaration(&mut self, visibility: Visibility) -> ParseResult<Item> {
         self.advance()?;
 
         let name = consume_ident!(self, "struct name in struct declaration");
@@ -24,7 +24,14 @@ impl Parser<'_> {
 
         consume!(with_docstring self, Punctuator(CloseBrace), "struct declaration");
 
-        Ok(StructDeclarationItem::new(visiblity, name, generics, r#where, members).into())
+        Ok(StructDeclarationItem {
+            visibility,
+            name,
+            generics,
+            r#where,
+            members,
+        }
+        .into())
     }
 
     fn parse_struct_member(&mut self) -> ParseResult<StructMemberDeclaration> {
@@ -59,7 +66,7 @@ impl Parser<'_> {
         ))
     }
 
-    fn parse_struct_members(&mut self) -> ParseResult<Vec<WithDocstring<StructMemberDeclaration>>> {
+    fn parse_struct_members(&mut self) -> ParseResult<Vec<Documented<StructMemberDeclaration>>> {
         let mut members = vec![];
 
         loop {

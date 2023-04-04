@@ -7,10 +7,3 @@ pub struct WhereClauseUnit {
     pub r#type: Type,
     pub constraint: Type,
 }
-
-impl WhereClauseUnit {
-    #[inline]
-    pub const fn new(r#type: Type, constraint: Type) -> Self {
-        Self { r#type, constraint }
-    }
-}

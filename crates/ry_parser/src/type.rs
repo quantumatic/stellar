@@ -11,23 +11,23 @@ use ry_ast::{
 use ry_interner::Symbol;
 
 impl Parser<'_> {
-    pub(crate) fn parse_name(&mut self) -> ParseResult<Spanned<Vec<Symbol>>> {
-        let mut name = vec![];
+    pub(crate) fn parse_path(&mut self) -> ParseResult<Spanned<Vec<Symbol>>> {
+        let mut path = vec![];
 
-        let first_ident = consume_ident!(self, "namespace member/namespace");
-        name.push(*first_ident.unwrap());
+        let first_ident = consume_ident!(self, "path");
+        path.push(*first_ident.unwrap());
 
         let (start, mut end) = (first_ident.span().start(), first_ident.span().end());
 
         while let Punctuator(Dot) = self.next.unwrap() {
             self.advance()?; // `.`
 
-            name.push(*consume_ident!(self, "namespace member/namespace").unwrap());
+            path.push(*consume_ident!(self, "path").unwrap());
 
             end = self.current.span().end();
         }
 
-        Ok(name.with_span(start..end))
+        Ok(path.with_span(start..end))
     }
 
     pub(crate) fn parse_type(&mut self) -> ParseResult<Type> {
@@ -35,17 +35,17 @@ impl Parser<'_> {
 
         let r#type = match self.next.unwrap() {
             Identifier(_) => {
-                let name = self.parse_name()?;
+                let path = self.parse_path()?;
                 let generic_part = self.parse_type_generic_part()?;
 
-                RawType::from(PrimaryType::new(
-                    name,
-                    if let Some(v) = generic_part {
+                RawType::from(PrimaryType {
+                    path,
+                    type_annotations: if let Some(v) = generic_part {
                         v
                     } else {
                         vec![]
                     },
-                ))
+                })
                 .with_span(start..self.current.span().end())
             }
             Punctuator(And) => {
@@ -60,21 +60,26 @@ impl Parser<'_> {
                     self.advance()?; // `mut`
                 }
 
-                let inner_type = self.parse_type()?;
+                let inner = self.parse_type()?;
 
-                RawType::from(ReferenceType::new(mutability, inner_type))
-                    .with_span(start..self.current.span().end())
+                RawType::from(ReferenceType {
+                    mutability,
+                    inner: Box::new(inner),
+                })
+                .with_span(start..self.current.span().end())
             }
             Punctuator(OpenBracket) => {
                 self.advance()?;
                 let start = self.current.span().start();
 
-                let inner_type = self.parse_type()?;
+                let inner = self.parse_type()?;
 
                 consume!(self, Punctuator(CloseBracket), "array type");
 
-                RawType::from(ArrayType::new(inner_type))
-                    .with_span(start..self.current.span().end())
+                RawType::from(ArrayType {
+                    inner: Box::new(inner),
+                })
+                .with_span(start..self.current.span().end())
             }
             _ => {
                 return Err(ParseError::unexpected_token(
@@ -117,7 +122,7 @@ impl Parser<'_> {
         self.advance()?; // `[`
 
         let result = parse_list!(self, "generics", Punctuator(CloseBracket), false, || {
-            let generic = consume_ident!(self, "generic name");
+            let name = consume_ident!(self, "generic name");
 
             let mut constraint = None;
 
@@ -126,7 +131,7 @@ impl Parser<'_> {
                 constraint = Some(self.parse_type()?);
             }
 
-            Ok(Generic::new(generic, constraint))
+            Ok(Generic { name, constraint })
         });
 
         self.advance()?;
@@ -144,13 +149,13 @@ impl Parser<'_> {
                 Punctuator(OpenBrace | Semicolon),
                 false, // top level
                 || {
-                    let left = self.parse_type()?;
+                    let r#type = self.parse_type()?;
 
                     consume!(self, Punctuator(Colon), "where clause");
 
-                    let right = self.parse_type()?;
+                    let constraint = self.parse_type()?;
 
-                    Ok(WhereClauseUnit::new(left, right))
+                    Ok(WhereClauseUnit { r#type, constraint })
                 }
             );
 

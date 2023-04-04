@@ -4,7 +4,7 @@ use crate::{
     Mutability, Visibility,
 };
 
-use super::{docstring::WithDocstring, Item};
+use super::{docstring::Documented, Item};
 
 #[derive(Debug, PartialEq)]
 pub struct StructDeclarationItem {
@@ -12,26 +12,7 @@ pub struct StructDeclarationItem {
     pub name: Name,
     pub generics: Generics,
     pub r#where: WhereClause,
-    pub members: Vec<WithDocstring<StructMemberDeclaration>>,
-}
-
-impl StructDeclarationItem {
-    #[inline]
-    pub const fn new(
-        visibility: Visibility,
-        name: Name,
-        generics: Generics,
-        r#where: WhereClause,
-        members: Vec<WithDocstring<StructMemberDeclaration>>,
-    ) -> Self {
-        Self {
-            visibility,
-            name,
-            generics,
-            r#where,
-            members,
-        }
-    }
+    pub members: Vec<Documented<StructMemberDeclaration>>,
 }
 
 impl From<StructDeclarationItem> for Item {

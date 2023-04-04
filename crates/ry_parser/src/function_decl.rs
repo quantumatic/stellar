@@ -19,7 +19,10 @@ impl Parser<'_> {
             self.advance()?;
             Ok(definition.into())
         } else {
-            Ok(FunctionDeclaration::new(definition, self.parse_statements_block(true)?).into())
+            Ok(FunctionDeclaration {
+                definition,
+                body: self.parse_statements_block(true)?
+            }.into())
         }
     }
 
@@ -27,10 +30,10 @@ impl Parser<'_> {
         &mut self,
         visibility: Visibility,
     ) -> ParseResult<FunctionDeclaration> {
-        Ok(FunctionDeclaration::new(
-            self.parse_function_definition(visibility)?,
-            self.parse_statements_block(true)?,
-        )
+        Ok(FunctionDeclaration {
+            definition: self.parse_function_definition(visibility)?,
+            body: self.parse_statements_block(true)?,
+        }
         .into())
     }
 

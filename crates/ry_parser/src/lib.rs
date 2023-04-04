@@ -62,16 +62,6 @@
     clippy::option_if_let_else
 )]
 
-use error::*;
-use ry_ast::{
-    declaration::{Docstring, WithDocstringable},
-    span::WithSpan,
-    token::{Keyword::*, RawToken::*, Token},
-    *,
-};
-use ry_interner::Interner;
-use ry_lexer::Lexer;
-
 pub mod error;
 
 mod r#enum;
@@ -83,6 +73,16 @@ mod statement;
 mod struct_decl;
 mod trait_decl;
 mod r#type;
+
+use error::*;
+use ry_ast::{
+    declaration::{Docstring, WithDocstring},
+    span::WithSpan,
+    token::{Keyword::*, RawToken::*, Token},
+    *,
+};
+use ry_interner::Interner;
+use ry_lexer::Lexer;
 
 #[macro_use]
 mod macros;
@@ -201,11 +201,11 @@ impl<'a> Parser<'a> {
     pub fn parse(&mut self) -> ParseResult<ProgramUnit> {
         self.check_scanning_error_for_current_token()?;
 
-        let (module_docstring, fst_docstring) = self.consume_module_and_first_item_docstrings()?;
-        Ok(ProgramUnit::new(
-            module_docstring,
-            self.parse_items(fst_docstring)?,
-        ))
+        let (global_docstring, fst_docstring) = self.consume_module_and_first_item_docstrings()?;
+        Ok(ProgramUnit {
+            docstring: global_docstring,
+            items: self.parse_items(fst_docstring)?,
+        })
     }
 
     fn parse_items(&mut self, mut local_docstring: Docstring) -> ParseResult<Items> {

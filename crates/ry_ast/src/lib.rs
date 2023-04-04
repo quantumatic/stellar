@@ -3,6 +3,7 @@ pub mod declaration;
 pub mod expression;
 pub mod name;
 pub mod precedence;
+pub mod serialize;
 pub mod span;
 pub mod statement;
 pub mod token;
@@ -12,6 +13,8 @@ pub mod visitor;
 use std::ops::ControlFlow;
 
 use declaration::{docstring::*, Item};
+use ry_interner::Interner;
+use serialize::Serialize;
 use span::Span;
 use visitor::*;
 
@@ -22,14 +25,22 @@ pub struct ProgramUnit {
     pub items: Items,
 }
 
-pub type Items = Vec<WithDocstring<Item>>;
-
-impl ProgramUnit {
-    #[inline]
-    pub const fn new(docstring: Docstring, items: Items) -> Self {
-        Self { docstring, items }
+impl Serialize for ProgramUnit {
+    fn serialize(&self, buffer: &mut String, interner: &Interner) {
+        (true, &self.docstring).serialize(buffer, interner);
+        buffer.push('\n');
+        self.items.serialize(buffer, interner);
     }
 }
+
+pub type Items = Vec<Documented<Item>>;
+
+impl Serialize for Items {
+    fn serialize(&self, _buffer: &mut String, _interner: &Interner) {
+        todo!()
+    }
+}
+
 #[derive(Debug, PartialEq)]
 pub struct Visibility(Option<Span>);
 

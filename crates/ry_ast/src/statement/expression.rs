@@ -7,18 +7,8 @@ use crate::expression::Expression;
 /// See the [module level documentation][self].
 #[derive(Debug, PartialEq)]
 pub struct ExpressionStatement {
-    has_semicolon: bool,
-    expression: Expression,
-}
-
-impl ExpressionStatement {
-    #[inline]
-    pub fn new(has_semicolon: bool, expression: Expression) -> Self {
-        Self {
-            has_semicolon,
-            expression,
-        }
-    }
+    pub has_semicolon: bool,
+    pub expression: Expression,
 }
 
 impl From<ExpressionStatement> for Statement {

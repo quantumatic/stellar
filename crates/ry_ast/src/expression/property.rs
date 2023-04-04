@@ -1,21 +1,10 @@
-use crate::name::Name;
-
 use super::{Expression, RawExpression};
+use crate::name::Name;
 
 #[derive(Debug, PartialEq)]
 pub struct PropertyAccessExpression {
     pub left: Box<Expression>,
-    pub right: Name,
-}
-
-impl PropertyAccessExpression {
-    #[inline]
-    pub fn new(left: Expression, right: Name) -> Self {
-        Self {
-            left: Box::new(left),
-            right,
-        }
-    }
+    pub property: Name,
 }
 
 impl From<PropertyAccessExpression> for RawExpression {

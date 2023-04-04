@@ -4,14 +4,7 @@ use crate::r#type::TypeAnnotations;
 #[derive(Debug, PartialEq)]
 pub struct TypeAnnotationsExpression {
     pub left: Box<Expression>,
-    pub right: TypeAnnotations,
-}
-
-impl TypeAnnotationsExpression {
-    #[inline]
-    pub fn new(left: Expression, right: TypeAnnotations) -> Self {
-        Self { left: Box::new(left), right }
-    }
+    pub type_annotations: TypeAnnotations,
 }
 
 impl From<TypeAnnotationsExpression> for RawExpression {

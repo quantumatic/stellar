@@ -1,10 +1,9 @@
+use super::{docstring::Documented, function::Method, Item};
 use crate::{
     name::Name,
     r#type::{generics::Generics, where_clause::WhereClause},
     Visibility,
 };
-
-use super::{docstring::WithDocstring, function::Method, Item};
 
 #[derive(Debug, PartialEq)]
 pub struct TraitDeclarationItem {
@@ -12,26 +11,7 @@ pub struct TraitDeclarationItem {
     pub name: Name,
     pub generics: Generics,
     pub r#where: WhereClause,
-    pub methods: Vec<WithDocstring<Method>>,
-}
-
-impl TraitDeclarationItem {
-    #[inline]
-    pub const fn new(
-        visibility: Visibility,
-        name: Name,
-        generics: Generics,
-        r#where: WhereClause,
-        methods: Vec<WithDocstring<Method>>,
-    ) -> Self {
-        Self {
-            visibility,
-            name,
-            generics,
-            r#where,
-            methods,
-        }
-    }
+    pub methods: Vec<Documented<Method>>,
 }
 
 impl From<TraitDeclarationItem> for Item {

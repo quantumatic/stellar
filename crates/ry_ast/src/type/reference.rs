@@ -7,16 +7,6 @@ pub struct ReferenceType {
     pub inner: Box<Type>,
 }
 
-impl ReferenceType {
-    #[inline]
-    pub fn new(mutability: Mutability, inner: Type) -> Self {
-        Self {
-            mutability,
-            inner: Box::new(inner),
-        }
-    }
-}
-
 impl From<ReferenceType> for RawType {
     fn from(reference: ReferenceType) -> Self {
         Self::Reference(reference)

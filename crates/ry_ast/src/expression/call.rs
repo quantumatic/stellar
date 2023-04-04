@@ -6,16 +6,6 @@ pub struct CallExpression {
     pub arguments: Vec<Expression>,
 }
 
-impl CallExpression {
-    #[inline]
-    pub fn new(left: Expression, arguments: Vec<Expression>) -> Self {
-        Self {
-            left: Box::new(left),
-            arguments,
-        }
-    }
-}
-
 impl From<CallExpression> for RawExpression {
     fn from(call: CallExpression) -> Self {
         Self::Call(call)

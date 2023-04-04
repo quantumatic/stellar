@@ -30,8 +30,6 @@ impl Parser<'_> {
             }
         }
 
-        dbg!(&self.next.unwrap());
-
         if top_level {
             consume!(with_docstring self, Punctuator(CloseBrace), "end of the statement block");
         } else {
@@ -49,12 +47,18 @@ impl Parser<'_> {
             Keyword(Return) => {
                 self.advance()?; // `return`
 
-                ReturnStatement::new(self.parse_expression(Precedence::Lowest)?).into()
+                ReturnStatement {
+                    return_value: self.parse_expression(Precedence::Lowest)?,
+                }
+                .into()
             }
             Keyword(Defer) => {
                 self.advance()?; // `defer`
 
-                DeferStatement::new(self.parse_expression(Precedence::Lowest)?).into()
+                DeferStatement {
+                    call: self.parse_expression(Precedence::Lowest)?,
+                }
+                .into()
             }
             Keyword(Var) => {
                 self.advance()?; // `var`
@@ -79,7 +83,13 @@ impl Parser<'_> {
 
                 let value = self.parse_expression(Precedence::Lowest)?;
 
-                VarStatement::new(mutability, name, r#type, value).into()
+                VarStatement {
+                    mutability,
+                    name,
+                    r#type,
+                    value,
+                }
+                .into()
             }
             _ => {
                 let expression = self.parse_expression(Precedence::Lowest)?;
@@ -96,9 +106,17 @@ impl Parser<'_> {
                 }
 
                 if last_statement_in_block || !must_have_semicolon_at_the_end {
-                    ExpressionStatement::new(false, expression).into()
+                    ExpressionStatement {
+                        has_semicolon: false,
+                        expression,
+                    }
+                    .into()
                 } else {
-                    ExpressionStatement::new(true, expression).into()
+                    ExpressionStatement {
+                        has_semicolon: true,
+                        expression,
+                    }
+                    .into()
                 }
             }
         };

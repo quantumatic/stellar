@@ -1,6 +1,6 @@
 use crate::{error::ParseError, macros::*, ParseResult, Parser};
 use ry_ast::{
-    declaration::{Function, Item, TraitDeclarationItem, WithDocstring, WithDocstringable},
+    declaration::{Documented, Function, Item, TraitDeclarationItem, WithDocstring},
     span::WithSpan,
     token::{Keyword::*, Punctuator::*, RawToken::*},
     Visibility,
@@ -22,12 +22,19 @@ impl Parser<'_> {
 
         consume!(self, Punctuator(CloseBrace), "trait declaration");
 
-        Ok(TraitDeclarationItem::new(visibility, name, generics, r#where, methods).into())
+        Ok(TraitDeclarationItem {
+            visibility,
+            name,
+            generics,
+            r#where,
+            methods,
+        }
+        .into())
     }
 
     pub(crate) fn parse_trait_associated_functions(
         &mut self,
-    ) -> ParseResult<Vec<WithDocstring<Function>>> {
+    ) -> ParseResult<Vec<Documented<Function>>> {
         let mut associated_functions = vec![];
 
         loop {

@@ -1,6 +1,6 @@
 use crate::{error::*, macros::*, Parser};
 use ry_ast::{
-    declaration::{EnumDeclarationItem, Item, WithDocstringable},
+    declaration::{EnumDeclarationItem, Item, WithDocstring},
     span::*,
     token::{Punctuator::*, RawToken::*},
     Visibility,
@@ -30,7 +30,12 @@ impl Parser<'_> {
 
         self.advance_with_docstring()?; // `}`
 
-        Ok(EnumDeclarationItem::new(visibility, name, variants).into())
+        Ok(EnumDeclarationItem {
+            visibility,
+            name,
+            variants,
+        }
+        .into())
     }
 }
 

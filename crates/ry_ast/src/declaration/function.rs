@@ -13,13 +13,6 @@ pub struct FunctionDeclaration {
     pub body: StatementsBlock,
 }
 
-impl FunctionDeclaration {
-    #[inline]
-    pub const fn new(definition: FunctionDefinition, body: StatementsBlock) -> Self {
-        Self { definition, body }
-    }
-}
-
 impl From<Function> for Item {
     fn from(function: Function) -> Self {
         Self::Function(function)

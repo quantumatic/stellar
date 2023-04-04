@@ -2,16 +2,7 @@ use super::{RawType, Type};
 
 #[derive(Debug, PartialEq)]
 pub struct ArrayType {
-    inner: Box<Type>,
-}
-
-impl ArrayType {
-    #[inline]
-    pub fn new(inner: Type) -> Self {
-        Self {
-            inner: Box::new(inner),
-        }
-    }
+    pub inner: Box<Type>,
 }
 
 impl From<ArrayType> for RawType {
