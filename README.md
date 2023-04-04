@@ -1,4 +1,4 @@
-<img align="right" width="30%" height="30%" src="additional/icon/ry-2.png" alt="rycon">
+<img align="right" width="30%" height="30%" src="additional/icon/ry.png" alt="rycon">
 
 # Ry programming language
 ![](https://img.shields.io/badge/version-0.0.1%20alpha-red.svg)
