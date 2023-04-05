@@ -242,7 +242,7 @@ impl<'a> Parser<'a> {
                     _ => {
                         let err = Err(ParseError::unexpected_token(
                             self.next.clone(),
-                            "`fun`, `trait`, `enum`, `struct`",
+                            "`import`, `fun`, `trait`, `enum`, `struct`",
                             "item",
                         ));
                         self.advance()?;
