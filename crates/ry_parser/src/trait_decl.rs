@@ -1,26 +1,25 @@
-use crate::{error::ParseError, macros::*, ParseResult, Parser};
+use crate::{ParseResult, Parser};
 use ry_ast::{
     declaration::{Documented, Function, Item, TraitDeclarationItem, WithDocstring},
-    span::At,
     token::{Keyword::*, Punctuator::*, RawToken::*},
     Visibility,
 };
 
 impl Parser<'_> {
     pub(crate) fn parse_trait_declaration(&mut self, visibility: Visibility) -> ParseResult<Item> {
-        self.advance()?;
+        self.advance();
 
-        let name = consume_ident!(self, "trait name in trait declaration");
+        let name = self.consume_identifier("trait name in trait declaration")?;
 
         let generics = self.optionally_parse_generics()?;
 
         let r#where = self.optionally_parse_where_clause()?;
 
-        consume!(with_docstring self, Punctuator(OpenBrace), "trait declaration");
+        self.consume_with_docstring(Punctuator(OpenBrace), "trait declaration")?;
 
         let methods = self.parse_trait_associated_functions()?;
 
-        consume!(self, Punctuator(CloseBrace), "trait declaration");
+        self.consume_with_docstring(Punctuator(CloseBrace), "trait declaration")?;
 
         Ok(TraitDeclarationItem {
             visibility,
@@ -38,7 +37,7 @@ impl Parser<'_> {
         let mut associated_functions = vec![];
 
         loop {
-            if let Punctuator(CloseBrace) = self.next.unwrap() {
+            if self.next.inner == Punctuator(CloseBrace) {
                 break;
             }
 
@@ -46,9 +45,9 @@ impl Parser<'_> {
 
             let mut visibility = Visibility::private();
 
-            if let Keyword(Pub) = self.next.unwrap() {
-                visibility = Visibility::public(self.next.span());
-                self.advance()?;
+            if let Keyword(Pub) = self.next.inner {
+                visibility = Visibility::public(self.next.span);
+                self.advance();
             }
 
             associated_functions.push(self.parse_function(visibility)?.with_docstring(docstring));

@@ -2,16 +2,19 @@
 //! Locations throughout the compiler. Most notably, these locations
 //! are passed around throughout the parser and are stored in each
 //! AST node.
-use std::ops::Range;
-
-use derive_more::Display;
+use std::{fmt::Display, ops::Range};
 
 /// Represents code block location in source text.
-#[derive(Clone, Debug, PartialEq, Default, Copy, Display, Eq)]
-#[display(fmt = "{}..{}", start, end)]
+#[derive(Copy, Clone, Debug, Default, PartialEq, Eq)]
 pub struct Span {
     start: usize,
     end: usize,
+}
+
+impl Display for Span {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_fmt(format_args!("{}..{}", self.start, self.end))
+    }
 }
 
 impl Span {
@@ -48,24 +51,14 @@ impl From<Range<usize>> for Span {
 /// Represents thing located in some [`Span`].
 #[derive(Debug, PartialEq, Clone, Default)]
 pub struct Spanned<T> {
-    value: T,
-    span: Span,
+    pub inner: T,
+    pub span: Span,
 }
 
 impl<T> Spanned<T> {
     #[inline]
-    pub const fn new(value: T, span: Span) -> Self {
-        Self { value, span }
-    }
-
-    #[inline]
-    pub const fn unwrap(&self) -> &T {
-        &self.value
-    }
-
-    #[inline]
-    pub const fn span(&self) -> Span {
-        self.span
+    pub const fn new(inner: T, span: Span) -> Self {
+        Self { inner, span }
     }
 }
 

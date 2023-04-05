@@ -14,26 +14,26 @@ impl Parser<'_> {
     pub(crate) fn parse_path(&mut self) -> ParseResult<Spanned<Vec<Symbol>>> {
         let mut path = vec![];
 
-        let first_ident = consume_ident!(self, "path");
-        path.push(*first_ident.unwrap());
+        let first_identifier = self.consume_identifier("path")?;
+        path.push(first_identifier.inner);
 
-        let (start, mut end) = (first_ident.span().start(), first_ident.span().end());
+        let (start, mut end) = (first_identifier.span.start(), first_identifier.span.end());
 
-        while let Punctuator(Dot) = self.next.unwrap() {
-            self.advance()?; // `.`
+        while let Punctuator(Dot) = self.next.inner {
+            self.advance();
 
-            path.push(*consume_ident!(self, "path").unwrap());
+            path.push(self.consume_identifier("path")?.inner);
 
-            end = self.current.span().end();
+            end = self.current.span.end();
         }
 
         Ok(path.at(start..end))
     }
 
     pub(crate) fn parse_type(&mut self) -> ParseResult<Type> {
-        let start = self.next.span().start();
+        let start = self.next.span.start();
 
-        let r#type = match self.next.unwrap() {
+        let r#type = match self.next.inner {
             Identifier(_) => {
                 let path = self.parse_path()?;
                 let generic_part = self.parse_type_generic_part()?;
@@ -46,18 +46,18 @@ impl Parser<'_> {
                         vec![]
                     },
                 })
-                .at(start..self.current.span().end())
+                .at(start..self.current.span.end())
             }
             Punctuator(And) => {
-                self.advance()?;
-                let start = self.current.span().start();
+                self.advance();
+                let start = self.current.span.start();
 
                 let mut mutability = Mutability::immutable();
 
-                if let Keyword(Mut) = self.next.unwrap() {
-                    mutability = Mutability::mutable(self.next.span());
+                if let Keyword(Mut) = self.next.inner {
+                    mutability = Mutability::mutable(self.next.span);
 
-                    self.advance()?; // `mut`
+                    self.advance();
                 }
 
                 let inner = self.parse_type()?;
@@ -66,20 +66,20 @@ impl Parser<'_> {
                     mutability,
                     inner: Box::new(inner),
                 })
-                .at(start..self.current.span().end())
+                .at(start..self.current.span.end())
             }
             Punctuator(OpenBracket) => {
-                self.advance()?;
-                let start = self.current.span().start();
+                self.advance();
+                let start = self.current.span.start();
 
                 let inner = self.parse_type()?;
 
-                consume!(self, Punctuator(CloseBracket), "array type");
+                self.consume(Punctuator(CloseBracket), "array type")?;
 
                 RawType::from(ArrayType {
                     inner: Box::new(inner),
                 })
-                .at(start..self.current.span().end())
+                .at(start..self.current.span.end())
             }
             _ => {
                 return Err(ParseError::unexpected_token(
@@ -94,8 +94,8 @@ impl Parser<'_> {
     }
 
     pub(crate) fn parse_type_generic_part(&mut self) -> ParseResult<Option<Vec<Type>>> {
-        Ok(if let Punctuator(OpenBracket) = self.next.unwrap() {
-            self.advance()?; // `[`
+        Ok(if self.next.inner == Punctuator(OpenBracket) {
+            self.advance();
 
             let result = Some(parse_list!(
                 self,
@@ -105,7 +105,7 @@ impl Parser<'_> {
                 || self.parse_type()
             ));
 
-            self.advance()?; // `]`
+            self.advance();
 
             result
         } else {
@@ -114,34 +114,40 @@ impl Parser<'_> {
     }
 
     pub(crate) fn optionally_parse_generics(&mut self) -> ParseResult<Generics> {
-        match self.next.unwrap() {
-            Punctuator(OpenBracket) => {}
-            _ => return Ok(vec![]),
+        if self.next.inner != Punctuator(OpenBracket) {
+            return Ok(vec![]);
         }
 
-        self.advance()?; // `[`
+        self.advance();
 
-        let result = parse_list!(self, "generics", Punctuator(CloseBracket), false, || {
-            let name = consume_ident!(self, "generic name");
+        let result = parse_list!(
+            self,
+            "generics",
+            Punctuator(CloseBracket),
+            false,
+            || -> ParseResult<Generic> {
+                dbg!(&self.next);
+                let name = self.consume_identifier("generic name")?;
 
-            let mut constraint = None;
+                let mut constraint = None;
 
-            if let Punctuator(Colon) = self.next.unwrap() {
-                self.advance()?;
-                constraint = Some(self.parse_type()?);
+                if self.next.inner == Punctuator(Colon) {
+                    self.advance();
+                    constraint = Some(self.parse_type()?);
+                }
+
+                Ok(Generic { name, constraint })
             }
+        );
 
-            Ok(Generic { name, constraint })
-        });
-
-        self.advance()?;
+        self.advance();
 
         Ok(result)
     }
 
     pub(crate) fn optionally_parse_where_clause(&mut self) -> ParseResult<WhereClause> {
-        Ok(if let Keyword(Where) = self.next.unwrap() {
-            self.advance()?; // `where`
+        Ok(if let Keyword(Where) = self.next.inner {
+            self.advance();
 
             let result = parse_list!(
                 self,
@@ -151,11 +157,11 @@ impl Parser<'_> {
                 || {
                     let r#type = self.parse_type()?;
 
-                    consume!(self, Punctuator(Colon), "where clause");
+                    self.consume(Punctuator(Colon), "where clause")?;
 
                     let constraint = self.parse_type()?;
 
-                    Ok(WhereClauseUnit { r#type, constraint })
+                    Ok::<WhereClauseUnit, ParseError>(WhereClauseUnit { r#type, constraint })
                 }
             );
 

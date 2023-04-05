@@ -10,7 +10,7 @@ mod lexer_tests {
             fn $name() {
                 let mut s = Interner::default();
                 let mut lexer = Lexer::new($contents.into(), &mut s);
-                assert_eq!(lexer.next().unwrap().unwrap(), &$expected);
+                assert_eq!(lexer.next().unwrap().inner, $expected);
             }
         };
         ($name:ident, $contents:expr, $expected:expr, $interner:ident) => {
@@ -18,7 +18,7 @@ mod lexer_tests {
             fn $name() {
                 let mut $interner = Interner::default();
                 let mut lexer = Lexer::new($contents.into(), &mut $interner);
-                assert_eq!(lexer.next().unwrap().unwrap(), &$expected);
+                assert_eq!(lexer.next().unwrap().inner, $expected);
             }
         };
     }

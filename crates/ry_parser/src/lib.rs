@@ -77,8 +77,13 @@ mod r#type;
 use error::*;
 use ry_ast::{
     declaration::{Docstring, WithDocstring},
+    name::Name,
     span::At,
-    token::{Keyword::*, RawToken::*, Token},
+    token::{
+        Keyword::*,
+        RawToken::{self, *},
+        Token,
+    },
     *,
 };
 use ry_interner::Interner;
@@ -123,27 +128,77 @@ impl<'a> Parser<'a> {
     /// Checks if the current token being parsed is invalid, and returns
     /// an error if so.
     fn check_scanning_error_for_current_token(&mut self) -> ParseResult<()> {
-        if let Error(e) = self.current.unwrap() {
-            Err(ParseError::lexer((*e).at(self.current.span())))
+        if let Error(error) = self.current.inner {
+            Err(ParseError::lexer(error.at(self.current.span)))
         } else {
             Ok(())
         }
     }
 
     /// Advances the parser to the next token and skips comment tokens.
-    fn advance(&mut self) -> ParseResult<()> {
+    fn advance(&mut self) {
         self.current = self.next.clone();
         self.next = self.lexer.next_no_docstrings_and_comments().unwrap();
-
-        Ok(())
     }
 
     /// Advances the parser to the next token and doesn't skip comment tokens.
-    fn advance_with_docstring(&mut self) -> ParseResult<()> {
+    fn advance_with_docstring(&mut self) {
         self.current = self.next.clone();
         self.next = self.lexer.next_no_comments().unwrap();
+    }
 
+    fn expect<N>(&self, expected: RawToken, node: N) -> Result<(), ParseError>
+    where
+        N: Into<String>,
+    {
+        if self.next.inner == expected {
+            Ok(())
+        } else {
+            Err(ParseError::unexpected_token(
+                self.next.clone(),
+                expected,
+                node,
+            ))
+        }
+    }
+
+    fn consume<N>(&mut self, expected: RawToken, node: N) -> Result<(), ParseError>
+    where
+        N: Into<String>,
+    {
+        self.expect(expected, node)?;
+        self.advance();
         Ok(())
+    }
+
+    fn consume_with_docstring<N>(&mut self, expected: RawToken, node: N) -> Result<(), ParseError>
+    where
+        N: Into<String>,
+    {
+        self.expect(expected, node)?;
+        self.advance_with_docstring();
+        Ok(())
+    }
+
+    fn consume_identifier<N>(&mut self, node: N) -> Result<Name, ParseError>
+    where
+        N: Into<String>,
+    {
+        let spanned_symbol;
+
+        if let Identifier(symbol) = self.next.inner {
+            spanned_symbol = symbol.at(self.next.span);
+        } else {
+            return Err(ParseError::unexpected_token(
+                self.next.clone(),
+                "identifier",
+                node,
+            ));
+        }
+
+        self.advance();
+
+        Ok(spanned_symbol)
     }
 
     /// Consumes the docstrings for the module and the first item in the module, if present.
@@ -153,7 +208,7 @@ impl<'a> Parser<'a> {
         let (mut module_docstring, mut local_docstring) = (vec![], vec![]);
 
         loop {
-            if let DocstringComment { global, content } = self.next.unwrap() {
+            if let DocstringComment { global, content } = &self.next.inner {
                 if *global {
                     module_docstring.push(content.clone());
                 } else {
@@ -163,7 +218,7 @@ impl<'a> Parser<'a> {
                 return Ok((module_docstring, local_docstring));
             }
 
-            self.advance_with_docstring()?;
+            self.advance_with_docstring();
         }
     }
 
@@ -174,7 +229,7 @@ impl<'a> Parser<'a> {
         let mut result = vec![];
 
         loop {
-            if let DocstringComment { global, content } = self.next.unwrap() {
+            if let DocstringComment { global, content } = &self.next.inner {
                 if !global {
                     result.push(content.clone());
                 }
@@ -182,7 +237,7 @@ impl<'a> Parser<'a> {
                 return Ok(result);
             }
 
-            self.advance_with_docstring()?;
+            self.advance_with_docstring();
         }
     }
 
@@ -211,18 +266,18 @@ impl<'a> Parser<'a> {
 
         loop {
             items.push(
-                match self.next.unwrap() {
+                match self.next.inner {
                     Keyword(Fun) => self.parse_function_item(Visibility::private())?,
                     Keyword(Struct) => self.parse_struct_declaration(Visibility::private())?,
                     Keyword(Trait) => self.parse_trait_declaration(Visibility::private())?,
                     Keyword(Enum) => self.parse_enum_declaration(Visibility::private())?,
                     Keyword(Impl) => self.parse_impl(Visibility::private())?,
                     Keyword(Pub) => {
-                        let visibility = Visibility::public(self.next.span());
+                        let visibility = Visibility::public(self.next.span);
 
-                        self.advance()?;
+                        self.advance();
 
-                        match self.next.unwrap() {
+                        match self.next.inner {
                             Keyword(Fun) => self.parse_function_item(visibility)?,
                             Keyword(Struct) => self.parse_struct_declaration(visibility)?,
                             Keyword(Trait) => self.parse_trait_declaration(visibility)?,
@@ -245,7 +300,7 @@ impl<'a> Parser<'a> {
                             "`import`, `fun`, `trait`, `enum`, `struct`",
                             "item",
                         ));
-                        self.advance()?;
+                        self.advance();
                         return err;
                     }
                 }

@@ -1,34 +1,33 @@
 use crate::{error::*, macros::*, Parser};
 use ry_ast::{
-    declaration::{EnumDeclarationItem, Item, WithDocstring},
-    span::*,
+    declaration::{Documented, EnumDeclarationItem, Item, WithDocstring},
+    name::Name,
     token::{Punctuator::*, RawToken::*},
     Visibility,
 };
 
 impl Parser<'_> {
     pub(crate) fn parse_enum_declaration(&mut self, visibility: Visibility) -> ParseResult<Item> {
-        self.advance()?;
+        self.advance();
 
-        let name = consume_ident!(self, "enum name in enum declaration");
+        let name = self.consume_identifier("enum name in enum declaration")?;
 
-        consume!(with_docstring self, Punctuator(OpenBrace), "enum declaration");
+        self.consume_with_docstring(Punctuator(OpenBrace), "enum declaration")?;
 
         let variants = parse_list!(
             self,
             "enum declaration",
             Punctuator(CloseBrace),
             true, // top level
-            || {
+            || -> ParseResult<Documented<Name>> {
                 let doc = self.consume_non_module_docstring()?;
-
-                let variant = consume_ident!(self, "enum variant name");
-
-                Ok(variant.with_docstring(doc))
+                Ok(self
+                    .consume_identifier("enum variant name")?
+                    .with_docstring(doc))
             }
         );
 
-        self.advance_with_docstring()?; // `}`
+        self.advance_with_docstring();
 
         Ok(EnumDeclarationItem {
             visibility,

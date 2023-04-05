@@ -46,8 +46,8 @@ impl ParseError {
         E: Into<String>,
         N: Into<String>,
     {
-        match got.unwrap() {
-            RawToken::Error(lexer_error) => Self::lexer((*lexer_error).at(got.span())),
+        match got.inner {
+            RawToken::Error(lexer_error) => Self::lexer(lexer_error.at(got.span)),
             _ => Self::UnexpectedToken {
                 got,
                 expected: expected.into(),
@@ -60,7 +60,7 @@ impl ParseError {
 impl Display for ParseError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::Lexer { error } => error.unwrap().fmt(f),
+            Self::Lexer { error } => error.inner.fmt(f),
             Self::UnexpectedToken {
                 got,
                 expected,
@@ -68,7 +68,7 @@ impl Display for ParseError {
             } => {
                 f.write_fmt(format_args!(
                     "expected {expected} for {node}, got {}",
-                    got.unwrap()
+                    got.inner
                 ))?;
                 Ok(())
             }
@@ -83,16 +83,16 @@ impl Reporter<'_> for ParseError {
                 .with_message(self.to_string())
                 .with_code("E000")
                 .with_labels(vec![
-                    Label::primary(file_id, error.span()).with_message("error appeared here")
+                    Label::primary(file_id, error.span).with_message("error appeared here")
                 ]),
             Self::UnexpectedToken {
                 got,
                 expected,
                 node,
             } => Diagnostic::error()
-                .with_message(format!("unexpected {}", got.unwrap()))
+                .with_message(format!("unexpected {}", got.inner))
                 .with_code("E001")
-                .with_labels(vec![Label::primary(file_id, got.span())
+                .with_labels(vec![Label::primary(file_id, got.span)
                     .with_message(format!("expected {expected} for {node}"))]),
         }
     }

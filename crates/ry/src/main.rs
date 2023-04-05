@@ -1,5 +1,5 @@
 use clap::{arg, Parser, Subcommand};
-use ry_ast::token::RawToken::EndOfFile;
+use ry_ast::token::RawToken::{self, EndOfFile};
 use ry_interner::Interner;
 use ry_lexer::Lexer;
 use ry_report::{Reporter, ReporterState};
@@ -50,19 +50,19 @@ fn main() {
                 loop {
                     let token = lexer.next().unwrap();
 
-                    if token.unwrap().is(EndOfFile) {
+                    if token.inner == EndOfFile {
                         break;
                     }
 
                     if show_locations {
                         println!(
                             "{current_token_index}: [{}]@{}..{}",
-                            token.unwrap(),
-                            token.span().start(),
-                            token.span().end()
+                            token.inner,
+                            token.span.start(),
+                            token.span.end()
                         );
                     } else {
-                        println!("{current_token_index}: [{}]", token.unwrap());
+                        println!("{current_token_index}: [{}]", token.inner);
                     }
 
                     current_token_index += 1;

@@ -1,46 +1,3 @@
-macro_rules! consume {
-    ($p:ident, $expected:expr, $node:expr) => {
-        if $p.next.unwrap().is($expected) {
-            $p.advance()?;
-        } else {
-            return Err(ParseError::unexpected_token(
-                $p.next.clone(),
-                $expected,
-                $node,
-            ));
-        }
-    };
-    (with_docstring $p:ident, $expected:expr, $node:expr) => {
-        if $p.next.unwrap().is($expected) {
-            $p.advance_with_docstring()?;
-        } else {
-            return Err(ParseError::unexpected_token(
-                $p.next.clone(),
-                $expected,
-                $node,
-            ));
-        }
-    };
-}
-
-macro_rules! consume_ident {
-    ($p:ident, $for:expr) => {{
-        if let Identifier(i) = $p.next.unwrap() {
-            let identifier = *i;
-
-            $p.advance()?;
-
-            identifier.at($p.current.span())
-        } else {
-            return Err(ParseError::unexpected_token(
-                $p.next.clone(),
-                "identifier",
-                $for,
-            ));
-        }
-    }};
-}
-
 #[cfg(test)]
 macro_rules! parser_test {
     ($name:ident, $source:literal) => {
@@ -61,24 +18,22 @@ macro_rules! parse_list {
         {
             let mut result = vec![];
 
-            if let $closing_token = $p.next.unwrap() {
-
-            } else {
+            if !matches!($p.next.inner, $closing_token) {
                 loop {
                     result.push($fn($($fn_arg)*)?);
 
-                    if let $closing_token = $p.next.unwrap() {
-                        break
-                    } else {
+                    if !matches!($p.next.inner, $closing_token) {
                         if $top_level {
-                            consume!(with_docstring $p, Punctuator(Comma), $name);
+                            $p.consume_with_docstring(Punctuator(Comma), $name)?;
                         } else {
-                            consume!($p, Punctuator(Comma), $name);
+                            $p.consume(Punctuator(Comma), $name)?;
                         }
 
-                        if let $closing_token = $p.next.unwrap() {
-                            break
+                        if matches!($p.next.inner, $closing_token) {
+                            break;
                         }
+                    } else {
+                        break;
                     }
                 }
             }
@@ -133,9 +88,7 @@ macro_rules! prefixop_pattern {
     };
 }
 
-pub(crate) use {
-    binop_pattern, consume, consume_ident, parse_list, postfixop_pattern, prefixop_pattern,
-};
+pub(crate) use {binop_pattern, parse_list, postfixop_pattern, prefixop_pattern};
 
 #[cfg(test)]
 pub(crate) use parser_test;

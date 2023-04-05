@@ -1,4 +1,4 @@
-use crate::{error::*, macros::*, Parser};
+use crate::{error::*, Parser};
 use ry_ast::{
     declaration::{Documented, FunctionDeclaration, ImplItem, Item, WithDocstring},
     token::{Keyword::*, Punctuator::*, RawToken::*},
@@ -7,15 +7,15 @@ use ry_ast::{
 
 impl Parser<'_> {
     pub(crate) fn parse_impl(&mut self, visibility: Visibility) -> ParseResult<Item> {
-        self.advance()?;
+        self.advance();
 
         let generics = self.optionally_parse_generics()?;
 
         let mut r#type = self.parse_type()?;
         let mut r#trait = None;
 
-        if let Keyword(For) = self.next.unwrap() {
-            self.advance()?; // `for`
+        if let Keyword(For) = self.next.inner {
+            self.advance();
 
             r#trait = Some(r#type);
             r#type = self.parse_type()?;
@@ -23,11 +23,11 @@ impl Parser<'_> {
 
         let r#where = self.optionally_parse_where_clause()?;
 
-        self.advance()?; // '{'
+        self.advance();
 
         let implementations = self.parse_associated_functions_implementations()?;
 
-        consume!(with_docstring self, Punctuator(CloseBrace), "type implementation");
+        self.consume_with_docstring(Punctuator(CloseBrace), "type implementation")?;
 
         Ok(ImplItem {
             visibility,
@@ -46,7 +46,7 @@ impl Parser<'_> {
         let mut associated_functions = vec![];
 
         loop {
-            if let Punctuator(CloseBrace) = self.next.unwrap() {
+            if self.next.inner == Punctuator(CloseBrace) {
                 break;
             }
 
@@ -54,8 +54,8 @@ impl Parser<'_> {
 
             let mut visibility = Visibility::private();
 
-            if let Keyword(Pub) = self.next.unwrap() {
-                visibility = Visibility::public(self.next.span())
+            if let Keyword(Pub) = self.next.inner {
+                visibility = Visibility::public(self.next.span)
             }
 
             associated_functions.push(

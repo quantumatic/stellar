@@ -8,8 +8,8 @@ pub type Name = Spanned<Symbol>;
 
 impl From<Token> for Option<Name> {
     fn from(token: Token) -> Self {
-        match token.unwrap() {
-            RawToken::Identifier(name) => Some((*name).at(token.span())),
+        match token.inner {
+            RawToken::Identifier(name) => Some(name.at(token.span)),
             _ => None,
         }
     }

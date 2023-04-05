@@ -1,7 +1,6 @@
-use crate::{error::ParseError, macros::*, ParseResult, Parser};
+use crate::{ParseResult, Parser};
 use ry_ast::{
     precedence::Precedence,
-    span::At,
     statement::*,
     token::{Keyword::*, Punctuator::*, RawToken::*},
     Mutability,
@@ -12,18 +11,13 @@ impl Parser<'_> {
         &mut self,
         top_level: bool,
     ) -> ParseResult<StatementsBlock> {
-        consume!(self, Punctuator(OpenBrace), "statements block"); // `{`
+        self.consume(Punctuator(OpenBrace), "statements block")?;
 
-        let mut stmts = vec![];
+        let mut block = vec![];
 
-        loop {
-            if let Punctuator(CloseBrace) = self.next.unwrap() {
-                break;
-            }
-
-            let (stmt, last) = self.parse_statement()?;
-
-            stmts.push(stmt);
+        while self.next.inner != Punctuator(CloseBrace) {
+            let (statement, last) = self.parse_statement()?;
+            block.push(statement);
 
             if last {
                 break;
@@ -31,21 +25,21 @@ impl Parser<'_> {
         }
 
         if top_level {
-            consume!(with_docstring self, Punctuator(CloseBrace), "end of the statement block");
+            self.consume_with_docstring(Punctuator(CloseBrace), "end of the statements block")?;
         } else {
-            consume!(self, Punctuator(CloseBrace), "end of the statement block");
+            self.consume(Punctuator(CloseBrace), "end of the statements block")?;
         }
 
-        Ok(stmts)
+        Ok(block)
     }
 
     fn parse_statement(&mut self) -> ParseResult<(Statement, bool)> {
         let mut last_statement_in_block = false;
         let mut must_have_semicolon_at_the_end = true;
 
-        let statement = match self.next.unwrap() {
+        let statement = match self.next.inner {
             Keyword(Return) => {
-                self.advance()?; // `return`
+                self.advance();
 
                 ReturnStatement {
                     return_value: self.parse_expression(Precedence::Lowest)?,
@@ -53,7 +47,7 @@ impl Parser<'_> {
                 .into()
             }
             Keyword(Defer) => {
-                self.advance()?; // `defer`
+                self.advance();
 
                 DeferStatement {
                     call: self.parse_expression(Precedence::Lowest)?,
@@ -61,25 +55,25 @@ impl Parser<'_> {
                 .into()
             }
             Keyword(Var) => {
-                self.advance()?; // `var`
+                self.advance();
 
                 let mut mutability = Mutability::immutable();
 
-                if let Keyword(Mut) = self.next.unwrap() {
-                    mutability = Mutability::mutable(self.current.span());
-                    self.advance()?; // `mut`
+                if let Keyword(Mut) = self.next.inner {
+                    mutability = Mutability::mutable(self.current.span);
+                    self.advance();
                 }
 
-                let name = consume_ident!(self, "variable name in var statement");
+                let name = self.consume_identifier("variable name in var statement")?;
 
                 let mut r#type = None;
 
-                if let Punctuator(Colon) = self.next.unwrap() {
-                    self.advance()?;
+                if self.next.inner == Punctuator(Colon) {
+                    self.advance();
                     r#type = Some(self.parse_type()?);
                 }
 
-                consume!(self, Punctuator(Assign), "var statement");
+                self.consume(Punctuator(Assign), "var statement")?;
 
                 let value = self.parse_expression(Precedence::Lowest)?;
 
@@ -94,9 +88,9 @@ impl Parser<'_> {
             _ => {
                 let expression = self.parse_expression(Precedence::Lowest)?;
 
-                must_have_semicolon_at_the_end = !(*expression.unwrap()).with_block();
+                must_have_semicolon_at_the_end = !expression.inner.with_block();
 
-                match self.next.unwrap() {
+                match self.next.inner {
                     Punctuator(Semicolon) => {}
                     _ => {
                         if must_have_semicolon_at_the_end {
@@ -122,7 +116,7 @@ impl Parser<'_> {
         };
 
         if !last_statement_in_block && must_have_semicolon_at_the_end {
-            consume!(self, Punctuator(Semicolon), "end of the statement");
+            self.consume(Punctuator(Semicolon), "end of the statement")?;
         }
 
         Ok((statement, last_statement_in_block))

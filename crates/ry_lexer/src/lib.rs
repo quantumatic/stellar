@@ -26,8 +26,8 @@
 //! let mut interner = Interner::default();
 //! let mut lexer = Lexer::new("", &mut interner);
 //!
-//! assert_eq!(lexer.next().unwrap().unwrap(), &EndOfFile);
-//! assert_eq!(lexer.next().unwrap().unwrap(), &EndOfFile); // ok
+//! assert_eq!(lexer.next().unwrap().inner, EndOfFile);
+//! assert_eq!(lexer.next().unwrap().inner, EndOfFile); // ok
 //! ```
 //!
 //! Note: the Ry lexer makes use of the `ry_interner` crate to perform string interning,
@@ -44,7 +44,7 @@
 //! let mut interner = Interner::default();
 //! let mut lexer = Lexer::new("#", &mut interner);
 //!
-//! assert_eq!(lexer.next().unwrap().unwrap(), &Error(LexError::UnexpectedChar));
+//! assert_eq!(lexer.next().unwrap().inner, Error(LexError::UnexpectedChar));
 //! ```
 
 use ry_ast::{
@@ -149,7 +149,7 @@ impl<'a> Lexer<'a> {
             '\\' => Ok('\\'),
             '\0' => Err((LexError::EmptyEscapeSequence, self.char_location(1))),
             'u' => {
-                self.advance(); // u
+                self.advance();
 
                 if self.current != '{' {
                     return Err((
@@ -158,7 +158,7 @@ impl<'a> Lexer<'a> {
                     ));
                 }
 
-                self.advance(); // '{'
+                self.advance();
 
                 let mut buffer = String::from("");
 
@@ -190,7 +190,7 @@ impl<'a> Lexer<'a> {
                 }
             }
             'x' => {
-                self.advance(); // x
+                self.advance();
 
                 if self.current != '{' {
                     return Err((
@@ -199,7 +199,7 @@ impl<'a> Lexer<'a> {
                     ));
                 }
 
-                self.advance(); // '{'
+                self.advance();
 
                 let mut buffer = String::from("");
 
@@ -241,7 +241,7 @@ impl<'a> Lexer<'a> {
     fn eat_char(&mut self) -> IterElem {
         let start_location = self.location;
 
-        self.advance(); // `'`
+        self.advance();
 
         let mut size = 0;
 
@@ -268,10 +268,10 @@ impl<'a> Lexer<'a> {
 
             size += 1;
 
-            self.advance(); // c
+            self.advance();
         }
 
-        self.advance(); // `'`
+        self.advance();
 
         match size {
             2..=i32::MAX => {
@@ -291,7 +291,7 @@ impl<'a> Lexer<'a> {
     fn eat_string(&mut self) -> IterElem {
         let start_location = self.location;
 
-        self.advance(); // '"'
+        self.advance();
 
         let mut buffer = String::from("");
 
@@ -323,7 +323,7 @@ impl<'a> Lexer<'a> {
             );
         }
 
-        self.advance(); // '"'
+        self.advance();
 
         Some(
             StringLiteral(self.contents[start_location + 1..self.location - 1].into())
@@ -334,7 +334,7 @@ impl<'a> Lexer<'a> {
     fn eat_wrapped_id(&mut self) -> IterElem {
         let start_location = self.location;
 
-        self.advance(); // '`'
+        self.advance();
 
         let name = &self.advance_while(start_location, |current, _| {
             current.is_alphanumeric() || current == '_'
@@ -350,7 +350,7 @@ impl<'a> Lexer<'a> {
             return Some(Error(LexError::EmptyWrappedIdentifier).at(start_location..self.location));
         }
 
-        self.advance(); // '`'
+        self.advance();
 
         Some(Identifier(self.interner.get_or_intern(name)).at(start_location..self.location))
     }
@@ -358,7 +358,7 @@ impl<'a> Lexer<'a> {
     fn eat_comment(&mut self) -> IterElem {
         // first `/` character is already advanced
         let start_location = self.location - 1;
-        self.advance(); // `/`
+        self.advance();
 
         self.advance_while(start_location + 2, |current, _| (current != '\n'));
 
@@ -435,7 +435,7 @@ impl<'a> Lexer<'a> {
     pub fn next_no_docstrings_and_comments(&mut self) -> IterElem {
         loop {
             let t = self.next();
-            match t.as_ref().unwrap().unwrap() {
+            match t.as_ref().unwrap().inner {
                 DocstringComment { .. } => {}
                 Comment => {}
                 _ => {
@@ -448,7 +448,7 @@ impl<'a> Lexer<'a> {
     pub fn next_no_comments(&mut self) -> IterElem {
         loop {
             let t = self.next();
-            match t.as_ref().unwrap().unwrap() {
+            match t.as_ref().unwrap().inner {
                 Comment => {}
                 _ => {
                     return t;
@@ -488,7 +488,7 @@ impl<'c> Iterator for Lexer<'c> {
             ('*', _) => self.advance_with(Punctuator(Asterisk)),
 
             ('/', '/') => {
-                self.advance(); // first `/` character
+                self.advance();
 
                 match self.next {
                     '!' => self.eat_docstring(true),

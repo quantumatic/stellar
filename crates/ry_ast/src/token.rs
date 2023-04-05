@@ -1,11 +1,10 @@
 //! `token.rs` - defines the token which represents grammatical unit of Ry
 //! source text.
 
+use crate::{precedence::Precedence, span::Spanned};
 use phf::phf_map;
 use ry_interner::Symbol;
 use std::{fmt::Display, mem::discriminant, sync::Arc};
-
-use crate::{precedence::Precedence, span::Spanned};
 
 /// Represents error that lexer can fail with.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -395,24 +394,6 @@ impl RawToken {
         }
     }
 
-    pub fn is<T: AsRef<Self>>(&self, raw: T) -> bool {
-        if let Self::Punctuator(p) = self {
-            if let Self::Punctuator(p2) = raw.as_ref() {
-                discriminant(p) == discriminant(p2)
-            } else {
-                false
-            }
-        } else if let Self::Keyword(k) = self {
-            if let Self::Keyword(k2) = raw.as_ref() {
-                discriminant(k) == discriminant(k2)
-            } else {
-                false
-            }
-        } else {
-            discriminant(self) == discriminant(raw.as_ref())
-        }
-    }
-
     pub fn is_one_of<T: AsRef<Self>>(&self, raws: &[T]) -> bool {
         for raw in raws {
             if discriminant(self) == discriminant(raw.as_ref()) {
@@ -422,4 +403,9 @@ impl RawToken {
 
         false
     }
+}
+
+#[test]
+fn raw_token_size() {
+    assert_eq!(std::mem::size_of::<RawToken>(), 24);
 }

@@ -2,7 +2,6 @@ use crate::{error::*, macros::*, Parser};
 use ry_ast::{
     declaration::{Function, FunctionArgument, FunctionDeclaration, FunctionDefinition, Item},
     precedence::Precedence,
-    span::At,
     token::{Punctuator::*, RawToken::*},
     Visibility,
 };
@@ -15,8 +14,8 @@ impl Parser<'_> {
     pub(crate) fn parse_function(&mut self, visibility: Visibility) -> ParseResult<Function> {
         let definition = self.parse_function_definition(visibility)?;
 
-        if let Punctuator(Semicolon) = self.next.unwrap() {
-            self.advance()?;
+        if self.next.inner == Punctuator(Semicolon) {
+            self.advance();
             Ok(definition.into())
         } else {
             Ok(FunctionDeclaration {
@@ -42,12 +41,13 @@ impl Parser<'_> {
         &mut self,
         visibility: Visibility,
     ) -> ParseResult<FunctionDefinition> {
-        self.advance()?;
+        self.advance();
 
-        let name = consume_ident!(self, "function name in function declaration");
+        let name = self.consume_identifier("function name in function declaration")?;
+
         let generics = self.optionally_parse_generics()?;
 
-        consume!(self, Punctuator(OpenParent), "function declaration");
+        self.consume(Punctuator(OpenParent), "function declaration")?;
 
         let arguments = parse_list!(
             self,
@@ -57,12 +57,12 @@ impl Parser<'_> {
             || self.parse_function_argument()
         );
 
-        self.advance()?;
+        self.advance();
 
         let mut return_type = None;
 
-        if let Punctuator(Colon) = self.next.unwrap() {
-            self.advance()?; // `:`
+        if self.next.inner == Punctuator(Colon) {
+            self.advance();
             return_type = Some(self.parse_type()?);
         }
 
@@ -79,16 +79,16 @@ impl Parser<'_> {
     }
 
     pub(crate) fn parse_function_argument(&mut self) -> ParseResult<FunctionArgument> {
-        let name = consume_ident!(self, "function argument name");
+        let name = self.consume_identifier("function argument name")?;
 
-        consume!(self, Punctuator(Colon), "function argument name");
+        self.consume(Punctuator(Colon), "function argument name")?;
 
         let r#type = self.parse_type()?;
 
         let mut default_value = None;
 
-        if let Punctuator(Assign) = self.next.unwrap() {
-            self.advance()?;
+        if matches!(self.next.inner, Punctuator(Assign)) {
+            self.advance();
             default_value = Some(self.parse_expression(Precedence::Lowest)?);
         }
 
