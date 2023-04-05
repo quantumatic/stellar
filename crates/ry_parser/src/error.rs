@@ -47,7 +47,7 @@ impl ParseError {
         N: Into<String>,
     {
         match got.unwrap() {
-            RawToken::Error(lexer_error) => Self::lexer((*lexer_error).with_span(got.span())),
+            RawToken::Error(lexer_error) => Self::lexer((*lexer_error).at(got.span())),
             _ => Self::UnexpectedToken {
                 got,
                 expected: expected.into(),

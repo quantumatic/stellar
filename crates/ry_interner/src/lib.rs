@@ -1,10 +1,5 @@
-#![doc(html_root_url = "https://docs.rs/crate/ry-interner/0.1.0")]
-#![cfg_attr(not(feature = "std"), no_std)]
-#![deny(missing_docs)]
-#![warn(unsafe_op_in_unsafe_fn, clippy::redundant_closure_for_method_calls)]
-
-//! 327 lines of Rust code that implement string internering for
-//! Ry programming language compiler.
+//! The crate implements string internering for Ry programming language
+//! compiler.
 //!
 //! The crate caches strings and associates them with unique symbols.
 //! These allows constant time comparisons and look-ups to underlying interned strings.
@@ -40,6 +35,65 @@
 //! assert_eq!(interner.resolve(2), None);
 //! ```
 
+#![doc(
+    html_logo_url = "https://raw.githubusercontent.com/abs0luty/Ry/main/additional/icon/ry.png",
+    html_favicon_url = "https://raw.githubusercontent.com/abs0luty/Ry/main/additional/icon/ry.png"
+)]
+#![cfg_attr(not(test), forbid(clippy::unwrap_used))]
+#![warn(missing_docs, clippy::dbg_macro)]
+#![deny(
+    // rustc lint groups https://doc.rust-lang.org/rustc/lints/groups.html
+    warnings,
+    future_incompatible,
+    let_underscore,
+    nonstandard_style,
+    rust_2018_compatibility,
+    rust_2018_idioms,
+    rust_2021_compatibility,
+    unused,
+    // rustc allowed-by-default lints https://doc.rust-lang.org/rustc/lints/listing/allowed-by-default.html
+    macro_use_extern_crate,
+    meta_variable_misuse,
+    missing_abi,
+    missing_copy_implementations,
+    missing_debug_implementations,
+    non_ascii_idents,
+    noop_method_call,
+    single_use_lifetimes,
+    trivial_casts,
+    trivial_numeric_casts,
+    unreachable_pub,
+    unsafe_op_in_unsafe_fn,
+    unused_crate_dependencies,
+    unused_import_braces,
+    unused_lifetimes,
+    unused_qualifications,
+    unused_tuple_struct_fields,
+    variant_size_differences,
+    // rustdoc lints https://doc.rust-lang.org/rustdoc/lints.html
+    rustdoc::broken_intra_doc_links,
+    rustdoc::private_intra_doc_links,
+    rustdoc::missing_crate_level_docs,
+    rustdoc::private_doc_tests,
+    rustdoc::invalid_codeblock_attributes,
+    rustdoc::invalid_rust_codeblocks,
+    rustdoc::bare_urls,
+    // clippy categories https://doc.rust-lang.org/clippy/
+    clippy::all,
+    clippy::correctness,
+    clippy::suspicious,
+    clippy::style,
+    clippy::complexity,
+    clippy::perf,
+    clippy::pedantic,
+    clippy::nursery,
+)]
+#![allow(
+    clippy::module_name_repetitions,
+    clippy::too_many_lines,
+    clippy::option_if_let_else
+)]
+
 use core::{
     hash::{BuildHasher, Hash, Hasher},
     marker::PhantomData,
@@ -73,7 +127,7 @@ where
 }
 
 /// Data structures that organizes interned strings.
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct Backend {
     ends: Vec<usize>,
     buffer: String,
@@ -87,17 +141,6 @@ impl Default for Interner {
     }
 }
 
-impl Default for Backend {
-    #[inline]
-    fn default() -> Self {
-        Self {
-            ends: Vec::default(),
-            buffer: String::default(),
-            marker: Default::default(),
-        }
-    }
-}
-
 fn hash_value<T>(hasher: &impl BuildHasher, value: &T) -> u64
 where
     T: ?Sized + Hash,
@@ -108,12 +151,13 @@ where
 }
 
 impl Backend {
+    #[must_use]
     #[inline]
     fn with_capacity(capacity: usize) -> Self {
         Self {
             ends: Vec::with_capacity(capacity),
             buffer: String::default(),
-            marker: Default::default(),
+            marker: PhantomData::default(),
         }
     }
 
@@ -168,9 +212,7 @@ impl Backend {
     }
 
     fn str_at(&self, span: Span) -> &str {
-        unsafe {
-            from_utf8_unchecked(&self.buffer.as_bytes()[(span.start as usize)..(span.end as usize)])
-        }
+        unsafe { from_utf8_unchecked(&self.buffer.as_bytes()[span.start..span.end]) }
     }
 
     /// Pushes the string into the buffer and returns corresponding symbol.
@@ -191,6 +233,7 @@ where
     H: BuildHasher + Default,
 {
     /// Creates a new empty `Interner`.
+    #[must_use]
     #[inline]
     pub fn new() -> Self {
         Self {
@@ -211,6 +254,7 @@ where
     }
 
     /// Creates a new empty `Interner` with the given capacity.
+    #[must_use]
     #[inline]
     pub fn with_capacity(capacity: usize) -> Self {
         Self {

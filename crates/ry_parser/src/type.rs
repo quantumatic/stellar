@@ -4,7 +4,7 @@ use ry_ast::{
         ArrayType, Generic, Generics, PrimaryType, RawType, ReferenceType, Type, WhereClause,
         WhereClauseUnit,
     },
-    span::{Spanned, WithSpan},
+    span::{At, Spanned},
     token::{Keyword::*, Punctuator::*, RawToken::*},
     Mutability,
 };
@@ -27,7 +27,7 @@ impl Parser<'_> {
             end = self.current.span().end();
         }
 
-        Ok(path.with_span(start..end))
+        Ok(path.at(start..end))
     }
 
     pub(crate) fn parse_type(&mut self) -> ParseResult<Type> {
@@ -46,7 +46,7 @@ impl Parser<'_> {
                         vec![]
                     },
                 })
-                .with_span(start..self.current.span().end())
+                .at(start..self.current.span().end())
             }
             Punctuator(And) => {
                 self.advance()?;
@@ -66,7 +66,7 @@ impl Parser<'_> {
                     mutability,
                     inner: Box::new(inner),
                 })
-                .with_span(start..self.current.span().end())
+                .at(start..self.current.span().end())
             }
             Punctuator(OpenBracket) => {
                 self.advance()?;
@@ -79,7 +79,7 @@ impl Parser<'_> {
                 RawType::from(ArrayType {
                     inner: Box::new(inner),
                 })
-                .with_span(start..self.current.span().end())
+                .at(start..self.current.span().end())
             }
             _ => {
                 return Err(ParseError::unexpected_token(

@@ -10,12 +10,11 @@ pub mod token;
 pub mod r#type;
 pub mod visitor;
 
-use std::ops::ControlFlow;
-
 use declaration::{docstring::*, Item};
 use ry_interner::Interner;
 use serialize::Serialize;
 use span::Span;
+use std::ops::ControlFlow;
 use visitor::*;
 
 /// Represents Ry source file.

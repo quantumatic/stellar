@@ -80,8 +80,8 @@ impl From<Span> for Range<usize> {
         value.start..value.end
     }
 }
-pub trait WithSpan {
-    fn with_span(self, span: impl Into<Span>) -> Spanned<Self>
+pub trait At {
+    fn at(self, span: impl Into<Span>) -> Spanned<Self>
     where
         Self: Sized,
     {
@@ -89,4 +89,4 @@ pub trait WithSpan {
     }
 }
 
-impl<T: Sized> WithSpan for T {}
+impl<T: Sized> At for T {}

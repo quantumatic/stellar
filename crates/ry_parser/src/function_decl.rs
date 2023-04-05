@@ -2,7 +2,7 @@ use crate::{error::*, macros::*, Parser};
 use ry_ast::{
     declaration::{Function, FunctionArgument, FunctionDeclaration, FunctionDefinition, Item},
     precedence::Precedence,
-    span::WithSpan,
+    span::At,
     token::{Punctuator::*, RawToken::*},
     Visibility,
 };

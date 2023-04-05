@@ -2,7 +2,7 @@ use crate::{error::*, macros::*, Parser};
 use ry_ast::{
     expression::*,
     precedence::Precedence,
-    span::WithSpan,
+    span::At,
     token::{Keyword::*, Punctuator::*, RawToken::*},
 };
 
@@ -27,7 +27,7 @@ impl Parser<'_> {
                         right: Box::new(right),
                         op,
                     })
-                    .with_span(span)
+                    .at(span)
                 }
                 Punctuator(OpenParent) => {
                     self.advance()?; // `(`
@@ -48,7 +48,7 @@ impl Parser<'_> {
                         left: Box::new(left),
                         arguments,
                     })
-                    .with_span(span)
+                    .at(span)
                 }
                 Punctuator(Dot) => {
                     self.advance()?; // `.`
@@ -61,7 +61,7 @@ impl Parser<'_> {
                         left: Box::new(left),
                         property,
                     })
-                    .with_span(span)
+                    .at(span)
                 }
                 Punctuator(OpenBracket) => {
                     self.advance()?; // `[`
@@ -82,7 +82,7 @@ impl Parser<'_> {
                         left: Box::new(left),
                         type_annotations,
                     })
-                    .with_span(span)
+                    .at(span)
                 }
                 postfixop_pattern!() => {
                     self.advance()?; // `?`
@@ -96,7 +96,7 @@ impl Parser<'_> {
                         op,
                         postfix: true,
                     })
-                    .with_span(span)
+                    .at(span)
                 }
                 Keyword(As) => {
                     self.advance()?;
@@ -109,7 +109,7 @@ impl Parser<'_> {
                         left: Box::new(left),
                         right,
                     })
-                    .with_span(span)
+                    .at(span)
                 }
                 _ => break,
             };
@@ -125,42 +125,42 @@ impl Parser<'_> {
 
                 self.advance()?; // int
 
-                Ok(RawExpression::from(IntegerLiteralExpression { literal }).with_span(self.current.span()))
+                Ok(RawExpression::from(IntegerLiteralExpression { literal }).at(self.current.span()))
             }
             FloatLiteral(f) => {
                 let literal = *f;
 
                 self.advance()?; // float
 
-                Ok(RawExpression::from(FloatLiteralExpression { literal }).with_span(self.current.span()))
+                Ok(RawExpression::from(FloatLiteralExpression { literal }).at(self.current.span()))
             }
             ImaginaryNumberLiteral(i) => {
                 let literal = *i;
 
                 self.advance()?; // imag
 
-                Ok(RawExpression::from(ImaginaryNumberLiteralExpression { literal }).with_span(self.current.span()))
+                Ok(RawExpression::from(ImaginaryNumberLiteralExpression { literal }).at(self.current.span()))
             }
             StringLiteral(s) => {
                 let literal = s.clone();
 
                 self.advance()?; // string
 
-                Ok(RawExpression::from(StringLiteralExpression { literal }).with_span(self.current.span()))
+                Ok(RawExpression::from(StringLiteralExpression { literal }).at(self.current.span()))
             }
             CharLiteral(c) => {
                 let literal = *c;
 
                 self.advance()?; // char
 
-                Ok(RawExpression::from(CharLiteralExpression { literal }).with_span(self.current.span()))
+                Ok(RawExpression::from(CharLiteralExpression { literal }).at(self.current.span()))
             }
             BoolLiteral(b) => {
                 let literal = *b;
 
                 self.advance()?; // bool
 
-                Ok(RawExpression::from(BoolLiteralExpression { literal }).with_span(self.current.span()))
+                Ok(RawExpression::from(BoolLiteralExpression { literal }).at(self.current.span()))
             }
             prefixop_pattern!() => {
                 let op = self.next.clone();
@@ -169,7 +169,7 @@ impl Parser<'_> {
                 let inner = self.parse_expression(Precedence::Unary)?;
                 let span = op.span().start()..inner.span().end();
 
-                Ok(RawExpression::from(UnaryExpression { inner: Box::new(inner), op, postfix: false }).with_span(span))
+                Ok(RawExpression::from(UnaryExpression { inner: Box::new(inner), op, postfix: false }).at(span))
             }
             Punctuator(OpenParent) => {
                 self.advance()?; // `(`
@@ -191,12 +191,12 @@ impl Parser<'_> {
 
                 let end = self.current.span().end();
 
-                Ok(RawExpression::from(ArrayLiteralExpression { literal }).with_span(start..end))
+                Ok(RawExpression::from(ArrayLiteralExpression { literal }).at(start..end))
             }
             Identifier(name) => {
                 let result =
                 RawExpression::from(IdentifierExpression { name: *name })
-                    .with_span(self.current.span());
+                    .at(self.current.span());
 
                 self.advance()?;
 
@@ -236,7 +236,7 @@ impl Parser<'_> {
                 let end = self.current.span().end();
 
                 Ok(RawExpression::from(IfExpression { if_blocks, r#else })
-                    .with_span(start..end))
+                    .at(start..end))
             }
             Keyword(While) => {
                 self.advance()?;
@@ -246,7 +246,7 @@ impl Parser<'_> {
                 let body = self.parse_statements_block(false)?;
 
                 Ok(RawExpression::from(WhileExpression { condition: Box::new(condition), body })
-                    .with_span(start..self.current.span().end()))
+                    .at(start..self.current.span().end()))
             }
             _ => Err(ParseError::unexpected_token(
                 self.next.clone(),

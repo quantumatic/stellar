@@ -30,7 +30,7 @@ macro_rules! consume_ident {
 
             $p.advance()?;
 
-            identifier.with_span($p.current.span())
+            identifier.at($p.current.span())
         } else {
             return Err(ParseError::unexpected_token(
                 $p.next.clone(),

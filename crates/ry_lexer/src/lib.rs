@@ -262,8 +262,7 @@ impl<'a> Lexer<'a> {
 
             if self.current == '\n' || self.eof() {
                 return Some(
-                    Error(LexError::UnterminatedCharLiteral)
-                        .with_span(start_location..self.location),
+                    Error(LexError::UnterminatedCharLiteral).at(start_location..self.location),
                 );
             }
 
@@ -277,19 +276,16 @@ impl<'a> Lexer<'a> {
         match size {
             2..=i32::MAX => {
                 return Some(
-                    Error(LexError::MoreThanOneCharInCharLiteral)
-                        .with_span(start_location..self.location),
+                    Error(LexError::MoreThanOneCharInCharLiteral).at(start_location..self.location),
                 );
             }
             0 => {
-                return Some(
-                    Error(LexError::EmptyCharLiteral).with_span(start_location..self.location),
-                );
+                return Some(Error(LexError::EmptyCharLiteral).at(start_location..self.location));
             }
             _ => {}
         }
 
-        Some(CharLiteral(result).with_span(start_location..self.location))
+        Some(CharLiteral(result).at(start_location..self.location))
     }
 
     fn eat_string(&mut self) -> IterElem {
@@ -323,7 +319,7 @@ impl<'a> Lexer<'a> {
 
         if self.eof() || self.current == '\n' {
             return Some(
-                Error(LexError::UnterminatedStringLiteral).with_span(start_location..self.location),
+                Error(LexError::UnterminatedStringLiteral).at(start_location..self.location),
             );
         }
 
@@ -331,7 +327,7 @@ impl<'a> Lexer<'a> {
 
         Some(
             StringLiteral(self.contents[start_location + 1..self.location - 1].into())
-                .with_span(start_location..self.location),
+                .at(start_location..self.location),
         )
     }
 
@@ -346,20 +342,17 @@ impl<'a> Lexer<'a> {
 
         if self.current != '`' {
             return Some(
-                Error(LexError::UnterminatedWrappedIdentifier)
-                    .with_span(start_location..self.location),
+                Error(LexError::UnterminatedWrappedIdentifier).at(start_location..self.location),
             );
         }
 
         if name.is_empty() {
-            return Some(
-                Error(LexError::EmptyWrappedIdentifier).with_span(start_location..self.location),
-            );
+            return Some(Error(LexError::EmptyWrappedIdentifier).at(start_location..self.location));
         }
 
         self.advance(); // '`'
 
-        Some(Identifier(self.interner.get_or_intern(name)).with_span(start_location..self.location))
+        Some(Identifier(self.interner.get_or_intern(name)).at(start_location..self.location))
     }
 
     fn eat_comment(&mut self) -> IterElem {
@@ -369,7 +362,7 @@ impl<'a> Lexer<'a> {
 
         self.advance_while(start_location + 2, |current, _| (current != '\n'));
 
-        Some(Comment.with_span(start_location..self.location))
+        Some(Comment.at(start_location..self.location))
     }
 
     /// In this case [`bool`] is true when docstring is describing
@@ -388,7 +381,7 @@ impl<'a> Lexer<'a> {
                 global,
                 content: content.into(),
             }
-            .with_span(start_location..self.location),
+            .at(start_location..self.location),
         )
     }
 
@@ -397,10 +390,9 @@ impl<'a> Lexer<'a> {
         let name = self.advance_while(start_location, |current, _| is_id_continue(current));
 
         match RESERVED.get(name) {
-            Some(reserved) => Some(reserved.clone().with_span(start_location..self.location)),
+            Some(reserved) => Some(reserved.clone().at(start_location..self.location)),
             None => Some(
-                Identifier(self.interner.get_or_intern(name))
-                    .with_span(start_location..self.location),
+                Identifier(self.interner.get_or_intern(name)).at(start_location..self.location),
             ),
         }
     }

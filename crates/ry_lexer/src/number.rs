@@ -128,9 +128,7 @@ impl Lexer<'_> {
             number_kind = NumberKind::Float;
 
             if prefix == 'o' || prefix == 'b' || prefix == 'x' {
-                return Some(
-                    Error(LexError::InvalidRadixPoint).with_span(start_location..self.location),
-                );
+                return Some(Error(LexError::InvalidRadixPoint).at(start_location..self.location));
             }
 
             self.advance();
@@ -139,7 +137,7 @@ impl Lexer<'_> {
         }
 
         if digit_separator & 1 == 0 {
-            return Some(Error(LexError::HasNoDigits).with_span(start_location..self.location));
+            return Some(Error(LexError::HasNoDigits).at(start_location..self.location));
         }
 
         let l = self.current.to_ascii_lowercase();
@@ -147,7 +145,7 @@ impl Lexer<'_> {
             if prefix != '\0' && prefix != '0' {
                 return Some(
                     Error(LexError::ExponentRequiresDecimalMantissa)
-                        .with_span(start_location..self.location),
+                        .at(start_location..self.location),
                 );
             }
 
@@ -165,7 +163,7 @@ impl Lexer<'_> {
 
             if ds & 1 == 0 {
                 return Some(
-                    Error(LexError::ExponentHasNoDigits).with_span(start_location..self.location),
+                    Error(LexError::ExponentHasNoDigits).at(start_location..self.location),
                 );
             }
         }
@@ -201,10 +199,10 @@ impl Lexer<'_> {
                     (if base == 10 { buffer } else { &buffer[2..] }).as_bytes(),
                     base,
                 ) {
-                    Some(n) => Some(IntegerLiteral(n).with_span(start_location..self.location)),
-                    None => Some(
-                        Error(LexError::NumberParseError).with_span(start_location..self.location),
-                    ),
+                    Some(n) => Some(IntegerLiteral(n).at(start_location..self.location)),
+                    None => {
+                        Some(Error(LexError::NumberParseError).at(start_location..self.location))
+                    }
                 }
             }
             NumberKind::Float => Some(
@@ -212,24 +210,22 @@ impl Lexer<'_> {
                     Ok(n) => n,
                     Err(_) => {
                         return Some(
-                            Error(LexError::NumberParseError)
-                                .with_span(start_location..self.location),
+                            Error(LexError::NumberParseError).at(start_location..self.location),
                         );
                     }
                 })
-                .with_span(start_location..self.location),
+                .at(start_location..self.location),
             ),
             NumberKind::Imag => Some(
                 ImaginaryNumberLiteral(match buffer[..buffer.len() - 1].parse::<f64>() {
                     Ok(n) => n,
                     Err(_) => {
                         return Some(
-                            Error(LexError::NumberParseError)
-                                .with_span(start_location..self.location),
+                            Error(LexError::NumberParseError).at(start_location..self.location),
                         );
                     }
                 })
-                .with_span(start_location..self.location),
+                .at(start_location..self.location),
             ),
             NumberKind::Invalid => unimplemented!(),
         }

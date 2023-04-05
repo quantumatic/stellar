@@ -52,10 +52,10 @@ pub enum RawExpression {
     Unary(UnaryExpression),
     Property(PropertyAccessExpression),
     // Struct(
-    // WithSpan<usize>,
-    // HashMap<usize, (Span, WithSpan<Expression>)>,
+    // At<usize>,
+    // HashMap<usize, (Span, At<Expression>)>,
     // ),
-    // Map(HashMap<usize, (Span, WithSpan<Expression>)>),
+    // Map(HashMap<usize, (Span, At<Expression>)>),
     // Call(Vec<Type>, Expression, Vec<Expression>),
     // Generics(Expression, Vec<Type>),
     If(IfExpression),

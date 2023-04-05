@@ -77,7 +77,7 @@ mod r#type;
 use error::*;
 use ry_ast::{
     declaration::{Docstring, WithDocstring},
-    span::WithSpan,
+    span::At,
     token::{Keyword::*, RawToken::*, Token},
     *,
 };
@@ -104,9 +104,9 @@ impl<'a> Parser<'a> {
     /// use ry_interner::Interner;
     ///
     /// let mut interner = Interner::default();
-    /// let mut parser = Parser::new("pub fun test() {}", &mut interner);
-    /// // ...
+    /// let parser = Parser::new("pub fun test() {}", &mut interner);
     /// ```
+    #[must_use]
     pub fn new(contents: &'a str, interner: &'a mut Interner) -> Self {
         let mut lexer = Lexer::new(contents, interner);
 
@@ -124,25 +124,23 @@ impl<'a> Parser<'a> {
     /// an error if so.
     fn check_scanning_error_for_current_token(&mut self) -> ParseResult<()> {
         if let Error(e) = self.current.unwrap() {
-            Err(ParseError::lexer((*e).with_span(self.current.span())))
+            Err(ParseError::lexer((*e).at(self.current.span())))
         } else {
             Ok(())
         }
     }
 
-    /// Advances the parser to the next token while it is not [`DocstringComment`].
+    /// Advances the parser to the next token and skips comment tokens.
     fn advance(&mut self) -> ParseResult<()> {
         self.current = self.next.clone();
-
         self.next = self.lexer.next_no_docstrings_and_comments().unwrap();
 
         Ok(())
     }
 
-    /// Advances the parser to the next token.
+    /// Advances the parser to the next token and doesn't skip comment tokens.
     fn advance_with_docstring(&mut self) -> ParseResult<()> {
         self.current = self.next.clone();
-
         self.next = self.lexer.next_no_comments().unwrap();
 
         Ok(())

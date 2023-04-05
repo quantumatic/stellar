@@ -1,7 +1,7 @@
 use crate::{error::ParseError, macros::*, ParseResult, Parser};
 use ry_ast::{
     declaration::{Documented, Function, Item, TraitDeclarationItem, WithDocstring},
-    span::WithSpan,
+    span::At,
     token::{Keyword::*, Punctuator::*, RawToken::*},
     Visibility,
 };

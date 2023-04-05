@@ -1,7 +1,7 @@
 use crate::{error::ParseError, macros::*, ParseResult, Parser};
 use ry_ast::{
     precedence::Precedence,
-    span::WithSpan,
+    span::At,
     statement::*,
     token::{Keyword::*, Punctuator::*, RawToken::*},
     Mutability,
