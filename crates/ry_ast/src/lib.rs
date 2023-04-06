@@ -60,6 +60,12 @@ impl Visibility {
     }
 }
 
+impl Default for Visibility {
+    fn default() -> Self {
+        Self::private()
+    }
+}
+
 impl Mutability {
     pub fn immutable() -> Self {
         Self(None)
@@ -71,6 +77,12 @@ impl Mutability {
 
     pub fn span_of_mut(&self) -> Option<Span> {
         self.0
+    }
+}
+
+impl Default for Mutability {
+    fn default() -> Self {
+        Self::immutable()
     }
 }
 

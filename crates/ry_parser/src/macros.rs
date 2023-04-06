@@ -1,11 +1,11 @@
 #[cfg(test)]
 macro_rules! parser_test {
-    ($name:ident, $source:literal) => {
+    ($parser: ty, $name:ident, $source:literal) => {
         #[test]
         fn $name() {
             let mut string_interner = Interner::default();
-            let mut parser = Parser::new($source, &mut string_interner);
-            assert!(parser.parse().is_ok());
+            let mut parser_state = ParserState::new($source, &mut string_interner);
+            assert!(<$parser>::default().parse().is_ok());
         }
     };
 }

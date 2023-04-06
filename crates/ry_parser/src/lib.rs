@@ -62,25 +62,25 @@
     clippy::option_if_let_else
 )]
 
-pub mod error;
-
 mod r#enum;
+pub mod error;
 mod expression;
 mod function_decl;
 mod r#impl;
 mod imports;
+mod item;
 mod statement;
 mod struct_decl;
 mod trait_decl;
 mod r#type;
 
 use error::*;
+use item::ItemsParser;
 use ry_ast::{
-    declaration::{Docstring, WithDocstring},
+    declaration::Docstring,
     name::Name,
     span::At,
     token::{
-        Keyword::*,
         RawToken::{self, *},
         Token,
     },
@@ -94,13 +94,31 @@ mod macros;
 
 /// Represents parser state.
 #[derive(Debug)]
-pub struct Parser<'a> {
+pub struct ParserState<'a> {
     lexer: Lexer<'a>,
     current: Token,
     next: Token,
 }
 
-impl<'a> Parser<'a> {
+pub(crate) trait Parser
+where
+    Self: Sized,
+{
+    type Output;
+
+    fn parse_with(self, parser: &mut ParserState<'_>) -> ParseResult<Self::Output>;
+}
+
+pub(crate) trait OptionalParser
+where
+    Self: Sized,
+{
+    type Output;
+
+    fn optionally_parse_with(self, parser: &mut ParserState<'_>) -> ParseResult<Self::Output>;
+}
+
+impl<'a> ParserState<'a> {
     /// Creates initial parser state.
     ///
     /// # Usage
@@ -115,7 +133,7 @@ impl<'a> Parser<'a> {
     pub fn new(contents: &'a str, interner: &'a mut Interner) -> Self {
         let mut lexer = Lexer::new(contents, interner);
 
-        let current = lexer.next().unwrap();
+        let current = lexer.next_no_comments().unwrap();
         let next = current.clone();
 
         Self {
@@ -125,24 +143,8 @@ impl<'a> Parser<'a> {
         }
     }
 
-    /// Checks if the current token being parsed is invalid, and returns
-    /// an error if so.
-    fn check_scanning_error_for_current_token(&mut self) -> ParseResult<()> {
-        if let Error(error) = self.current.inner {
-            Err(ParseError::lexer(error.at(self.current.span)))
-        } else {
-            Ok(())
-        }
-    }
-
     /// Advances the parser to the next token and skips comment tokens.
     fn advance(&mut self) {
-        self.current = self.next.clone();
-        self.next = self.lexer.next_no_docstrings_and_comments().unwrap();
-    }
-
-    /// Advances the parser to the next token and doesn't skip comment tokens.
-    fn advance_with_docstring(&mut self) {
         self.current = self.next.clone();
         self.next = self.lexer.next_no_comments().unwrap();
     }
@@ -156,7 +158,7 @@ impl<'a> Parser<'a> {
         } else {
             Err(ParseError::unexpected_token(
                 self.next.clone(),
-                expected,
+                expected!(expected),
                 node,
             ))
         }
@@ -171,15 +173,6 @@ impl<'a> Parser<'a> {
         Ok(())
     }
 
-    fn consume_with_docstring<N>(&mut self, expected: RawToken, node: N) -> Result<(), ParseError>
-    where
-        N: Into<String>,
-    {
-        self.expect(expected, node)?;
-        self.advance_with_docstring();
-        Ok(())
-    }
-
     fn consume_identifier<N>(&mut self, node: N) -> Result<Name, ParseError>
     where
         N: Into<String>,
@@ -191,7 +184,7 @@ impl<'a> Parser<'a> {
         } else {
             return Err(ParseError::unexpected_token(
                 self.next.clone(),
-                "identifier",
+                expected!("identifier"),
                 node,
             ));
         }
@@ -218,14 +211,14 @@ impl<'a> Parser<'a> {
                 return Ok((module_docstring, local_docstring));
             }
 
-            self.advance_with_docstring();
+            self.advance();
         }
     }
 
     /// Consumes the docstring for a local item (i.e., anything that is not the module docstring
     /// or the first item in the module (because it will be already consumed in
     /// [`Parser::consume_module_and_first_item_docstrings()`])).
-    pub(crate) fn consume_non_module_docstring(&mut self) -> ParseResult<Docstring> {
+    pub(crate) fn consume_docstring(&mut self) -> ParseResult<Docstring> {
         let mut result = vec![];
 
         loop {
@@ -237,7 +230,7 @@ impl<'a> Parser<'a> {
                 return Ok(result);
             }
 
-            self.advance_with_docstring();
+            self.advance();
         }
     }
 
@@ -251,65 +244,16 @@ impl<'a> Parser<'a> {
     /// let mut parser = Parser::new("fun test() {}", &mut interner);
     /// assert!(parser.parse().is_ok());
     /// ```
+    ///
+    /// # Errors
+    ///
+    /// Will return [`Err`] on any parsing error.
     pub fn parse(&mut self) -> ParseResult<ProgramUnit> {
-        self.check_scanning_error_for_current_token()?;
-
-        let (global_docstring, fst_docstring) = self.consume_module_and_first_item_docstrings()?;
+        let (global_docstring, first_docstring) =
+            self.consume_module_and_first_item_docstrings()?;
         Ok(ProgramUnit {
             docstring: global_docstring,
-            items: self.parse_items(fst_docstring)?,
+            items: ItemsParser { first_docstring }.parse()?,
         })
-    }
-
-    fn parse_items(&mut self, mut local_docstring: Docstring) -> ParseResult<Items> {
-        let mut items = vec![];
-
-        loop {
-            items.push(
-                match self.next.inner {
-                    Keyword(Fun) => self.parse_function_item(Visibility::private())?,
-                    Keyword(Struct) => self.parse_struct_declaration(Visibility::private())?,
-                    Keyword(Trait) => self.parse_trait_declaration(Visibility::private())?,
-                    Keyword(Enum) => self.parse_enum_declaration(Visibility::private())?,
-                    Keyword(Impl) => self.parse_impl(Visibility::private())?,
-                    Keyword(Pub) => {
-                        let visibility = Visibility::public(self.next.span);
-
-                        self.advance();
-
-                        match self.next.inner {
-                            Keyword(Fun) => self.parse_function_item(visibility)?,
-                            Keyword(Struct) => self.parse_struct_declaration(visibility)?,
-                            Keyword(Trait) => self.parse_trait_declaration(visibility)?,
-                            Keyword(Enum) => self.parse_enum_declaration(visibility)?,
-                            Keyword(Impl) => self.parse_impl(visibility)?,
-                            _ => {
-                                return Err(ParseError::unexpected_token(
-                                    self.next.clone(),
-                                    "`fun`, `trait`, `enum`, `struct`",
-                                    "item after `pub`",
-                                ));
-                            }
-                        }
-                    }
-                    Keyword(Import) => self.parse_import()?,
-                    EndOfFile => break,
-                    _ => {
-                        let err = Err(ParseError::unexpected_token(
-                            self.next.clone(),
-                            "`import`, `fun`, `trait`, `enum`, `struct`",
-                            "item",
-                        ));
-                        self.advance();
-                        return err;
-                    }
-                }
-                .with_docstring(local_docstring),
-            );
-
-            local_docstring = self.consume_non_module_docstring()?;
-        }
-
-        Ok(items)
     }
 }

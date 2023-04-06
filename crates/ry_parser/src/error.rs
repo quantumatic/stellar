@@ -5,6 +5,20 @@ use ry_ast::{span::*, token::*};
 use ry_report::Reporter;
 use std::fmt::Display;
 
+/// Represents list of expected tokens.
+#[derive(Debug)]
+pub struct Expected(Vec<String>);
+
+macro_rules! expected {
+    ($($e:expr),*) => {{
+        let mut vec = Vec::new();
+        $( vec.push($e.into()); )*
+        vec
+    }};
+}
+
+pub(crate) use expected;
+
 /// An enum which represents errors encountered during parsing stage.
 #[derive(Debug)]
 pub enum ParseError {
@@ -19,8 +33,8 @@ pub enum ParseError {
         /// The token that was not expected.
         got: Token,
 
-        /// The description of what was expected.
-        expected: String,
+        /// Tokens that were expected.
+        expected: Expected,
 
         /// AST Node at which the error occurred while parsing.
         node: String,
@@ -41,19 +55,44 @@ impl ParseError {
         error.into()
     }
 
-    pub(crate) fn unexpected_token<E, N>(got: Token, expected: E, node: N) -> Self
+    pub(crate) fn unexpected_token<N>(got: Token, expected: Vec<String>, node: N) -> Self
     where
-        E: Into<String>,
         N: Into<String>,
     {
         match got.inner {
             RawToken::Error(lexer_error) => Self::lexer(lexer_error.at(got.span)),
             _ => Self::UnexpectedToken {
                 got,
-                expected: expected.into(),
+                expected: Expected(expected.iter().map(|e| e.clone().into()).collect()),
                 node: node.into(),
             },
         }
+    }
+}
+
+impl Display for Expected {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let len = self.0.len() - 1;
+
+        f.write_fmt(format_args!(
+            "one of: {}",
+            self.0
+                .iter()
+                .enumerate()
+                .map(|(idx, token)| {
+                    format!(
+                        "{}{token}",
+                        if idx == 0 {
+                            ""
+                        } else if idx == len {
+                            " or "
+                        } else {
+                            ", "
+                        }
+                    )
+                })
+                .collect::<String>()
+        ))
     }
 }
 

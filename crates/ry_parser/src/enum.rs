@@ -1,18 +1,24 @@
-use crate::{error::*, macros::*, Parser};
+use crate::{error::*, macros::*, Parser, ParserState};
 use ry_ast::{
-    declaration::{Documented, EnumDeclarationItem, Item, WithDocstring},
+    declaration::{Documented, EnumDeclarationItem},
     name::Name,
     token::{Punctuator::*, RawToken::*},
     Visibility,
 };
 
-impl Parser<'_> {
-    pub(crate) fn parse_enum_declaration(&mut self, visibility: Visibility) -> ParseResult<Item> {
-        self.advance();
+pub(crate) struct EnumDeclarationParser {
+    pub visibility: Visibility,
+}
 
-        let name = self.consume_identifier("enum name in enum declaration")?;
+impl Parser for EnumDeclarationParser {
+    type Output = EnumDeclarationItem;
 
-        self.consume_with_docstring(Punctuator(OpenBrace), "enum declaration")?;
+    fn parse_with(self, parser: &mut ParserState<'_>) -> ParseResult<Self::Output> {
+        parser.advance();
+
+        let name = parser.consume_identifier("enum name in enum declaration")?;
+
+        parser.consume(Punctuator(OpenBrace), "enum declaration")?;
 
         let variants = parse_list!(
             self,
@@ -20,30 +26,31 @@ impl Parser<'_> {
             Punctuator(CloseBrace),
             true, // top level
             || -> ParseResult<Documented<Name>> {
-                let doc = self.consume_non_module_docstring()?;
-                Ok(self
+                let doc = parser.consume_non_module_docstring()?;
+                Ok(parser
                     .consume_identifier("enum variant name")?
                     .with_docstring(doc))
             }
         );
 
-        self.advance_with_docstring();
+        parser.advance_with_docstring();
 
         Ok(EnumDeclarationItem {
-            visibility,
+            visibility: self.visibility,
             name,
             variants,
-        }
-        .into())
+        })
     }
 }
 
 #[cfg(test)]
 mod enum_tests {
-    use crate::{macros::parser_test, Parser};
+    use crate::{macros::parser_test, ParserState};
     use ry_interner::Interner;
 
-    parser_test!(no_variants, "enum test {}");
-    parser_test!(single_variant, "enum test { a }");
-    parser_test!(variants, "enum test { a, b, c, }");
+    use super::EnumDeclarationParser;
+
+    parser_test!(EnumDeclarationParser, no_variants, "enum test {}");
+    parser_test!(EnumDeclarationParser, single_variant, "enum test { a }");
+    parser_test!(EnumDeclarationParser, variants, "enum test { a, b, c, }");
 }

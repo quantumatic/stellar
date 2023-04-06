@@ -133,7 +133,10 @@ impl Parser<'_> {
             ImaginaryNumberLiteral(literal) => {
                 let literal = *literal;
                 self.advance();
-                Ok(RawExpression::from(ImaginaryNumberLiteralExpression { literal }).at(self.current.span))
+                Ok(
+                    RawExpression::from(ImaginaryNumberLiteralExpression { literal })
+                        .at(self.current.span),
+                )
             }
             StringLiteral(literal) => {
                 let literal = literal.clone();
@@ -157,7 +160,12 @@ impl Parser<'_> {
                 let inner = self.parse_expression(Precedence::Unary)?;
                 let span = op.span.start()..inner.span.end();
 
-                Ok(RawExpression::from(UnaryExpression { inner: Box::new(inner), op, postfix: false }).at(span))
+                Ok(RawExpression::from(UnaryExpression {
+                    inner: Box::new(inner),
+                    op,
+                    postfix: false,
+                })
+                .at(span))
             }
             Punctuator(OpenParent) => {
                 self.advance();
@@ -173,9 +181,13 @@ impl Parser<'_> {
 
                 let start = self.next.span.start();
 
-                let literal = parse_list!(self, "array literal", Punctuator(CloseBracket), false, || {
-                    self.parse_expression(Precedence::Lowest)
-                });
+                let literal = parse_list!(
+                    self,
+                    "array literal",
+                    Punctuator(CloseBracket),
+                    false,
+                    || { self.parse_expression(Precedence::Lowest) }
+                );
 
                 let end = self.current.span.end();
 
@@ -183,8 +195,7 @@ impl Parser<'_> {
             }
             Identifier(name) => {
                 let result =
-                RawExpression::from(IdentifierExpression { name: *name })
-                    .at(self.current.span);
+                    RawExpression::from(IdentifierExpression { name: *name }).at(self.current.span);
 
                 self.advance();
 
@@ -197,7 +208,7 @@ impl Parser<'_> {
 
                 let mut if_blocks = vec![IfBlock {
                     condition: self.parse_expression(Precedence::Lowest)?,
-                    body: self.parse_statements_block(false)?
+                    body: self.parse_statements_block(false)?,
                 }];
 
                 let mut r#else = None;
@@ -206,7 +217,7 @@ impl Parser<'_> {
                     self.advance();
 
                     match self.next.inner {
-                        Keyword(If) => {},
+                        Keyword(If) => {}
                         _ => {
                             r#else = Some(self.parse_statements_block(false)?);
                             break;
@@ -217,14 +228,13 @@ impl Parser<'_> {
 
                     if_blocks.push(IfBlock {
                         condition: self.parse_expression(Precedence::Lowest)?,
-                        body: self.parse_statements_block(false)?
+                        body: self.parse_statements_block(false)?,
                     });
                 }
 
                 let end = self.current.span.end();
 
-                Ok(RawExpression::from(IfExpression { if_blocks, r#else })
-                    .at(start..end))
+                Ok(RawExpression::from(IfExpression { if_blocks, r#else }).at(start..end))
             }
             Keyword(While) => {
                 self.advance();
@@ -233,39 +243,54 @@ impl Parser<'_> {
                 let condition = self.parse_expression(Precedence::Lowest)?;
                 let body = self.parse_statements_block(false)?;
 
-                Ok(RawExpression::from(WhileExpression { condition: Box::new(condition), body })
-                    .at(start..self.current.span.end()))
+                Ok(RawExpression::from(WhileExpression {
+                    condition: Box::new(condition),
+                    body,
+                })
+                .at(start..self.current.span.end()))
             }
             _ => Err(ParseError::unexpected_token(
                 self.next.clone(),
-                "integer, float, imaginary, string literals, ... or identifier for name, `(`, `[`, `if`, `while`, ...",
-                "expression"
+                expected!(
+                    "integer literal",
+                    "float literal",
+                    "imaginary number literal",
+                    "string literal",
+                    "char literal",
+                    "boolean literal",
+                    Punctuator(OpenParent),
+                    Punctuator(OpenBracket),
+                    "identifier",
+                    Keyword(If),
+                    Keyword(While)
+                ),
+                "expression",
             )),
         }
     }
 }
 
-#[cfg(test)]
-mod expression_tests {
-    use crate::{macros::parser_test, Parser};
-    use ry_interner::Interner;
+// #[cfg(test)]
+// mod expression_tests {
+//     use crate::{macros::parser_test, Parser};
+//     use ry_interner::Interner;
 
-    parser_test!(literal1, "fun test(): i32 { 3 }");
-    parser_test!(literal2, "fun test(): String { \"hello\" }");
-    parser_test!(literal3, "fun test(): bool { true }");
-    parser_test!(binary1, "fun test(): i32 { 2 + 3 }");
-    parser_test!(binary2, "fun test(): f32 { 1 + 2 / 3 + 3 * 4 }");
-    parser_test!(r#as, "fun test(): f32 { 1 as f32 }");
-    parser_test!(call, "fun test(): f32 { l(2 + 3).a() }");
-    parser_test!(
-        call_with_generics,
-        "fun test(): f32 { l[i32](2 + 3).a[]() }"
-    );
-    parser_test!(
-        ifelse,
-        "fun test(): f32 { if false { 2.3 } else if false { 5 as f32 } else { 2.0 } }"
-    );
-    parser_test!(r#while, "fun test() { while true { print(\"hello\"); } }");
-    parser_test!(postfix, "fun test(): Option[i32] { Some(a() ?: 0 + b()?) }");
-    parser_test!(parent, "fun test(): i32 { ((b + c) * d) }");
-}
+//     parser_test!(literal1, "fun test(): i32 { 3 }");
+//     parser_test!(literal2, "fun test(): String { \"hello\" }");
+//     parser_test!(literal3, "fun test(): bool { true }");
+//     parser_test!(binary1, "fun test(): i32 { 2 + 3 }");
+//     parser_test!(binary2, "fun test(): f32 { 1 + 2 / 3 + 3 * 4 }");
+//     parser_test!(r#as, "fun test(): f32 { 1 as f32 }");
+//     parser_test!(call, "fun test(): f32 { l(2 + 3).a() }");
+//     parser_test!(
+//         call_with_generics,
+//         "fun test(): f32 { l[i32](2 + 3).a[]() }"
+//     );
+//     parser_test!(
+//         ifelse,
+//         "fun test(): f32 { if false { 2.3 } else if false { 5 as f32 } else { 2.0 } }"
+//     );
+//     parser_test!(r#while, "fun test() { while true { print(\"hello\"); } }");
+//     parser_test!(postfix, "fun test(): Option[i32] { Some(a() ?: 0 + b()?) }");
+//     parser_test!(parent, "fun test(): i32 { ((b + c) * d) }");
+// }

@@ -1,5 +1,5 @@
 use clap::{arg, Parser, Subcommand};
-use ry_ast::token::RawToken::{self, EndOfFile};
+use ry_ast::token::RawToken::EndOfFile;
 use ry_interner::Interner;
 use ry_lexer::Lexer;
 use ry_report::{Reporter, ReporterState};
