@@ -9,7 +9,7 @@ use crate::{
 
 #[derive(Debug, PartialEq)]
 pub struct FunctionDeclaration {
-    pub definition: FunctionDefinition,
+    pub signature: FunctionTypeSignature,
     pub body: StatementsBlock,
 }
 
@@ -20,7 +20,7 @@ impl From<Function> for Item {
 }
 
 #[derive(Debug, PartialEq)]
-pub struct FunctionDefinition {
+pub struct FunctionTypeSignature {
     pub visibility: Visibility,
     pub name: Name,
     pub generics: Generics,
@@ -38,12 +38,12 @@ pub struct FunctionArgument {
 
 #[derive(Debug, PartialEq)]
 pub enum Function {
-    Definition(FunctionDefinition),
+    Definition(FunctionTypeSignature),
     Declaration(FunctionDeclaration),
 }
 
-impl From<FunctionDefinition> for Function {
-    fn from(definition: FunctionDefinition) -> Self {
+impl From<FunctionTypeSignature> for Function {
+    fn from(definition: FunctionTypeSignature) -> Self {
         Self::Definition(definition)
     }
 }

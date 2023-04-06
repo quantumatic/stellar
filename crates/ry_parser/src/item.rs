@@ -1,56 +1,70 @@
-use crate::error::{expected, ParseError};
-use crate::imports::ImportParser;
-use crate::{error::ParseResult, r#enum::EnumDeclarationParser, Parser, ParserState};
+use crate::{
+    error::{expected, ParseError, ParseResult},
+    function_decl::FunctionParser,
+    imports::ImportParser,
+    r#enum::EnumDeclarationParser,
+    struct_decl::StructDeclarationParser,
+    trait_decl::TraitDeclarationParser,
+    Parser, ParserState,
+};
 use ry_ast::{
     declaration::{Docstring, Item, WithDocstring},
-    token::{Keyword::*, RawToken::Keyword},
+    token::{
+        Keyword::*,
+        RawToken::{EndOfFile, Keyword},
+    },
     Items, Visibility,
 };
 
 pub(crate) struct ItemsParser {
-    pub first_docstring: Docstring,
+    pub(crate) first_docstring: Docstring,
 }
 
 impl Parser for ItemsParser {
     type Output = Items;
 
-    fn parse_with(self, parser: &mut ParserState<'_>) -> ParseResult<Self::Output> {
+    fn parse_with(self, state: &mut ParserState<'_>) -> ParseResult<Self::Output> {
         let mut items = vec![];
         let mut docstring = self.first_docstring;
 
-        items.push(
-            ItemParser { docstring }
-                .parse(parser)?
-                .with_docstring(docstring),
-        );
+        while state.next.inner != EndOfFile {
+            items.push(ItemParser.parse_with(state)?.with_docstring(docstring));
 
-        docstring = parser.consume_docstring();
+            docstring = state.consume_docstring()?;
+        }
+
+        Ok(items)
     }
 }
 
-pub(crate) struct ItemParser {
-    pub docstring: Docstring,
-}
+pub(crate) struct ItemParser;
 
 impl Parser for ItemParser {
     type Output = Item;
 
-    fn parse_with(parser: &mut ParserState<'_>) -> ParseResult<Self::Output> {
+    fn parse_with(self, state: &mut ParserState<'_>) -> ParseResult<Self::Output> {
         let mut visibility = Visibility::private();
 
-        if parser.next.inner == Keyword(Pub) {
-            visibility = Visibility::public(parser.next.span);
-            parser.advance();
+        if state.next.inner == Keyword(Pub) {
+            visibility = Visibility::public(state.next.span);
+            state.advance();
         }
 
-        Ok(match parser.next.inner {
+        Ok(match state.next.inner {
             Keyword(Enum) => EnumDeclarationParser { visibility }
-                .parse_with(parser)
+                .parse_with(state)?
                 .into(),
-            Keyword(Import) => ImportParser { visibility }.parse_with(parser).into(),
+            Keyword(Import) => ImportParser { visibility }.parse_with(state)?.into(),
+            Keyword(Struct) => StructDeclarationParser { visibility }
+                .parse_with(state)?
+                .into(),
+            Keyword(Trait) => TraitDeclarationParser { visibility }
+                .parse_with(state)?
+                .into(),
+            Keyword(Fun) => FunctionParser { visibility }.parse_with(state)?.into(),
             _ => {
                 let error = Err(ParseError::unexpected_token(
-                    parser.next.clone(),
+                    state.next.clone(),
                     expected!(
                         Keyword(Import),
                         Keyword(Fun),
@@ -61,7 +75,7 @@ impl Parser for ItemParser {
                     ),
                     "item",
                 ));
-                parser.advance();
+                state.advance();
                 return error;
             }
         })

@@ -1,9 +1,10 @@
-use crate::name::Path;
+use crate::{name::Path, Visibility};
 
 use super::Item;
 
 #[derive(Debug, PartialEq)]
 pub struct ImportItem {
+    pub visibility: Visibility,
     pub path: Path,
 }
 

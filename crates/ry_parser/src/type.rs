@@ -9,6 +9,7 @@ use ry_ast::{
         ArrayType, Generic, Generics, PrimaryType, RawType, ReferenceType, Type, TypeAnnotations,
         WhereClause, WhereClauseUnit,
     },
+    span::At,
     token::{Keyword::*, Punctuator::*, RawToken::*},
     Mutability,
 };
@@ -18,17 +19,17 @@ pub(crate) struct PathParser;
 impl Parser for PathParser {
     type Output = Path;
 
-    fn parse_with(parser: &mut ParserState<'_>) -> ParseResult<Self::Output> {
+    fn parse_with(self, state: &mut ParserState<'_>) -> ParseResult<Self::Output> {
         let mut path = vec![];
-        let first_identifier = parser.consume_identifier("path")?;
+        let first_identifier = state.consume_identifier("path")?;
         path.push(first_identifier.inner);
 
-        let (start, mut end) = (first_identifier.span.start(), first_identifier.span.end());
+        let (start, mut end) = (first_identifier.span.start, first_identifier.span.end);
 
-        while parser.next.inner == Punctuator(Dot) {
-            parser.advance();
-            path.push(parser.consume_identifier("path")?.inner);
-            end = parser.current.span.end();
+        while state.next.inner == Punctuator(Dot) {
+            state.advance();
+            path.push(state.consume_identifier("path")?.inner);
+            end = state.current.span.end;
         }
 
         Ok(path.at(start..end))
@@ -40,16 +41,16 @@ pub(crate) struct PrimaryTypeParser;
 impl Parser for PrimaryTypeParser {
     type Output = Type;
 
-    fn parse_with(parser: &mut ParserState<'_>) -> ParseResult<Self::Output> {
-        let start = parser.next.span.start();
-        let path = PathParser.parse(parser)?;
-        let type_annotations = TypeAnnotationsParser.parse()?;
+    fn parse_with(self, state: &mut ParserState<'_>) -> ParseResult<Self::Output> {
+        let start = state.next.span.start;
+        let path = PathParser.parse_with(state)?;
+        let type_annotations = TypeAnnotationsParser.optionally_parse_with(state)?;
 
-        RawType::from(PrimaryType {
+        Ok(RawType::from(PrimaryType {
             path,
             type_annotations,
         })
-        .at(start..parser.current.span.end())
+        .at(start..state.current.span.end))
     }
 }
 
@@ -58,26 +59,26 @@ pub(crate) struct ReferenceTypeParser;
 impl Parser for ReferenceTypeParser {
     type Output = Type;
 
-    fn parse_with(parser: &mut ParserState<'_>) -> ParseResult<Self::Output> {
-        parser.advance();
+    fn parse_with(self, state: &mut ParserState<'_>) -> ParseResult<Self::Output> {
+        state.advance();
 
-        let start = parser.current.span.start();
+        let start = state.current.span.start;
 
         let mut mutability = Mutability::immutable();
 
-        if let Keyword(Mut) = parser.next.inner {
-            mutability = Mutability::mutable(parser.next.span);
+        if let Keyword(Mut) = state.next.inner {
+            mutability = Mutability::mutable(state.next.span);
 
-            parser.advance();
+            state.advance();
         }
 
-        let inner = TypeParser.parse(parser)?;
+        let inner = TypeParser.parse_with(state)?;
 
-        RawType::from(ReferenceType {
+        Ok(RawType::from(ReferenceType {
             mutability,
             inner: Box::new(inner),
         })
-        .at(start..parser.current.span.end())
+        .at(start..state.current.span.end))
     }
 }
 
@@ -86,47 +87,45 @@ pub(crate) struct TypeParser;
 impl Parser for TypeParser {
     type Output = Type;
 
-    fn parse_with(self, parser: &mut ParserState<'_>) -> ParseResult<Self::Output> {
-        let start = parser.next.span.start();
-
-        let r#type = match self.next.inner {
-            Identifier(..) => PrimaryTypeParser.parse(parser)?,
+    fn parse_with(self, state: &mut ParserState<'_>) -> ParseResult<Self::Output> {
+        let r#type = match state.next.inner {
+            Identifier(..) => PrimaryTypeParser.parse_with(state)?,
             Punctuator(And) => {
-                self.advance();
-                let start = self.current.span.start();
+                state.advance();
+                let start = state.current.span.start;
 
                 let mut mutability = Mutability::immutable();
 
-                if let Keyword(Mut) = self.next.inner {
-                    mutability = Mutability::mutable(self.next.span);
+                if state.next.inner == Keyword(Mut) {
+                    mutability = Mutability::mutable(state.next.span);
 
-                    self.advance();
+                    state.advance();
                 }
 
-                let inner = self.parse_type()?;
+                let inner = TypeParser.parse_with(state)?;
 
                 RawType::from(ReferenceType {
                     mutability,
                     inner: Box::new(inner),
                 })
-                .at(start..self.current.span.end())
+                .at(start..state.current.span.end)
             }
             Punctuator(OpenBracket) => {
-                self.advance();
-                let start = self.current.span.start();
+                state.advance();
+                let start = state.current.span.start;
 
-                let inner = self.parse_type()?;
+                let inner = TypeParser.parse_with(state)?;
 
-                self.consume(Punctuator(CloseBracket), "array type")?;
+                state.consume(Punctuator(CloseBracket), "array type")?;
 
                 RawType::from(ArrayType {
                     inner: Box::new(inner),
                 })
-                .at(start..self.current.span.end())
+                .at(start..state.current.span.end)
             }
             _ => {
                 return Err(ParseError::unexpected_token(
-                    self.next.clone(),
+                    state.next.clone(),
                     expected!("identifier", Punctuator(And), Punctuator(OpenBracket)),
                     "type",
                 ));
@@ -142,22 +141,18 @@ pub(crate) struct TypeAnnotationsParser;
 impl OptionalParser for TypeAnnotationsParser {
     type Output = TypeAnnotations;
 
-    fn optionally_parse_with(parser: &mut ParserState<'_>) -> ParseResult<Self::Output> {
-        if parser.next.inner != Punctuator(OpenBracket) {
+    fn optionally_parse_with(self, state: &mut ParserState<'_>) -> ParseResult<Self::Output> {
+        if state.next.inner != Punctuator(OpenBracket) {
             return Ok(vec![]);
         }
 
-        parser.advance();
+        state.advance();
 
-        let result = Some(parse_list!(
-            parser,
-            "generics",
-            Punctuator(CloseBracket),
-            false,
-            || parser.parse_type()
-        ));
+        let result = parse_list!(state, "generics", Punctuator(CloseBracket), || {
+            TypeParser.parse_with(state)
+        });
 
-        parser.advance();
+        state.advance();
 
         Ok(result)
     }
@@ -168,33 +163,32 @@ pub(crate) struct GenericsParser;
 impl OptionalParser for GenericsParser {
     type Output = Generics;
 
-    fn optionally_parse_with(self, parser: &mut ParserState<'_>) -> ParseResult<Self::Output> {
-        if parser.next.inner != Punctuator(OpenBracket) {
+    fn optionally_parse_with(self, state: &mut ParserState<'_>) -> ParseResult<Self::Output> {
+        if state.next.inner != Punctuator(OpenBracket) {
             return Ok(vec![]);
         }
 
-        parser.advance();
+        state.advance();
 
         let result = parse_list!(
-            parser,
+            state,
             "generics",
             Punctuator(CloseBracket),
-            false,
             || -> ParseResult<Generic> {
-                let name = parser.consume_identifier("generic name")?;
+                let name = state.consume_identifier("generic name")?;
 
                 let mut constraint = None;
 
-                if parser.next.inner == Punctuator(Colon) {
-                    parser.advance();
-                    constraint = Some(parser.parse_type()?);
+                if state.next.inner == Punctuator(Colon) {
+                    state.advance();
+                    constraint = Some(TypeParser.parse_with(state)?);
                 }
 
                 Ok(Generic { name, constraint })
             }
         );
 
-        parser.advance();
+        state.advance();
 
         Ok(result)
     }
@@ -205,24 +199,23 @@ pub(crate) struct WhereClauseParser;
 impl OptionalParser for WhereClauseParser {
     type Output = WhereClause;
 
-    fn optionally_parse_with(parser: &mut ParserState<'_>) -> ParseResult<Self::Output> {
-        if parser.next.inner != Keyword(Where) {
+    fn optionally_parse_with(self, state: &mut ParserState<'_>) -> ParseResult<Self::Output> {
+        if state.next.inner != Keyword(Where) {
             return Ok(vec![]);
         }
 
-        parser.advance();
+        state.advance();
 
         Ok(parse_list!(
-            parser,
+            state,
             "where clause",
             Punctuator(OpenBrace | Semicolon),
-            false, // top level
             || {
-                let r#type = parser.parse_type()?;
+                let r#type = TypeParser.parse_with(state)?;
 
-                parser.consume(Punctuator(Colon), "where clause")?;
+                state.consume(Punctuator(Colon), "where clause")?;
 
-                let constraint = parser.parse_type()?;
+                let constraint = TypeParser.parse_with(state)?;
 
                 Ok::<WhereClauseUnit, ParseError>(WhereClauseUnit { r#type, constraint })
             }

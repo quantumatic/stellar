@@ -25,7 +25,6 @@ impl From<StructDeclarationItem> for Item {
 pub struct StructMemberDeclaration {
     pub visibility: Visibility,
     pub mutability: Mutability,
-    pub invalid_mutability: Mutability,
     pub name: Name,
     pub r#type: Type,
 }

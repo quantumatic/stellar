@@ -6,19 +6,23 @@ use ry_ast::{
 };
 
 pub(crate) struct ImportParser {
-    visibility: Visibility,
+    pub(crate) visibility: Visibility,
 }
 
 impl Parser for ImportParser {
     type Output = Item;
 
-    fn parse_with(self, parser: &mut ParserState<'_>) -> ParseResult<Self::Output> {
-        parser.advance();
+    fn parse_with(self, state: &mut ParserState<'_>) -> ParseResult<Self::Output> {
+        state.advance();
 
-        let path = PathParser.parse()?;
-        parser.consume(Punctuator(Semicolon), "import")?;
+        let path = PathParser.parse_with(state)?;
+        state.consume(Punctuator(Semicolon), "import")?;
 
-        Ok(ImportItem { path }.into())
+        Ok(ImportItem {
+            visibility: self.visibility,
+            path,
+        }
+        .into())
     }
 }
 

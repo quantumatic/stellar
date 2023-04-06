@@ -1,34 +1,34 @@
 use crate::{
     r#type::{GenericsParser, WhereClauseParser},
-    ParseResult, Parser, ParserState,
+    OptionalParser, ParseResult, Parser, ParserState,
 };
 use ry_ast::{
-    declaration::{Documented, Function, TraitDeclarationItem, WithDocstring},
-    token::{Keyword::*, Punctuator::*, RawToken::*},
+    declaration::TraitDeclarationItem,
+    token::{Punctuator::*, RawToken::*},
     Visibility,
 };
 
 pub(crate) struct TraitDeclarationParser {
-    visibility: Visibility,
+    pub(crate) visibility: Visibility,
 }
 
 impl Parser for TraitDeclarationParser {
     type Output = TraitDeclarationItem;
 
-    fn parse_with(self, parser: &mut ParserState<'_>) -> ParseResult<Self::Output> {
-        parser.advance();
+    fn parse_with(self, state: &mut ParserState<'_>) -> ParseResult<Self::Output> {
+        state.advance();
 
-        let name = parser.consume_identifier("trait name in trait declaration")?;
+        let name = state.consume_identifier("trait name in trait declaration")?;
 
-        let generics = GenericsParser.optionally_parse(parser)?;
+        let generics = GenericsParser.optionally_parse_with(state)?;
 
-        let r#where = WhereClauseParser.optionally_parse(parser)?;
+        let r#where = WhereClauseParser.optionally_parse_with(state)?;
 
-        parser.consume_with_docstring(Punctuator(OpenBrace), "trait declaration")?;
+        state.consume(Punctuator(OpenBrace), "trait declaration")?;
 
-        let methods = parser.parse_trait_associated_functions()?;
+        let methods = vec![];
 
-        parser.consume_with_docstring(Punctuator(CloseBrace), "trait declaration")?;
+        state.consume(Punctuator(CloseBrace), "trait declaration")?;
 
         Ok(TraitDeclarationItem {
             visibility: self.visibility,
@@ -40,30 +40,30 @@ impl Parser for TraitDeclarationParser {
     }
 }
 
-impl TraitDeclarationParser {
-    fn parse_trait_associated_functions(&mut self) -> ParseResult<Vec<Documented<Function>>> {
-        let mut associated_functions = vec![];
+// impl TraitDeclarationParser {
+//     fn parse_trait_associated_functions(&mut self) -> ParseResult<Vec<Documented<Function>>> {
+//         let mut associated_functions = vec![];
 
-        loop {
-            if self.next.inner == Punctuator(CloseBrace) {
-                break;
-            }
+//         loop {
+//             if self.next.inner == Punctuator(CloseBrace) {
+//                 break;
+//             }
 
-            let docstring = self.consume_non_module_docstring()?;
+//             let docstring = self.consume_non_module_docstring()?;
 
-            let mut visibility = Visibility::private();
+//             let mut visibility = Visibility::private();
 
-            if let Keyword(Pub) = self.next.inner {
-                visibility = Visibility::public(self.next.span);
-                self.advance();
-            }
+//             if let Keyword(Pub) = self.next.inner {
+//                 visibility = Visibility::public(self.next.span);
+//                 self.advance();
+//             }
 
-            associated_functions.push(self.parse_function(visibility)?.with_docstring(docstring));
-        }
+//             associated_functions.push(self.parse_function(visibility)?.with_docstring(docstring));
+//         }
 
-        Ok(associated_functions)
-    }
-}
+//         Ok(associated_functions)
+//     }
+// }
 
 // #[cfg(test)]
 // mod trait_tests {

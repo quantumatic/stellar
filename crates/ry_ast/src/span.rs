@@ -7,8 +7,8 @@ use std::{fmt::Display, ops::Range};
 /// Represents code block location in source text.
 #[derive(Copy, Clone, Debug, Default, PartialEq, Eq)]
 pub struct Span {
-    start: usize,
-    end: usize,
+    pub start: usize,
+    pub end: usize,
 }
 
 impl Display for Span {
@@ -29,16 +29,6 @@ impl Span {
             start: location,
             end: location + character_len,
         }
-    }
-
-    #[inline]
-    pub const fn start(&self) -> usize {
-        self.start
-    }
-
-    #[inline]
-    pub const fn end(&self) -> usize {
-        self.end
     }
 }
 

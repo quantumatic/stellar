@@ -5,16 +5,16 @@ macro_rules! parser_test {
         fn $name() {
             let mut string_interner = Interner::default();
             let mut parser_state = ParserState::new($source, &mut string_interner);
-            assert!(<$parser>::default().parse().is_ok());
+            assert!(<$parser>::default().parse_with(&mut parser_state).is_ok());
         }
     };
 }
 
 macro_rules! parse_list {
-    ($p:ident, $name:literal, $closing_token:pat, $top_level:expr, $fn:expr) => {
-        parse_list!($p, $name, $closing_token, $top_level, $fn, )
+    ($p:ident, $name:literal, $closing_token:pat, $fn:expr) => {
+        parse_list!($p, $name, $closing_token, $fn, )
     };
-    ($p:ident, $name:literal, $closing_token:pat, $top_level:expr, $fn:expr, $($fn_arg:expr)*) => {
+    ($p:ident, $name:literal, $closing_token:pat, $fn:expr, $($fn_arg:expr)*) => {
         {
             let mut result = vec![];
 
@@ -23,11 +23,7 @@ macro_rules! parse_list {
                     result.push($fn($($fn_arg)*)?);
 
                     if !matches!($p.next.inner, $closing_token) {
-                        if $top_level {
-                            $p.consume_with_docstring(Punctuator(Comma), $name)?;
-                        } else {
-                            $p.consume(Punctuator(Comma), $name)?;
-                        }
+                        $p.consume(Punctuator(Comma), $name)?;
 
                         if matches!($p.next.inner, $closing_token) {
                             break;

@@ -2,6 +2,7 @@ use clap::{arg, Parser, Subcommand};
 use ry_ast::token::RawToken::EndOfFile;
 use ry_interner::Interner;
 use ry_lexer::Lexer;
+use ry_parser::ParserState;
 use ry_report::{Reporter, ReporterState};
 use std::{fs, process::exit};
 
@@ -57,9 +58,7 @@ fn main() {
                     if show_locations {
                         println!(
                             "{current_token_index}: [{}]@{}..{}",
-                            token.inner,
-                            token.span.start(),
-                            token.span.end()
+                            token.inner, token.span.start, token.span.end
                         );
                     } else {
                         println!("{current_token_index}: [{}]", token.inner);
@@ -79,7 +78,7 @@ fn main() {
             match fs::read_to_string(filepath) {
                 Ok(contents) => {
                     let file_id = reporter.add_file(&filepath, &contents);
-                    let mut parser = ry_parser::Parser::new(&contents, &mut interner);
+                    let mut parser = ParserState::new(&contents, &mut interner);
 
                     let ast = parser.parse();
 
@@ -114,7 +113,7 @@ fn main() {
         //             let file_id = files.add(&filepath, &contents);
         //             let mut parser = ry_parser::Parser::new(&contents, &mut string_interner);
 
-        //             let ast = parser.parse();
+        //             let ast = state.parse();
 
         //             match ast {
         //                 Ok(program_unit) => {

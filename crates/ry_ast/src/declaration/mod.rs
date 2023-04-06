@@ -1,6 +1,6 @@
 pub use self::{
     docstring::*,
-    function::{Function, FunctionArgument, FunctionDeclaration, FunctionDefinition},
+    function::{Function, FunctionArgument, FunctionDeclaration, FunctionTypeSignature},
     import::ImportItem,
     r#enum::EnumDeclarationItem,
     r#impl::ImplItem,

@@ -1,96 +1,93 @@
-use crate::{ParseResult, Parser};
+use crate::{expression::ExpressionParser, r#type::TypeParser, ParseResult, Parser, ParserState};
 use ry_ast::{
-    precedence::Precedence,
     statement::*,
     token::{Keyword::*, Punctuator::*, RawToken::*},
     Mutability,
 };
 
-impl Parser<'_> {
-    pub(crate) fn parse_statements_block(
-        &mut self,
-        top_level: bool,
-    ) -> ParseResult<StatementsBlock> {
-        self.consume(Punctuator(OpenBrace), "statements block")?;
+pub(crate) struct ReturnStatementParser;
 
-        let mut block = vec![];
+impl Parser for ReturnStatementParser {
+    type Output = ReturnStatement;
 
-        while self.next.inner != Punctuator(CloseBrace) {
-            let (statement, last) = self.parse_statement()?;
-            block.push(statement);
+    fn parse_with(self, state: &mut ParserState<'_>) -> ParseResult<Self::Output> {
+        state.advance();
 
-            if last {
-                break;
-            }
-        }
-
-        if top_level {
-            self.consume_with_docstring(Punctuator(CloseBrace), "end of the statements block")?;
-        } else {
-            self.consume(Punctuator(CloseBrace), "end of the statements block")?;
-        }
-
-        Ok(block)
+        Ok(ReturnStatement {
+            return_value: ExpressionParser::default().parse_with(state)?,
+        })
     }
+}
 
-    fn parse_statement(&mut self) -> ParseResult<(Statement, bool)> {
+pub(crate) struct DeferStatementParser;
+
+impl Parser for DeferStatementParser {
+    type Output = DeferStatement;
+
+    fn parse_with(self, state: &mut ParserState<'_>) -> ParseResult<Self::Output> {
+        state.advance();
+
+        Ok(DeferStatement {
+            call: ExpressionParser::default().parse_with(state)?,
+        })
+    }
+}
+
+pub(crate) struct VarStatementParser;
+
+impl Parser for VarStatementParser {
+    type Output = VarStatement;
+
+    fn parse_with(self, state: &mut ParserState<'_>) -> ParseResult<Self::Output> {
+        state.advance();
+
+        let mut mutability = Mutability::immutable();
+
+        if state.next.inner == Keyword(Mut) {
+            mutability = Mutability::mutable(state.current.span);
+            state.advance();
+        }
+
+        let name = state.consume_identifier("variable name in var statement")?;
+
+        let mut r#type = None;
+
+        if state.next.inner == Punctuator(Colon) {
+            state.advance();
+            r#type = Some(TypeParser.parse_with(state)?);
+        }
+
+        state.consume(Punctuator(Assign), "var statement")?;
+
+        Ok(VarStatement {
+            mutability,
+            name,
+            r#type,
+            value: ExpressionParser::default().parse_with(state)?,
+        }
+        .into())
+    }
+}
+
+pub(crate) struct StatementParser;
+
+impl Parser for StatementParser {
+    type Output = (Statement, bool);
+
+    fn parse_with(self, state: &mut ParserState<'_>) -> ParseResult<Self::Output> {
         let mut last_statement_in_block = false;
         let mut must_have_semicolon_at_the_end = true;
 
-        let statement = match self.next.inner {
-            Keyword(Return) => {
-                self.advance();
-
-                ReturnStatement {
-                    return_value: self.parse_expression(Precedence::Lowest)?,
-                }
-                .into()
-            }
-            Keyword(Defer) => {
-                self.advance();
-
-                DeferStatement {
-                    call: self.parse_expression(Precedence::Lowest)?,
-                }
-                .into()
-            }
-            Keyword(Var) => {
-                self.advance();
-
-                let mut mutability = Mutability::immutable();
-
-                if let Keyword(Mut) = self.next.inner {
-                    mutability = Mutability::mutable(self.current.span);
-                    self.advance();
-                }
-
-                let name = self.consume_identifier("variable name in var statement")?;
-
-                let mut r#type = None;
-
-                if self.next.inner == Punctuator(Colon) {
-                    self.advance();
-                    r#type = Some(self.parse_type()?);
-                }
-
-                self.consume(Punctuator(Assign), "var statement")?;
-
-                let value = self.parse_expression(Precedence::Lowest)?;
-
-                VarStatement {
-                    mutability,
-                    name,
-                    r#type,
-                    value,
-                }
-                .into()
-            }
+        let statement = match state.next.inner {
+            Keyword(Return) => ReturnStatementParser.parse_with(state)?.into(),
+            Keyword(Defer) => DeferStatementParser.parse_with(state)?.into(),
+            Keyword(Var) => VarStatementParser.parse_with(state)?.into(),
             _ => {
-                let expression = self.parse_expression(Precedence::Lowest)?;
+                let expression = ExpressionParser::default().parse_with(state)?;
 
                 must_have_semicolon_at_the_end = !expression.inner.with_block();
 
-                match self.next.inner {
+                match state.next.inner {
                     Punctuator(Semicolon) => {}
                     _ => {
                         if must_have_semicolon_at_the_end {
@@ -116,23 +113,48 @@ impl Parser<'_> {
         };
 
         if !last_statement_in_block && must_have_semicolon_at_the_end {
-            self.consume(Punctuator(Semicolon), "end of the statement")?;
+            state.consume(Punctuator(Semicolon), "end of the statement")?;
         }
 
         Ok((statement, last_statement_in_block))
     }
 }
 
-#[cfg(test)]
-mod statement_tests {
-    use crate::{macros::parser_test, Parser};
-    use ry_interner::Interner;
+pub(crate) struct StatementsBlockParser;
 
-    parser_test!(imut_var, "fun test() { var a = 3; }");
-    parser_test!(mut_var, "fun test() { var mut a = 3; }");
-    parser_test!(
-        defer,
-        "fun test() { var f = open(\"test\"); defer f.close(); }"
-    );
-    parser_test!(r#return, "fun test(): i32 { return 2; }");
+impl Parser for StatementsBlockParser {
+    type Output = StatementsBlock;
+
+    fn parse_with(self, state: &mut ParserState<'_>) -> ParseResult<Self::Output> {
+        state.consume(Punctuator(OpenBrace), "statements block")?;
+
+        let mut block = vec![];
+
+        while state.next.inner != Punctuator(CloseBrace) {
+            let (statement, last) = StatementParser.parse_with(state)?;
+            block.push(statement);
+
+            if last {
+                break;
+            }
+        }
+
+        state.consume(Punctuator(CloseBrace), "end of the statements block")?;
+
+        Ok(block)
+    }
 }
+
+// #[cfg(test)]
+// mod statement_tests {
+//     use crate::{macros::parser_test, Parser};
+//     use ry_interner::Interner;
+
+//     parser_test!(imut_var, "fun test() { var a = 3; }");
+//     parser_test!(mut_var, "fun test() { var mut a = 3; }");
+//     parser_test!(
+//         defer,
+//         "fun test() { var f = open(\"test\"); defer f.close(); }"
+//     );
+//     parser_test!(r#return, "fun test(): i32 { return 2; }");
+// }

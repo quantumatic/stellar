@@ -1,4 +1,4 @@
-//! Error and result implementation for the parser.
+//! Error and result implementation for the state.
 
 use codespan_reporting::diagnostic::{Diagnostic, Label};
 use ry_ast::{span::*, token::*};

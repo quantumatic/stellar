@@ -1,39 +1,39 @@
 use crate::{error::*, macros::*, Parser, ParserState};
 use ry_ast::{
-    declaration::{Documented, EnumDeclarationItem},
+    declaration::{Documented, EnumDeclarationItem, WithDocstring},
     name::Name,
     token::{Punctuator::*, RawToken::*},
     Visibility,
 };
 
+#[derive(Default)]
 pub(crate) struct EnumDeclarationParser {
-    pub visibility: Visibility,
+    pub(crate) visibility: Visibility,
 }
 
 impl Parser for EnumDeclarationParser {
     type Output = EnumDeclarationItem;
 
-    fn parse_with(self, parser: &mut ParserState<'_>) -> ParseResult<Self::Output> {
-        parser.advance();
+    fn parse_with(self, state: &mut ParserState<'_>) -> ParseResult<Self::Output> {
+        state.advance();
 
-        let name = parser.consume_identifier("enum name in enum declaration")?;
+        let name = state.consume_identifier("enum name in enum declaration")?;
 
-        parser.consume(Punctuator(OpenBrace), "enum declaration")?;
+        state.consume(Punctuator(OpenBrace), "enum declaration")?;
 
         let variants = parse_list!(
-            self,
+            state,
             "enum declaration",
             Punctuator(CloseBrace),
-            true, // top level
             || -> ParseResult<Documented<Name>> {
-                let doc = parser.consume_non_module_docstring()?;
-                Ok(parser
+                let doc = state.consume_docstring()?;
+                Ok(state
                     .consume_identifier("enum variant name")?
                     .with_docstring(doc))
             }
         );
 
-        parser.advance_with_docstring();
+        state.advance();
 
         Ok(EnumDeclarationItem {
             visibility: self.visibility,
@@ -45,7 +45,7 @@ impl Parser for EnumDeclarationParser {
 
 #[cfg(test)]
 mod enum_tests {
-    use crate::{macros::parser_test, ParserState};
+    use crate::{macros::parser_test, Parser, ParserState};
     use ry_interner::Interner;
 
     use super::EnumDeclarationParser;

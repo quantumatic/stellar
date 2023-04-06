@@ -1,4 +1,6 @@
-use crate::{error::*, macros::*, Parser};
+use crate::{
+    error::*, macros::*, r#type::TypeParser, statement::StatementsBlockParser, Parser, ParserState,
+};
 use ry_ast::{
     expression::*,
     precedence::Precedence,
@@ -6,251 +8,367 @@ use ry_ast::{
     token::{Keyword::*, Punctuator::*, RawToken::*},
 };
 
-impl Parser<'_> {
-    pub(crate) fn parse_expression(&mut self, precedence: Precedence) -> ParseResult<Expression> {
-        let mut left = self.parse_prefix()?;
+pub(crate) struct BinaryExpressionParser {
+    pub(crate) left: Expression,
+}
 
-        while precedence < self.next.inner.to_precedence() {
-            left = match &self.next.inner {
-                binop_pattern!() => {
-                    let op = self.next.clone();
-                    let precedence = self.next.inner.to_precedence();
+impl Parser for BinaryExpressionParser {
+    type Output = Expression;
 
-                    self.advance();
+    fn parse_with(self, state: &mut ParserState<'_>) -> ParseResult<Self::Output> {
+        let op = state.next.clone();
+        let precedence = state.next.inner.to_precedence();
 
-                    let right = self.parse_expression(precedence)?;
+        state.advance();
 
-                    let span = left.span.start()..self.current.span.end();
+        let right = ExpressionParser { precedence }.parse_with(state)?;
 
-                    RawExpression::from(BinaryExpression {
-                        left: Box::new(left),
-                        right: Box::new(right),
-                        op,
-                    })
-                    .at(span)
-                }
-                Punctuator(OpenParent) => {
-                    self.advance();
+        let span = self.left.span.start..state.current.span.end;
 
-                    let arguments = parse_list!(
-                        self,
-                        "call arguments list",
-                        Punctuator(CloseParent),
-                        false,
-                        || self.parse_expression(Precedence::Lowest)
-                    );
+        Ok(RawExpression::from(BinaryExpression {
+            left: Box::new(self.left),
+            right: Box::new(right),
+            op,
+        })
+        .at(span))
+    }
+}
 
-                    self.advance();
+pub(crate) struct CallExpressionParser {
+    pub(crate) left: Expression,
+}
 
-                    let span = left.span.start()..self.current.span.end();
+impl Parser for CallExpressionParser {
+    type Output = Expression;
 
-                    RawExpression::from(CallExpression {
-                        left: Box::new(left),
-                        arguments,
-                    })
-                    .at(span)
-                }
-                Punctuator(Dot) => {
-                    self.advance();
+    fn parse_with(self, state: &mut ParserState<'_>) -> ParseResult<Self::Output> {
+        state.advance();
 
-                    let property = self.consume_identifier("property")?;
+        let arguments = parse_list!(
+            state,
+            "call arguments list",
+            Punctuator(CloseParent),
+            || ExpressionParser {
+                precedence: Precedence::Lowest
+            }
+            .parse_with(state)
+        );
 
-                    let span = left.span.start()..property.span.end();
+        state.advance();
 
-                    RawExpression::from(PropertyAccessExpression {
-                        left: Box::new(left),
-                        property,
-                    })
-                    .at(span)
-                }
+        let span = self.left.span.start..state.current.span.end;
+
+        Ok(RawExpression::from(CallExpression {
+            left: Box::new(self.left),
+            arguments,
+        })
+        .at(span))
+    }
+}
+
+pub(crate) struct PropertyAccessExpressionParser {
+    pub(crate) left: Expression,
+}
+
+impl Parser for PropertyAccessExpressionParser {
+    type Output = Expression;
+
+    fn parse_with(self, state: &mut ParserState<'_>) -> ParseResult<Self::Output> {
+        state.advance();
+
+        let property = state.consume_identifier("property")?;
+
+        let span = self.left.span.start..property.span.end;
+
+        Ok(RawExpression::from(PropertyAccessExpression {
+            left: Box::new(self.left),
+            property,
+        })
+        .at(span))
+    }
+}
+
+pub(crate) struct TypeAnnotationsExpressionParser {
+    pub(crate) left: Expression,
+}
+
+impl Parser for TypeAnnotationsExpressionParser {
+    type Output = Expression;
+
+    fn parse_with(self, state: &mut ParserState<'_>) -> ParseResult<Self::Output> {
+        state.advance();
+
+        let type_annotations =
+            parse_list!(state, "type annotations", Punctuator(CloseBracket), || {
+                TypeParser.parse_with(state)
+            });
+
+        let span = self.left.span.start..state.current.span.end;
+
+        state.advance();
+
+        Ok(RawExpression::from(TypeAnnotationsExpression {
+            left: Box::new(self.left),
+            type_annotations,
+        })
+        .at(span))
+    }
+}
+
+pub(crate) struct PostfixExpressionParser {
+    pub(crate) left: Expression,
+}
+
+impl Parser for PostfixExpressionParser {
+    type Output = Expression;
+
+    fn parse_with(self, state: &mut ParserState<'_>) -> ParseResult<Self::Output> {
+        state.advance();
+
+        let op = state.current.clone();
+
+        let span = self.left.span.start..op.span.end;
+
+        Ok(RawExpression::from(UnaryExpression {
+            inner: Box::new(self.left),
+            op,
+            postfix: true,
+        })
+        .at(span))
+    }
+}
+
+pub(crate) struct CastExpressionParser {
+    pub(crate) left: Expression,
+}
+
+impl Parser for CastExpressionParser {
+    type Output = Expression;
+
+    fn parse_with(self, state: &mut ParserState<'_>) -> ParseResult<Self::Output> {
+        state.advance();
+
+        let right = TypeParser.parse_with(state)?;
+
+        let span = self.left.span.start..state.current.span.end;
+
+        Ok(RawExpression::from(AsExpression {
+            left: Box::new(self.left),
+            right,
+        })
+        .at(span))
+    }
+}
+
+pub(crate) struct ExpressionParser {
+    pub(crate) precedence: Precedence,
+}
+
+impl Default for ExpressionParser {
+    fn default() -> Self {
+        Self {
+            precedence: Precedence::Lowest,
+        }
+    }
+}
+
+impl Parser for ExpressionParser {
+    type Output = Expression;
+
+    fn parse_with(self, state: &mut ParserState<'_>) -> ParseResult<Self::Output> {
+        let mut left = PrimaryExpressionParser.parse_with(state)?;
+
+        while self.precedence < state.next.inner.to_precedence() {
+            left = match &state.next.inner {
+                binop_pattern!() => BinaryExpressionParser { left }.parse_with(state)?,
+                Punctuator(OpenParent) => CallExpressionParser { left }.parse_with(state)?,
+                Punctuator(Dot) => PropertyAccessExpressionParser { left }.parse_with(state)?,
                 Punctuator(OpenBracket) => {
-                    self.advance();
-
-                    let type_annotations = parse_list!(
-                        self,
-                        "type annotations",
-                        Punctuator(CloseBracket),
-                        false,
-                        || { self.parse_type() }
-                    );
-
-                    let span = left.span.start()..self.current.span.end();
-
-                    self.advance();
-
-                    RawExpression::from(TypeAnnotationsExpression {
-                        left: Box::new(left),
-                        type_annotations,
-                    })
-                    .at(span)
+                    TypeAnnotationsExpressionParser { left }.parse_with(state)?
                 }
-                postfixop_pattern!() => {
-                    self.advance();
-
-                    let op = self.current.clone();
-
-                    let span = left.span.start()..op.span.end();
-
-                    RawExpression::from(UnaryExpression {
-                        inner: Box::new(left),
-                        op,
-                        postfix: true,
-                    })
-                    .at(span)
-                }
-                Keyword(As) => {
-                    self.advance();
-
-                    let right = self.parse_type()?;
-
-                    let span = left.span.start()..self.current.span.end();
-
-                    RawExpression::from(AsExpression {
-                        left: Box::new(left),
-                        right,
-                    })
-                    .at(span)
-                }
+                postfixop_pattern!() => PostfixExpressionParser { left }.parse_with(state)?,
+                Keyword(As) => CastExpressionParser { left }.parse_with(state)?,
                 _ => break,
             };
         }
 
         Ok(left)
     }
+}
 
-    pub(crate) fn parse_prefix(&mut self) -> ParseResult<Expression> {
-        match &self.next.inner {
+pub(crate) struct PrefixExpressionParser;
+
+impl Parser for PrefixExpressionParser {
+    type Output = Expression;
+
+    fn parse_with(self, state: &mut ParserState<'_>) -> ParseResult<Self::Output> {
+        let op = state.next.clone();
+        state.advance();
+
+        let inner = ExpressionParser {
+            precedence: Precedence::Unary,
+        }
+        .parse_with(state)?;
+        let span = op.span.start..inner.span.end;
+
+        Ok(RawExpression::from(UnaryExpression {
+            inner: Box::new(inner),
+            op,
+            postfix: false,
+        })
+        .at(span))
+    }
+}
+
+pub(crate) struct ParenthesizedExpressionParser;
+
+impl Parser for ParenthesizedExpressionParser {
+    type Output = Expression;
+
+    fn parse_with(self, state: &mut ParserState<'_>) -> ParseResult<Self::Output> {
+        state.advance();
+
+        let expression = ExpressionParser {
+            precedence: Precedence::Lowest,
+        }
+        .parse_with(state)?;
+
+        state.consume(Punctuator(CloseParent), "parenthesized expression")?;
+
+        Ok(expression)
+    }
+}
+
+pub(crate) struct ArrayLiteralExpressionParser;
+
+impl Parser for ArrayLiteralExpressionParser {
+    type Output = Expression;
+
+    fn parse_with(self, state: &mut ParserState<'_>) -> ParseResult<Self::Output> {
+        state.advance();
+
+        let start = state.next.span.start;
+
+        let literal = parse_list!(state, "array literal", Punctuator(CloseBracket), || {
+            ExpressionParser::default().parse_with(state)
+        });
+
+        let end = state.current.span.end;
+
+        Ok(RawExpression::from(ArrayLiteralExpression { literal }).at(start..end))
+    }
+}
+
+pub(crate) struct IfExpressionParser;
+
+impl Parser for IfExpressionParser {
+    type Output = Expression;
+
+    fn parse_with(self, state: &mut ParserState<'_>) -> ParseResult<Self::Output> {
+        state.advance();
+
+        let start = state.current.span.start;
+
+        let mut if_blocks = vec![IfBlock {
+            condition: ExpressionParser::default().parse_with(state)?,
+            body: StatementsBlockParser.parse_with(state)?,
+        }];
+
+        let mut r#else = None;
+
+        while state.next.inner == Keyword(Else) {
+            state.advance();
+
+            match state.next.inner {
+                Keyword(If) => {}
+                _ => {
+                    r#else = Some(StatementsBlockParser.parse_with(state)?);
+                    break;
+                }
+            }
+
+            state.advance();
+
+            if_blocks.push(IfBlock {
+                condition: ExpressionParser::default().parse_with(state)?,
+                body: StatementsBlockParser.parse_with(state)?,
+            });
+        }
+
+        let end = state.current.span.end;
+
+        Ok(RawExpression::from(IfExpression { if_blocks, r#else }).at(start..end))
+    }
+}
+
+pub(crate) struct WhileExpressionParser;
+
+impl Parser for WhileExpressionParser {
+    type Output = Expression;
+
+    fn parse_with(self, state: &mut ParserState<'_>) -> ParseResult<Self::Output> {
+        state.advance();
+        let start = state.current.span.start;
+
+        let condition = ExpressionParser::default().parse_with(state)?;
+        let body = StatementsBlockParser.parse_with(state)?;
+
+        Ok(RawExpression::from(WhileExpression {
+            condition: Box::new(condition),
+            body,
+        })
+        .at(start..state.current.span.end))
+    }
+}
+
+pub(crate) struct PrimaryExpressionParser;
+
+impl Parser for PrimaryExpressionParser {
+    type Output = Expression;
+
+    fn parse_with(self, state: &mut ParserState<'_>) -> ParseResult<Self::Output> {
+        match state.next.inner.clone() {
             IntegerLiteral(literal) => {
-                let literal = *literal;
-                self.advance();
-                Ok(RawExpression::from(IntegerLiteralExpression { literal }).at(self.current.span))
+                state.advance();
+                Ok(
+                    RawExpression::from(IntegerLiteralExpression { literal })
+                        .at(state.current.span),
+                )
             }
             FloatLiteral(literal) => {
-                let literal = *literal;
-                self.advance();
-                Ok(RawExpression::from(FloatLiteralExpression { literal }).at(self.current.span))
+                state.advance();
+                Ok(RawExpression::from(FloatLiteralExpression { literal }).at(state.current.span))
             }
             ImaginaryNumberLiteral(literal) => {
-                let literal = *literal;
-                self.advance();
+                state.advance();
                 Ok(
                     RawExpression::from(ImaginaryNumberLiteralExpression { literal })
-                        .at(self.current.span),
+                        .at(state.current.span),
                 )
             }
             StringLiteral(literal) => {
-                let literal = literal.clone();
-                self.advance();
-                Ok(RawExpression::from(StringLiteralExpression { literal }).at(self.current.span))
+                state.advance();
+                Ok(RawExpression::from(StringLiteralExpression { literal }).at(state.current.span))
             }
             CharLiteral(literal) => {
-                let literal = *literal;
-                self.advance();
-                Ok(RawExpression::from(CharLiteralExpression { literal }).at(self.current.span))
+                state.advance();
+                Ok(RawExpression::from(CharLiteralExpression { literal }).at(state.current.span))
             }
             BoolLiteral(literal) => {
-                let literal = *literal;
-                self.advance();
-                Ok(RawExpression::from(BoolLiteralExpression { literal }).at(self.current.span))
+                state.advance();
+                Ok(RawExpression::from(BoolLiteralExpression { literal }).at(state.current.span))
             }
-            prefixop_pattern!() => {
-                let op = self.next.clone();
-                self.advance();
-
-                let inner = self.parse_expression(Precedence::Unary)?;
-                let span = op.span.start()..inner.span.end();
-
-                Ok(RawExpression::from(UnaryExpression {
-                    inner: Box::new(inner),
-                    op,
-                    postfix: false,
-                })
-                .at(span))
-            }
-            Punctuator(OpenParent) => {
-                self.advance();
-
-                let expression = self.parse_expression(Precedence::Lowest)?;
-
-                self.consume(Punctuator(CloseParent), "parenthesized expression")?;
-
-                Ok(expression)
-            }
-            Punctuator(OpenBracket) => {
-                self.advance();
-
-                let start = self.next.span.start();
-
-                let literal = parse_list!(
-                    self,
-                    "array literal",
-                    Punctuator(CloseBracket),
-                    false,
-                    || { self.parse_expression(Precedence::Lowest) }
-                );
-
-                let end = self.current.span.end();
-
-                Ok(RawExpression::from(ArrayLiteralExpression { literal }).at(start..end))
-            }
+            prefixop_pattern!() => PrefixExpressionParser.parse_with(state),
+            Punctuator(OpenParent) => ParenthesizedExpressionParser.parse_with(state),
+            Punctuator(OpenBracket) => ArrayLiteralExpressionParser.parse_with(state),
             Identifier(name) => {
-                let result =
-                    RawExpression::from(IdentifierExpression { name: *name }).at(self.current.span);
-
-                self.advance();
-
-                Ok(result)
+                state.advance();
+                Ok(RawExpression::from(IdentifierExpression { name }).at(state.current.span))
             }
-            Keyword(If) => {
-                self.advance();
-
-                let start = self.current.span.start();
-
-                let mut if_blocks = vec![IfBlock {
-                    condition: self.parse_expression(Precedence::Lowest)?,
-                    body: self.parse_statements_block(false)?,
-                }];
-
-                let mut r#else = None;
-
-                while let Keyword(Else) = self.next.inner {
-                    self.advance();
-
-                    match self.next.inner {
-                        Keyword(If) => {}
-                        _ => {
-                            r#else = Some(self.parse_statements_block(false)?);
-                            break;
-                        }
-                    }
-
-                    self.advance();
-
-                    if_blocks.push(IfBlock {
-                        condition: self.parse_expression(Precedence::Lowest)?,
-                        body: self.parse_statements_block(false)?,
-                    });
-                }
-
-                let end = self.current.span.end();
-
-                Ok(RawExpression::from(IfExpression { if_blocks, r#else }).at(start..end))
-            }
-            Keyword(While) => {
-                self.advance();
-                let start = self.current.span.start();
-
-                let condition = self.parse_expression(Precedence::Lowest)?;
-                let body = self.parse_statements_block(false)?;
-
-                Ok(RawExpression::from(WhileExpression {
-                    condition: Box::new(condition),
-                    body,
-                })
-                .at(start..self.current.span.end()))
-            }
+            Keyword(If) => IfExpressionParser.parse_with(state),
+            Keyword(While) => WhileExpressionParser.parse_with(state),
             _ => Err(ParseError::unexpected_token(
-                self.next.clone(),
+                state.next.clone(),
                 expected!(
                     "integer literal",
                     "float literal",

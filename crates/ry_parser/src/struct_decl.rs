@@ -1,31 +1,92 @@
-use crate::{ParseResult, Parser, ParserState};
+use crate::{
+    r#type::{GenericsParser, TypeParser, WhereClauseParser},
+    OptionalParser, ParseResult, Parser, ParserState,
+};
 use ry_ast::{
-    declaration::{Item, StructDeclarationItem},
-    token::{Punctuator::*, RawToken::*},
-    Visibility,
+    declaration::{Documented, StructDeclarationItem, StructMemberDeclaration, WithDocstring},
+    token::{Keyword::*, Punctuator::*, RawToken::*},
+    Mutability, Visibility,
 };
 
+pub(crate) struct StructMemberParser;
+
+impl Parser for StructMemberParser {
+    type Output = StructMemberDeclaration;
+
+    fn parse_with(self, state: &mut ParserState<'_>) -> ParseResult<Self::Output> {
+        let mut visibility = Visibility::private();
+        let mut mutability = Mutability::immutable();
+
+        if state.next.inner == Keyword(Pub) {
+            state.advance();
+            visibility = Visibility::public(state.current.span);
+        }
+
+        if state.next.inner == Keyword(Mut) {
+            state.advance();
+            mutability = Mutability::mutable(state.current.span);
+        }
+
+        let name = state.consume_identifier("struct member name in struct definition")?;
+
+        state.consume(Punctuator(Colon), "struct member definition")?;
+
+        let r#type = TypeParser.parse_with(state)?;
+
+        state.consume(Punctuator(Semicolon), "struct member definition")?;
+
+        Ok(StructMemberDeclaration {
+            visibility,
+            mutability,
+            name,
+            r#type,
+        })
+    }
+}
+
+pub(crate) struct StructMembersParser;
+
+impl Parser for StructMembersParser {
+    type Output = Vec<Documented<StructMemberDeclaration>>;
+
+    fn parse_with(self, state: &mut ParserState<'_>) -> ParseResult<Self::Output> {
+        let mut members = vec![];
+
+        while state.next.inner != Punctuator(CloseBrace) {
+            let docstring = state.consume_docstring()?;
+
+            members.push(
+                StructMemberParser
+                    .parse_with(state)?
+                    .with_docstring(docstring),
+            );
+        }
+
+        Ok(members)
+    }
+}
+
 pub(crate) struct StructDeclarationParser {
-    visibility: Visibility,
+    pub(crate) visibility: Visibility,
 }
 
 impl Parser for StructDeclarationParser {
-    type Output = Item;
+    type Output = StructDeclarationItem;
 
-    fn parse_with(self, parser: &mut ParserState<'_>) -> ParseResult<Self::Output> {
-        parser.advance();
+    fn parse_with(self, state: &mut ParserState<'_>) -> ParseResult<Self::Output> {
+        state.advance();
 
-        let name = parser.consume_identifier("struct name in struct declaration")?;
+        let name = state.consume_identifier("struct name in struct declaration")?;
 
-        let generics = parser.optionally_parse_generics()?;
+        let generics = GenericsParser.optionally_parse_with(state)?;
 
-        let r#where = parser.optionally_parse_where_clause()?;
+        let r#where = WhereClauseParser.optionally_parse_with(state)?;
 
-        parser.advance_with_docstring();
+        state.advance();
 
-        let members = parser.parse_struct_members()?;
+        let members = StructMembersParser.parse_with(state)?;
 
-        parser.consume_with_docstring(Punctuator(CloseBrace), "struct declaration")?;
+        state.consume(Punctuator(CloseBrace), "struct declaration")?;
 
         Ok(StructDeclarationItem {
             visibility: self.visibility,

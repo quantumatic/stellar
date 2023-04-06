@@ -106,7 +106,7 @@ where
 {
     type Output;
 
-    fn parse_with(self, parser: &mut ParserState<'_>) -> ParseResult<Self::Output>;
+    fn parse_with(self, state: &mut ParserState<'_>) -> ParseResult<Self::Output>;
 }
 
 pub(crate) trait OptionalParser
@@ -115,7 +115,7 @@ where
 {
     type Output;
 
-    fn optionally_parse_with(self, parser: &mut ParserState<'_>) -> ParseResult<Self::Output>;
+    fn optionally_parse_with(self, state: &mut ParserState<'_>) -> ParseResult<Self::Output>;
 }
 
 impl<'a> ParserState<'a> {
@@ -123,11 +123,11 @@ impl<'a> ParserState<'a> {
     ///
     /// # Usage
     /// ```
-    /// use ry_parser::Parser;
+    /// use ry_parser::ParserState;
     /// use ry_interner::Interner;
     ///
     /// let mut interner = Interner::default();
-    /// let parser = Parser::new("pub fun test() {}", &mut interner);
+    /// let parser = ParserState::new("pub fun test() {}", &mut interner);
     /// ```
     #[must_use]
     pub fn new(contents: &'a str, interner: &'a mut Interner) -> Self {
@@ -237,11 +237,11 @@ impl<'a> ParserState<'a> {
     /// Returns [`ParseResult<ProgramUnit>`] where [`ProgramUnit`] represents
     /// AST for a Ry module.
     /// ```
-    /// use ry_parser::Parser;
+    /// use ry_parser::ParserState;
     /// use ry_interner::Interner;
     ///
     /// let mut interner = Interner::default();
-    /// let mut parser = Parser::new("fun test() {}", &mut interner);
+    /// let mut parser = ParserState::new("fun test() {}", &mut interner);
     /// assert!(parser.parse().is_ok());
     /// ```
     ///
@@ -253,7 +253,7 @@ impl<'a> ParserState<'a> {
             self.consume_module_and_first_item_docstrings()?;
         Ok(ProgramUnit {
             docstring: global_docstring,
-            items: ItemsParser { first_docstring }.parse()?,
+            items: ItemsParser { first_docstring }.parse_with(self)?,
         })
     }
 }
