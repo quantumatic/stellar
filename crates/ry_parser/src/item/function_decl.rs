@@ -1,5 +1,5 @@
 use crate::{
-    error::ParseResult,
+    error::{expected, ParseError, ParseResult},
     expression::ExpressionParser,
     macros::parse_list,
     r#type::{GenericsParser, TypeParser, WhereClauseParser},
@@ -9,7 +9,7 @@ use crate::{
 use ry_ast::{
     declaration::{Function, FunctionArgument, FunctionDeclaration, FunctionTypeSignature, Item},
     token::{
-        Punctuator::{Assign, CloseParent, Colon, OpenParent, Semicolon},
+        Punctuator::{Assign, CloseParent, Colon, OpenBracket, OpenParent, Semicolon},
         RawToken::Punctuator,
     },
     Visibility,
@@ -113,15 +113,26 @@ impl Parser for FunctionParser {
         }
         .parse_with(state)?;
 
-        if state.next.inner == Punctuator(Semicolon) {
-            state.advance();
-            Ok(signature.into())
-        } else {
-            Ok(FunctionDeclaration {
+        match state.next.inner {
+            Punctuator(Semicolon) => {
+                state.advance();
+
+                Ok(signature.into())
+            }
+            Punctuator(OpenBracket) => Ok(FunctionDeclaration {
                 signature,
                 body: StatementsBlockParser.parse_with(state)?,
             }
-            .into())
+            .into()),
+            _ => {
+                state.advance();
+
+                Err(ParseError::unexpected_token(
+                    state.current.clone(),
+                    expected!(Punctuator(Semicolon), Punctuator(OpenBracket)),
+                    "end of function definition/declaration",
+                ))
+            }
         }
     }
 }
