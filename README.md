@@ -17,7 +17,7 @@ pub fun main() {
 No nulls, we use option types!
 
 ```ry
-pub fun div[T: Numeric](a: T, b: T): T? {
+pub fun div[T](a: T, b: T): T? where T: Numeric {
     if b == 0 {
         None
     } else {
