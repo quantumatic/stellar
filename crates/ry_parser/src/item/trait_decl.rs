@@ -1,10 +1,13 @@
 use crate::{
-    r#type::{GenericsParser, WhereClauseParser},
+    r#type::{generics::GenericsParser, where_clause::WhereClauseParser},
     OptionalParser, ParseResult, Parser, ParserState,
 };
 use ry_ast::{
     declaration::TraitDeclarationItem,
-    token::{Punctuator::*, RawToken::*},
+    token::{
+        Punctuator::{CloseBrace, OpenBrace},
+        RawToken::Punctuator,
+    },
     Visibility,
 };
 

@@ -62,17 +62,12 @@
     clippy::option_if_let_else
 )]
 
-mod r#enum;
 pub mod error;
-mod expression;
-mod function_decl;
-mod r#impl;
-mod imports;
-mod item;
-mod statement;
-mod struct_decl;
-mod trait_decl;
-mod r#type;
+pub(crate) mod expression;
+pub(crate) mod item;
+pub(crate) mod path;
+pub(crate) mod statement;
+pub(crate) mod r#type;
 
 use error::*;
 use item::ItemsParser;
@@ -81,10 +76,10 @@ use ry_ast::{
     name::Name,
     span::At,
     token::{
-        RawToken::{self, *},
+        RawToken::{self, DocstringComment, Identifier},
         Token,
     },
-    *,
+    ProgramUnit,
 };
 use ry_interner::Interner;
 use ry_lexer::Lexer;
@@ -179,14 +174,17 @@ impl<'a> ParserState<'a> {
     {
         let spanned_symbol;
 
-        if let Identifier(symbol) = self.next.inner {
-            spanned_symbol = symbol.at(self.next.span);
-        } else {
-            return Err(ParseError::unexpected_token(
-                self.next.clone(),
-                expected!("identifier"),
-                node,
-            ));
+        match self.next.inner {
+            Identifier(symbol) => {
+                spanned_symbol = symbol.at(self.next.span);
+            }
+            _ => {
+                return Err(ParseError::unexpected_token(
+                    self.next.clone(),
+                    expected!("identifier"),
+                    node,
+                ));
+            }
         }
 
         self.advance();

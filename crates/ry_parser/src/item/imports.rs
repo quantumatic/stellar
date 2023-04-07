@@ -1,7 +1,7 @@
-use crate::{error::*, r#type::PathParser, Parser, ParserState};
+use crate::{error::ParseResult, path::PathParser, Parser, ParserState};
 use ry_ast::{
     declaration::{ImportItem, Item},
-    token::{Punctuator::*, RawToken::Punctuator},
+    token::{Punctuator::Semicolon, RawToken::Punctuator},
     Visibility,
 };
 

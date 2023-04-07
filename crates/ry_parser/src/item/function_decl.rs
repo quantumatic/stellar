@@ -1,14 +1,17 @@
 use crate::{
-    error::*,
+    error::ParseResult,
     expression::ExpressionParser,
-    macros::*,
-    r#type::{GenericsParser, TypeParser, WhereClauseParser},
+    macros::parse_list,
+    r#type::{generics::GenericsParser, where_clause::WhereClauseParser, TypeParser},
     statement::StatementsBlockParser,
     OptionalParser, Parser, ParserState,
 };
 use ry_ast::{
     declaration::{Function, FunctionArgument, FunctionDeclaration, FunctionTypeSignature},
-    token::{Punctuator::*, RawToken::*},
+    token::{
+        Punctuator::{Assign, CloseParent, Colon, OpenParent, Semicolon},
+        RawToken::Punctuator,
+    },
     Visibility,
 };
 

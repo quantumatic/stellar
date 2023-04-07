@@ -22,8 +22,9 @@ macro_rules! parse_list {
                 loop {
                     result.push($fn($($fn_arg)*)?);
 
+                    #[allow(unused_qualifications)]
                     if !matches!($p.next.inner, $closing_token) {
-                        $p.consume(Punctuator(Comma), $name)?;
+                        $p.consume(Punctuator(ry_ast::token::Punctuator::Comma), $name)?;
 
                         if matches!($p.next.inner, $closing_token) {
                             break;

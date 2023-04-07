@@ -1,10 +1,14 @@
 use crate::{
-    r#type::{GenericsParser, TypeParser, WhereClauseParser},
+    r#type::{generics::GenericsParser, where_clause::WhereClauseParser, TypeParser},
     OptionalParser, ParseResult, Parser, ParserState,
 };
 use ry_ast::{
     declaration::{Documented, StructDeclarationItem, StructMemberDeclaration, WithDocstring},
-    token::{Keyword::*, Punctuator::*, RawToken::*},
+    token::{
+        Keyword::{Mut, Pub},
+        Punctuator::{CloseBrace, Colon, Semicolon},
+        RawToken::{Keyword, Punctuator},
+    },
     Mutability, Visibility,
 };
 

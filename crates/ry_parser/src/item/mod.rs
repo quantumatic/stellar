@@ -1,16 +1,23 @@
+pub(crate) mod r#enum;
+pub(crate) mod function_decl;
+pub(crate) mod r#impl;
+pub(crate) mod imports;
+pub(crate) mod struct_decl;
+pub(crate) mod trait_decl;
+
+use self::{
+    function_decl::FunctionParser, imports::ImportParser, r#enum::EnumDeclarationParser,
+    r#impl::ImplItemParser, struct_decl::StructDeclarationParser,
+    trait_decl::TraitDeclarationParser,
+};
 use crate::{
     error::{expected, ParseError, ParseResult},
-    function_decl::FunctionParser,
-    imports::ImportParser,
-    r#enum::EnumDeclarationParser,
-    struct_decl::StructDeclarationParser,
-    trait_decl::TraitDeclarationParser,
     Parser, ParserState,
 };
 use ry_ast::{
     declaration::{Docstring, Item, WithDocstring},
     token::{
-        Keyword::*,
+        Keyword::{Enum, Fun, Impl, Import, Pub, Struct, Trait},
         RawToken::{EndOfFile, Keyword},
     },
     Items, Visibility,
@@ -62,6 +69,7 @@ impl Parser for ItemParser {
                 .parse_with(state)?
                 .into(),
             Keyword(Fun) => FunctionParser { visibility }.parse_with(state)?.into(),
+            Keyword(Impl) => ImplItemParser { visibility }.parse_with(state)?.into(),
             _ => {
                 let error = Err(ParseError::unexpected_token(
                     state.next.clone(),

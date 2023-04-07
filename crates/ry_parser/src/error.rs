@@ -1,7 +1,6 @@
 //! Error and result implementation for the state.
-
 use codespan_reporting::diagnostic::{Diagnostic, Label};
-use ry_ast::{span::*, token::*};
+use ry_ast::{span::{At, Spanned}, token::*};
 use ry_report::Reporter;
 use std::fmt::Display;
 
@@ -75,7 +74,7 @@ impl Display for Expected {
         let len = self.0.len() - 1;
 
         f.write_fmt(format_args!(
-            "one of: {}",
+            "{}",
             self.0
                 .iter()
                 .enumerate()

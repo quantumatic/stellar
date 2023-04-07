@@ -1,11 +1,15 @@
 use crate::{
-    error::*,
-    r#type::{GenericsParser, TypeParser, WhereClauseParser},
+    error::ParseResult,
+    r#type::{generics::GenericsParser, where_clause::WhereClauseParser, TypeParser},
     OptionalParser, Parser, ParserState,
 };
 use ry_ast::{
     declaration::ImplItem,
-    token::{Keyword::*, Punctuator::*, RawToken::*},
+    token::{
+        Keyword::For,
+        Punctuator::CloseBrace,
+        RawToken::{Keyword, Punctuator},
+    },
     Visibility,
 };
 

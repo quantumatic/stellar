@@ -1,8 +1,11 @@
-use crate::{error::*, macros::*, Parser, ParserState};
+use crate::{error::ParseResult, macros::parse_list, Parser, ParserState};
 use ry_ast::{
     declaration::{Documented, EnumDeclarationItem, WithDocstring},
     name::Name,
-    token::{Punctuator::*, RawToken::*},
+    token::{
+        Punctuator::{CloseBrace, OpenBrace},
+        RawToken::Punctuator,
+    },
     Visibility,
 };
 
