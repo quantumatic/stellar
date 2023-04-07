@@ -10,7 +10,7 @@ pub mod token;
 pub mod r#type;
 pub mod visitor;
 
-use declaration::{docstring::*, Item};
+use declaration::{Docstring, Documented, Item};
 use ry_interner::Interner;
 use serialize::Serialize;
 use span::Span;

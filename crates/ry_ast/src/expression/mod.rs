@@ -1,19 +1,19 @@
-pub mod array;
-pub mod r#as;
-pub mod binary;
-pub mod bool;
-pub mod call;
-pub mod char;
-pub mod float;
-pub mod r#if;
-pub mod imaginary;
-pub mod integer;
-pub mod name;
-pub mod property;
-pub mod string;
-pub mod type_annotations;
-pub mod unary;
-pub mod r#while;
+mod array;
+mod r#as;
+mod binary;
+mod bool;
+mod call;
+mod char;
+mod float;
+mod r#if;
+mod imaginary;
+mod integer;
+mod name;
+mod property;
+mod string;
+mod type_annotations;
+mod unary;
+mod r#while;
 
 pub use self::{
     array::ArrayLiteralExpression,

@@ -1,3 +1,12 @@
+mod attribute;
+mod docstring;
+mod r#enum;
+mod function;
+mod r#impl;
+mod import;
+mod r#struct;
+mod r#trait;
+
 pub use self::{
     docstring::*,
     function::{Function, FunctionArgument, FunctionDeclaration, FunctionTypeSignature},
@@ -9,15 +18,6 @@ pub use self::{
 };
 use crate::visitor::{VisitWith, Visitor, VisitorMut};
 use std::ops::ControlFlow;
-
-pub mod attribute;
-pub mod docstring;
-pub mod r#enum;
-pub mod function;
-pub mod r#impl;
-pub mod import;
-pub mod r#struct;
-pub mod r#trait;
 
 #[derive(Debug, PartialEq)]
 pub enum Item {

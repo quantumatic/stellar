@@ -1,7 +1,7 @@
-pub mod defer;
-pub mod expression;
-pub mod r#return;
-pub mod var;
+mod defer;
+mod expression;
+mod r#return;
+mod var;
 
 pub use self::{
     defer::DeferStatement, expression::ExpressionStatement, r#return::ReturnStatement,

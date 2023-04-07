@@ -1,7 +1,7 @@
 use super::{docstring::Documented, function::Method, Item};
 use crate::{
     name::Name,
-    r#type::{generics::Generics, where_clause::WhereClause},
+    r#type::{Generics, WhereClause},
     Visibility,
 };
 

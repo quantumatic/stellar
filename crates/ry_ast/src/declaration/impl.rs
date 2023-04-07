@@ -1,6 +1,6 @@
 use super::{docstring::Documented, function::FunctionDeclaration, Item};
 use crate::{
-    r#type::{generics::Generics, where_clause::WhereClause, Type},
+    r#type::{Generics, Type, WhereClause},
     Visibility,
 };
 

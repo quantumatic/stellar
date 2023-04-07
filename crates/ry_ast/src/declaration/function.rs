@@ -2,7 +2,7 @@ use super::Item;
 use crate::{
     expression::Expression,
     name::Name,
-    r#type::{generics::Generics, where_clause::WhereClause, Type},
+    r#type::{Generics, Type, WhereClause},
     statement::StatementsBlock,
     Visibility,
 };

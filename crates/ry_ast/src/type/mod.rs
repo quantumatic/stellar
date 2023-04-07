@@ -1,12 +1,12 @@
-pub mod array;
-pub mod generics;
-pub mod primary;
-pub mod reference;
-pub mod where_clause;
+mod array;
+mod generics;
+mod primary;
+mod reference;
+mod where_clause;
 
 pub use self::{
     array::ArrayType,
-    generics::{Generic, Generics},
+    generics::{Generic, Generics, TypeAnnotations},
     primary::PrimaryType,
     reference::ReferenceType,
     where_clause::{WhereClause, WhereClauseUnit},
@@ -14,7 +14,6 @@ pub use self::{
 use super::span::Spanned;
 
 pub type Type = Spanned<RawType>;
-pub type TypeAnnotations = Vec<Type>;
 
 #[derive(Debug, PartialEq)]
 pub enum RawType {
