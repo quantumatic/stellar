@@ -50,9 +50,7 @@ impl Parser for VarStatementParser {
 
 #[cfg(test)]
 mod tests {
-    use super::VarStatementParser;
-    use crate::{macros::parser_test, Parser, ParserState};
-    use ry_interner::Interner;
+    use crate::macros::parser_test;
 
     parser_test!(VarStatementParser, imut_var, "var a = 3;");
     parser_test!(VarStatementParser, mut_var, "var b: i32 = 3;");

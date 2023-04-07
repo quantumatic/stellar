@@ -108,9 +108,7 @@ impl Parser for StructDeclarationParser {
 
 #[cfg(test)]
 mod tests {
-    use super::StructDeclarationParser;
-    use crate::{macros::parser_test, Parser, ParserState};
-    use ry_interner::Interner;
+    use crate::macros::parser_test;
 
     parser_test!(StructDeclarationParser, empty_struct, "struct test {}");
     parser_test!(

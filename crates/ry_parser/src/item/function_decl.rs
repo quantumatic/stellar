@@ -100,6 +100,7 @@ impl Parser for FunctionItemParser {
     }
 }
 
+#[derive(Default)]
 pub(crate) struct FunctionParser {
     pub(crate) visibility: Visibility,
 }
@@ -137,15 +138,15 @@ impl Parser for FunctionParser {
     }
 }
 
-// #[cfg(test)]
-// mod function_decl_tests {
-//     use crate::{macros::parser_test, Parser};
-//     use ry_interner::Interner;
+#[cfg(test)]
+mod tests {
+    use crate::macros::parser_test;
 
-//     parser_test!(function1, "pub fun test() {}");
-//     parser_test!(function2, "pub fun test[A](a: A): A { a }");
-//     parser_test!(
-//         function3,
-//         "fun unwrap[T, B: Option[T]](a: B): T { a.unwrap() }"
-//     );
-// }
+    parser_test!(FunctionParser, function1, "fun test();");
+    parser_test!(FunctionParser, function2, "fun test[A](a: A): A { a }");
+    parser_test!(
+        FunctionParser,
+        function3,
+        "fun unwrap[T, B: Option[T]](a: B): T { a.unwrap() }"
+    );
+}

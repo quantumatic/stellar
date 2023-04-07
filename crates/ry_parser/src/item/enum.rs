@@ -49,9 +49,7 @@ impl Parser for EnumDeclarationParser {
 
 #[cfg(test)]
 mod tests {
-    use super::EnumDeclarationParser;
-    use crate::{macros::parser_test, Parser, ParserState};
-    use ry_interner::Interner;
+    use crate::macros::parser_test;
 
     parser_test!(EnumDeclarationParser, no_variants, "enum test {}");
     parser_test!(EnumDeclarationParser, single_variant, "enum test { a }");

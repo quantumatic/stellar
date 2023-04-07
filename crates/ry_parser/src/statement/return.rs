@@ -19,9 +19,7 @@ impl Parser for ReturnStatementParser {
 
 #[cfg(test)]
 mod tests {
-    use super::ReturnStatementParser;
-    use crate::{macros::parser_test, Parser, ParserState};
-    use ry_interner::Interner;
+    use crate::macros::parser_test;
 
     parser_test!(ReturnStatementParser, defer, "return a?.b ?: 0;");
 }

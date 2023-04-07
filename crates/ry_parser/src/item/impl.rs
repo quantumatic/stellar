@@ -58,9 +58,7 @@ impl Parser for ImplItemParser {
 
 #[cfg(test)]
 mod tests {
-    use super::ImplItemParser;
-    use crate::{macros::parser_test, Parser, ParserState};
-    use ry_interner::Interner;
+    use crate::macros::parser_test;
 
     parser_test!(ImplItemParser, impl1, "impl[T] NotOption for T {}");
     parser_test!(

@@ -48,9 +48,7 @@ impl Parser for TypeParser {
 
 #[cfg(test)]
 mod tests {
-    use super::TypeParser;
-    use crate::{macros::parser_test, Parser, ParserState};
-    use ry_interner::Interner;
+    use crate::macros::parser_test;
 
     parser_test!(TypeParser, primary1, "i32");
     parser_test!(TypeParser, primary2, "Result[T, DivisionError]");

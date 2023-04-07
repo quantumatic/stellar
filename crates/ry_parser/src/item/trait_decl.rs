@@ -86,9 +86,7 @@ impl Parser for TraitDeclarationParser {
 
 #[cfg(test)]
 mod tests {
-    use super::TraitDeclarationParser;
-    use crate::{macros::parser_test, Parser, ParserState};
-    use ry_interner::Interner;
+    use crate::macros::parser_test;
 
     parser_test!(TraitDeclarationParser, empty_struct, "trait test {}");
     parser_test!(TraitDeclarationParser, trait1, "trait test { fun f(); }");

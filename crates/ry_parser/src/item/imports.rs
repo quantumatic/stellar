@@ -29,9 +29,7 @@ impl Parser for ImportParser {
 
 #[cfg(test)]
 mod tests {
-    use super::ImportParser;
-    use crate::{macros::parser_test, Parser, ParserState};
-    use ry_interner::Interner;
+    use crate::macros::parser_test;
 
     parser_test!(ImportParser, single_import, "import test;");
     parser_test!(ImportParser, imports, "import test; import test2.test;");
