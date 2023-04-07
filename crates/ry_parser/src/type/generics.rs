@@ -27,12 +27,12 @@ impl OptionalParser for GenericsParser {
             || -> ParseResult<Generic> {
                 let name = state.consume_identifier("generic name")?;
 
-                let mut constraint = None;
-
-                if state.next.inner == Punctuator(Colon) {
+                let constraint = if state.next.inner == Punctuator(Colon) {
                     state.advance();
-                    constraint = Some(TypeParser.parse_with(state)?);
-                }
+                    Some(TypeParser.parse_with(state)?)
+                } else {
+                    None
+                };
 
                 Ok(Generic { name, constraint })
             }

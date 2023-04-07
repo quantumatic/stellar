@@ -55,6 +55,8 @@
     clippy::perf,
     clippy::pedantic,
     clippy::nursery,
+
+    clippy::wildcard_imports,
 )]
 #![allow(
     clippy::module_name_repetitions,
@@ -63,13 +65,13 @@
 )]
 
 pub mod error;
-pub(crate) mod expression;
-pub(crate) mod item;
-pub(crate) mod path;
-pub(crate) mod statement;
-pub(crate) mod r#type;
+mod expression;
+mod item;
+mod path;
+mod statement;
+mod r#type;
 
-use error::*;
+use error::{expected, ParseError, ParseResult};
 use item::ItemsParser;
 use ry_ast::{
     declaration::Docstring,
@@ -172,12 +174,8 @@ impl<'a> ParserState<'a> {
     where
         N: Into<String>,
     {
-        let spanned_symbol;
-
-        match self.next.inner {
-            Identifier(symbol) => {
-                spanned_symbol = symbol.at(self.next.span);
-            }
+        let spanned_symbol = match self.next.inner {
+            Identifier(symbol) => symbol.at(self.next.span),
             _ => {
                 return Err(ParseError::unexpected_token(
                     self.next.clone(),
@@ -185,7 +183,7 @@ impl<'a> ParserState<'a> {
                     node,
                 ));
             }
-        }
+        };
 
         self.advance();
 

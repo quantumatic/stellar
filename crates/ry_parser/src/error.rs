@@ -1,6 +1,9 @@
 //! Error and result implementation for the state.
 use codespan_reporting::diagnostic::{Diagnostic, Label};
-use ry_ast::{span::{At, Spanned}, token::*};
+use ry_ast::{
+    span::{At, Spanned},
+    token::{LexError, RawToken, Token},
+};
 use ry_report::Reporter;
 use std::fmt::Display;
 
@@ -10,9 +13,7 @@ pub struct Expected(Vec<String>);
 
 macro_rules! expected {
     ($($e:expr),*) => {{
-        let mut vec = Vec::new();
-        $( vec.push($e.into()); )*
-        vec
+        vec![$($e.to_string()),*]
     }};
 }
 
@@ -62,7 +63,7 @@ impl ParseError {
             RawToken::Error(lexer_error) => Self::lexer(lexer_error.at(got.span)),
             _ => Self::UnexpectedToken {
                 got,
-                expected: Expected(expected.iter().map(|e| e.clone().into()).collect()),
+                expected: Expected(expected),
                 node: node.into(),
             },
         }

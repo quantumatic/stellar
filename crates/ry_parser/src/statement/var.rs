@@ -29,12 +29,12 @@ impl Parser for VarStatementParser {
 
         let name = state.consume_identifier("variable name in var statement")?;
 
-        let mut r#type = None;
-
-        if state.next.inner == Punctuator(Colon) {
+        let r#type = if state.next.inner == Punctuator(Colon) {
             state.advance();
-            r#type = Some(TypeParser.parse_with(state)?);
-        }
+            Some(TypeParser.parse_with(state)?)
+        } else {
+            None
+        };
 
         state.consume(Punctuator(Assign), "var statement")?;
 
@@ -49,7 +49,7 @@ impl Parser for VarStatementParser {
 }
 
 #[cfg(test)]
-mod var_statement_tests {
+mod tests {
     use super::VarStatementParser;
     use crate::{macros::parser_test, Parser, ParserState};
     use ry_interner::Interner;

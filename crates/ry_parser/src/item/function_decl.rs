@@ -2,12 +2,12 @@ use crate::{
     error::ParseResult,
     expression::ExpressionParser,
     macros::parse_list,
-    r#type::{generics::GenericsParser, where_clause::WhereClauseParser, TypeParser},
+    r#type::{GenericsParser, TypeParser, WhereClauseParser},
     statement::StatementsBlockParser,
     OptionalParser, Parser, ParserState,
 };
 use ry_ast::{
-    declaration::{Function, FunctionArgument, FunctionDeclaration, FunctionTypeSignature},
+    declaration::{Function, FunctionArgument, FunctionDeclaration, FunctionTypeSignature, Item},
     token::{
         Punctuator::{Assign, CloseParent, Colon, OpenParent, Semicolon},
         RawToken::Punctuator,
@@ -81,6 +81,22 @@ impl Parser for FunctionTypeSignatureParser {
             return_type,
             r#where,
         })
+    }
+}
+
+pub(crate) struct FunctionItemParser {
+    pub(crate) visibility: Visibility,
+}
+
+impl Parser for FunctionItemParser {
+    type Output = Item;
+
+    fn parse_with(self, state: &mut ParserState<'_>) -> ParseResult<Self::Output> {
+        Ok(FunctionParser {
+            visibility: self.visibility,
+        }
+        .parse_with(state)?
+        .into())
     }
 }
 

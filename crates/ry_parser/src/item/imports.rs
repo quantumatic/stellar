@@ -5,6 +5,7 @@ use ry_ast::{
     Visibility,
 };
 
+#[derive(Default)]
 pub(crate) struct ImportParser {
     pub(crate) visibility: Visibility,
 }
@@ -26,11 +27,12 @@ impl Parser for ImportParser {
     }
 }
 
-// #[cfg(test)]
-// mod import_tests {
-//     use crate::{macros::parser_test, Parser};
-//     use ry_interner::Interner;
+#[cfg(test)]
+mod tests {
+    use super::ImportParser;
+    use crate::{macros::parser_test, Parser, ParserState};
+    use ry_interner::Interner;
 
-//     parser_test!(single_import, "import test;");
-//     parser_test!(imports, "import test; import test2.test;");
-// }
+    parser_test!(ImportParser, single_import, "import test;");
+    parser_test!(ImportParser, imports, "import test; import test2.test;");
+}

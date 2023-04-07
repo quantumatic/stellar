@@ -1,12 +1,16 @@
-pub(crate) mod defer;
-pub(crate) mod r#return;
-pub(crate) mod var;
+mod defer;
+mod r#return;
+mod var;
 
 use self::{defer::DeferStatementParser, r#return::ReturnStatementParser, var::VarStatementParser};
 use crate::{expression::ExpressionParser, ParseResult, Parser, ParserState};
 use ry_ast::{
     statement::{ExpressionStatement, Statement, StatementsBlock},
-    token::{Keyword::*, Punctuator::*, RawToken::*},
+    token::{
+        Keyword::{Defer, Return, Var},
+        Punctuator::{CloseBrace, OpenBrace, Semicolon},
+        RawToken::{Keyword, Punctuator},
+    },
 };
 
 pub(crate) struct StatementParser;

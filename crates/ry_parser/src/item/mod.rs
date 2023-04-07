@@ -1,12 +1,12 @@
-pub(crate) mod r#enum;
-pub(crate) mod function_decl;
-pub(crate) mod r#impl;
-pub(crate) mod imports;
-pub(crate) mod struct_decl;
-pub(crate) mod trait_decl;
+mod r#enum;
+mod function_decl;
+mod r#impl;
+mod imports;
+mod struct_decl;
+mod trait_decl;
 
 use self::{
-    function_decl::FunctionParser, imports::ImportParser, r#enum::EnumDeclarationParser,
+    function_decl::FunctionItemParser, imports::ImportParser, r#enum::EnumDeclarationParser,
     r#impl::ImplItemParser, struct_decl::StructDeclarationParser,
     trait_decl::TraitDeclarationParser,
 };
@@ -58,18 +58,12 @@ impl Parser for ItemParser {
         }
 
         Ok(match state.next.inner {
-            Keyword(Enum) => EnumDeclarationParser { visibility }
-                .parse_with(state)?
-                .into(),
-            Keyword(Import) => ImportParser { visibility }.parse_with(state)?.into(),
-            Keyword(Struct) => StructDeclarationParser { visibility }
-                .parse_with(state)?
-                .into(),
-            Keyword(Trait) => TraitDeclarationParser { visibility }
-                .parse_with(state)?
-                .into(),
-            Keyword(Fun) => FunctionParser { visibility }.parse_with(state)?.into(),
-            Keyword(Impl) => ImplItemParser { visibility }.parse_with(state)?.into(),
+            Keyword(Enum) => EnumDeclarationParser { visibility }.parse_with(state)?,
+            Keyword(Import) => ImportParser { visibility }.parse_with(state)?,
+            Keyword(Struct) => StructDeclarationParser { visibility }.parse_with(state)?,
+            Keyword(Trait) => TraitDeclarationParser { visibility }.parse_with(state)?,
+            Keyword(Fun) => FunctionItemParser { visibility }.parse_with(state)?,
+            Keyword(Impl) => ImplItemParser { visibility }.parse_with(state)?,
             _ => {
                 let error = Err(ParseError::unexpected_token(
                     state.next.clone(),
@@ -78,8 +72,7 @@ impl Parser for ItemParser {
                         Keyword(Fun),
                         Keyword(Trait),
                         Keyword(Enum),
-                        Keyword(Struct),
-                        Keyword(Pub)
+                        Keyword(Struct)
                     ),
                     "item",
                 ));

@@ -1,7 +1,8 @@
 //! `precedence.rs` - defines `Precedence` enum for different infix expression operator precedences.
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Default, Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Precedence {
+    #[default]
     Lowest,
     // ?:
     Elvis,

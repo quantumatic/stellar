@@ -1,6 +1,6 @@
 use crate::{error::ParseResult, macros::parse_list, Parser, ParserState};
 use ry_ast::{
-    declaration::{Documented, EnumDeclarationItem, WithDocstring},
+    declaration::{Documented, EnumDeclarationItem, Item, WithDocstring},
     name::Name,
     token::{
         Punctuator::{CloseBrace, OpenBrace},
@@ -15,7 +15,7 @@ pub(crate) struct EnumDeclarationParser {
 }
 
 impl Parser for EnumDeclarationParser {
-    type Output = EnumDeclarationItem;
+    type Output = Item;
 
     fn parse_with(self, state: &mut ParserState<'_>) -> ParseResult<Self::Output> {
         state.advance();
@@ -42,16 +42,16 @@ impl Parser for EnumDeclarationParser {
             visibility: self.visibility,
             name,
             variants,
-        })
+        }
+        .into())
     }
 }
 
 #[cfg(test)]
-mod enum_tests {
+mod tests {
+    use super::EnumDeclarationParser;
     use crate::{macros::parser_test, Parser, ParserState};
     use ry_interner::Interner;
-
-    use super::EnumDeclarationParser;
 
     parser_test!(EnumDeclarationParser, no_variants, "enum test {}");
     parser_test!(EnumDeclarationParser, single_variant, "enum test { a }");

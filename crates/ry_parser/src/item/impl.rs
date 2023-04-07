@@ -1,10 +1,10 @@
 use crate::{
     error::ParseResult,
-    r#type::{generics::GenericsParser, where_clause::WhereClauseParser, TypeParser},
+    r#type::{GenericsParser, TypeParser, WhereClauseParser},
     OptionalParser, Parser, ParserState,
 };
 use ry_ast::{
-    declaration::ImplItem,
+    declaration::{ImplItem, Item},
     token::{
         Keyword::For,
         Punctuator::CloseBrace,
@@ -13,12 +13,13 @@ use ry_ast::{
     Visibility,
 };
 
+#[derive(Default)]
 pub(crate) struct ImplItemParser {
     pub(crate) visibility: Visibility,
 }
 
 impl Parser for ImplItemParser {
-    type Output = ImplItem;
+    type Output = Item;
 
     fn parse_with(self, state: &mut ParserState<'_>) -> ParseResult<Self::Output> {
         state.advance();
@@ -55,14 +56,16 @@ impl Parser for ImplItemParser {
     }
 }
 
-// #[cfg(test)]
-// mod impl_tests {
-//     use crate::{macros::parser_test, Parser};
-//     use ry_interner::Interner;
+#[cfg(test)]
+mod tests {
+    use super::ImplItemParser;
+    use crate::{macros::parser_test, Parser, ParserState};
+    use ry_interner::Interner;
 
-//     parser_test!(impl1, "impl[T] NotOption for T {}");
-//     parser_test!(
-//         impl2,
-//         "impl[T] Into[Option[M]] for Tuple[T, M] where M: Into[T] {}"
-//     );
-// }
+    parser_test!(ImplItemParser, impl1, "impl[T] NotOption for T {}");
+    parser_test!(
+        ImplItemParser,
+        impl2,
+        "impl[T] Into[Option[M]] for Tuple[T, M] where M: Into[T] {}"
+    );
+}

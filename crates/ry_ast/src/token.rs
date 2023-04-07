@@ -304,7 +304,8 @@ impl AsRef<str> for RawToken {
             Self::BoolLiteral(..) => "bool literal",
             Self::Keyword(keyword) => keyword.as_ref(),
             Self::Punctuator(punctuator) => punctuator.as_ref(),
-            Self::DocstringComment { .. } | Self::Comment => "comment",
+            Self::DocstringComment { .. } => "doc comment",
+            Self::Comment { .. } => "comment",
             Self::EndOfFile => "end of file",
             RawToken::Error(..) => "error token",
         }

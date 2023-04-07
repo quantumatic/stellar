@@ -1,14 +1,14 @@
-pub(crate) mod array;
-pub(crate) mod binary;
-pub(crate) mod call;
-pub(crate) mod cast;
-pub(crate) mod r#if;
-pub(crate) mod parenthesized;
-pub(crate) mod postfix;
-pub(crate) mod prefix;
-pub(crate) mod property;
-pub(crate) mod type_annotations;
-pub(crate) mod r#while;
+mod array;
+mod binary;
+mod call;
+mod cast;
+mod r#if;
+mod parenthesized;
+mod postfix;
+mod prefix;
+mod property;
+mod type_annotations;
+mod r#while;
 
 use self::{
     array::ArrayLiteralExpressionParser, binary::BinaryExpressionParser,
@@ -30,16 +30,9 @@ use ry_ast::{
     token::{Keyword::*, Punctuator::*, RawToken::*},
 };
 
+#[derive(Default)]
 pub(crate) struct ExpressionParser {
     pub(crate) precedence: Precedence,
-}
-
-impl Default for ExpressionParser {
-    fn default() -> Self {
-        Self {
-            precedence: Precedence::Lowest,
-        }
-    }
 }
 
 impl Parser for ExpressionParser {

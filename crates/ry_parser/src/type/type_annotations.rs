@@ -18,6 +18,14 @@ impl OptionalParser for TypeAnnotationsParser {
             return Ok(vec![]);
         }
 
+        self.parse_with(state)
+    }
+}
+
+impl Parser for TypeAnnotationsParser {
+    type Output = TypeAnnotations;
+
+    fn parse_with(self, state: &mut ParserState<'_>) -> ParseResult<Self::Output> {
         state.advance();
 
         let result = parse_list!(state, "generics", Punctuator(CloseBracket), || {

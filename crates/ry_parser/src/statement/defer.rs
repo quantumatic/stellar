@@ -18,7 +18,7 @@ impl Parser for DeferStatementParser {
 }
 
 #[cfg(test)]
-mod defer_statement_tests {
+mod tests {
     use super::DeferStatementParser;
     use crate::{macros::parser_test, Parser, ParserState};
     use ry_interner::Interner;

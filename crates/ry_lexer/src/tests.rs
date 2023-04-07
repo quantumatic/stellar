@@ -1,5 +1,5 @@
 #[cfg(test)]
-mod lexer_tests {
+mod tests {
     use crate::Lexer;
     use ry_ast::token::{LexError, RawToken::*};
     use ry_interner::Interner;

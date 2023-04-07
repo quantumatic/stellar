@@ -1,9 +1,11 @@
 use crate::{
-    r#type::{generics::GenericsParser, where_clause::WhereClauseParser, TypeParser},
+    r#type::{GenericsParser, TypeParser, WhereClauseParser},
     OptionalParser, ParseResult, Parser, ParserState,
 };
 use ry_ast::{
-    declaration::{Documented, StructDeclarationItem, StructMemberDeclaration, WithDocstring},
+    declaration::{
+        Documented, Item, StructDeclarationItem, StructMemberDeclaration, WithDocstring,
+    },
     token::{
         Keyword::{Mut, Pub},
         Punctuator::{CloseBrace, Colon, Semicolon},
@@ -70,12 +72,13 @@ impl Parser for StructMembersParser {
     }
 }
 
+#[derive(Default)]
 pub(crate) struct StructDeclarationParser {
     pub(crate) visibility: Visibility,
 }
 
 impl Parser for StructDeclarationParser {
-    type Output = StructDeclarationItem;
+    type Output = Item;
 
     fn parse_with(self, state: &mut ParserState<'_>) -> ParseResult<Self::Output> {
         state.advance();
@@ -103,69 +106,21 @@ impl Parser for StructDeclarationParser {
     }
 }
 
-//     fn parse_struct_member(&mut self) -> ParseResult<StructMemberDeclaration> {
-//         let mut visibility = Visibility::private();
-//         let (mut invalid_mutability, mut mutability) =
-//             (Mutability::immutable(), Mutability::immutable());
+#[cfg(test)]
+mod tests {
+    use super::StructDeclarationParser;
+    use crate::{macros::parser_test, Parser, ParserState};
+    use ry_interner::Interner;
 
-//         if let Keyword(Mut) = self.next.inner {
-//             self.advance();
-//             mutability = Mutability::mutable(self.current.span);
-//         }
-
-//         if let Keyword(Pub) = self.next.inner {
-//             self.advance();
-//             visibility = Visibility::public(self.current.span);
-//         }
-
-//         if let Keyword(Mut) = self.next.inner {
-//             self.advance();
-//             invalid_mutability = Mutability::mutable(self.current.span);
-//         }
-
-//         let name = self.consume_identifier("struct member name in struct definition")?;
-
-//         self.consume(Punctuator(Colon), "struct member definition")?;
-
-//         let r#type = self.parse_type()?;
-
-//         self.consume(Punctuator(Semicolon), "struct member definition")?;
-
-//         Ok(StructMemberDeclaration {
-//             visibility,
-//             mutability,
-//             invalid_mutability,
-//             name,
-//             r#type,
-//         })
-//     }
-
-//     fn parse_struct_members(&mut self) -> ParseResult<Vec<Documented<StructMemberDeclaration>>> {
-//         let mut members = vec![];
-
-//         loop {
-//             if self.next.inner == Punctuator(CloseBrace) {
-//                 break;
-//             }
-
-//             let docstring = self.consume_non_module_docstring()?;
-//             let member = self.parse_struct_member()?;
-
-//             members.push(member.with_docstring(docstring));
-//         }
-
-//         Ok(members)
-//     }
-// }
-
-// #[cfg(test)]
-// mod struct_tests {
-//     use crate::{macros::parser_test, Parser};
-//     use ry_interner::Interner;
-
-//     parser_test!(empty_struct, "struct test {}");
-//     parser_test!(
-//         r#struct,
-//         "struct test[T, M] { pub mut a: i32; mut pub b: T; pub c: T; d: M; }"
-//     );
-// }
+    parser_test!(StructDeclarationParser, empty_struct, "struct test {}");
+    parser_test!(
+        StructDeclarationParser,
+        r#struct1,
+        "struct Point[T: Numeric] { pub mut x: T; pub mut y: T; }"
+    );
+    parser_test!(
+        StructDeclarationParser,
+        r#struct2,
+        "struct Lexer[S] where S: Iterator[char] { contents: S; }"
+    );
+}

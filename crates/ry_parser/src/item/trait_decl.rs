@@ -1,22 +1,62 @@
+use super::function_decl::FunctionParser;
 use crate::{
-    r#type::{generics::GenericsParser, where_clause::WhereClauseParser},
+    error::{expected, ParseError},
+    r#type::{GenericsParser, WhereClauseParser},
     OptionalParser, ParseResult, Parser, ParserState,
 };
 use ry_ast::{
-    declaration::TraitDeclarationItem,
+    declaration::{Documented, Function, Item, TraitDeclarationItem, WithDocstring},
     token::{
-        Punctuator::{CloseBrace, OpenBrace},
-        RawToken::Punctuator,
+        Keyword::{Fun, Pub},
+        Punctuator::{And, CloseBrace, OpenBrace, OpenBracket},
+        RawToken::{Keyword, Punctuator},
     },
     Visibility,
 };
 
+pub(crate) struct TraitItemsParser;
+
+impl Parser for TraitItemsParser {
+    type Output = Vec<Documented<Function>>;
+
+    fn parse_with(self, state: &mut ParserState<'_>) -> ParseResult<Self::Output> {
+        let mut items = vec![];
+
+        while state.next.inner != Punctuator(CloseBrace) {
+            // TODO: Add type aliases here
+
+            let doc = state.consume_docstring()?;
+
+            let visibility = if state.next.inner == Keyword(Pub) {
+                state.advance();
+                Visibility::public(state.current.span)
+            } else {
+                Visibility::private()
+            };
+
+            items.push(match state.next.inner {
+                Keyword(Fun) => Ok(FunctionParser { visibility }
+                    .parse_with(state)?
+                    .with_docstring(doc)),
+                _ => Err(ParseError::unexpected_token(
+                    state.next.clone(),
+                    expected!("identifier", Punctuator(And), Punctuator(OpenBracket)),
+                    "type",
+                )),
+            }?);
+        }
+
+        Ok(items)
+    }
+}
+
+#[derive(Default)]
 pub(crate) struct TraitDeclarationParser {
     pub(crate) visibility: Visibility,
 }
 
 impl Parser for TraitDeclarationParser {
-    type Output = TraitDeclarationItem;
+    type Output = Item;
 
     fn parse_with(self, state: &mut ParserState<'_>) -> ParseResult<Self::Output> {
         state.advance();
@@ -29,7 +69,7 @@ impl Parser for TraitDeclarationParser {
 
         state.consume(Punctuator(OpenBrace), "trait declaration")?;
 
-        let methods = vec![];
+        let methods = TraitItemsParser.parse_with(state)?;
 
         state.consume(Punctuator(CloseBrace), "trait declaration")?;
 
@@ -39,48 +79,22 @@ impl Parser for TraitDeclarationParser {
             generics,
             r#where,
             methods,
-        })
+        }
+        .into())
     }
 }
 
-// impl TraitDeclarationParser {
-//     fn parse_trait_associated_functions(&mut self) -> ParseResult<Vec<Documented<Function>>> {
-//         let mut associated_functions = vec![];
+#[cfg(test)]
+mod tests {
+    use super::TraitDeclarationParser;
+    use crate::{macros::parser_test, Parser, ParserState};
+    use ry_interner::Interner;
 
-//         loop {
-//             if self.next.inner == Punctuator(CloseBrace) {
-//                 break;
-//             }
-
-//             let docstring = self.consume_non_module_docstring()?;
-
-//             let mut visibility = Visibility::private();
-
-//             if let Keyword(Pub) = self.next.inner {
-//                 visibility = Visibility::public(self.next.span);
-//                 self.advance();
-//             }
-
-//             associated_functions.push(self.parse_function(visibility)?.with_docstring(docstring));
-//         }
-
-//         Ok(associated_functions)
-//     }
-// }
-
-// #[cfg(test)]
-// mod trait_tests {
-//     use crate::{macros::parser_test, Parser};
-//     use ry_interner::Interner;
-
-//     parser_test!(empty_trait, "trait test {}");
-//     parser_test!(r#trait, "trait test { fun f(); }");
-//     parser_test!(
-//         r#trait_with_generics,
-//         "trait Into[T] { fun into(self: &Self): T; }"
-//     );
-//     parser_test!(
-//         unnecessary_visibility_qualifier,
-//         "trait Into[T] { pub fun into(self: &Self): T; }"
-//     );
-// }
+    parser_test!(TraitDeclarationParser, empty_struct, "trait test {}");
+    parser_test!(TraitDeclarationParser, trait1, "trait test { fun f(); }");
+    parser_test!(
+        TraitDeclarationParser,
+        trait2,
+        "trait Into[T] { fun into(self: &Self): T; }"
+    );
+}
