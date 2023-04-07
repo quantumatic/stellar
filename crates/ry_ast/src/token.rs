@@ -391,7 +391,7 @@ impl RawToken {
         match self {
             Self::Punctuator(punctuator) => punctuator.to_precedence(),
             Self::Keyword(Keyword::As) => Precedence::As,
-            _ => unreachable!(),
+            _ => Precedence::Lowest,
         }
     }
 
