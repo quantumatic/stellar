@@ -9,7 +9,7 @@ use crate::{
 use ry_ast::{
     declaration::{Function, FunctionArgument, FunctionDeclaration, FunctionTypeSignature, Item},
     token::{
-        Punctuator::{Assign, CloseParent, Colon, OpenBracket, OpenParent, Semicolon},
+        Punctuator::{Assign, CloseParent, Colon, OpenBrace, OpenParent, Semicolon},
         RawToken::Punctuator,
     },
     Visibility,
@@ -119,7 +119,7 @@ impl Parser for FunctionParser {
 
                 Ok(signature.into())
             }
-            Punctuator(OpenBracket) => Ok(FunctionDeclaration {
+            Punctuator(OpenBrace) => Ok(FunctionDeclaration {
                 signature,
                 body: StatementsBlockParser.parse_with(state)?,
             }
@@ -129,7 +129,7 @@ impl Parser for FunctionParser {
 
                 Err(ParseError::unexpected_token(
                     state.current.clone(),
-                    expected!(Punctuator(Semicolon), Punctuator(OpenBracket)),
+                    expected!(Punctuator(Semicolon), Punctuator(OpenBrace)),
                     "end of function definition/declaration",
                 ))
             }

@@ -26,8 +26,8 @@
 //! let mut interner = Interner::default();
 //! let mut lexer = Lexer::new("", &mut interner);
 //!
-//! assert_eq!(lexer.next().unwrap().inner, EndOfFile);
-//! assert_eq!(lexer.next().unwrap().inner, EndOfFile); // ok
+//! assert_eq!(lexer.next(), None);
+//! assert_eq!(lexer.next(), None); // ok
 //! ```
 //!
 //! Note: the Ry lexer makes use of the `ry_interner` crate to perform string interning,
@@ -432,24 +432,11 @@ impl<'a> Lexer<'a> {
         }
     }
 
-    pub fn next_no_docstrings_and_comments(&mut self) -> IterElem {
-        loop {
-            let t = self.next();
-            match t.as_ref().unwrap().inner {
-                DocstringComment { .. } => {}
-                Comment => {}
-                _ => {
-                    return t;
-                }
-            }
-        }
-    }
-
     pub fn next_no_comments(&mut self) -> IterElem {
         loop {
             let t = self.next();
-            match t.as_ref().unwrap().inner {
-                Comment => {}
+            match t {
+                Some(Spanned { inner: Comment, .. }) => {}
                 _ => {
                     return t;
                 }
@@ -465,7 +452,7 @@ impl<'c> Iterator for Lexer<'c> {
         self.eat_whitespaces();
 
         match (self.current, self.next) {
-            ('\0', _) => Some(Token::new(EndOfFile, self.char_location(1))),
+            ('\0', _) => None,
 
             (':', _) => self.advance_with(Punctuator(Colon)),
 

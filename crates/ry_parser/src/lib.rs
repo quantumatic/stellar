@@ -130,7 +130,9 @@ impl<'a> ParserState<'a> {
     pub fn new(contents: &'a str, interner: &'a mut Interner) -> Self {
         let mut lexer = Lexer::new(contents, interner);
 
-        let current = lexer.next_no_comments().unwrap();
+        let current = lexer
+            .next_no_comments()
+            .unwrap_or(RawToken::EndOfFile.at(0..1));
         let next = current.clone();
 
         Self {
@@ -143,7 +145,10 @@ impl<'a> ParserState<'a> {
     /// Advances the parser to the next token and skips comment tokens.
     fn advance(&mut self) {
         self.current = self.next.clone();
-        self.next = self.lexer.next_no_comments().unwrap();
+        self.next = self
+            .lexer
+            .next_no_comments()
+            .unwrap_or(RawToken::EndOfFile.at(self.current.span.end..self.current.span.end + 1));
     }
 
     fn expect<N>(&self, expected: RawToken, node: N) -> Result<(), ParseError>

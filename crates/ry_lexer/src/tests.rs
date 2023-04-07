@@ -23,9 +23,6 @@ mod tests {
         };
     }
 
-    lexer_test!(eof, "", EndOfFile);
-    lexer_test!(eof2, " \t\n\r", EndOfFile);
-
     lexer_test!(
         identifier,
         "test",
