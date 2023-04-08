@@ -102,3 +102,24 @@ Then you're good to go coding in Ry!
 
 # Documentation
 > Not made
+
+# Architecture
+
+```mermaid
+graph LR
+    A[Ry project] --> B
+        subgraph Parsing
+            B(Lexer) --> C(Parser)
+        end
+    C --> D[AST]
+    D --> E
+        subgraph Semantic Analysis
+            E(Global Symbol Resolution) --> F(Local Symbol Resolution)
+             --> G(Type Checking)
+        end
+    G --> H[AST Lowering]
+    H --> I(Code Generation)
+        subgraph Code Generation
+            I(LLVM IR Generation) --> J[Object file generation] --> K[Linking] --> L[Native binary] 
+        end
+```

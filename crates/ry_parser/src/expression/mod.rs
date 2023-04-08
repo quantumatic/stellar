@@ -153,6 +153,7 @@ mod expression_tests {
     parser_test!(ExpressionParser, literal1, "3");
     parser_test!(ExpressionParser, literal2, "\"hello\"");
     parser_test!(ExpressionParser, literal3, "true");
+    parser_test!(ExpressionParser, array, "[1, 2, \"3\".into()]");
     parser_test!(ExpressionParser, binary, "!(1 + 2) + 3 / (3 + a ?: 0 * 4)");
     parser_test!(ExpressionParser, cast, "1 as f32");
     parser_test!(ExpressionParser, call, "l(2 * b() + 2).a()");

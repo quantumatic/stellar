@@ -20,6 +20,8 @@ impl Parser for ArrayLiteralExpressionParser {
             ExpressionParser::default().parse_with(state)
         });
 
+        state.advance();
+
         let end = state.current.span.end;
 
         Ok(RawExpression::from(ArrayLiteralExpression { literal }).at(start..end))
