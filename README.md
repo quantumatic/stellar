@@ -105,21 +105,4 @@ Then you're good to go coding in Ry!
 
 # Architecture
 
-```mermaid
-graph LR
-    A[Ry project] --> B
-        subgraph Parsing
-            B(Lexer) --> C(Parser)
-        end
-    C --> D[AST]
-    D --> E
-        subgraph Semantic Analysis
-            E(Global Symbol Resolution) --> F(Local Symbol Resolution)
-             --> G(Type Checking)
-        end
-    G --> H[AST Lowering]
-    H --> I(Code Generation)
-        subgraph Code Generation
-            I(LLVM IR Generation) --> J[Object file generation] --> K[Linking] --> L[Native binary] 
-        end
-```
+[![](https://mermaid.ink/img/pako:eNptUk1v4jAQ_SuWT6mUIvJBITmsRIFS2tCtoNrDJhycZAC3iR05zm5TxH9fx2mhWTGnzHtv5s3Ec8AJTwH7eCdIsUfBKmJIxThc1agQ_BUSuUHX1z_QbUs0UVZxq34moqRsd2aauDUCeAdxpasmRqP5yr71AJa2yUQz03C8ftm0yFQjswt-a8gJkzRBY0ayuqRl13n-f-EZvOuCM2Oe8ZhkaF3nMc_QCkqeVZJy1g56ZwQ8uUh3-2jx3HipC0CTPSRv6m9cXViyHeK-WRIF_C8Ipfvc9l5TiwvbTtTDoDkwEKSx7jovjCD4tUSL1TdFO_tD-DNung1taQZod2LbZ3wMA8rezvadMR-1ZBk-qYI_gGLKiKg32MQ5iJzQVJ3JoVFGWO4hhwj76jOFLakyGeGIHZWUVJKva5ZgX4oKTFwVKZEwpUQtlWN_S7LyhM5SKrk4gQVhvznPvypViv0Dfse-N-jZTt-x3VG_73iuZ5u4xr7ljHpD1-o7jjO0bm4GA_do4g_dwO4NLHc4tEee5Xkj27NMDNpr2R67vvnjP5-Q2EM)](https://mermaid.live/edit#pako:eNptUk1v4jAQ_SuWT6mUIvJBITmsRIFS2tCtoNrDJhycZAC3iR05zm5TxH9fx2mhWTGnzHtv5s3Ec8AJTwH7eCdIsUfBKmJIxThc1agQ_BUSuUHX1z_QbUs0UVZxq34moqRsd2aauDUCeAdxpasmRqP5yr71AJa2yUQz03C8ftm0yFQjswt-a8gJkzRBY0ayuqRl13n-f-EZvOuCM2Oe8ZhkaF3nMc_QCkqeVZJy1g56ZwQ8uUh3-2jx3HipC0CTPSRv6m9cXViyHeK-WRIF_C8Ipfvc9l5TiwvbTtTDoDkwEKSx7jovjCD4tUSL1TdFO_tD-DNung1taQZod2LbZ3wMA8rezvadMR-1ZBk-qYI_gGLKiKg32MQ5iJzQVJ3JoVFGWO4hhwj76jOFLakyGeGIHZWUVJKva5ZgX4oKTFwVKZEwpUQtlWN_S7LyhM5SKrk4gQVhvznPvypViv0Dfse-N-jZTt-x3VG_73iuZ5u4xr7ljHpD1-o7jjO0bm4GA_do4g_dwO4NLHc4tEee5Xkj27NMDNpr2R67vvnjP5-Q2EM)
