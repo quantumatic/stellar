@@ -4,11 +4,9 @@ use crate::{
 use ry_ast::{
     statement::{Statement, VarStatement},
     token::{
-        Keyword::Mut,
         Punctuator::{Assign, Colon},
-        RawToken::{Keyword, Punctuator},
+        RawToken::Punctuator,
     },
-    Mutability,
 };
 
 #[derive(Default)]
@@ -18,19 +16,12 @@ impl Parser for VarStatementParser {
     type Output = Statement;
 
     fn parse_with(self, state: &mut ParserState<'_>) -> ParseResult<Self::Output> {
-        state.advance();
-
-        let mut mutability = Mutability::immutable();
-
-        if state.next.inner == Keyword(Mut) {
-            mutability = Mutability::mutable(state.current.span);
-            state.advance();
-        }
+        state.next_token();
 
         let name = state.consume_identifier("variable name in var statement")?;
 
         let r#type = if state.next.inner == Punctuator(Colon) {
-            state.advance();
+            state.next_token();
             Some(TypeParser.parse_with(state)?)
         } else {
             None
@@ -39,7 +30,6 @@ impl Parser for VarStatementParser {
         state.consume(Punctuator(Assign), "var statement")?;
 
         Ok(VarStatement {
-            mutability,
             name,
             r#type,
             value: ExpressionParser::default().parse_with(state)?,

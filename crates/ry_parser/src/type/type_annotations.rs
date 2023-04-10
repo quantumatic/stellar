@@ -26,13 +26,13 @@ impl Parser for TypeAnnotationsParser {
     type Output = TypeAnnotations;
 
     fn parse_with(self, state: &mut ParserState<'_>) -> ParseResult<Self::Output> {
-        state.advance();
+        state.next_token();
 
         let result = parse_list!(state, "generics", Punctuator(CloseBracket), || {
             TypeParser.parse_with(state)
         });
 
-        state.advance();
+        state.next_token();
 
         Ok(result)
     }

@@ -13,29 +13,6 @@ pub(crate) fn hexadecimal(c: char) -> bool {
     c.is_ascii_digit() || ('a'..='f').contains(&c.to_ascii_lowercase())
 }
 
-#[inline]
-pub(crate) fn to_digit2(c: char) -> i8 {
-    let l = c.to_ascii_lowercase();
-    match l {
-        '0'..='9' => l as i8 - '0' as i8,
-        'a'..='f' => l as i8 - 'a' as i8 + 10,
-        '_' => 0,
-        _ => 16,
-    }
-}
-
-fn parse_integer(buffer: &[u8], base: i8) -> Option<u64> {
-    let mut n = 0;
-    let mut pow = 1;
-
-    for i in 0..buffer.len() {
-        n += (to_digit2(buffer[buffer.len() - 1 - i] as char) as u64).checked_mul(pow)?;
-        pow = pow.checked_mul(base as u64)?;
-    }
-
-    Some(n)
-}
-
 fn invalid_separator(buffer: String) -> i32 {
     let mut x1 = ' ';
     let mut d = '.';
@@ -194,40 +171,10 @@ impl Lexer<'_> {
         }
 
         match number_kind {
-            NumberKind::Int => {
-                match parse_integer(
-                    (if base == 10 { buffer } else { &buffer[2..] }).as_bytes(),
-                    base,
-                ) {
-                    Some(n) => Some(IntegerLiteral(n).at(start_location..self.location)),
-                    None => {
-                        Some(Error(LexError::NumberParseError).at(start_location..self.location))
-                    }
-                }
-            }
-            NumberKind::Float => Some(
-                FloatLiteral(match buffer.parse::<f64>() {
-                    Ok(n) => n,
-                    Err(_) => {
-                        return Some(
-                            Error(LexError::NumberParseError).at(start_location..self.location),
-                        );
-                    }
-                })
-                .at(start_location..self.location),
-            ),
-            NumberKind::Imag => Some(
-                ImaginaryNumberLiteral(match buffer[..buffer.len() - 1].parse::<f64>() {
-                    Ok(n) => n,
-                    Err(_) => {
-                        return Some(
-                            Error(LexError::NumberParseError).at(start_location..self.location),
-                        );
-                    }
-                })
-                .at(start_location..self.location),
-            ),
-            NumberKind::Invalid => unimplemented!(),
+            NumberKind::Int => Some(IntegerLiteral.at(start_location..self.location)),
+            NumberKind::Float => Some(FloatLiteral.at(start_location..self.location)),
+            NumberKind::Imag => Some(ImaginaryNumberLiteral.at(start_location..self.location)),
+            NumberKind::Invalid => unreachable!(),
         }
     }
 }

@@ -14,7 +14,7 @@ impl Parser for ImportParser {
     type Output = Item;
 
     fn parse_with(self, state: &mut ParserState<'_>) -> ParseResult<Self::Output> {
-        state.advance();
+        state.next_token();
 
         let path = PathParser.parse_with(state)?;
         state.consume(Punctuator(Semicolon), "import")?;

@@ -4,14 +4,14 @@ use crate::{
 };
 use ry_ast::{
     declaration::{
-        Documented, Item, StructDeclarationItem, StructMemberDeclaration, WithDocstring,
+        Documented, Item, StructDeclarationItem, StructMemberDeclaration, WithDocComment,
     },
     token::{
-        Keyword::{Mut, Pub},
+        Keyword::Pub,
         Punctuator::{CloseBrace, Colon, Semicolon},
         RawToken::{Keyword, Punctuator},
     },
-    Mutability, Visibility,
+    Visibility,
 };
 
 pub(crate) struct StructMemberParser;
@@ -21,16 +21,10 @@ impl Parser for StructMemberParser {
 
     fn parse_with(self, state: &mut ParserState<'_>) -> ParseResult<Self::Output> {
         let mut visibility = Visibility::private();
-        let mut mutability = Mutability::immutable();
 
         if state.next.inner == Keyword(Pub) {
-            state.advance();
+            state.next_token();
             visibility = Visibility::public(state.current.span);
-        }
-
-        if state.next.inner == Keyword(Mut) {
-            state.advance();
-            mutability = Mutability::mutable(state.current.span);
         }
 
         let name = state.consume_identifier("struct member name in struct definition")?;
@@ -43,7 +37,6 @@ impl Parser for StructMemberParser {
 
         Ok(StructMemberDeclaration {
             visibility,
-            mutability,
             name,
             r#type,
         })
@@ -64,7 +57,7 @@ impl Parser for StructMembersParser {
             members.push(
                 StructMemberParser
                     .parse_with(state)?
-                    .with_docstring(docstring),
+                    .with_doc_comment(docstring),
             );
         }
 
@@ -81,7 +74,7 @@ impl Parser for StructDeclarationParser {
     type Output = Item;
 
     fn parse_with(self, state: &mut ParserState<'_>) -> ParseResult<Self::Output> {
-        state.advance();
+        state.next_token();
 
         let name = state.consume_identifier("struct name in struct declaration")?;
 
@@ -89,7 +82,7 @@ impl Parser for StructDeclarationParser {
 
         let r#where = WhereClauseParser.optionally_parse_with(state)?;
 
-        state.advance();
+        state.next_token();
 
         let members = StructMembersParser.parse_with(state)?;
 
@@ -114,7 +107,7 @@ mod tests {
     parser_test!(
         StructDeclarationParser,
         r#struct1,
-        "struct Point[T: Numeric] { pub mut x: T; pub mut y: T; }"
+        "struct Point[T: Numeric] { pub x: T; pub y: T; }"
     );
     parser_test!(
         StructDeclarationParser,

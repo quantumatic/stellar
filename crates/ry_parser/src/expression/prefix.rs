@@ -13,7 +13,7 @@ impl Parser for PrefixExpressionParser {
 
     fn parse_with(self, state: &mut ParserState<'_>) -> ParseResult<Self::Output> {
         let op = state.next.clone();
-        state.advance();
+        state.next_token();
 
         let inner = ExpressionParser {
             precedence: Precedence::Unary,

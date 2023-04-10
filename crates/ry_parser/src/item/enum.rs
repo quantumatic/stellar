@@ -1,6 +1,6 @@
 use crate::{error::ParseResult, macros::parse_list, Parser, ParserState};
 use ry_ast::{
-    declaration::{Documented, EnumDeclarationItem, Item, WithDocstring},
+    declaration::{Documented, EnumDeclarationItem, Item, WithDocComment},
     name::Name,
     token::{
         Punctuator::{CloseBrace, OpenBrace},
@@ -18,7 +18,7 @@ impl Parser for EnumDeclarationParser {
     type Output = Item;
 
     fn parse_with(self, state: &mut ParserState<'_>) -> ParseResult<Self::Output> {
-        state.advance();
+        state.next_token();
 
         let name = state.consume_identifier("enum name in enum declaration")?;
 
@@ -32,11 +32,11 @@ impl Parser for EnumDeclarationParser {
                 let doc = state.consume_docstring()?;
                 Ok(state
                     .consume_identifier("enum variant name")?
-                    .with_docstring(doc))
+                    .with_doc_comment(doc))
             }
         );
 
-        state.advance();
+        state.next_token();
 
         Ok(EnumDeclarationItem {
             visibility: self.visibility,

@@ -76,11 +76,8 @@ use item::ItemsParser;
 use ry_ast::{
     declaration::Docstring,
     name::Name,
-    span::At,
-    token::{
-        RawToken::{self, DocstringComment, Identifier},
-        Token,
-    },
+    span::{At, SpanIndex},
+    token::{RawToken, Token},
     ProgramUnit,
 };
 use ry_interner::Interner;
@@ -143,7 +140,7 @@ impl<'a> ParserState<'a> {
     }
 
     /// Advances the parser to the next token and skips comment tokens.
-    fn advance(&mut self) {
+    fn next_token(&mut self) {
         self.current = self.next.clone();
         self.next = self
             .lexer
@@ -171,7 +168,7 @@ impl<'a> ParserState<'a> {
         N: Into<String>,
     {
         self.expect(expected, node)?;
-        self.advance();
+        self.next_token();
         Ok(())
     }
 
@@ -180,7 +177,7 @@ impl<'a> ParserState<'a> {
         N: Into<String>,
     {
         let spanned_symbol = match self.next.inner {
-            Identifier(symbol) => symbol.at(self.next.span),
+            RawToken::Identifier(symbol) => symbol.at(self.next.span),
             _ => {
                 return Err(ParseError::unexpected_token(
                     self.next.clone(),
@@ -190,7 +187,7 @@ impl<'a> ParserState<'a> {
             }
         };
 
-        self.advance();
+        self.next_token();
 
         Ok(spanned_symbol)
     }
@@ -202,17 +199,15 @@ impl<'a> ParserState<'a> {
         let (mut module_docstring, mut local_docstring) = (vec![], vec![]);
 
         loop {
-            if let DocstringComment { global, content } = &self.next.inner {
-                if *global {
-                    module_docstring.push(content.clone());
-                } else {
-                    local_docstring.push(content.clone());
-                }
+            if self.next.inner == RawToken::GlobalDocComment {
+                module_docstring.push(self.lexer.contents.index(self.next.span).to_owned());
+            } else if self.next.inner == RawToken::LocalDocComment {
+                local_docstring.push(self.lexer.contents.index(self.next.span).to_owned());
             } else {
                 return Ok((module_docstring, local_docstring));
             }
 
-            self.advance();
+            self.next_token();
         }
     }
 
@@ -223,15 +218,13 @@ impl<'a> ParserState<'a> {
         let mut result = vec![];
 
         loop {
-            if let DocstringComment { global, content } = &self.next.inner {
-                if !global {
-                    result.push(content.clone());
-                }
+            if self.next.inner == RawToken::LocalDocComment {
+                result.push(self.lexer.contents.index(self.next.span).to_owned());
             } else {
                 return Ok(result);
             }
 
-            self.advance();
+            self.next_token();
         }
     }
 

@@ -8,7 +8,7 @@ impl Parser for DeferStatementParser {
     type Output = Statement;
 
     fn parse_with(self, state: &mut ParserState<'_>) -> ParseResult<Self::Output> {
-        state.advance();
+        state.next_token();
 
         Ok(DeferStatement {
             call: ExpressionParser::default().parse_with(state)?,

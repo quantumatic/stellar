@@ -18,7 +18,7 @@ impl OptionalParser for GenericsParser {
             return Ok(vec![]);
         }
 
-        state.advance();
+        state.next_token();
 
         let result = parse_list!(
             state,
@@ -28,7 +28,7 @@ impl OptionalParser for GenericsParser {
                 let name = state.consume_identifier("generic name")?;
 
                 let constraint = if state.next.inner == Punctuator(Colon) {
-                    state.advance();
+                    state.next_token();
                     Some(TypeParser.parse_with(state)?)
                 } else {
                     None
@@ -38,7 +38,7 @@ impl OptionalParser for GenericsParser {
             }
         );
 
-        state.advance();
+        state.next_token();
 
         Ok(result)
     }

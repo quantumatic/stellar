@@ -12,7 +12,7 @@ impl Parser for ParenthesizedExpressionParser {
     type Output = Expression;
 
     fn parse_with(self, state: &mut ParserState<'_>) -> ParseResult<Self::Output> {
-        state.advance();
+        state.next_token();
 
         let expression = ExpressionParser {
             precedence: Precedence::Lowest,

@@ -19,7 +19,7 @@ impl OptionalParser for WhereClauseParser {
             return Ok(vec![]);
         }
 
-        state.advance();
+        state.next_token();
 
         Ok(parse_list!(
             state,

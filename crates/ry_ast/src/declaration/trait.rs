@@ -1,4 +1,4 @@
-use super::{docstring::Documented, function::Method, Item};
+use super::{docstring::Documented, function::AssociatedFunction, type_alias::TypeAlias, Item};
 use crate::{
     name::Name,
     r#type::{Generics, WhereClause},
@@ -11,7 +11,13 @@ pub struct TraitDeclarationItem {
     pub name: Name,
     pub generics: Generics,
     pub r#where: WhereClause,
-    pub methods: Vec<Documented<Method>>,
+    pub items: Vec<Documented<TraitItem>>,
+}
+
+#[derive(Debug, PartialEq)]
+pub enum TraitItem {
+    TypeAlias(TypeAlias),
+    AssociatedFunction(AssociatedFunction),
 }
 
 impl From<TraitDeclarationItem> for Item {

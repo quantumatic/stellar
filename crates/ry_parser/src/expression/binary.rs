@@ -16,7 +16,7 @@ impl Parser for BinaryExpressionParser {
         let op = state.next.clone();
         let precedence = state.next.inner.to_precedence();
 
-        state.advance();
+        state.next_token();
 
         let right = ExpressionParser { precedence }.parse_with(state)?;
 

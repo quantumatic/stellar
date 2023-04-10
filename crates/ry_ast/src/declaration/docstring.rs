@@ -1,8 +1,7 @@
 use crate::serialize::Serialize;
 use ry_interner::Interner;
-use std::sync::Arc;
 
-pub type Docstring = Vec<Arc<str>>;
+pub type Docstring = Vec<String>;
 
 impl Serialize for (bool, &Docstring) {
     fn serialize(&self, buffer: &mut String, _interner: &Interner) {
@@ -39,8 +38,8 @@ impl<T> Documented<T> {
     }
 }
 
-pub trait WithDocstring {
-    fn with_docstring(self, docstring: Vec<Arc<str>>) -> Documented<Self>
+pub trait WithDocComment {
+    fn with_doc_comment(self, docstring: Vec<String>) -> Documented<Self>
     where
         Self: Sized,
     {
@@ -51,4 +50,4 @@ pub trait WithDocstring {
     }
 }
 
-impl<T: Sized> WithDocstring for T {}
+impl<T: Sized> WithDocComment for T {}

@@ -4,7 +4,7 @@
 use crate::{precedence::Precedence, span::Spanned};
 use phf::phf_map;
 use ry_interner::Symbol;
-use std::{fmt::Display, mem::discriminant, sync::Arc};
+use std::{fmt::Display, mem::discriminant};
 
 /// Represents error that lexer can fail with.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -105,11 +105,11 @@ pub enum Keyword {
     If,
     Impl,
     Import,
-    Mut,
     Pub,
     Return,
     Struct,
     Trait,
+    Type,
     Var,
     Where,
     While,
@@ -123,6 +123,7 @@ impl AsRef<str> for Keyword {
             Self::Fun => "`fun`",
             Self::Struct => "`struct`",
             Self::Trait => "`trait`",
+            Self::Type => "`type`",
             Self::Return => "`return`",
             Self::Defer => "`defer`",
             Self::Impl => "`impl`",
@@ -132,7 +133,6 @@ impl AsRef<str> for Keyword {
             Self::While => "`while`",
             Self::As => "`as`",
             Self::For => "`for`",
-            Self::Mut => "`mut`",
             Self::Where => "`where`",
             Self::Var => "`var`",
         }
@@ -253,37 +253,30 @@ impl Display for Punctuator {
 /// Represents token without a specific location in source text.
 #[derive(Clone, Debug, PartialEq, Default)]
 pub enum RawToken {
-    BoolLiteral(bool),
-    CharLiteral(char),
+    TrueBoolLiteral,
+    FalseBoolLiteral,
 
-    /// Corresponds to any comment that is not a docstring.
+    CharLiteral,
+
+    /// Corresponds to any comment that is not a doc comment.
     Comment,
 
-    /// [`global`] here is either the docstring is declared for the whole module
-    /// or only for a given item, enum variant or trait method.
-    ///
-    /// [`content`] corresponds to the contents of the docstring but
-    /// without first 3 characters which are:
-    /// - two initial slashes - `//`
-    /// - last character - either `/` or `!`
-    DocstringComment {
-        global: bool,
-        content: Arc<str>,
-    },
+    GlobalDocComment,
+    LocalDocComment,
 
     #[default]
     EndOfFile,
 
-    FloatLiteral(f64),
+    FloatLiteral,
     Identifier(Symbol),
-    ImaginaryNumberLiteral(f64),
-    IntegerLiteral(u64),
+    ImaginaryNumberLiteral,
+    IntegerLiteral,
 
     Error(LexError),
 
     Keyword(Keyword),
     Punctuator(Punctuator),
-    StringLiteral(Arc<str>),
+    StringLiteral,
 }
 
 impl AsRef<RawToken> for RawToken {
@@ -296,16 +289,18 @@ impl AsRef<str> for RawToken {
     fn as_ref(&self) -> &str {
         match self {
             Self::Identifier(..) => "identifier",
-            Self::StringLiteral(..) => "string literal",
-            Self::IntegerLiteral(..) => "integer literal",
-            Self::FloatLiteral(..) => "float literal",
-            Self::ImaginaryNumberLiteral(..) => "imaginary number literal",
-            Self::CharLiteral(..) => "character literal",
-            Self::BoolLiteral(..) => "bool literal",
+            Self::StringLiteral => "string literal",
+            Self::IntegerLiteral => "integer literal",
+            Self::FloatLiteral => "float literal",
+            Self::ImaginaryNumberLiteral => "imaginary number literal",
+            Self::CharLiteral => "character literal",
+            Self::TrueBoolLiteral => "`true`",
+            Self::FalseBoolLiteral => "`false`",
             Self::Keyword(keyword) => keyword.as_ref(),
             Self::Punctuator(punctuator) => punctuator.as_ref(),
-            Self::DocstringComment { .. } => "doc comment",
-            Self::Comment { .. } => "comment",
+            Self::GlobalDocComment => "global doc comment",
+            Self::LocalDocComment => "local doc comment",
+            Self::Comment => "comment",
             Self::EndOfFile => "end of file",
             RawToken::Error(..) => "error token",
         }
@@ -329,8 +324,8 @@ pub type Token = Spanned<RawToken>;
 
 /// List of reserved Ry names: keywords, boolean literals & etc..
 pub static RESERVED: phf::Map<&'static str, RawToken> = phf_map! {
-    "true" => RawToken::BoolLiteral(true),
-    "false" => RawToken::BoolLiteral(false),
+    "true" => RawToken::TrueBoolLiteral,
+    "false" => RawToken::FalseBoolLiteral,
     "import" => RawToken::Keyword(Keyword::Import),
     "pub" => RawToken::Keyword(Keyword::Pub),
     "fun" => RawToken::Keyword(Keyword::Fun),
@@ -345,8 +340,8 @@ pub static RESERVED: phf::Map<&'static str, RawToken> = phf_map! {
     "while" => RawToken::Keyword(Keyword::While),
     "var" => RawToken::Keyword(Keyword::Var),
     "as" => RawToken::Keyword(Keyword::As),
+    "type" => RawToken::Keyword(Keyword::Type),
     "for" => RawToken::Keyword(Keyword::For),
-    "mut" => RawToken::Keyword(Keyword::Mut),
     "where" => RawToken::Keyword(Keyword::Where)
 };
 
@@ -408,5 +403,5 @@ impl RawToken {
 
 #[test]
 fn raw_token_size() {
-    assert_eq!(std::mem::size_of::<RawToken>(), 24);
+    assert_eq!(std::mem::size_of::<RawToken>(), 16);
 }

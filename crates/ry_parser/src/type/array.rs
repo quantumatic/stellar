@@ -12,7 +12,7 @@ impl Parser for ArrayTypeParser {
     type Output = Type;
 
     fn parse_with(self, state: &mut ParserState<'_>) -> ParseResult<Self::Output> {
-        state.advance();
+        state.next_token();
         let start = state.current.span.start;
 
         let inner = TypeParser.parse_with(state)?;

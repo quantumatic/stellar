@@ -30,7 +30,7 @@ impl Parser for FunctionArgumentParser {
         let mut default_value = None;
 
         if state.next.inner == Punctuator(Assign) {
-            state.advance();
+            state.next_token();
             default_value = Some(ExpressionParser::default().parse_with(state)?);
         }
 
@@ -50,7 +50,7 @@ impl Parser for FunctionTypeSignatureParser {
     type Output = FunctionTypeSignature;
 
     fn parse_with(self, state: &mut ParserState<'_>) -> ParseResult<Self::Output> {
-        state.advance();
+        state.next_token();
 
         let name = state.consume_identifier("function name in function declaration")?;
 
@@ -62,12 +62,12 @@ impl Parser for FunctionTypeSignatureParser {
             FunctionArgumentParser.parse_with(state)
         });
 
-        state.advance();
+        state.next_token();
 
         let mut return_type = None;
 
         if state.next.inner == Punctuator(Colon) {
-            state.advance();
+            state.next_token();
             return_type = Some(TypeParser.parse_with(state)?);
         }
 
@@ -116,7 +116,7 @@ impl Parser for FunctionParser {
 
         match state.next.inner {
             Punctuator(Semicolon) => {
-                state.advance();
+                state.next_token();
 
                 Ok(signature.into())
             }
@@ -126,7 +126,7 @@ impl Parser for FunctionParser {
             }
             .into()),
             _ => {
-                state.advance();
+                state.next_token();
 
                 Err(ParseError::unexpected_token(
                     state.current.clone(),

@@ -26,7 +26,7 @@ use crate::{
 use ry_ast::{
     expression::*,
     precedence::Precedence,
-    span::At,
+    span::{At, SpanIndex},
     token::{Keyword::*, Punctuator::*, RawToken::*},
 };
 
@@ -65,7 +65,7 @@ impl Parser for WhileExpressionParser {
     type Output = Expression;
 
     fn parse_with(self, state: &mut ParserState<'_>) -> ParseResult<Self::Output> {
-        state.advance();
+        state.next_token();
         let start = state.current.span.start;
 
         let condition = ExpressionParser::default().parse_with(state)?;
@@ -86,41 +86,65 @@ impl Parser for PrimaryExpressionParser {
 
     fn parse_with(self, state: &mut ParserState<'_>) -> ParseResult<Self::Output> {
         match state.next.inner.clone() {
-            IntegerLiteral(literal) => {
-                state.advance();
+            IntegerLiteral => {
+                state.next_token();
+                match state
+                    .lexer
+                    .contents
+                    .index(state.current.span)
+                    .replace("_", "")
+                    .parse::<u64>()
+                {
+                    Ok(literal) => Ok(RawExpression::from(IntegerLiteralExpression { literal })
+                        .at(state.current.span)),
+                    Err(..) => Err(ParseError::integer_overflow(state.current.span)),
+                }
+            }
+            FloatLiteral => {
+                state.next_token();
+                match state
+                    .lexer
+                    .contents
+                    .index(state.current.span)
+                    .replace("_", "")
+                    .parse::<f64>()
+                {
+                    Ok(literal) => Ok(RawExpression::from(FloatLiteralExpression { literal })
+                        .at(state.current.span)),
+                    Err(..) => Err(ParseError::float_overflow(state.current.span)),
+                }
+            }
+            StringLiteral => {
+                state.next_token();
+                Ok(RawExpression::from(StringLiteralExpression {
+                    literal: state.lexer.contents.index(state.current.span).to_owned(),
+                })
+                .at(state.current.span))
+            }
+            CharLiteral => {
+                state.next_token();
+                Ok(RawExpression::from(StringLiteralExpression {
+                    literal: state.lexer.contents.index(state.current.span).to_owned(),
+                })
+                .at(state.current.span))
+            }
+            TrueBoolLiteral => {
+                state.next_token();
+                Ok(RawExpression::from(BoolLiteralExpression { literal: true })
+                    .at(state.current.span))
+            }
+            FalseBoolLiteral => {
+                state.next_token();
                 Ok(
-                    RawExpression::from(IntegerLiteralExpression { literal })
+                    RawExpression::from(BoolLiteralExpression { literal: false })
                         .at(state.current.span),
                 )
-            }
-            FloatLiteral(literal) => {
-                state.advance();
-                Ok(RawExpression::from(FloatLiteralExpression { literal }).at(state.current.span))
-            }
-            ImaginaryNumberLiteral(literal) => {
-                state.advance();
-                Ok(
-                    RawExpression::from(ImaginaryNumberLiteralExpression { literal })
-                        .at(state.current.span),
-                )
-            }
-            StringLiteral(literal) => {
-                state.advance();
-                Ok(RawExpression::from(StringLiteralExpression { literal }).at(state.current.span))
-            }
-            CharLiteral(literal) => {
-                state.advance();
-                Ok(RawExpression::from(CharLiteralExpression { literal }).at(state.current.span))
-            }
-            BoolLiteral(literal) => {
-                state.advance();
-                Ok(RawExpression::from(BoolLiteralExpression { literal }).at(state.current.span))
             }
             prefixop_pattern!() => PrefixExpressionParser.parse_with(state),
             Punctuator(OpenParent) => ParenthesizedExpressionParser.parse_with(state),
             Punctuator(OpenBracket) => ArrayLiteralExpressionParser.parse_with(state),
             Identifier(name) => {
-                state.advance();
+                state.next_token();
                 Ok(RawExpression::from(IdentifierExpression { name }).at(state.current.span))
             }
             Keyword(If) => IfExpressionParser.parse_with(state),

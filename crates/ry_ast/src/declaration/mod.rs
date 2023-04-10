@@ -6,6 +6,7 @@ mod r#impl;
 mod import;
 mod r#struct;
 mod r#trait;
+mod type_alias;
 
 pub use self::{
     docstring::*,
@@ -14,7 +15,8 @@ pub use self::{
     r#enum::EnumDeclarationItem,
     r#impl::ImplItem,
     r#struct::{StructDeclarationItem, StructMemberDeclaration},
-    r#trait::TraitDeclarationItem,
+    r#trait::{TraitDeclarationItem, TraitItem},
+    type_alias::TypeAlias,
 };
 use crate::visitor::{VisitWith, Visitor, VisitorMut};
 use std::ops::ControlFlow;
@@ -27,6 +29,7 @@ pub enum Item {
     TraitDeclaration(TraitDeclarationItem),
     StructDeclaration(StructDeclarationItem),
     Impl(ImplItem),
+    TypeAlias(TypeAlias),
 }
 
 impl VisitWith for Documented<Item> {

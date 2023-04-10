@@ -15,7 +15,7 @@ impl Parser for IfExpressionParser {
     type Output = Expression;
 
     fn parse_with(self, state: &mut ParserState<'_>) -> ParseResult<Self::Output> {
-        state.advance();
+        state.next_token();
 
         let start = state.current.span.start;
 
@@ -27,7 +27,7 @@ impl Parser for IfExpressionParser {
         let mut r#else = None;
 
         while state.next.inner == Keyword(Else) {
-            state.advance();
+            state.next_token();
 
             match state.next.inner {
                 Keyword(If) => {}
@@ -37,7 +37,7 @@ impl Parser for IfExpressionParser {
                 }
             }
 
-            state.advance();
+            state.next_token();
 
             if_blocks.push(IfBlock {
                 condition: ExpressionParser::default().parse_with(state)?,

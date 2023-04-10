@@ -1,9 +1,8 @@
 use super::RawExpression;
-use std::sync::Arc;
 
 #[derive(Debug, PartialEq)]
 pub struct StringLiteralExpression {
-    pub literal: Arc<str>,
+    pub literal: String,
 }
 
 impl From<StringLiteralExpression> for RawExpression {

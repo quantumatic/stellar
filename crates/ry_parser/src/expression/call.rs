@@ -15,7 +15,7 @@ impl Parser for CallExpressionParser {
     type Output = Expression;
 
     fn parse_with(self, state: &mut ParserState<'_>) -> ParseResult<Self::Output> {
-        state.advance();
+        state.next_token();
 
         let arguments = parse_list!(
             state,
@@ -27,7 +27,7 @@ impl Parser for CallExpressionParser {
             .parse_with(state)
         );
 
-        state.advance();
+        state.next_token();
 
         let span = self.left.span.start..state.current.span.end;
 

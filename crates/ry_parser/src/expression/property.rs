@@ -12,7 +12,7 @@ impl Parser for PropertyAccessExpressionParser {
     type Output = Expression;
 
     fn parse_with(self, state: &mut ParserState<'_>) -> ParseResult<Self::Output> {
-        state.advance();
+        state.next_token();
 
         let property = state.consume_identifier("property")?;
 

@@ -1,4 +1,4 @@
-use super::Item;
+use super::{Item, TraitItem};
 use crate::{
     expression::Expression,
     name::Name,
@@ -54,4 +54,10 @@ impl From<FunctionDeclaration> for Function {
     }
 }
 
-pub type Method = Function;
+pub type AssociatedFunction = Function;
+
+impl From<AssociatedFunction> for TraitItem {
+    fn from(function: AssociatedFunction) -> Self {
+        Self::AssociatedFunction(function)
+    }
+}

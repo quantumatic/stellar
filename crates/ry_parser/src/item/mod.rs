@@ -1,12 +1,13 @@
 mod r#enum;
-mod function_decl;
+mod function;
 mod r#impl;
 mod imports;
 mod struct_decl;
 mod trait_decl;
+mod type_alias;
 
 use self::{
-    function_decl::FunctionItemParser, imports::ImportParser, r#enum::EnumDeclarationParser,
+    function::FunctionItemParser, imports::ImportParser, r#enum::EnumDeclarationParser,
     r#impl::ImplItemParser, struct_decl::StructDeclarationParser,
     trait_decl::TraitDeclarationParser,
 };
@@ -15,7 +16,7 @@ use crate::{
     Parser, ParserState,
 };
 use ry_ast::{
-    declaration::{Docstring, Item, WithDocstring},
+    declaration::{Docstring, Item, WithDocComment},
     token::{
         Keyword::{Enum, Fun, Impl, Import, Pub, Struct, Trait},
         RawToken::{EndOfFile, Keyword},
@@ -35,7 +36,7 @@ impl Parser for ItemsParser {
         let mut docstring = self.first_docstring;
 
         while state.next.inner != EndOfFile {
-            items.push(ItemParser.parse_with(state)?.with_docstring(docstring));
+            items.push(ItemParser.parse_with(state)?.with_doc_comment(docstring));
 
             docstring = state.consume_docstring()?;
         }
@@ -54,7 +55,7 @@ impl Parser for ItemParser {
 
         if state.next.inner == Keyword(Pub) {
             visibility = Visibility::public(state.next.span);
-            state.advance();
+            state.next_token();
         }
 
         Ok(match state.next.inner {
@@ -76,7 +77,7 @@ impl Parser for ItemParser {
                     ),
                     "item",
                 ));
-                state.advance();
+                state.next_token();
                 return error;
             }
         })

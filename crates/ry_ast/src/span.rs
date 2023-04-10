@@ -38,6 +38,16 @@ impl From<Range<usize>> for Span {
     }
 }
 
+pub trait SpanIndex {
+    fn index(self, span: Span) -> Self;
+}
+
+impl<'a> SpanIndex for &'a str {
+    fn index(self, span: Span) -> &'a str {
+        &self[span.start..span.end]
+    }
+}
+
 /// Represents thing located in some [`Span`].
 #[derive(Debug, PartialEq, Clone, Default)]
 pub struct Spanned<T> {
@@ -63,6 +73,7 @@ impl From<Span> for Range<usize> {
         value.start..value.end
     }
 }
+
 pub trait At {
     fn at(self, span: impl Into<Span>) -> Spanned<Self>
     where

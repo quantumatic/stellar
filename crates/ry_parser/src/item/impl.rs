@@ -22,7 +22,7 @@ impl Parser for ImplItemParser {
     type Output = Item;
 
     fn parse_with(self, state: &mut ParserState<'_>) -> ParseResult<Self::Output> {
-        state.advance();
+        state.next_token();
 
         let generics = GenericsParser.optionally_parse_with(state)?;
 
@@ -30,7 +30,7 @@ impl Parser for ImplItemParser {
         let mut r#trait = None;
 
         if state.next.inner == Keyword(For) {
-            state.advance();
+            state.next_token();
 
             r#trait = Some(r#type);
             r#type = TypeParser.parse_with(state)?;
@@ -38,7 +38,7 @@ impl Parser for ImplItemParser {
 
         let r#where = WhereClauseParser.optionally_parse_with(state)?;
 
-        state.advance();
+        state.next_token();
 
         let implementations = vec![];
 

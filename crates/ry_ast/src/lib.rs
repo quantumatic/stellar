@@ -43,9 +43,6 @@ impl Serialize for Items {
 #[derive(Debug, PartialEq)]
 pub struct Visibility(Option<Span>);
 
-#[derive(Debug, PartialEq)]
-pub struct Mutability(Option<Span>);
-
 impl Visibility {
     pub fn private() -> Self {
         Self(None)
@@ -63,26 +60,6 @@ impl Visibility {
 impl Default for Visibility {
     fn default() -> Self {
         Self::private()
-    }
-}
-
-impl Mutability {
-    pub fn immutable() -> Self {
-        Self(None)
-    }
-
-    pub fn mutable(span: Span) -> Self {
-        Self(Some(span))
-    }
-
-    pub fn span_of_mut(&self) -> Option<Span> {
-        self.0
-    }
-}
-
-impl Default for Mutability {
-    fn default() -> Self {
-        Self::immutable()
     }
 }
 

@@ -1,7 +1,7 @@
 //! Error and result implementation for the state.
 use codespan_reporting::diagnostic::{Diagnostic, Label};
 use ry_ast::{
-    span::{At, Spanned},
+    span::{At, Span, Spanned},
     token::{LexError, RawToken, Token},
 };
 use ry_report::Reporter;
@@ -39,6 +39,18 @@ pub enum ParseError {
         /// AST Node at which the error occurred while parsing.
         node: String,
     },
+
+    /// Integer overflow.
+    IntegerOverflow {
+        /// Location of number when parsing which, overflow happened.
+        at: Span,
+    },
+
+    /// Float overflow.
+    FloatOverflow {
+        /// Location of number when parsing which, overflow happened.
+        at: Span,
+    },
 }
 
 impl From<Spanned<LexError>> for ParseError {
@@ -67,6 +79,14 @@ impl ParseError {
                 node: node.into(),
             },
         }
+    }
+
+    pub(crate) fn integer_overflow(at: Span) -> Self {
+        Self::IntegerOverflow { at }
+    }
+
+    pub(crate) fn float_overflow(at: Span) -> Self {
+        Self::FloatOverflow { at }
     }
 }
 
@@ -111,6 +131,8 @@ impl Display for ParseError {
                 ))?;
                 Ok(())
             }
+            Self::IntegerOverflow { .. } => f.write_str("integer overflow"),
+            Self::FloatOverflow { .. } => f.write_str("float overflow"),
         }
     }
 }
@@ -121,9 +143,7 @@ impl Reporter<'_> for ParseError {
             Self::Lexer { error } => Diagnostic::error()
                 .with_message(self.to_string())
                 .with_code("E000")
-                .with_labels(vec![
-                    Label::primary(file_id, error.span).with_message("error appeared here")
-                ]),
+                .with_labels(vec![Label::primary(file_id, error.span)]),
             Self::UnexpectedToken {
                 got,
                 expected,
@@ -133,6 +153,22 @@ impl Reporter<'_> for ParseError {
                 .with_code("E001")
                 .with_labels(vec![Label::primary(file_id, got.span)
                     .with_message(format!("expected {expected} for {node}"))]),
+            Self::IntegerOverflow { at } => Diagnostic::error()
+                .with_message(format!("unexpected integer overflow"))
+                .with_labels(vec![Label::primary(file_id, *at)
+                    .with_message("error appeared when parsing this integer")])
+                .with_notes(vec![
+                    "note: integer cannot exceed maximum value of u64 (u64.max() == 18_446_744_073_709_551_615)".to_owned(),
+                    "note: you can use exponent to do so, but be carefull!".to_owned()
+                ]),
+            Self::FloatOverflow { at } => Diagnostic::error()
+                .with_message(format!("unexpected number overflow"))
+                .with_labels(vec![Label::primary(file_id, *at)
+                    .with_message("error appeared when parsing this float literal")])
+                    .with_notes(vec![
+                        "note: float literal cannot exceed maximum value of f64 (f64.max() == 1.7976931348623157E+308)".to_owned(),
+                        "note: you can use exponent to do so, but be carefull, especially when working with floats!".to_owned()
+                    ]),
         }
     }
 }

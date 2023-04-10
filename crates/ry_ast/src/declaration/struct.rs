@@ -1,10 +1,9 @@
+use super::{docstring::Documented, Item};
 use crate::{
     name::Name,
     r#type::{Generics, Type, WhereClause},
-    Mutability, Visibility,
+    Visibility,
 };
-
-use super::{docstring::Documented, Item};
 
 #[derive(Debug, PartialEq)]
 pub struct StructDeclarationItem {
@@ -24,7 +23,6 @@ impl From<StructDeclarationItem> for Item {
 #[derive(Debug, PartialEq)]
 pub struct StructMemberDeclaration {
     pub visibility: Visibility,
-    pub mutability: Mutability,
     pub name: Name,
     pub r#type: Type,
 }

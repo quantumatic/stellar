@@ -12,7 +12,7 @@ impl Parser for ArrayLiteralExpressionParser {
     type Output = Expression;
 
     fn parse_with(self, state: &mut ParserState<'_>) -> ParseResult<Self::Output> {
-        state.advance();
+        state.next_token();
 
         let start = state.next.span.start;
 
@@ -20,7 +20,7 @@ impl Parser for ArrayLiteralExpressionParser {
             ExpressionParser::default().parse_with(state)
         });
 
-        state.advance();
+        state.next_token();
 
         let end = state.current.span.end;
 

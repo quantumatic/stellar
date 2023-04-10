@@ -59,12 +59,12 @@ mod tests;
 
 #[derive(Debug)]
 pub struct Lexer<'a> {
-    pub interner: &'a mut Interner,
+    pub contents: &'a str,
     current: char,
     next: char,
-    contents: &'a str,
     chars: Chars<'a>,
     location: usize,
+    interner: &'a mut Interner,
 }
 
 type IterElem = Option<Token>;
@@ -81,8 +81,8 @@ impl<'a> Lexer<'a> {
             next,
             contents,
             chars,
-            location: 0,
             interner,
+            location: 0,
         }
     }
 
@@ -245,19 +245,13 @@ impl<'a> Lexer<'a> {
 
         let mut size = 0;
 
-        let mut result = '\0';
-
         while self.current != '\'' {
             if self.current == '\\' {
                 let e = self.eat_escape();
 
                 if let Err(e) = e {
                     return Some((Error(e.0), e.1).into());
-                } else if let Ok(c) = e {
-                    result = c;
                 }
-            } else {
-                result = self.current;
             }
 
             if self.current == '\n' || self.eof() {
@@ -285,7 +279,7 @@ impl<'a> Lexer<'a> {
             _ => {}
         }
 
-        Some(CharLiteral(result).at(start_location..self.location))
+        Some(CharLiteral.at(start_location..self.location))
     }
 
     fn eat_string(&mut self) -> IterElem {
@@ -325,10 +319,7 @@ impl<'a> Lexer<'a> {
 
         self.advance();
 
-        Some(
-            StringLiteral(self.contents[start_location + 1..self.location - 1].into())
-                .at(start_location..self.location),
-        )
+        Some(StringLiteral.at(start_location..self.location))
     }
 
     fn eat_wrapped_id(&mut self) -> IterElem {
@@ -365,21 +356,22 @@ impl<'a> Lexer<'a> {
         Some(Comment.at(start_location..self.location))
     }
 
-    /// In this case [`bool`] is true when docstring is describing
+    /// In this case [`bool`] is true when doc comment is describing
     /// the whole module (3-rd character is `!`) and not when
-    /// docstring is corresponding to trait method, enum variant, etc.
+    /// doc comment is corresponding to trait method, enum variant, etc.
     /// (everything else and the character is `/`).
-    fn eat_docstring(&mut self, global: bool) -> IterElem {
+    fn eat_doc_comment(&mut self, global: bool) -> IterElem {
         // first `/` character is already advanced
         let start_location = self.location - 1;
         self.advance_twice(); // `/` and (`!` or `/`)
 
-        let content = self.advance_while(start_location + 3, |current, _| (current != '\n'));
+        self.advance_while(start_location + 3, |current, _| (current != '\n'));
 
         Some(
-            DocstringComment {
-                global,
-                content: content.into(),
+            if global {
+                GlobalDocComment
+            } else {
+                LocalDocComment
             }
             .at(start_location..self.location),
         )
@@ -391,9 +383,7 @@ impl<'a> Lexer<'a> {
 
         match RESERVED.get(name) {
             Some(reserved) => Some(reserved.clone().at(start_location..self.location)),
-            None => Some(
-                Identifier(self.interner.get_or_intern(name)).at(start_location..self.location),
-            ),
+            None => Some(Identifier(self.interner.get_or_intern(name)).at(start_location..self.location)),
         }
     }
 
@@ -478,8 +468,8 @@ impl<'c> Iterator for Lexer<'c> {
                 self.advance();
 
                 match self.next {
-                    '!' => self.eat_docstring(true),
-                    '/' => self.eat_docstring(false),
+                    '!' => self.eat_doc_comment(true),
+                    '/' => self.eat_doc_comment(false),
                     _ => self.eat_comment(),
                 }
             }

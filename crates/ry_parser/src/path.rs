@@ -18,7 +18,7 @@ impl Parser for PathParser {
         let (start, mut end) = (first_identifier.span.start, first_identifier.span.end);
 
         while state.next.inner == Punctuator(Dot) {
-            state.advance();
+            state.next_token();
             path.push(state.consume_identifier("path")?.inner);
             end = state.current.span.end;
         }
