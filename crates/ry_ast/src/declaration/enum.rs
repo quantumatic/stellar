@@ -10,6 +10,6 @@ pub struct EnumDeclarationItem {
 
 impl From<EnumDeclarationItem> for Item {
     fn from(enum_declaration: EnumDeclarationItem) -> Self {
-        Item::EnumDeclaration(enum_declaration)
+        Self::EnumDeclaration(enum_declaration)
     }
 }

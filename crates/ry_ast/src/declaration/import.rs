@@ -10,6 +10,6 @@ pub struct ImportItem {
 
 impl From<ImportItem> for Item {
     fn from(import: ImportItem) -> Self {
-        Item::Import(import)
+        Self::Import(import)
     }
 }
