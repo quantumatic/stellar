@@ -9,7 +9,7 @@ mod type_alias;
 use self::{
     function::FunctionItemParser, imports::ImportParser, r#enum::EnumDeclarationParser,
     r#impl::ImplItemParser, struct_decl::StructDeclarationParser,
-    trait_decl::TraitDeclarationParser,
+    trait_decl::TraitDeclarationParser, type_alias::TypeAliasItemParser,
 };
 use crate::{
     error::{expected, ParseError, ParseResult},
@@ -18,7 +18,7 @@ use crate::{
 use ry_ast::{
     declaration::{Docstring, Item, WithDocComment},
     token::{
-        Keyword::{Enum, Fun, Impl, Import, Pub, Struct, Trait},
+        Keyword::{Enum, Fun, Impl, Import, Pub, Struct, Trait, Type},
         RawToken::{EndOfFile, Keyword},
     },
     Items, Visibility,
@@ -65,6 +65,7 @@ impl Parser for ItemParser {
             Keyword(Trait) => TraitDeclarationParser { visibility }.parse_with(state)?,
             Keyword(Fun) => FunctionItemParser { visibility }.parse_with(state)?,
             Keyword(Impl) => ImplItemParser { visibility }.parse_with(state)?,
+            Keyword(Type) => TypeAliasItemParser { visibility }.parse_with(state)?,
             _ => {
                 let error = Err(ParseError::unexpected_token(
                     state.next.clone(),
@@ -73,7 +74,9 @@ impl Parser for ItemParser {
                         Keyword(Fun),
                         Keyword(Trait),
                         Keyword(Enum),
-                        Keyword(Struct)
+                        Keyword(Struct),
+                        Keyword(Impl),
+                        Keyword(Type)
                     ),
                     "item",
                 ));

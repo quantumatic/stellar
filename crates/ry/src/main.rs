@@ -1,5 +1,4 @@
 use clap::{arg, Parser, Subcommand};
-use ry_ast::token::RawToken::EndOfFile;
 use ry_interner::Interner;
 use ry_lexer::Lexer;
 use ry_parser::ParserState;
@@ -49,19 +48,21 @@ fn main() {
                 let mut current_token_index = 0;
 
                 loop {
-                    let token = lexer.next().unwrap();
+                    let token = lexer.next();
 
-                    if token.inner == EndOfFile {
+                    if token.is_none() {
                         break;
                     }
 
+                    let token = token.unwrap();
+
                     if show_locations {
                         println!(
-                            "{current_token_index}: [{}]@{}..{}",
-                            token.inner, token.span.start, token.span.end
+                            "{:08}: [{}]@{}..{}",
+                            current_token_index, token.inner, token.span.start, token.span.end
                         );
                     } else {
-                        println!("{current_token_index}: [{}]", token.inner);
+                        println!("{:08}: [{}]", current_token_index, token.inner);
                     }
 
                     current_token_index += 1;
