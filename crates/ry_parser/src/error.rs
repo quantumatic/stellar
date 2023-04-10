@@ -158,16 +158,16 @@ impl Reporter<'_> for ParseError {
                 .with_labels(vec![Label::primary(file_id, *at)
                     .with_message("error appeared when parsing this integer")])
                 .with_notes(vec![
-                    "note: integer cannot exceed maximum value of u64 (u64.max() == 18_446_744_073_709_551_615)".to_owned(),
-                    "note: you can use exponent to do so, but be carefull!".to_owned()
+                    "note: integer cannot exceed the maximum value of `u64` (u64.max() == 18_446_744_073_709_551_615)".to_owned(),
+                    "note: you can use exponent to do so, but be careful!".to_owned()
                 ]),
             Self::FloatOverflow { at } => Diagnostic::error()
                 .with_message(format!("unexpected number overflow"))
                 .with_labels(vec![Label::primary(file_id, *at)
                     .with_message("error appeared when parsing this float literal")])
                     .with_notes(vec![
-                        "note: float literal cannot exceed maximum value of f64 (f64.max() == 1.7976931348623157E+308)".to_owned(),
-                        "note: you can use exponent to do so, but be carefull, especially when working with floats!".to_owned()
+                        "note: float literal cannot exceed the maximum value of `f64` (f64.max() == 1.7976931348623157E+308)".to_owned(),
+                        "note: you can use exponent to do so, but be careful, especially when working with floats!".to_owned()
                     ]),
         }
     }
