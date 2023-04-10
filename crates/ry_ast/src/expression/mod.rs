@@ -6,7 +6,6 @@ mod call;
 mod char;
 mod float;
 mod r#if;
-mod imaginary;
 mod integer;
 mod name;
 mod property;
@@ -22,7 +21,6 @@ pub use self::{
     call::CallExpression,
     char::CharLiteralExpression,
     float::FloatLiteralExpression,
-    imaginary::ImaginaryNumberLiteralExpression,
     integer::IntegerLiteralExpression,
     name::IdentifierExpression,
     property::PropertyAccessExpression,
@@ -42,7 +40,6 @@ pub enum RawExpression {
     StringLiteral(StringLiteralExpression),
     Integer(IntegerLiteralExpression),
     Float(FloatLiteralExpression),
-    ImaginaryNumber(ImaginaryNumberLiteralExpression),
     Bool(BoolLiteralExpression),
     Char(CharLiteralExpression),
     Array(ArrayLiteralExpression),
@@ -51,13 +48,6 @@ pub enum RawExpression {
     As(AsExpression),
     Unary(UnaryExpression),
     Property(PropertyAccessExpression),
-    // Struct(
-    // At<usize>,
-    // HashMap<usize, (Span, At<Expression>)>,
-    // ),
-    // Map(HashMap<usize, (Span, At<Expression>)>),
-    // Call(Vec<Type>, Expression, Vec<Expression>),
-    // Generics(Expression, Vec<Type>),
     If(IfExpression),
     While(WhileExpression),
     Call(CallExpression),

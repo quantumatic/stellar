@@ -145,11 +145,6 @@ impl Lexer<'_> {
             }
         }
 
-        if self.current == 'i' {
-            number_kind = NumberKind::Imag;
-            self.advance();
-        }
-
         let buffer = &self.contents[start_location..self.location];
 
         if let Some(location) = invalid_digit_location {
@@ -173,7 +168,6 @@ impl Lexer<'_> {
         match number_kind {
             NumberKind::Int => Some(IntegerLiteral.at(start_location..self.location)),
             NumberKind::Float => Some(FloatLiteral.at(start_location..self.location)),
-            NumberKind::Imag => Some(ImaginaryNumberLiteral.at(start_location..self.location)),
             NumberKind::Invalid => unreachable!(),
         }
     }

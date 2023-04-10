@@ -4,7 +4,7 @@
 use crate::{precedence::Precedence, span::Spanned};
 use phf::phf_map;
 use ry_interner::Symbol;
-use std::{fmt::Display, mem::discriminant};
+use std::fmt::Display;
 
 /// Represents error that lexer can fail with.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -91,7 +91,6 @@ pub enum NumberKind {
     Invalid,
     Int,
     Float,
-    Imag,
 }
 
 #[derive(Debug, Clone, PartialEq, Copy)]
@@ -269,7 +268,6 @@ pub enum RawToken {
 
     FloatLiteral,
     Identifier(Symbol),
-    ImaginaryNumberLiteral,
     IntegerLiteral,
 
     Error(LexError),
@@ -292,7 +290,6 @@ impl AsRef<str> for RawToken {
             Self::StringLiteral => "string literal",
             Self::IntegerLiteral => "integer literal",
             Self::FloatLiteral => "float literal",
-            Self::ImaginaryNumberLiteral => "imaginary number literal",
             Self::CharLiteral => "character literal",
             Self::TrueBoolLiteral => "`true`",
             Self::FalseBoolLiteral => "`false`",
@@ -388,16 +385,6 @@ impl RawToken {
             Self::Keyword(Keyword::As) => Precedence::As,
             _ => Precedence::Lowest,
         }
-    }
-
-    pub fn is_one_of<T: AsRef<Self>>(&self, raws: &[T]) -> bool {
-        for raw in raws {
-            if discriminant(self) == discriminant(raw.as_ref()) {
-                return true;
-            }
-        }
-
-        false
     }
 }
 
