@@ -16,8 +16,6 @@ impl Parser for TypeAnnotationsExpressionParser {
 
         let span = self.left.span.start..state.current.span.end;
 
-        state.next_token();
-
         Ok(RawExpression::from(TypeAnnotationsExpression {
             left: Box::new(self.left),
             type_annotations,
