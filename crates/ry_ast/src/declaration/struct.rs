@@ -4,8 +4,9 @@ use crate::{
     r#type::{Generics, Type, WhereClause},
     Visibility,
 };
+use serde::{Deserialize, Serialize};
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Serialize, Deserialize)]
 pub struct StructDeclarationItem {
     pub visibility: Visibility,
     pub name: Name,
@@ -20,7 +21,7 @@ impl From<StructDeclarationItem> for Item {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Serialize, Deserialize)]
 pub struct StructMemberDeclaration {
     pub visibility: Visibility,
     pub name: Name,

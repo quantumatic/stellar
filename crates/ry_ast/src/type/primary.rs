@@ -1,8 +1,8 @@
-use crate::name::Path;
-
 use super::{RawType, TypeAnnotations};
+use crate::name::Path;
+use serde::{Deserialize, Serialize};
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Serialize, Deserialize)]
 pub struct PrimaryType {
     pub path: Path,
     pub type_annotations: TypeAnnotations,

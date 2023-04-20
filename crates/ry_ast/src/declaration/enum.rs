@@ -1,7 +1,8 @@
 use super::{docstring::Documented, Item};
 use crate::{name::Name, Visibility};
+use serde::{Deserialize, Serialize};
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Serialize, Deserialize)]
 pub struct EnumDeclarationItem {
     pub visibility: Visibility,
     pub name: Name,

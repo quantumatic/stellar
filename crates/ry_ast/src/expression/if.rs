@@ -1,13 +1,14 @@
 use super::{Expression, RawExpression};
 use crate::statement::StatementsBlock;
+use serde::{Deserialize, Serialize};
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Serialize, Deserialize)]
 pub struct IfBlock {
     pub condition: Expression,
     pub body: StatementsBlock,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Serialize, Deserialize)]
 pub struct IfExpression {
     pub if_blocks: Vec<IfBlock>,
     pub r#else: Option<StatementsBlock>,

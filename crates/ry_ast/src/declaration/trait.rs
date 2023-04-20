@@ -4,8 +4,9 @@ use crate::{
     r#type::{Generics, WhereClause},
     Visibility,
 };
+use serde::{Deserialize, Serialize};
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Serialize, Deserialize)]
 pub struct TraitDeclarationItem {
     pub visibility: Visibility,
     pub name: Name,
@@ -14,7 +15,7 @@ pub struct TraitDeclarationItem {
     pub items: Vec<Documented<TraitItem>>,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Serialize, Deserialize)]
 pub enum TraitItem {
     TypeAlias(TypeAlias),
     AssociatedFunction(AssociatedFunction),

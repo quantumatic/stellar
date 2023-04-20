@@ -1,13 +1,13 @@
 //! `token.rs` - defines the token which represents grammatical unit of Ry
 //! source text.
-
 use crate::{precedence::Precedence, span::Spanned};
 use phf::phf_map;
 use ry_interner::Symbol;
+use serde::{Deserialize, Serialize};
 use std::fmt::Display;
 
 /// Represents error that lexer can fail with.
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum LexError {
     DigitDoesNotCorrespondToBase,
     EmptyCharLiteral,
@@ -93,7 +93,7 @@ pub enum NumberKind {
     Float,
 }
 
-#[derive(Debug, Clone, PartialEq, Copy)]
+#[derive(Debug, Clone, PartialEq, Copy, Serialize, Deserialize)]
 pub enum Keyword {
     As,
     Defer,
@@ -145,7 +145,7 @@ impl Display for Keyword {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Copy)]
+#[derive(Debug, Clone, PartialEq, Copy, Serialize, Deserialize)]
 pub enum Punctuator {
     And,
     AndAnd,
@@ -250,7 +250,7 @@ impl Display for Punctuator {
 }
 
 /// Represents token without a specific location in source text.
-#[derive(Clone, Debug, PartialEq, Default)]
+#[derive(Clone, Debug, PartialEq, Default, Serialize, Deserialize)]
 pub enum RawToken {
     TrueBoolLiteral,
     FalseBoolLiteral,

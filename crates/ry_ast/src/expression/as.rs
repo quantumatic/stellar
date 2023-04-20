@@ -1,7 +1,8 @@
 use super::{Expression, RawExpression};
 use crate::r#type::Type;
+use serde::{Deserialize, Serialize};
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Serialize, Deserialize)]
 pub struct AsExpression {
     pub left: Box<Expression>,
     pub right: Type,

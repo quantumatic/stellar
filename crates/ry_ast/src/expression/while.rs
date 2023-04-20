@@ -1,7 +1,8 @@
 use super::{Expression, RawExpression};
 use crate::statement::StatementsBlock;
+use serde::{Deserialize, Serialize};
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Serialize, Deserialize)]
 pub struct WhileExpression {
     pub condition: Box<Expression>,
     pub body: StatementsBlock,

@@ -11,36 +11,21 @@ pub mod r#type;
 pub mod visitor;
 
 use declaration::{Docstring, Documented, Item};
-use ry_interner::Interner;
-use serialize::Serialize;
+use serde::{Deserialize, Serialize};
 use span::Span;
 use std::ops::ControlFlow;
 use visitor::*;
 
 /// Represents Ry source file.
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Serialize, Deserialize)]
 pub struct ProgramUnit {
     pub docstring: Docstring,
     pub items: Items,
 }
 
-impl Serialize for ProgramUnit {
-    fn serialize(&self, buffer: &mut String, interner: &Interner) {
-        (true, &self.docstring).serialize(buffer, interner);
-        buffer.push('\n');
-        self.items.serialize(buffer, interner);
-    }
-}
-
 pub type Items = Vec<Documented<Item>>;
 
-impl Serialize for Items {
-    fn serialize(&self, _buffer: &mut String, _interner: &Interner) {
-        todo!()
-    }
-}
-
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Serialize, Deserialize)]
 pub struct Visibility(Option<Span>);
 
 impl Visibility {

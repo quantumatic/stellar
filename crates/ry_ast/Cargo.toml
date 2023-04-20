@@ -4,5 +4,6 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-phf = {version = "0.11.1", features = ["macros"]}
-ry_interner = {path = "../ry_interner"}
+phf = { version = "0.11.1", features = ["macros"] }
+ry_interner = { path = "../ry_interner" }
+serde = { version = "1.0.160", features = ["derive"] }

@@ -1,7 +1,9 @@
+use serde::{Serialize, Deserialize};
+
 use super::{Expression, RawExpression};
 use crate::name::Name;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Serialize, Deserialize)]
 pub struct PropertyAccessExpression {
     pub left: Box<Expression>,
     pub property: Name,

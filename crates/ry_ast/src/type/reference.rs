@@ -1,6 +1,7 @@
 use super::{RawType, Type};
+use serde::{Deserialize, Serialize};
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Serialize, Deserialize)]
 pub struct ReferenceType {
     pub inner: Box<Type>,
 }

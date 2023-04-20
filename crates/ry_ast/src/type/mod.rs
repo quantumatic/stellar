@@ -4,6 +4,8 @@ mod primary;
 mod reference;
 mod where_clause;
 
+use serde::{Deserialize, Serialize};
+
 pub use self::{
     array::ArrayType,
     generics::{Generic, Generics, TypeAnnotations},
@@ -15,7 +17,7 @@ use super::span::Spanned;
 
 pub type Type = Spanned<RawType>;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Serialize, Deserialize)]
 pub enum RawType {
     Array(ArrayType),
     Reference(ReferenceType),

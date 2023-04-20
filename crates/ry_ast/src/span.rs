@@ -2,10 +2,11 @@
 //! Locations throughout the compiler. Most notably, these locations
 //! are passed around throughout the parser and are stored in each
 //! AST node.
+use serde::{Deserialize, Serialize};
 use std::{fmt::Display, ops::Range};
 
 /// Represents code block location in source text.
-#[derive(Copy, Clone, Debug, Default, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Span {
     pub start: usize,
     pub end: usize,
@@ -33,6 +34,7 @@ impl Span {
 }
 
 impl From<Range<usize>> for Span {
+    #[inline]
     fn from(val: Range<usize>) -> Self {
         Self::new(val.start, val.end)
     }
@@ -43,13 +45,14 @@ pub trait SpanIndex {
 }
 
 impl<'a> SpanIndex for &'a str {
+    #[inline]
     fn index(self, span: Span) -> &'a str {
         &self[span.start..span.end]
     }
 }
 
 /// Represents thing located in some [`Span`].
-#[derive(Debug, PartialEq, Clone, Default)]
+#[derive(Debug, PartialEq, Clone, Default, Serialize, Deserialize)]
 pub struct Spanned<T> {
     pub inner: T,
     pub span: Span,
@@ -75,6 +78,7 @@ impl From<Span> for Range<usize> {
 }
 
 pub trait At {
+    #[inline]
     fn at(self, span: impl Into<Span>) -> Spanned<Self>
     where
         Self: Sized,

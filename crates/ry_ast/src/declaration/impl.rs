@@ -3,8 +3,9 @@ use crate::{
     r#type::{Generics, Type, WhereClause},
     Visibility,
 };
+use serde::{Deserialize, Serialize};
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Serialize, Deserialize)]
 pub struct ImplItem {
     pub visibility: Visibility,
     pub generics: Generics,

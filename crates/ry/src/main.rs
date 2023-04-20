@@ -85,7 +85,7 @@ fn main() {
 
                     match ast {
                         Ok(program_unit) => {
-                            println!("{:?}", program_unit);
+                            println!("{}", serde_json::to_value(&program_unit).unwrap());
                         }
                         Err(e) => {
                             e.emit_diagnostic(&reporter, file_id);

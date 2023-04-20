@@ -7,10 +7,11 @@ pub use self::{
     defer::DeferStatement, expression::ExpressionStatement, r#return::ReturnStatement,
     var::VarStatement,
 };
+use serde::{Deserialize, Serialize};
 
 pub type StatementsBlock = Vec<Statement>;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Serialize, Deserialize)]
 pub enum Statement {
     Expression(ExpressionStatement),
     Return(ReturnStatement),

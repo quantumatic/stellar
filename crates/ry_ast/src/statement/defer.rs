@@ -1,8 +1,8 @@
-use crate::expression::Expression;
-
 use super::Statement;
+use crate::expression::Expression;
+use serde::{Deserialize, Serialize};
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Serialize, Deserialize)]
 pub struct DeferStatement {
     pub call: Expression,
 }

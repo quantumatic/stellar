@@ -1,8 +1,8 @@
-use crate::{name::Path, Visibility};
-
 use super::Item;
+use crate::{name::Path, Visibility};
+use serde::{Deserialize, Serialize};
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Serialize, Deserialize)]
 pub struct ImportItem {
     pub visibility: Visibility,
     pub path: Path,

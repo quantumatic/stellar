@@ -6,8 +6,9 @@ use crate::{
     statement::StatementsBlock,
     Visibility,
 };
+use serde::{Deserialize, Serialize};
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Serialize, Deserialize)]
 pub struct FunctionDeclaration {
     pub signature: FunctionTypeSignature,
     pub body: StatementsBlock,
@@ -19,7 +20,7 @@ impl From<Function> for Item {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Serialize, Deserialize)]
 pub struct FunctionTypeSignature {
     pub visibility: Visibility,
     pub name: Name,
@@ -29,14 +30,14 @@ pub struct FunctionTypeSignature {
     pub r#where: WhereClause,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Serialize, Deserialize)]
 pub struct FunctionArgument {
     pub name: Name,
     pub r#type: Type,
     pub default_value: Option<Expression>,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Serialize, Deserialize)]
 pub enum Function {
     Definition(FunctionTypeSignature),
     Declaration(FunctionDeclaration),

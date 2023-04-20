@@ -4,8 +4,9 @@ use crate::{
     r#type::{Generics, Type},
     Visibility,
 };
+use serde::{Deserialize, Serialize};
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Serialize, Deserialize)]
 pub struct TypeAlias {
     pub visibility: Visibility,
     pub name: Name,

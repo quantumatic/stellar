@@ -19,9 +19,10 @@ pub use self::{
     type_alias::TypeAlias,
 };
 use crate::visitor::{VisitWith, Visitor, VisitorMut};
+use serde::{Deserialize, Serialize};
 use std::ops::ControlFlow;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Serialize, Deserialize)]
 pub enum Item {
     Import(ImportItem),
     Function(Function),

@@ -1,6 +1,7 @@
 use super::RawExpression;
+use serde::{Deserialize, Serialize};
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Serialize, Deserialize)]
 pub struct BoolLiteralExpression {
     pub literal: bool,
 }

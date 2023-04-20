@@ -10,7 +10,7 @@
 >   ( [_StatementsBlock_] | `;` )
 > 
 > _FunctionArguments_ :\
-> &nbsp;&nbsp; _FunctionArgument_ (`,` _FunctionArgument_)<sup>\*</sup> (`,` `...`)<sup>?</sup> `,`<sup>`?`</sup>
+> &nbsp;&nbsp; _FunctionArgument_ (`,` _FunctionArgument_)<sup>\*</sup> (`,` `...`)<sup>?</sup> `,`<sup>?</sup>
 > 
 > _FunctionArgument_ :\
 > &nbsp;&nbsp; [IDENTIFIER] `:` [_Type_]

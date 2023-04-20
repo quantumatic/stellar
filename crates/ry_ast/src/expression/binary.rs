@@ -1,7 +1,8 @@
 use super::{Expression, RawExpression};
 use crate::token::Token;
+use serde::{Deserialize, Serialize};
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Serialize, Deserialize)]
 pub struct BinaryExpression {
     pub left: Box<Expression>,
     pub right: Box<Expression>,

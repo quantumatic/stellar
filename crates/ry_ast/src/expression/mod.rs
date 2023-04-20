@@ -32,10 +32,11 @@ pub use self::{
     unary::UnaryExpression,
 };
 use crate::span::Spanned;
+use serde::{Deserialize, Serialize};
 
 pub type Expression = Spanned<RawExpression>;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Serialize, Deserialize)]
 pub enum RawExpression {
     StringLiteral(StringLiteralExpression),
     Integer(IntegerLiteralExpression),

@@ -1,26 +1,8 @@
-use crate::serialize::Serialize;
-use ry_interner::Interner;
+use serde::{Deserialize, Serialize};
 
 pub type Docstring = Vec<String>;
 
-impl Serialize for (bool, &Docstring) {
-    fn serialize(&self, buffer: &mut String, _interner: &Interner) {
-        let mut prefix = '/';
-
-        if self.0 {
-            prefix = '!';
-        }
-
-        for docstring in self.1 {
-            buffer.push_str("//");
-            buffer.push(prefix);
-            buffer.push_str(docstring);
-            buffer.push('\n');
-        }
-    }
-}
-
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Serialize, Deserialize)]
 pub struct Documented<T> {
     value: T,
     docstring: Docstring,
