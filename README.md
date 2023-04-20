@@ -49,27 +49,11 @@ impl[T] Negative[Test] for T? {} // trait will NOT be implemented for options
 impl[T] Negative[Test] for T where T: Default {} // trait will NOT be implemented for types implementing Default 
 ```
 
-Immutability by default!
-
-```ry
-fun main() {
-    var a = 3;
-    test(&mut a); // error
-    test(&a);
-
-    a += 2; // error
-
-    var mut b = 2;
-    test(&mut b); // ok
-    b += 2; // ok
-}
-```
-
-Sum types and general traits as well as type aliases!
+Sum types, dynamic trait dispatchers as well as type aliases!
 
 ```ry
 pub type A = Sum[B, C];
-pub type E = General[D, F];
+pub type E = Satisfies[D, F];
 ```
 
 # Builds
