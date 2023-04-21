@@ -46,6 +46,7 @@ pub trait SpanIndex {
 
 impl<'a> SpanIndex for &'a str {
     #[inline]
+    #[allow(clippy::indexing_slicing)]
     fn index(self, span: Span) -> &'a str {
         &self[span.start..span.end]
     }

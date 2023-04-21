@@ -46,7 +46,6 @@
 //!
 //! assert_eq!(lexer.next().unwrap().inner, Error(LexError::UnexpectedChar));
 //! ```
-
 use ry_ast::{
     span::*,
     token::{RawToken::*, *},
@@ -383,7 +382,7 @@ impl<'a> Lexer<'a> {
         let name = self.advance_while(start_location, |current, _| is_id_continue(current));
 
         match RESERVED.get(name) {
-            Some(reserved) => Some(reserved.clone().at(start_location..self.location)),
+            Some(reserved) => Some((*reserved).at(start_location..self.location)),
             None => Some(
                 Identifier(self.interner.get_or_intern(name)).at(start_location..self.location),
             ),

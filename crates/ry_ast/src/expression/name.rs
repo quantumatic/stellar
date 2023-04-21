@@ -2,7 +2,7 @@ use super::RawExpression;
 use ry_interner::Symbol;
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Copy, Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct IdentifierExpression {
     pub name: Symbol,
 }

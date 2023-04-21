@@ -1,3 +1,49 @@
+#![warn(
+    clippy::all,
+    clippy::doc_markdown,
+    clippy::dbg_macro,
+    clippy::todo,
+    clippy::mem_forget,
+    clippy::filter_map_next,
+    clippy::needless_continue,
+    clippy::needless_borrow,
+    clippy::match_wildcard_for_single_variants,
+    clippy::mismatched_target_os,
+    clippy::match_on_vec_items,
+    clippy::imprecise_flops,
+    clippy::suboptimal_flops,
+    clippy::lossy_float_literal,
+    clippy::rest_pat_in_fully_bound_structs,
+    clippy::fn_params_excessive_bools,
+    clippy::inefficient_to_string,
+    clippy::linkedlist,
+    clippy::macro_use_imports,
+    clippy::option_option,
+    clippy::verbose_file_reads,
+    clippy::unnested_or_patterns,
+    rust_2018_idioms,
+    missing_debug_implementations,
+    missing_copy_implementations,
+    trivial_casts,
+    trivial_numeric_casts,
+    nonstandard_style,
+    unused_import_braces,
+    unused_qualifications
+)]
+#![deny(
+    clippy::await_holding_lock,
+    clippy::if_let_mutex,
+    clippy::indexing_slicing,
+    clippy::mem_forget,
+    clippy::ok_expect,
+    clippy::unimplemented,
+    clippy::unwrap_used,
+    unsafe_code,
+    unstable_features,
+    unused_results
+)]
+#![allow(clippy::match_single_binding, clippy::inconsistent_struct_constructor)]
+
 use crate::prefix::log_with_prefix;
 use clap::{arg, Parser, Subcommand};
 use prefix::create_unique_file;
@@ -7,6 +53,7 @@ use ry_parser::ParserState;
 use ry_report::{Reporter, ReporterState};
 use std::{fs, io::Write, process::exit};
 
+mod error;
 mod prefix;
 
 #[derive(clap::Parser)]
@@ -25,14 +72,6 @@ enum Commands {
         show_locations: bool,
     },
     Parse {
-        filepath: String,
-    },
-    Serialize {
-        filepath: String,
-        #[arg(long)]
-        resolve_docstrings: bool,
-    },
-    Graphviz {
         filepath: String,
     },
 }
@@ -54,22 +93,20 @@ fn main() {
                 loop {
                     let token = lexer.next();
 
-                    if token.is_none() {
+                    if let Some(token) = token {
+                        if show_locations {
+                            println!(
+                                "{:08}: [{}]@{}..{}",
+                                current_token_index, token.inner, token.span.start, token.span.end
+                            );
+                        } else {
+                            println!("{:08}: [{}]", current_token_index, token.inner);
+                        }
+
+                        current_token_index += 1;
+                    } else {
                         break;
                     }
-
-                    let token = token.unwrap();
-
-                    if show_locations {
-                        println!(
-                            "{:08}: [{}]@{}..{}",
-                            current_token_index, token.inner, token.span.start, token.span.end
-                        );
-                    } else {
-                        println!("{:08}: [{}]", current_token_index, token.inner);
-                    }
-
-                    current_token_index += 1;
                 }
             }
             Err(_) => {
@@ -82,7 +119,7 @@ fn main() {
 
             match fs::read_to_string(filepath) {
                 Ok(contents) => {
-                    let file_id = reporter.add_file(&filepath, &contents);
+                    let file_id = reporter.add_file(filepath, &contents);
                     let mut parser = ParserState::new(&contents, &mut interner);
 
                     log_with_prefix("parsing ", filepath);
@@ -91,12 +128,12 @@ fn main() {
 
                     match ast {
                         Ok(program_unit) => {
-                            let json = serde_json::to_string_pretty(&program_unit).unwrap();
-                            log_with_prefix("finished ", filepath);
+                            let json = mytry!(serde_json::to_string_pretty(&program_unit));
 
                             let (filename, mut file) = create_unique_file("ast", "json");
-                            file.write_all(json.to_string().as_bytes());
+                            mytry!(file.write_all(json.as_bytes()));
 
+                            log_with_prefix("finished ", filepath);
                             log_with_prefix("note: ", &format!("AST is written in {}", filename));
                         }
                         Err(e) => {
@@ -115,8 +152,5 @@ fn main() {
                 }
             }
         }
-        #[allow(unused_variables)]
-        Commands::Graphviz { filepath } => todo!(),
-        _ => todo!(),
     }
 }

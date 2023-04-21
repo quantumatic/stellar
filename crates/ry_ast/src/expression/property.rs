@@ -1,4 +1,4 @@
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
 use super::{Expression, RawExpression};
 use crate::name::Name;

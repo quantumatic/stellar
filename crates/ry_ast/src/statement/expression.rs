@@ -1,7 +1,7 @@
 //! Defines `Expression` AST Node, as defined by the [spec].
 use super::Statement;
 use crate::expression::Expression;
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
 /// The `Expression` AST Node.
 ///

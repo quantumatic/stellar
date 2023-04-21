@@ -3,7 +3,7 @@ use crate::{error::ParseResult, statement::StatementsBlockParser, Parser, Parser
 use ry_ast::{
     expression::{Expression, IfBlock, IfExpression, RawExpression},
     span::At,
-    Token
+    Token,
 };
 
 pub(crate) struct IfExpressionParser;

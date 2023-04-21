@@ -248,7 +248,7 @@ impl Display for Punctuator {
 }
 
 /// Represents token without a specific location in source text.
-#[derive(Clone, Debug, PartialEq, Default, Serialize, Deserialize)]
+#[derive(Copy, Clone, Debug, PartialEq, Default, Serialize, Deserialize)]
 pub enum RawToken {
     TrueBoolLiteral,
     FalseBoolLiteral,

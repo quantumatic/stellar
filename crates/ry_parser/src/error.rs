@@ -154,7 +154,7 @@ impl Reporter<'_> for ParseError {
                 .with_labels(vec![Label::primary(file_id, got.span)
                     .with_message(format!("expected {expected} for {node}"))]),
             Self::IntegerOverflow { at } => Diagnostic::error()
-                .with_message(format!("unexpected integer overflow"))
+                .with_message("unexpected integer overflow".to_owned())
                 .with_labels(vec![Label::primary(file_id, *at)
                     .with_message("error appeared when parsing this integer")])
                 .with_notes(vec![
@@ -162,7 +162,7 @@ impl Reporter<'_> for ParseError {
                     "note: you can use exponent to do so, but be careful!".to_owned()
                 ]),
             Self::FloatOverflow { at } => Diagnostic::error()
-                .with_message(format!("unexpected number overflow"))
+                .with_message("unexpected number overflow".to_owned())
                 .with_labels(vec![Label::primary(file_id, *at)
                     .with_message("error appeared when parsing this float literal")])
                     .with_notes(vec![

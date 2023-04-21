@@ -3,7 +3,7 @@ use crate::{error::ParseResult, Parser, ParserState};
 use ry_ast::{
     r#type::{ArrayType, RawType, Type},
     span::At,
-    Token
+    Token,
 };
 
 pub(crate) struct ArrayTypeParser;

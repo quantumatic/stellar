@@ -1,7 +1,7 @@
 use super::RawExpression;
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Copy, Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct FloatLiteralExpression {
     pub literal: f64,
 }

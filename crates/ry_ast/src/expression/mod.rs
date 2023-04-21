@@ -24,6 +24,7 @@ pub use self::{
     float::FloatLiteralExpression,
     integer::IntegerLiteralExpression,
     name::IdentifierExpression,
+    parenthesized::ParenthesizedExpression,
     property::PropertyAccessExpression,
     r#as::AsExpression,
     r#if::{IfBlock, IfExpression},
@@ -31,7 +32,6 @@ pub use self::{
     string::StringLiteralExpression,
     type_annotations::TypeAnnotationsExpression,
     unary::UnaryExpression,
-    parenthesized::ParenthesizedExpression,
 };
 use crate::span::Spanned;
 use serde::{Deserialize, Serialize};

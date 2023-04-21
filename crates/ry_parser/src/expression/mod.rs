@@ -85,14 +85,14 @@ impl Parser for PrimaryExpressionParser {
     type Output = Expression;
 
     fn parse_with(self, state: &mut ParserState<'_>) -> ParseResult<Self::Output> {
-        match state.next.inner.clone() {
+        match state.next.inner {
             IntegerLiteral => {
                 state.next_token();
                 match state
                     .lexer
                     .contents
                     .index(state.current.span)
-                    .replace("_", "")
+                    .replace('_', "")
                     .parse::<u64>()
                 {
                     Ok(literal) => Ok(RawExpression::from(IntegerLiteralExpression { literal })
@@ -106,7 +106,7 @@ impl Parser for PrimaryExpressionParser {
                     .lexer
                     .contents
                     .index(state.current.span)
-                    .replace("_", "")
+                    .replace('_', "")
                     .parse::<f64>()
                 {
                     Ok(literal) => Ok(RawExpression::from(FloatLiteralExpression { literal })
