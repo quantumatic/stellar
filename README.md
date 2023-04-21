@@ -1,4 +1,4 @@
-<img align="right" width="30%" height="30%" src="additional/icon/ry.png" alt="rycon">
+<p align="center"><img width="50%" height="50%" src="additional/icon/ry2.png" alt="rycon"></p>
 
 # Ry programming language
 ![](https://img.shields.io/badge/version-0.0.1%20alpha-red.svg)
@@ -17,7 +17,7 @@ pub fun main() {
 No nulls, we use option types!
 
 ```ry
-pub fun div[T](a: T, b: T): T? where T: Numeric {
+pub fun div[T](a: T, b: T): Option[T] where T: Numeric {
     if b == 0 {
         None
     } else {
@@ -26,17 +26,14 @@ pub fun div[T](a: T, b: T): T? where T: Numeric {
 }
 ```
 
-We use result types as well with elvis `?:` and postfix `?` and `!` operators!
+We use result types as well with `unwrap_or` and postfix `?` and operator!
 
 ```ry
 import std.fs.File;
 
 pub fun main() {
     var a = File.open("test.txt")?; // returns (Unit type in this case) if error will occur
-
-    File.open("test2.txt").unwrap(); // panics if error will occur
-
-    var num = "27".parse[i32]() ?: 0; // if error will occur, num will be set to 0
+    var num = "27".parse[i32]().unwrap_or(0); // if error will occur, num will be set to 0
 }
 ```
 
@@ -45,7 +42,7 @@ We use traits like in Rust!
 ```ry
 // example of auto trait
 impl[T] Test for T {} 
-impl[T] Negative[Test] for T? {} // trait will NOT be implemented for options
+impl[T] Negative[Test] for Option[T] {} // trait will NOT be implemented for options
 impl[T] Negative[Test] for T where T: Default {} // trait will NOT be implemented for types implementing Default 
 ```
 
