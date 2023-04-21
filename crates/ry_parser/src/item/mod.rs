@@ -18,11 +18,8 @@ use crate::{
 };
 use ry_ast::{
     declaration::{Docstring, Item, WithDocComment},
-    token::{
-        Keyword::{Enum, Fun, Impl, Import, Pub, Struct, Trait, Type},
-        RawToken::{EndOfFile, Keyword},
-    },
-    Items, Visibility,
+    token::RawToken,
+    Items, Token, Visibility,
 };
 
 pub(crate) struct ItemsParser {
@@ -36,7 +33,7 @@ impl Parser for ItemsParser {
         let mut items = vec![];
         let mut docstring = self.first_docstring;
 
-        while state.next.inner != EndOfFile {
+        while state.next.inner != RawToken::EndOfFile {
             items.push(ItemParser.parse_with(state)?.with_doc_comment(docstring));
 
             docstring = state.consume_docstring()?;
@@ -54,30 +51,30 @@ impl Parser for ItemParser {
     fn parse_with(self, state: &mut ParserState<'_>) -> ParseResult<Self::Output> {
         let mut visibility = Visibility::private();
 
-        if state.next.inner == Keyword(Pub) {
+        if state.next.inner == Token![pub] {
             visibility = Visibility::public(state.next.span);
             state.next_token();
         }
 
         Ok(match state.next.inner {
-            Keyword(Enum) => EnumDeclarationParser { visibility }.parse_with(state)?,
-            Keyword(Import) => ImportParser { visibility }.parse_with(state)?,
-            Keyword(Struct) => StructDeclarationParser { visibility }.parse_with(state)?,
-            Keyword(Trait) => TraitDeclarationParser { visibility }.parse_with(state)?,
-            Keyword(Fun) => FunctionItemParser { visibility }.parse_with(state)?,
-            Keyword(Impl) => ImplItemParser { visibility }.parse_with(state)?,
-            Keyword(Type) => TypeAliasItemParser { visibility }.parse_with(state)?,
+            Token![enum] => EnumDeclarationParser { visibility }.parse_with(state)?,
+            Token![import] => ImportParser { visibility }.parse_with(state)?,
+            Token![struct] => StructDeclarationParser { visibility }.parse_with(state)?,
+            Token![trait] => TraitDeclarationParser { visibility }.parse_with(state)?,
+            Token![fun] => FunctionItemParser { visibility }.parse_with(state)?,
+            Token![impl] => ImplItemParser { visibility }.parse_with(state)?,
+            Token![type] => TypeAliasItemParser { visibility }.parse_with(state)?,
             _ => {
                 let error = Err(ParseError::unexpected_token(
                     state.next.clone(),
                     expected!(
-                        Keyword(Import),
-                        Keyword(Fun),
-                        Keyword(Trait),
-                        Keyword(Enum),
-                        Keyword(Struct),
-                        Keyword(Impl),
-                        Keyword(Type)
+                        Token![import],
+                        Token![fun],
+                        Token![trait],
+                        Token![enum],
+                        Token![struct],
+                        Token![impl],
+                        Token![type]
                     ),
                     "item",
                 ));

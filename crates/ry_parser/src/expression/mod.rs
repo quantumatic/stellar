@@ -27,7 +27,8 @@ use ry_ast::{
     expression::*,
     precedence::Precedence,
     span::{At, SpanIndex},
-    token::{Keyword::*, Punctuator::*, RawToken::*},
+    token::RawToken,
+    Token,
 };
 
 #[derive(Default)]
@@ -44,13 +45,11 @@ impl Parser for ExpressionParser {
         while self.precedence < state.next.inner.to_precedence() {
             left = match &state.next.inner {
                 binop_pattern!() => BinaryExpressionParser { left }.parse_with(state)?,
-                Punctuator(OpenParent) => CallExpressionParser { left }.parse_with(state)?,
-                Punctuator(Dot) => PropertyAccessExpressionParser { left }.parse_with(state)?,
-                Punctuator(OpenBracket) => {
-                    TypeAnnotationsExpressionParser { left }.parse_with(state)?
-                }
+                Token!['('] => CallExpressionParser { left }.parse_with(state)?,
+                Token![.] => PropertyAccessExpressionParser { left }.parse_with(state)?,
+                Token!['['] => TypeAnnotationsExpressionParser { left }.parse_with(state)?,
                 postfixop_pattern!() => PostfixExpressionParser { left }.parse_with(state)?,
-                Keyword(As) => CastExpressionParser { left }.parse_with(state)?,
+                Token![as] => CastExpressionParser { left }.parse_with(state)?,
                 _ => break,
             };
         }
@@ -86,7 +85,7 @@ impl Parser for PrimaryExpressionParser {
 
     fn parse_with(self, state: &mut ParserState<'_>) -> ParseResult<Self::Output> {
         match state.next.inner {
-            IntegerLiteral => {
+            RawToken::IntegerLiteral => {
                 state.next_token();
                 match state
                     .lexer
@@ -100,7 +99,7 @@ impl Parser for PrimaryExpressionParser {
                     Err(..) => Err(ParseError::integer_overflow(state.current.span)),
                 }
             }
-            FloatLiteral => {
+            RawToken::FloatLiteral => {
                 state.next_token();
                 match state
                     .lexer
@@ -114,26 +113,26 @@ impl Parser for PrimaryExpressionParser {
                     Err(..) => Err(ParseError::float_overflow(state.current.span)),
                 }
             }
-            StringLiteral => {
+            RawToken::StringLiteral => {
                 state.next_token();
                 Ok(RawExpression::from(StringLiteralExpression {
                     literal: state.lexer.contents.index(state.current.span).to_owned(),
                 })
                 .at(state.current.span))
             }
-            CharLiteral => {
+            RawToken::CharLiteral => {
                 state.next_token();
                 Ok(RawExpression::from(StringLiteralExpression {
                     literal: state.lexer.contents.index(state.current.span).to_owned(),
                 })
                 .at(state.current.span))
             }
-            TrueBoolLiteral => {
+            Token![true] => {
                 state.next_token();
                 Ok(RawExpression::from(BoolLiteralExpression { literal: true })
                     .at(state.current.span))
             }
-            FalseBoolLiteral => {
+            Token![false] => {
                 state.next_token();
                 Ok(
                     RawExpression::from(BoolLiteralExpression { literal: false })
@@ -141,14 +140,14 @@ impl Parser for PrimaryExpressionParser {
                 )
             }
             prefixop_pattern!() => PrefixExpressionParser.parse_with(state),
-            Punctuator(OpenParent) => ParenthesizedExpressionParser.parse_with(state),
-            Punctuator(OpenBracket) => ArrayLiteralExpressionParser.parse_with(state),
-            Identifier(name) => {
+            Token!['('] => ParenthesizedExpressionParser.parse_with(state),
+            Token!['['] => ArrayLiteralExpressionParser.parse_with(state),
+            RawToken::Identifier(name) => {
                 state.next_token();
                 Ok(RawExpression::from(IdentifierExpression { name }).at(state.current.span))
             }
-            Keyword(If) => IfExpressionParser.parse_with(state),
-            Keyword(While) => WhileExpressionParser.parse_with(state),
+            Token![if] => IfExpressionParser.parse_with(state),
+            Token![while] => WhileExpressionParser.parse_with(state),
             _ => Err(ParseError::unexpected_token(
                 state.next.clone(),
                 expected!(
@@ -158,11 +157,11 @@ impl Parser for PrimaryExpressionParser {
                     "string literal",
                     "char literal",
                     "boolean literal",
-                    Punctuator(OpenParent),
-                    Punctuator(OpenBracket),
+                    Token!['('],
+                    Token!['['],
                     "identifier",
-                    Keyword(If),
-                    Keyword(While)
+                    Token![if],
+                    Token![while]
                 ),
                 "expression",
             )),

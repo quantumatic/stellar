@@ -5,7 +5,6 @@ use crate::{
 };
 use ry_ast::{
     declaration::{Documented, TraitItem, WithDocComment},
-    token::{Keyword::*, RawToken::Keyword},
     Token, Visibility,
 };
 
@@ -28,17 +27,17 @@ impl Parser for AssociatedFunctionsParser {
             };
 
             items.push(match state.next.inner {
-                Keyword(Fun) => Ok(TraitItem::from(
+                Token![fun] => Ok(TraitItem::from(
                     FunctionParser { visibility }.parse_with(state)?,
                 )
                 .with_doc_comment(doc)),
-                Keyword(Type) => Ok(TraitItem::from(
+                Token![type] => Ok(TraitItem::from(
                     TypeAliasParser { visibility }.parse_with(state)?,
                 )
                 .with_doc_comment(doc)),
                 _ => Err(ParseError::unexpected_token(
                     state.next.clone(),
-                    expected!(Keyword(Fun), Keyword(Type)),
+                    expected!(Token![fun], Token![type]),
                     "trait item",
                 )),
             }?);

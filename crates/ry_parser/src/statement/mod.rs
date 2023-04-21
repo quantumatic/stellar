@@ -6,11 +6,7 @@ use self::{defer::DeferStatementParser, r#return::ReturnStatementParser, var::Va
 use crate::{expression::ExpressionParser, ParseResult, Parser, ParserState};
 use ry_ast::{
     statement::{ExpressionStatement, Statement, StatementsBlock},
-    token::{
-        Keyword::{Defer, Return, Var},
-        Punctuator::{CloseBrace, OpenBrace, Semicolon},
-        RawToken::{Keyword, Punctuator},
-    },
+    Token,
 };
 
 pub(crate) struct StatementParser;
@@ -23,16 +19,16 @@ impl Parser for StatementParser {
         let mut must_have_semicolon_at_the_end = true;
 
         let statement = match state.next.inner {
-            Keyword(Return) => ReturnStatementParser.parse_with(state)?,
-            Keyword(Defer) => DeferStatementParser.parse_with(state)?,
-            Keyword(Var) => VarStatementParser.parse_with(state)?,
+            Token![return] => ReturnStatementParser.parse_with(state)?,
+            Token![defer] => DeferStatementParser.parse_with(state)?,
+            Token![var] => VarStatementParser.parse_with(state)?,
             _ => {
                 let expression = ExpressionParser::default().parse_with(state)?;
 
                 must_have_semicolon_at_the_end = !expression.inner.with_block();
 
                 match state.next.inner {
-                    Punctuator(Semicolon) => {}
+                    Token![;] => {}
                     _ => {
                         if must_have_semicolon_at_the_end {
                             last_statement_in_block = true;
@@ -57,7 +53,7 @@ impl Parser for StatementParser {
         };
 
         if !last_statement_in_block && must_have_semicolon_at_the_end {
-            state.consume(Punctuator(Semicolon), "end of the statement")?;
+            state.consume(Token![;], "end of the statement")?;
         }
 
         Ok((statement, last_statement_in_block))
@@ -70,11 +66,11 @@ impl Parser for StatementsBlockParser {
     type Output = StatementsBlock;
 
     fn parse_with(self, state: &mut ParserState<'_>) -> ParseResult<Self::Output> {
-        state.consume(Punctuator(OpenBrace), "statements block")?;
+        state.consume(Token!['{'], "statements block")?;
 
         let mut block = vec![];
 
-        while state.next.inner != Punctuator(CloseBrace) {
+        while state.next.inner != Token!['}'] {
             let (statement, last) = StatementParser.parse_with(state)?;
             block.push(statement);
 
@@ -83,7 +79,7 @@ impl Parser for StatementsBlockParser {
             }
         }
 
-        state.consume(Punctuator(CloseBrace), "end of the statements block")?;
+        state.consume(Token!['}'], "end of the statements block")?;
 
         Ok(block)
     }

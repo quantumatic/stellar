@@ -1,9 +1,5 @@
 use crate::{error::ParseResult, Parser, ParserState};
-use ry_ast::{
-    name::Path,
-    span::At,
-    token::{Punctuator::Dot, RawToken::Punctuator},
-};
+use ry_ast::{name::Path, span::At, Token};
 
 pub(crate) struct PathParser;
 
@@ -17,7 +13,7 @@ impl Parser for PathParser {
 
         let (start, mut end) = (first_identifier.span.start, first_identifier.span.end);
 
-        while state.next.inner == Punctuator(Dot) {
+        while state.next.inner == Token![.] {
             state.next_token();
             path.push(state.consume_identifier("path")?.inner);
             end = state.current.span.end;

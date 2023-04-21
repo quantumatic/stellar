@@ -316,74 +316,6 @@ impl From<RawToken> for String {
 
 pub type Token = Spanned<RawToken>;
 
-/// List of reserved Ry names: keywords, boolean literals & etc..
-pub static RESERVED: phf::Map<&'static str, RawToken> = phf_map! {
-    "true" => RawToken::TrueBoolLiteral,
-    "false" => RawToken::FalseBoolLiteral,
-    "import" => RawToken::Keyword(Keyword::Import),
-    "pub" => RawToken::Keyword(Keyword::Pub),
-    "fun" => RawToken::Keyword(Keyword::Fun),
-    "struct" => RawToken::Keyword(Keyword::Struct),
-    "trait" => RawToken::Keyword(Keyword::Trait),
-    "return" => RawToken::Keyword(Keyword::Return),
-    "defer" => RawToken::Keyword(Keyword::Defer),
-    "impl" => RawToken::Keyword(Keyword::Impl),
-    "enum" => RawToken::Keyword(Keyword::Enum),
-    "if" => RawToken::Keyword(Keyword::If),
-    "else" => RawToken::Keyword(Keyword::Else),
-    "while" => RawToken::Keyword(Keyword::While),
-    "var" => RawToken::Keyword(Keyword::Var),
-    "as" => RawToken::Keyword(Keyword::As),
-    "type" => RawToken::Keyword(Keyword::Type),
-    "for" => RawToken::Keyword(Keyword::For),
-    "where" => RawToken::Keyword(Keyword::Where)
-};
-
-impl Punctuator {
-    pub fn to_precedence(&self) -> Precedence {
-        match self {
-            Self::OrOr => Precedence::OrOr,
-            Self::AndAnd => Precedence::AndAnd,
-            Self::Or => Precedence::Or,
-            Self::Xor => Precedence::Xor,
-            Self::And => Precedence::And,
-            Self::Eq | Self::NotEq => Precedence::Eq,
-            Self::Assign
-            | Self::PlusEq
-            | Self::MinusEq
-            | Self::AsteriskEq
-            | Self::SlashEq
-            | Self::OrEq
-            | Self::XorEq => Precedence::Assign,
-            Self::LessThan | Self::LessThanOrEq | Self::GreaterThan | Self::GreaterThanOrEq => {
-                Precedence::LessOrGreater
-            }
-            Self::OpenBracket => Precedence::TypeAnnotations,
-            Self::LeftShift | Self::RightShift => Precedence::LeftRightShift,
-            Self::Plus | Self::Minus => Precedence::Sum,
-            Self::Asterisk | Self::Slash => Precedence::Product,
-            Self::AsteriskAsterisk => Precedence::Power,
-            Self::Percent => Precedence::Mod,
-            Self::OpenParent => Precedence::Call,
-            Self::Dot => Precedence::Property,
-            Self::Not | Self::PlusPlus | Self::MinusMinus | Self::Bang | Self::QuestionMark => {
-                Precedence::Unary
-            }
-            _ => Precedence::Lowest,
-        }
-    }
-}
-
-impl RawToken {
-    pub fn to_precedence(&self) -> Precedence {
-        match self {
-            Self::Punctuator(punctuator) => punctuator.to_precedence(),
-            Self::Keyword(Keyword::As) => Precedence::As,
-            _ => Precedence::Lowest,
-        }
-    }
-}
-
 #[macro_export]
 macro_rules! Token {
     [:] =>                  {$crate::token::RawToken::Punctuator($crate::token::Punctuator::Colon)};
@@ -448,6 +380,74 @@ macro_rules! Token {
     [type] =>               {$crate::token::RawToken::Keyword($crate::token::Keyword::Type)};
     [for] =>                {$crate::token::RawToken::Keyword($crate::token::Keyword::For)};
     [where] =>              {$crate::token::RawToken::Keyword($crate::token::Keyword::Where)};
+}
+
+/// List of reserved Ry names: keywords, boolean literals & etc..
+pub static RESERVED: phf::Map<&'static str, RawToken> = phf_map! {
+    "true" => RawToken::TrueBoolLiteral,
+    "false" => RawToken::FalseBoolLiteral,
+    "import" => Token![import],
+    "pub" => Token![pub],
+    "fun" => Token![fun],
+    "struct" => Token![struct],
+    "trait" => Token![trait],
+    "return" => Token![return],
+    "defer" => Token![defer],
+    "impl" => Token![impl],
+    "enum" => Token![enum],
+    "if" => Token![if],
+    "else" => Token![else],
+    "while" => Token![while],
+    "var" => Token![var],
+    "as" => Token![as],
+    "type" => Token![type],
+    "for" => Token![for],
+    "where" => Token![where]
+};
+
+impl Punctuator {
+    pub fn to_precedence(&self) -> Precedence {
+        match self {
+            Self::OrOr => Precedence::OrOr,
+            Self::AndAnd => Precedence::AndAnd,
+            Self::Or => Precedence::Or,
+            Self::Xor => Precedence::Xor,
+            Self::And => Precedence::And,
+            Self::Eq | Self::NotEq => Precedence::Eq,
+            Self::Assign
+            | Self::PlusEq
+            | Self::MinusEq
+            | Self::AsteriskEq
+            | Self::SlashEq
+            | Self::OrEq
+            | Self::XorEq => Precedence::Assign,
+            Self::LessThan | Self::LessThanOrEq | Self::GreaterThan | Self::GreaterThanOrEq => {
+                Precedence::LessOrGreater
+            }
+            Self::OpenBracket => Precedence::TypeAnnotations,
+            Self::LeftShift | Self::RightShift => Precedence::LeftRightShift,
+            Self::Plus | Self::Minus => Precedence::Sum,
+            Self::Asterisk | Self::Slash => Precedence::Product,
+            Self::AsteriskAsterisk => Precedence::Power,
+            Self::Percent => Precedence::Mod,
+            Self::OpenParent => Precedence::Call,
+            Self::Dot => Precedence::Property,
+            Self::Not | Self::PlusPlus | Self::MinusMinus | Self::Bang | Self::QuestionMark => {
+                Precedence::Unary
+            }
+            _ => Precedence::Lowest,
+        }
+    }
+}
+
+impl RawToken {
+    pub fn to_precedence(&self) -> Precedence {
+        match self {
+            Self::Punctuator(punctuator) => punctuator.to_precedence(),
+            Self::Keyword(Keyword::As) => Precedence::As,
+            _ => Precedence::Lowest,
+        }
+    }
 }
 
 #[test]
