@@ -8,6 +8,7 @@ mod float;
 mod r#if;
 mod integer;
 mod name;
+mod parenthesized;
 mod property;
 mod string;
 mod type_annotations;
@@ -30,6 +31,7 @@ pub use self::{
     string::StringLiteralExpression,
     type_annotations::TypeAnnotationsExpression,
     unary::UnaryExpression,
+    parenthesized::ParenthesizedExpression,
 };
 use crate::span::Spanned;
 use serde::{Deserialize, Serialize};
@@ -53,6 +55,7 @@ pub enum RawExpression {
     While(WhileExpression),
     Call(CallExpression),
     TypeAnnotations(TypeAnnotationsExpression),
+    Parenthesized(ParenthesizedExpression),
 }
 
 impl RawExpression {

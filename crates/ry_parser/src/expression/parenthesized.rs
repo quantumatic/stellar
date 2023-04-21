@@ -1,9 +1,10 @@
 use super::ExpressionParser;
 use crate::{error::ParseResult, Parser, ParserState};
 use ry_ast::{
-    expression::Expression,
+    expression::{Expression, ParenthesizedExpression, RawExpression},
     precedence::Precedence,
-    Token
+    span::At,
+    Token,
 };
 
 pub(crate) struct ParenthesizedExpressionParser;
@@ -13,14 +14,19 @@ impl Parser for ParenthesizedExpressionParser {
 
     fn parse_with(self, state: &mut ParserState<'_>) -> ParseResult<Self::Output> {
         state.next_token();
+        let start = state.current.span.start;
 
-        let expression = ExpressionParser {
+        let inner = ExpressionParser {
             precedence: Precedence::Lowest,
         }
         .parse_with(state)?;
 
         state.consume(Token![')'], "parenthesized expression")?;
+        let end = state.current.span.end;
 
-        Ok(expression)
+        Ok(RawExpression::from(ParenthesizedExpression {
+            inner: Box::new(inner),
+        })
+        .at(start..end))
     }
 }

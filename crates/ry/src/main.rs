@@ -1,9 +1,13 @@
+use crate::prefix::log_with_prefix;
 use clap::{arg, Parser, Subcommand};
+use prefix::create_unique_file;
 use ry_interner::Interner;
 use ry_lexer::Lexer;
 use ry_parser::ParserState;
 use ry_report::{Reporter, ReporterState};
-use std::{fs, process::exit};
+use std::{fs, io::Write, process::exit};
+
+mod prefix;
 
 #[derive(clap::Parser)]
 #[command(name = "ry")]
@@ -69,7 +73,7 @@ fn main() {
                 }
             }
             Err(_) => {
-                reporter.emit_global_error("cannot read given file");
+                log_with_prefix("error: ", "cannot read given file");
                 exit(1);
             }
         },
@@ -81,11 +85,19 @@ fn main() {
                     let file_id = reporter.add_file(&filepath, &contents);
                     let mut parser = ParserState::new(&contents, &mut interner);
 
+                    log_with_prefix("parsing ", filepath);
+
                     let ast = parser.parse();
 
                     match ast {
                         Ok(program_unit) => {
-                            println!("{}", serde_json::to_value(&program_unit).unwrap());
+                            let json = serde_json::to_string_pretty(&program_unit).unwrap();
+                            log_with_prefix("finished ", filepath);
+
+                            let (filename, mut file) = create_unique_file("ast", "json");
+                            file.write_all(json.to_string().as_bytes());
+
+                            log_with_prefix("note: ", &format!("AST is written in {}", filename));
                         }
                         Err(e) => {
                             e.emit_diagnostic(&reporter, file_id);
@@ -98,48 +110,11 @@ fn main() {
                     }
                 }
                 Err(_) => {
-                    reporter.emit_global_error("cannot read given file");
+                    log_with_prefix("error: ", "cannot read given file");
                     exit(1);
                 }
             }
         }
-        // Commands::Serialize {
-        //     filepath,
-        //     resolve_docstrings,
-        // } => {
-        //     let filepath = &filepath;
-
-        //     match fs::read_to_string(filepath) {
-        //         Ok(contents) => {
-        //             let file_id = files.add(&filepath, &contents);
-        //             let mut parser = ry_parser::Parser::new(&contents, &mut string_interner);
-
-        //             let ast = state.parse();
-
-        //             match ast {
-        //                 Ok(program_unit) => {
-        //                     let mut serializer = ry_ast_serializer::ASTSerializer::new(
-        //                         &string_interner,
-        //                         resolve_docstrings,
-        //                     );
-        //                     println!("{}", serializer.serialize(&program_unit));
-        //                 }
-        //                 Err(e) => {
-        //                     e.emit_diagnostic(&reporter, &files, file_id);
-
-        //                     reporter
-        //                         .emit_global_error("cannot output AST due to the previous errors");
-
-        //                     exit(1);
-        //                 }
-        //             }
-        //         }
-        //         Err(_) => {
-        //             reporter.emit_global_error("cannot read given file");
-        //             exit(1);
-        //         }
-        //     }
-        // }
         #[allow(unused_variables)]
         Commands::Graphviz { filepath } => todo!(),
         _ => todo!(),
