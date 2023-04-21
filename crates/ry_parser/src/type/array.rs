@@ -3,7 +3,7 @@ use crate::{error::ParseResult, Parser, ParserState};
 use ry_ast::{
     r#type::{ArrayType, RawType, Type},
     span::At,
-    token::{Punctuator::CloseBracket, RawToken::Punctuator},
+    Token
 };
 
 pub(crate) struct ArrayTypeParser;
@@ -17,7 +17,7 @@ impl Parser for ArrayTypeParser {
 
         let inner = TypeParser.parse_with(state)?;
 
-        state.consume(Punctuator(CloseBracket), "array type")?;
+        state.consume(Token![']'], "array type")?;
 
         Ok(RawType::from(ArrayType {
             inner: Box::new(inner),

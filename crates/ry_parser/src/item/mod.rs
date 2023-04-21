@@ -5,6 +5,7 @@ mod imports;
 mod struct_decl;
 mod trait_decl;
 mod type_alias;
+mod associated_functions;
 
 use self::{
     function::FunctionItemParser, imports::ImportParser, r#enum::EnumDeclarationParser,

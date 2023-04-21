@@ -2,10 +2,7 @@ use super::TypeParser;
 use crate::{error::ParseResult, macros::parse_list, OptionalParser, Parser, ParserState};
 use ry_ast::{
     r#type::{Generic, Generics},
-    token::{
-        Punctuator::{CloseBracket, Colon, OpenBracket},
-        RawToken::Punctuator,
-    },
+    Token,
 };
 
 pub(crate) struct GenericsParser;
@@ -14,7 +11,7 @@ impl OptionalParser for GenericsParser {
     type Output = Generics;
 
     fn optionally_parse_with(self, state: &mut ParserState<'_>) -> ParseResult<Self::Output> {
-        if state.next.inner != Punctuator(OpenBracket) {
+        if state.next.inner != Token!['['] {
             return Ok(vec![]);
         }
 
@@ -23,11 +20,11 @@ impl OptionalParser for GenericsParser {
         let result = parse_list!(
             state,
             "generics",
-            Punctuator(CloseBracket),
+            Token![']'],
             || -> ParseResult<Generic> {
                 let name = state.consume_identifier("generic name")?;
 
-                let constraint = if state.next.inner == Punctuator(Colon) {
+                let constraint = if state.next.inner == Token![:] {
                     state.next_token();
                     Some(TypeParser.parse_with(state)?)
                 } else {

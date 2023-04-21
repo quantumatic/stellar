@@ -161,7 +161,6 @@ pub enum Punctuator {
     Colon,
     Comma,
     Dot,
-    Elvis,
     Eq,
     GreaterThan,
     GreaterThanOrEq,
@@ -236,7 +235,6 @@ impl AsRef<str> for Punctuator {
             Self::MinusMinus => "`--`",
             Self::AsteriskAsterisk => "`**`",
             Self::Percent => "`%`",
-            Self::Elvis => "`?:`",
             Self::AtSign => "`@`",
         }
     }
@@ -344,7 +342,6 @@ pub static RESERVED: phf::Map<&'static str, RawToken> = phf_map! {
 impl Punctuator {
     pub fn to_precedence(&self) -> Precedence {
         match self {
-            Self::Elvis => Precedence::Elvis,
             Self::OrOr => Precedence::OrOr,
             Self::AndAnd => Precedence::AndAnd,
             Self::Or => Precedence::Or,
@@ -385,6 +382,72 @@ impl RawToken {
             _ => Precedence::Lowest,
         }
     }
+}
+
+#[macro_export]
+macro_rules! Token {
+    [:] =>                  {$crate::token::RawToken::Punctuator($crate::token::Punctuator::Colon)};
+    [@] =>                  {$crate::token::RawToken::Punctuator($crate::token::Punctuator::AtSign)};
+    [++] =>                 {$crate::token::RawToken::Punctuator($crate::token::Punctuator::PlusPlus)};
+    [+=] =>                 {$crate::token::RawToken::Punctuator($crate::token::Punctuator::PlusEq)};
+    [+] =>                  {$crate::token::RawToken::Punctuator($crate::token::Punctuator::Plus)};
+    [--] =>                 {$crate::token::RawToken::Punctuator($crate::token::Punctuator::MinusMinus)};
+    [-=] =>                 {$crate::token::RawToken::Punctuator($crate::token::Punctuator::MinusEq)};
+    [-] =>                  {$crate::token::RawToken::Punctuator($crate::token::Punctuator::Minus)};
+    [**] =>                 {$crate::token::RawToken::Punctuator($crate::token::Punctuator::AsteriskAsterisk)};
+    [*=] =>                 {$crate::token::RawToken::Punctuator($crate::token::Punctuator::AsteriskEq)};
+    [*] =>                  {$crate::token::RawToken::Punctuator($crate::token::Punctuator::Asterisk)};
+    [/=] =>                 {$crate::token::RawToken::Punctuator($crate::token::Punctuator::SlashEq)};
+    [/] =>                  {$crate::token::RawToken::Punctuator($crate::token::Punctuator::Slash)};
+    [!=] =>                 {$crate::token::RawToken::Punctuator($crate::token::Punctuator::NotEq)};
+    [!] =>                  {$crate::token::RawToken::Punctuator($crate::token::Punctuator::Bang)};
+    [>>] =>                 {$crate::token::RawToken::Punctuator($crate::token::Punctuator::RightShift)};
+    [>=] =>                 {$crate::token::RawToken::Punctuator($crate::token::Punctuator::GreaterThanOrEq)};
+    [>] =>                  {$crate::token::RawToken::Punctuator($crate::token::Punctuator::GreaterThan)};
+    [<<] =>                 {$crate::token::RawToken::Punctuator($crate::token::Punctuator::LeftShift)};
+    [<=] =>                 {$crate::token::RawToken::Punctuator($crate::token::Punctuator::LessThanOrEq)};
+    [<] =>                  {$crate::token::RawToken::Punctuator($crate::token::Punctuator::LessThan)};
+    [==] =>                 {$crate::token::RawToken::Punctuator($crate::token::Punctuator::Eq)};
+    [=] =>                  {$crate::token::RawToken::Punctuator($crate::token::Punctuator::Assign)};
+    [|=] =>                 {$crate::token::RawToken::Punctuator($crate::token::Punctuator::OrEq)};
+    [||] =>                 {$crate::token::RawToken::Punctuator($crate::token::Punctuator::OrOr)};
+    [|] =>                  {$crate::token::RawToken::Punctuator($crate::token::Punctuator::Or)};
+    [?] =>                  {$crate::token::RawToken::Punctuator($crate::token::Punctuator::QuestionMark)};
+    [&&] =>                 {$crate::token::RawToken::Punctuator($crate::token::Punctuator::AndAnd)};
+    [&] =>                  {$crate::token::RawToken::Punctuator($crate::token::Punctuator::And)};
+    [^=] =>                 {$crate::token::RawToken::Punctuator($crate::token::Punctuator::XorEq)};
+    [^] =>                  {$crate::token::RawToken::Punctuator($crate::token::Punctuator::Xor)};
+    [~=] =>                 {$crate::token::RawToken::Punctuator($crate::token::Punctuator::NotEq)};
+    [~] =>                  {$crate::token::RawToken::Punctuator($crate::token::Punctuator::Not)};
+    ['('] =>                {$crate::token::RawToken::Punctuator($crate::token::Punctuator::OpenParent)};
+    [')'] =>                {$crate::token::RawToken::Punctuator($crate::token::Punctuator::CloseParent)};
+    ['['] =>                {$crate::token::RawToken::Punctuator($crate::token::Punctuator::OpenBracket)};
+    [']'] =>                {$crate::token::RawToken::Punctuator($crate::token::Punctuator::CloseBracket)};
+    ['{'] =>                {$crate::token::RawToken::Punctuator($crate::token::Punctuator::OpenBrace)};
+    ['}'] =>                {$crate::token::RawToken::Punctuator($crate::token::Punctuator::CloseBrace)};
+    [,] =>                  {$crate::token::RawToken::Punctuator($crate::token::Punctuator::Comma)};
+    [.] =>                  {$crate::token::RawToken::Punctuator($crate::token::Punctuator::Dot)};
+    [;] =>                  {$crate::token::RawToken::Punctuator($crate::token::Punctuator::Semicolon)};
+    [%] =>                  {$crate::token::RawToken::Punctuator($crate::token::Punctuator::Percent)};
+    [true] =>               {$crate::token::RawToken::TrueBoolLiteral};
+    [false] =>              {$crate::token::RawToken::FalseBoolLiteral};
+    [import] =>             {$crate::token::RawToken::Keyword($crate::token::Keyword::Import)};
+    [pub] =>                {$crate::token::RawToken::Keyword($crate::token::Keyword::Pub)};
+    [fun] =>                {$crate::token::RawToken::Keyword($crate::token::Keyword::Fun)};
+    [struct] =>             {$crate::token::RawToken::Keyword($crate::token::Keyword::Struct)};
+    [trait] =>              {$crate::token::RawToken::Keyword($crate::token::Keyword::Trait)};
+    [return] =>             {$crate::token::RawToken::Keyword($crate::token::Keyword::Return)};
+    [defer] =>              {$crate::token::RawToken::Keyword($crate::token::Keyword::Defer)};
+    [impl] =>               {$crate::token::RawToken::Keyword($crate::token::Keyword::Impl)};
+    [enum] =>               {$crate::token::RawToken::Keyword($crate::token::Keyword::Enum)};
+    [if] =>                 {$crate::token::RawToken::Keyword($crate::token::Keyword::If)};
+    [else] =>               {$crate::token::RawToken::Keyword($crate::token::Keyword::Else)};
+    [while] =>              {$crate::token::RawToken::Keyword($crate::token::Keyword::While)};
+    [var] =>                {$crate::token::RawToken::Keyword($crate::token::Keyword::Var)};
+    [as] =>                 {$crate::token::RawToken::Keyword($crate::token::Keyword::As)};
+    [type] =>               {$crate::token::RawToken::Keyword($crate::token::Keyword::Type)};
+    [for] =>                {$crate::token::RawToken::Keyword($crate::token::Keyword::For)};
+    [where] =>              {$crate::token::RawToken::Keyword($crate::token::Keyword::Where)};
 }
 
 #[test]

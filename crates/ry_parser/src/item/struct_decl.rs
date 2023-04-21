@@ -6,12 +6,7 @@ use ry_ast::{
     declaration::{
         Documented, Item, StructDeclarationItem, StructMemberDeclaration, WithDocComment,
     },
-    token::{
-        Keyword::Pub,
-        Punctuator::{CloseBrace, Colon, Semicolon},
-        RawToken::{Keyword, Punctuator},
-    },
-    Visibility,
+    Token, Visibility,
 };
 
 pub(crate) struct StructMemberParser;
@@ -22,18 +17,18 @@ impl Parser for StructMemberParser {
     fn parse_with(self, state: &mut ParserState<'_>) -> ParseResult<Self::Output> {
         let mut visibility = Visibility::private();
 
-        if state.next.inner == Keyword(Pub) {
+        if state.next.inner == Token![pub] {
             state.next_token();
             visibility = Visibility::public(state.current.span);
         }
 
         let name = state.consume_identifier("struct member name in struct definition")?;
 
-        state.consume(Punctuator(Colon), "struct member definition")?;
+        state.consume(Token![:], "struct member definition")?;
 
         let r#type = TypeParser.parse_with(state)?;
 
-        state.consume(Punctuator(Semicolon), "struct member definition")?;
+        state.consume(Token![;], "struct member definition")?;
 
         Ok(StructMemberDeclaration {
             visibility,
@@ -51,7 +46,7 @@ impl Parser for StructMembersParser {
     fn parse_with(self, state: &mut ParserState<'_>) -> ParseResult<Self::Output> {
         let mut members = vec![];
 
-        while state.next.inner != Punctuator(CloseBrace) {
+        while state.next.inner != Token!['}'] {
             let docstring = state.consume_docstring()?;
 
             members.push(
@@ -86,7 +81,7 @@ impl Parser for StructDeclarationParser {
 
         let members = StructMembersParser.parse_with(state)?;
 
-        state.consume(Punctuator(CloseBrace), "struct declaration")?;
+        state.consume(Token!['}'], "struct declaration")?;
 
         Ok(StructDeclarationItem {
             visibility: self.visibility,

@@ -1,8 +1,7 @@
 use crate::{error::ParseResult, path::PathParser, Parser, ParserState};
 use ry_ast::{
     declaration::{ImportItem, Item},
-    token::{Punctuator::Semicolon, RawToken::Punctuator},
-    Visibility,
+    Token, Visibility,
 };
 
 #[derive(Default)]
@@ -17,7 +16,7 @@ impl Parser for ImportParser {
         state.next_token();
 
         let path = PathParser.parse_with(state)?;
-        state.consume(Punctuator(Semicolon), "import")?;
+        state.consume(Token![;], "import")?;
 
         Ok(ImportItem {
             visibility: self.visibility,

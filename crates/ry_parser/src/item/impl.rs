@@ -5,13 +5,10 @@ use crate::{
 };
 use ry_ast::{
     declaration::{ImplItem, Item},
-    token::{
-        Keyword::For,
-        Punctuator::CloseBrace,
-        RawToken::{Keyword, Punctuator},
-    },
-    Visibility,
+    Token, Visibility,
 };
+
+use super::associated_functions::AssociatedFunctionsParser;
 
 #[derive(Default)]
 pub(crate) struct ImplItemParser {
@@ -29,7 +26,7 @@ impl Parser for ImplItemParser {
         let mut r#type = TypeParser.parse_with(state)?;
         let mut r#trait = None;
 
-        if state.next.inner == Keyword(For) {
+        if state.next.inner == Token![for] {
             state.next_token();
 
             r#trait = Some(r#type);
@@ -38,11 +35,11 @@ impl Parser for ImplItemParser {
 
         let r#where = WhereClauseParser.optionally_parse_with(state)?;
 
-        state.next_token();
+        state.consume(Token!['{'], "type implementation")?;
 
-        let implementations = vec![];
+        let implementations = AssociatedFunctionsParser.parse_with(state)?;
 
-        state.consume(Punctuator(CloseBrace), "type implementation")?;
+        state.consume(Token!['}'], "type implementation")?;
 
         Ok(ImplItem {
             visibility: self.visibility,

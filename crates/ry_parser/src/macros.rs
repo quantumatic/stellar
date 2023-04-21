@@ -27,7 +27,7 @@ macro_rules! parse_list {
 
                     #[allow(unused_qualifications)]
                     if !matches!($p.next.inner, $closing_token) {
-                        $p.consume(Punctuator(ry_ast::token::Punctuator::Comma), $name)?;
+                        $p.consume(ry_ast::Token![,], $name)?;
 
                         if matches!($p.next.inner, $closing_token) {
                             break;
@@ -45,46 +45,43 @@ macro_rules! parse_list {
 
 macro_rules! binop_pattern {
     () => {
-        Punctuator(
-            Plus | Minus
-                | Asterisk
-                | Slash
-                | Eq
-                | NotEq
-                | LessThan
-                | LessThanOrEq
-                | GreaterThan
-                | GreaterThanOrEq
-                | Assign
-                | OrEq
-                | XorEq
-                | PlusEq
-                | MinusEq
-                | SlashEq
-                | AsteriskEq
-                | AsteriskAsterisk
-                | Percent
-                | And
-                | Xor
-                | Or
-                | OrOr
-                | Elvis
-                | AndAnd
-                | LeftShift
-                | RightShift,
-        )
+        ry_ast::Token![+=]
+        | ry_ast::Token![+]
+        | ry_ast::Token![-=]
+        | ry_ast::Token![-]
+        | ry_ast::Token![**]
+        | ry_ast::Token![*=]
+        | ry_ast::Token![*]
+        | ry_ast::Token![/=]
+        | ry_ast::Token![/]
+        | ry_ast::Token![!=]
+        | ry_ast::Token![!]
+        | ry_ast::Token![>>]
+        | ry_ast::Token![>=]
+        | ry_ast::Token![>]
+        | ry_ast::Token![<<]
+        | ry_ast::Token![<=]
+        | ry_ast::Token![<]
+        | ry_ast::Token![==]
+        | ry_ast::Token![=]
+        | ry_ast::Token![|=]
+        | ry_ast::Token![||]
+        | ry_ast::Token![|]
+        | ry_ast::Token![&&]
+        | ry_ast::Token![~=]
+        | ry_ast::Token![%]
     };
 }
 
 macro_rules! postfixop_pattern {
     () => {
-        Punctuator(QuestionMark | PlusPlus | MinusMinus)
+        ry_ast::Token![?] | ry_ast::Token![++] | ry_ast::Token![--]
     };
 }
 
 macro_rules! prefixop_pattern {
     () => {
-        Punctuator(Bang | Not | PlusPlus | MinusMinus | Minus | Plus)
+        ry_ast::Token![!] | ry_ast::Token![~] | ry_ast::Token![++] | ry_ast::Token![--] | ry_ast::Token![-] | ry_ast::Token![+]
     };
 }
 

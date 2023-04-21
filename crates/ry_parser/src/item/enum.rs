@@ -2,11 +2,7 @@ use crate::{error::ParseResult, macros::parse_list, Parser, ParserState};
 use ry_ast::{
     declaration::{Documented, EnumDeclarationItem, Item, WithDocComment},
     name::Name,
-    token::{
-        Punctuator::{CloseBrace, OpenBrace},
-        RawToken::Punctuator,
-    },
-    Visibility,
+    Token, Visibility,
 };
 
 #[derive(Default)]
@@ -22,12 +18,12 @@ impl Parser for EnumDeclarationParser {
 
         let name = state.consume_identifier("enum name in enum declaration")?;
 
-        state.consume(Punctuator(OpenBrace), "enum declaration")?;
+        state.consume(Token!['{'], "enum declaration")?;
 
         let variants = parse_list!(
             state,
             "enum declaration",
-            Punctuator(CloseBrace),
+            Token!['}'],
             || -> ParseResult<Documented<Name>> {
                 let doc = state.consume_docstring()?;
                 Ok(state

@@ -3,7 +3,7 @@ use crate::{error::ParseResult, Parser, ParserState};
 use ry_ast::{
     expression::Expression,
     precedence::Precedence,
-    token::{Punctuator::CloseParent, RawToken::Punctuator},
+    Token
 };
 
 pub(crate) struct ParenthesizedExpressionParser;
@@ -19,7 +19,7 @@ impl Parser for ParenthesizedExpressionParser {
         }
         .parse_with(state)?;
 
-        state.consume(Punctuator(CloseParent), "parenthesized expression")?;
+        state.consume(Token![')'], "parenthesized expression")?;
 
         Ok(expression)
     }

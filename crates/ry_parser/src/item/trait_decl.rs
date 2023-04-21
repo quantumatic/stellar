@@ -1,59 +1,12 @@
-use super::{function::FunctionParser, type_alias::TypeAliasParser};
+use super::associated_functions::AssociatedFunctionsParser;
 use crate::{
-    error::{expected, ParseError},
     r#type::{GenericsParser, WhereClauseParser},
     OptionalParser, ParseResult, Parser, ParserState,
 };
 use ry_ast::{
-    declaration::{Documented, Item, TraitDeclarationItem, TraitItem, WithDocComment},
-    token::{
-        Keyword::{Fun, Pub, Type},
-        Punctuator::{CloseBrace, OpenBrace},
-        RawToken::{Keyword, Punctuator},
-    },
-    Visibility,
+    declaration::{Item, TraitDeclarationItem},
+    Token, Visibility,
 };
-
-pub(crate) struct TraitItemsParser;
-
-impl Parser for TraitItemsParser {
-    type Output = Vec<Documented<TraitItem>>;
-
-    fn parse_with(self, state: &mut ParserState<'_>) -> ParseResult<Self::Output> {
-        let mut items = vec![];
-
-        while state.next.inner != Punctuator(CloseBrace) {
-            // TODO: Add type aliases here
-
-            let doc = state.consume_docstring()?;
-
-            let visibility = if state.next.inner == Keyword(Pub) {
-                state.next_token();
-                Visibility::public(state.current.span)
-            } else {
-                Visibility::private()
-            };
-
-            items.push(match state.next.inner {
-                Keyword(Fun) => Ok(TraitItem::from(
-                    FunctionParser { visibility }.parse_with(state)?,
-                )
-                .with_doc_comment(doc)),
-                Keyword(Type) => Ok(TraitItem::from(
-                    TypeAliasParser { visibility }.parse_with(state)?,
-                )
-                .with_doc_comment(doc)),
-                _ => Err(ParseError::unexpected_token(
-                    state.next.clone(),
-                    expected!(Keyword(Fun), Keyword(Type)),
-                    "trait item",
-                )),
-            }?);
-        }
-
-        Ok(items)
-    }
-}
 
 #[derive(Default)]
 pub(crate) struct TraitDeclarationParser {
@@ -72,11 +25,11 @@ impl Parser for TraitDeclarationParser {
 
         let r#where = WhereClauseParser.optionally_parse_with(state)?;
 
-        state.consume(Punctuator(OpenBrace), "trait declaration")?;
+        state.consume(Token!['{'], "trait declaration")?;
 
-        let items = TraitItemsParser.parse_with(state)?;
+        let items = AssociatedFunctionsParser.parse_with(state)?;
 
-        state.consume(Punctuator(CloseBrace), "trait declaration")?;
+        state.consume(Token!['}'], "trait declaration")?;
 
         Ok(TraitDeclarationItem {
             visibility: self.visibility,

@@ -1,4 +1,4 @@
-use super::{docstring::Documented, function::FunctionDeclaration, Item};
+use super::{docstring::Documented, Item, TraitItem};
 use crate::{
     r#type::{Generics, Type, WhereClause},
     Visibility,
@@ -12,7 +12,7 @@ pub struct ImplItem {
     pub r#type: Type,
     pub r#trait: Option<Type>,
     pub r#where: WhereClause,
-    pub implementations: Vec<Documented<FunctionDeclaration>>,
+    pub implementations: Vec<Documented<TraitItem>>,
 }
 
 impl From<ImplItem> for Item {

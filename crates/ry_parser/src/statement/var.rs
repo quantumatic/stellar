@@ -3,10 +3,7 @@ use crate::{
 };
 use ry_ast::{
     statement::{Statement, VarStatement},
-    token::{
-        Punctuator::{Assign, Colon},
-        RawToken::Punctuator,
-    },
+    Token,
 };
 
 #[derive(Default)]
@@ -20,14 +17,14 @@ impl Parser for VarStatementParser {
 
         let name = state.consume_identifier("variable name in var statement")?;
 
-        let r#type = if state.next.inner == Punctuator(Colon) {
+        let r#type = if state.next.inner == Token![:] {
             state.next_token();
             Some(TypeParser.parse_with(state)?)
         } else {
             None
         };
 
-        state.consume(Punctuator(Assign), "var statement")?;
+        state.consume(Token![=], "var statement")?;
 
         Ok(VarStatement {
             name,

@@ -4,7 +4,7 @@ use ry_ast::{
     expression::{CallExpression, Expression, RawExpression},
     precedence::Precedence,
     span::At,
-    token::{Punctuator::CloseParent, RawToken::Punctuator},
+    Token,
 };
 
 pub(crate) struct CallExpressionParser {
@@ -17,15 +17,12 @@ impl Parser for CallExpressionParser {
     fn parse_with(self, state: &mut ParserState<'_>) -> ParseResult<Self::Output> {
         state.next_token();
 
-        let arguments = parse_list!(
-            state,
-            "call arguments list",
-            Punctuator(CloseParent),
-            || ExpressionParser {
-                precedence: Precedence::Lowest
+        let arguments = parse_list!(state, "call arguments list", Token![')'], || {
+            ExpressionParser {
+                precedence: Precedence::Lowest,
             }
             .parse_with(state)
-        );
+        });
 
         state.next_token();
 

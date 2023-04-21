@@ -8,11 +8,7 @@ use crate::{
 };
 use ry_ast::{
     declaration::{Function, FunctionArgument, FunctionDeclaration, FunctionTypeSignature, Item},
-    token::{
-        Punctuator::{Assign, CloseParent, Colon, OpenBrace, OpenParent, Semicolon},
-        RawToken::Punctuator,
-    },
-    Visibility,
+    Token, Visibility,
 };
 
 pub(crate) struct FunctionArgumentParser;
@@ -23,13 +19,13 @@ impl Parser for FunctionArgumentParser {
     fn parse_with(self, state: &mut ParserState<'_>) -> ParseResult<Self::Output> {
         let name = state.consume_identifier("function argument name")?;
 
-        state.consume(Punctuator(Colon), "function argument name")?;
+        state.consume(Token![:], "function argument name")?;
 
         let r#type = TypeParser.parse_with(state)?;
 
         let mut default_value = None;
 
-        if state.next.inner == Punctuator(Assign) {
+        if state.next.inner == Token![=] {
             state.next_token();
             default_value = Some(ExpressionParser::default().parse_with(state)?);
         }
@@ -56,9 +52,9 @@ impl Parser for FunctionTypeSignatureParser {
 
         let generics = GenericsParser.optionally_parse_with(state)?;
 
-        state.consume(Punctuator(OpenParent), "function declaration")?;
+        state.consume(Token!['('], "function declaration")?;
 
-        let arguments = parse_list!(state, "function arguments", Punctuator(CloseParent), || {
+        let arguments = parse_list!(state, "function arguments", Token![')'], || {
             FunctionArgumentParser.parse_with(state)
         });
 
@@ -66,7 +62,7 @@ impl Parser for FunctionTypeSignatureParser {
 
         let mut return_type = None;
 
-        if state.next.inner == Punctuator(Colon) {
+        if state.next.inner == Token![:] {
             state.next_token();
             return_type = Some(TypeParser.parse_with(state)?);
         }
@@ -115,12 +111,12 @@ impl Parser for FunctionParser {
         .parse_with(state)?;
 
         match state.next.inner {
-            Punctuator(Semicolon) => {
+            Token![;] => {
                 state.next_token();
 
                 Ok(signature.into())
             }
-            Punctuator(OpenBrace) => Ok(FunctionDeclaration {
+            Token!['{'] => Ok(FunctionDeclaration {
                 signature,
                 body: StatementsBlockParser.parse_with(state)?,
             }
@@ -130,7 +126,7 @@ impl Parser for FunctionParser {
 
                 Err(ParseError::unexpected_token(
                     state.current.clone(),
-                    expected!(Punctuator(Semicolon), Punctuator(OpenBrace)),
+                    expected!(Token![;], Token!['(']),
                     "end of function definition/declaration",
                 ))
             }

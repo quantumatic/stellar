@@ -1,11 +1,9 @@
+use super::ExpressionParser;
+use crate::{error::ParseResult, statement::StatementsBlockParser, Parser, ParserState};
 use ry_ast::{
     expression::{Expression, RawExpression, WhileExpression},
     span::At,
 };
-
-use crate::{error::ParseResult, statement::StatementsBlockParser, Parser, ParserState};
-
-use super::ExpressionParser;
 
 pub(crate) struct WhileExpressionParser;
 

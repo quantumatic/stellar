@@ -3,7 +3,7 @@ use crate::{error::ParseResult, macros::parse_list, Parser, ParserState};
 use ry_ast::{
     expression::{ArrayLiteralExpression, Expression, RawExpression},
     span::At,
-    token::{Punctuator::CloseBracket, RawToken::Punctuator},
+    Token,
 };
 
 pub(crate) struct ArrayLiteralExpressionParser;
@@ -16,7 +16,7 @@ impl Parser for ArrayLiteralExpressionParser {
 
         let start = state.next.span.start;
 
-        let literal = parse_list!(state, "array literal", Punctuator(CloseBracket), || {
+        let literal = parse_list!(state, "array literal", Token![']'], || {
             ExpressionParser::default().parse_with(state)
         });
 

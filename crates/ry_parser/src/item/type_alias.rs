@@ -5,11 +5,7 @@ use crate::{
 };
 use ry_ast::{
     declaration::{Item, TypeAlias},
-    token::{
-        Punctuator::{Assign, Semicolon},
-        RawToken::Punctuator,
-    },
-    Visibility,
+    Token, Visibility,
 };
 
 #[derive(Default)]
@@ -26,7 +22,7 @@ impl Parser for TypeAliasParser {
         let name = state.consume_identifier("type alias")?;
         let generics = GenericsParser.optionally_parse_with(state)?;
 
-        let r#for = if state.next.inner == Punctuator(Assign) {
+        let r#for = if state.next.inner == Token![=] {
             state.next_token();
 
             Some(TypeParser.parse_with(state)?)
@@ -34,7 +30,7 @@ impl Parser for TypeAliasParser {
             None
         };
 
-        state.consume(Punctuator(Semicolon), "type alias")?;
+        state.consume(Token![;], "type alias")?;
 
         Ok(TypeAlias {
             visibility: self.visibility,

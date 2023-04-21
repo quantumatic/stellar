@@ -3,10 +3,7 @@ use crate::{error::ParseResult, statement::StatementsBlockParser, Parser, Parser
 use ry_ast::{
     expression::{Expression, IfBlock, IfExpression, RawExpression},
     span::At,
-    token::{
-        Keyword::{Else, If},
-        RawToken::Keyword,
-    },
+    Token
 };
 
 pub(crate) struct IfExpressionParser;
@@ -26,11 +23,11 @@ impl Parser for IfExpressionParser {
 
         let mut r#else = None;
 
-        while state.next.inner == Keyword(Else) {
+        while state.next.inner == Token![else] {
             state.next_token();
 
             match state.next.inner {
-                Keyword(If) => {}
+                Token![if] => {}
                 _ => {
                     r#else = Some(StatementsBlockParser.parse_with(state)?);
                     break;

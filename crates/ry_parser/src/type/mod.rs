@@ -14,13 +14,7 @@ use crate::{
     error::{expected, ParseError, ParseResult},
     Parser, ParserState,
 };
-use ry_ast::{
-    r#type::Type,
-    token::{
-        Punctuator::{And, OpenBracket},
-        RawToken::{Identifier, Punctuator},
-    },
-};
+use ry_ast::{r#type::Type, token::RawToken, Token};
 
 #[derive(Default)]
 pub(crate) struct TypeParser;
@@ -30,13 +24,13 @@ impl Parser for TypeParser {
 
     fn parse_with(self, state: &mut ParserState<'_>) -> ParseResult<Self::Output> {
         let r#type = match state.next.inner {
-            Identifier(..) => PrimaryTypeParser.parse_with(state)?,
-            Punctuator(And) => ReferenceTypeParser.parse_with(state)?,
-            Punctuator(OpenBracket) => ArrayTypeParser.parse_with(state)?,
+            RawToken::Identifier(..) => PrimaryTypeParser.parse_with(state)?,
+            Token![&] => ReferenceTypeParser.parse_with(state)?,
+            Token!['['] => ArrayTypeParser.parse_with(state)?,
             _ => {
                 return Err(ParseError::unexpected_token(
                     state.next.clone(),
-                    expected!("identifier", Punctuator(And), Punctuator(OpenBracket)),
+                    expected!("identifier", Token![&], Token!['[']),
                     "type",
                 ));
             }
