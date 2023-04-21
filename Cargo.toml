@@ -6,9 +6,3 @@ members = [
     "crates/ry_parser",
     "crates/ry_report",
 ]
-
-[license]
-allowed = [
-    "Unlicensed",
-    "MIT"
-]
