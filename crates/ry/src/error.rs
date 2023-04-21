@@ -1,8 +1,10 @@
 #[macro_export]
 macro_rules! mytry {
     ($e:expr) => {{
+        let e0 = $e;
+
         #[allow(unused_qualifications)]
-        if let Err(e) = $e {
+        if let Err(e) = e0 {
             println!(
                 "
 >===============================================================<
@@ -35,7 +37,7 @@ Info:
             );
             std::process::exit(1);
         } else {
-            $e.unwrap()
+            e0.unwrap()
         }
     }};
 }
