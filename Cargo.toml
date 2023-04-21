@@ -2,8 +2,13 @@
 members = [
     "crates/ry",
     "crates/ry_ast",
-    "crates/ry_ast_serializer",
     "crates/ry_lexer",
     "crates/ry_parser",
     "crates/ry_report",
+]
+
+[license]
+allowed = [
+    "Unlicensed",
+    "MIT"
 ]

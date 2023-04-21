@@ -2,6 +2,8 @@
 name = "ry_interner"
 version = "0.1.1"
 edition = "2021"
+license = "Apache-2.0"
+authors = ["Adi Salimgereyev <adisalimgereev@gmail.com>"]
 
 [dependencies]
 hashbrown = "0.13.2"
