@@ -69,7 +69,7 @@ jobs:
           key: v1-${{ matrix.target }}
 
       - name: Debug
-        run: ls
+        run: dir .
 
       - name: Run tests
         uses: actions-rs/cargo@v1
