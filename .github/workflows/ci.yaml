@@ -68,6 +68,10 @@ jobs:
         with:
           key: v1-${{ matrix.target }}
 
+      - name: Print working directory
+        run: |
+          pwd
+
       - name: List files
         run: |
           ls -la
