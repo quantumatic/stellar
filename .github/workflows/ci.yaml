@@ -68,8 +68,10 @@ jobs:
         with:
           key: v1-${{ matrix.target }}
 
-      - name: Debug
-        run: dir .
+      - name: List files
+        run: |
+          ls -la
+          echo "List of files above"
 
       - name: Run tests
         uses: actions-rs/cargo@v1
