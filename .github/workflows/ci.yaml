@@ -1,9 +1,12 @@
-name: ci
+name: CI/CD
 on:
   pull_request:
   push:
     branches:
       - main
+
+permissions:
+  contents: read
 
 env:
   CARGO_TERM_COLOR: always
@@ -54,6 +57,9 @@ jobs:
             use-cross: false
             run-integration-tests: false
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
       - name: Install Rust toolchain
         uses: actions-rs/toolchain@v1
         with:
@@ -68,14 +74,13 @@ jobs:
         with:
           key: v1-${{ matrix.target }}
 
-      - name: Print working directory
-        run: |
-          pwd
-
-      - name: List files
-        run: |
-          ls -la
-          echo "List of files above"
+      - name: Install Ry
+        uses: actions-rs/cargo@v1
+        with:
+          command: install
+          args: "--path compiler-cli --target ${{ matrix.target }} --debug --locked"
+          use-cross: ${{ matrix.use-cross }}
+        if: ${{ matrix.run-integration-tests }}
 
       - name: Run tests
         uses: actions-rs/cargo@v1
@@ -83,6 +88,7 @@ jobs:
           command: test
           args: "--workspace --target ${{ matrix.target }}"
           use-cross: ${{ matrix.use-cross }}
+
   rustfmt:
     name: rustfmt
     runs-on: ubuntu-latest
