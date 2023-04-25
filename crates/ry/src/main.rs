@@ -51,7 +51,7 @@ use ry_interner::Interner;
 use ry_lexer::Lexer;
 use ry_parser::ParserState;
 use ry_report::{Reporter, ReporterState};
-use std::{fs, io::Write, process::exit};
+use std::{fs, io::Write, process::exit, time::Instant};
 
 mod error;
 mod prefix;
@@ -122,7 +122,9 @@ fn main() {
                     let file_id = reporter.add_file(filepath, &contents);
                     let mut parser = ParserState::new(&contents, &mut interner);
 
-                    log_with_prefix("parsing ", filepath);
+                    let now = Instant::now();
+
+                    log_with_prefix("   Parsing ", filepath);
 
                     let ast = parser.parse();
 
@@ -133,14 +135,19 @@ fn main() {
                             let (filename, mut file) = create_unique_file("ast", "json");
                             mytry!(file.write_all(json.as_bytes()));
 
-                            log_with_prefix("finished ", filepath);
-                            log_with_prefix("note: ", &format!("AST is written in {}", filename));
+                            log_with_prefix(
+                                "   Parsed ",
+                                format!("in {}s", now.elapsed().as_secs_f64()),
+                            );
+                            log_with_prefix("   Emmited ", format!("AST in `{}`", filename));
                         }
                         Err(e) => {
                             e.emit_diagnostic(&reporter, file_id);
 
-                            reporter
-                                .emit_global_error("cannot output AST due to the previous errors");
+                            log_with_prefix(
+                                "error: ",
+                                "cannot emit AST due to the previous errors",
+                            );
 
                             exit(1);
                         }

@@ -187,12 +187,14 @@ impl<'a> ParserState<'a> {
         let (mut module_docstring, mut local_docstring) = (vec![], vec![]);
 
         loop {
-            if self.next.inner == RawToken::GlobalDocComment {
-                module_docstring.push(self.lexer.contents.index(self.next.span).to_owned());
-            } else if self.next.inner == RawToken::LocalDocComment {
-                local_docstring.push(self.lexer.contents.index(self.next.span).to_owned());
-            } else {
-                return Ok((module_docstring, local_docstring));
+            match self.next.inner {
+                RawToken::GlobalDocComment => {
+                    module_docstring.push(self.lexer.contents.index(self.next.span).to_owned())
+                }
+                RawToken::LocalDocComment => {
+                    local_docstring.push(self.lexer.contents.index(self.next.span).to_owned())
+                }
+                _ => return Ok((module_docstring, local_docstring)),
             }
 
             self.next_token();
