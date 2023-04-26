@@ -14,7 +14,7 @@ impl Parser for IfExpressionParser {
     fn parse_with(self, state: &mut ParserState<'_>) -> ParseResult<Self::Output> {
         state.next_token();
 
-        let start = state.current.span.start;
+        let start = state.current.span().start();
 
         let mut if_blocks = vec![IfBlock {
             condition: ExpressionParser::default().parse_with(state)?,
@@ -23,10 +23,10 @@ impl Parser for IfExpressionParser {
 
         let mut r#else = None;
 
-        while state.next.inner == Token![else] {
+        while *state.next.unwrap() == Token![else] {
             state.next_token();
 
-            match state.next.inner {
+            match state.next.unwrap() {
                 Token![if] => {}
                 _ => {
                     r#else = Some(StatementsBlockParser.parse_with(state)?);
@@ -42,8 +42,7 @@ impl Parser for IfExpressionParser {
             });
         }
 
-        let end = state.current.span.end;
-
-        Ok(RawExpression::from(IfExpression { if_blocks, r#else }).at(start..end))
+        Ok(RawExpression::from(IfExpression { if_blocks, r#else })
+            .at(start..state.current.span().end()))
     }
 }

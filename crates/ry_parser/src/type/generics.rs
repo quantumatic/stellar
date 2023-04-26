@@ -11,7 +11,7 @@ impl OptionalParser for GenericsParser {
     type Output = Generics;
 
     fn optionally_parse_with(self, state: &mut ParserState<'_>) -> ParseResult<Self::Output> {
-        if state.next.inner != Token!['['] {
+        if *state.next.unwrap() != Token!['['] {
             return Ok(vec![]);
         }
 
@@ -24,7 +24,7 @@ impl OptionalParser for GenericsParser {
             || -> ParseResult<Generic> {
                 let name = state.consume_identifier("generic name")?;
 
-                let constraint = if state.next.inner == Token![:] {
+                let constraint = if *state.next.unwrap() == Token![:] {
                     state.next_token();
                     Some(TypeParser.parse_with(state)?)
                 } else {

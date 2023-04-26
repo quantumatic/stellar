@@ -12,7 +12,7 @@ impl Parser for WhileExpressionParser {
 
     fn parse_with(self, state: &mut ParserState<'_>) -> ParseResult<Self::Output> {
         state.next_token();
-        let start = state.current.span.start;
+        let start = state.current.span().start();
 
         let condition = ExpressionParser::default().parse_with(state)?;
         let body = StatementsBlockParser.parse_with(state)?;
@@ -21,6 +21,6 @@ impl Parser for WhileExpressionParser {
             condition: Box::new(condition),
             body,
         })
-        .at(start..state.current.span.end))
+        .at(start..state.current.span().end()))
     }
 }

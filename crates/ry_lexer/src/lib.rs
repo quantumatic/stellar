@@ -428,8 +428,12 @@ impl<'a> Lexer<'a> {
         loop {
             let t = self.next();
             match t {
-                Some(Spanned { inner: Comment, .. }) => {}
-                _ => {
+                Some(ref c) => {
+                    if *c.unwrap() != Comment {
+                        return t;
+                    }
+                }
+                None => {
                     return t;
                 }
             }

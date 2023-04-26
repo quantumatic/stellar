@@ -11,7 +11,7 @@ impl Parser for PrimaryTypeParser {
     type Output = Type;
 
     fn parse_with(self, state: &mut ParserState<'_>) -> ParseResult<Self::Output> {
-        let start = state.next.span.start;
+        let start = state.next.span().start();
         let path = PathParser.parse_with(state)?;
         let type_annotations = TypeAnnotationsParser.optionally_parse_with(state)?;
 
@@ -19,6 +19,6 @@ impl Parser for PrimaryTypeParser {
             path,
             type_annotations,
         })
-        .at(start..state.current.span.end))
+        .at(start..state.current.span().end()))
     }
 }

@@ -18,16 +18,16 @@ impl Parser for StatementParser {
         let mut last_statement_in_block = false;
         let mut must_have_semicolon_at_the_end = true;
 
-        let statement = match state.next.inner {
+        let statement = match state.next.unwrap() {
             Token![return] => ReturnStatementParser.parse_with(state)?,
             Token![defer] => DeferStatementParser.parse_with(state)?,
             Token![var] => VarStatementParser.parse_with(state)?,
             _ => {
                 let expression = ExpressionParser::default().parse_with(state)?;
 
-                must_have_semicolon_at_the_end = !expression.inner.with_block();
+                must_have_semicolon_at_the_end = !expression.unwrap().with_block();
 
-                match state.next.inner {
+                match state.next.unwrap() {
                     Token![;] => {}
                     _ => {
                         if must_have_semicolon_at_the_end {
@@ -70,7 +70,7 @@ impl Parser for StatementsBlockParser {
 
         let mut block = vec![];
 
-        while state.next.inner != Token!['}'] {
+        while *state.next.unwrap() != Token!['}'] {
             let (statement, last) = StatementParser.parse_with(state)?;
             block.push(statement);
 

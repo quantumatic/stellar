@@ -13,20 +13,20 @@ impl Parser for BinaryExpressionParser {
     type Output = Expression;
 
     fn parse_with(self, state: &mut ParserState<'_>) -> ParseResult<Self::Output> {
+        let start = self.left.span().start();
+
         let op = state.next.clone();
-        let precedence = state.next.inner.to_precedence();
+        let precedence = state.next.unwrap().to_precedence();
 
         state.next_token();
 
         let right = ExpressionParser { precedence }.parse_with(state)?;
-
-        let span = self.left.span.start..state.current.span.end;
 
         Ok(RawExpression::from(BinaryExpression {
             left: Box::new(self.left),
             right: Box::new(right),
             op,
         })
-        .at(span))
+        .at(start..state.current.span().end()))
     }
 }

@@ -26,7 +26,7 @@ impl Parser for ImplItemParser {
         let mut r#type = TypeParser.parse_with(state)?;
         let mut r#trait = None;
 
-        if state.next.inner == Token![for] {
+        if *state.next.unwrap() == Token![for] {
             state.next_token();
 
             r#trait = Some(r#type);

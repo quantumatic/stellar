@@ -14,7 +14,7 @@ impl Parser for ParenthesizedExpressionParser {
 
     fn parse_with(self, state: &mut ParserState<'_>) -> ParseResult<Self::Output> {
         state.next_token();
-        let start = state.current.span.start;
+        let start = state.current.span().start();
 
         let inner = ExpressionParser {
             precedence: Precedence::Lowest,
@@ -22,11 +22,10 @@ impl Parser for ParenthesizedExpressionParser {
         .parse_with(state)?;
 
         state.consume(Token![')'], "parenthesized expression")?;
-        let end = state.current.span.end;
 
         Ok(RawExpression::from(ParenthesizedExpression {
             inner: Box::new(inner),
         })
-        .at(start..end))
+        .at(start..state.current.span().end()))
     }
 }

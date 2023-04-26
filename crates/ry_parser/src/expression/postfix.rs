@@ -12,17 +12,15 @@ impl Parser for PostfixExpressionParser {
     type Output = Expression;
 
     fn parse_with(self, state: &mut ParserState<'_>) -> ParseResult<Self::Output> {
+        let start = self.left.span().start();
+
         state.next_token();
-
-        let op = state.current.clone();
-
-        let span = self.left.span.start..op.span.end;
 
         Ok(RawExpression::from(UnaryExpression {
             inner: Box::new(self.left),
-            op,
+            op: state.current.clone(),
             postfix: true,
         })
-        .at(span))
+        .at(start..state.current.span().end()))
     }
 }

@@ -13,13 +13,13 @@ impl Parser for ReferenceTypeParser {
     fn parse_with(self, state: &mut ParserState<'_>) -> ParseResult<Self::Output> {
         state.next_token();
 
-        let start = state.current.span.start;
+        let start = state.current.span().start();
 
         let inner = TypeParser.parse_with(state)?;
 
         Ok(RawType::from(ReferenceType {
             inner: Box::new(inner),
         })
-        .at(start..state.current.span.end))
+        .at(start..state.current.span().end()))
     }
 }

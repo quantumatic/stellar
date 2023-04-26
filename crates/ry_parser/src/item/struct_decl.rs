@@ -17,9 +17,9 @@ impl Parser for StructMemberParser {
     fn parse_with(self, state: &mut ParserState<'_>) -> ParseResult<Self::Output> {
         let mut visibility = Visibility::private();
 
-        if state.next.inner == Token![pub] {
+        if *state.next.unwrap() == Token![pub] {
             state.next_token();
-            visibility = Visibility::public(state.current.span);
+            visibility = Visibility::public(state.current.span());
         }
 
         let name = state.consume_identifier("struct member name in struct definition")?;
@@ -46,7 +46,7 @@ impl Parser for StructMembersParser {
     fn parse_with(self, state: &mut ParserState<'_>) -> ParseResult<Self::Output> {
         let mut members = vec![];
 
-        while state.next.inner != Token!['}'] {
+        while *state.next.unwrap() != Token!['}'] {
             let docstring = state.consume_docstring()?;
 
             members.push(

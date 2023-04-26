@@ -21,15 +21,15 @@ macro_rules! parse_list {
         {
             let mut result = vec![];
 
-            if !matches!($p.next.inner, $closing_token) {
+            if !matches!($p.next.unwrap(), $closing_token) {
                 loop {
                     result.push($fn($($fn_arg)*)?);
 
                     #[allow(unused_qualifications)]
-                    if !matches!($p.next.inner, $closing_token) {
+                    if !matches!($p.next.unwrap(), $closing_token) {
                         $p.consume(ry_ast::Token![,], $name)?;
 
-                        if matches!($p.next.inner, $closing_token) {
+                        if matches!($p.next.unwrap(), $closing_token) {
                             break;
                         }
                     } else {

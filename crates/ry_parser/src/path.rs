@@ -9,19 +9,17 @@ impl Parser for PathParser {
     fn parse_with(self, state: &mut ParserState<'_>) -> ParseResult<Self::Output> {
         let mut path = vec![];
         let first_identifier = state.consume_identifier("path")?;
-        path.push(first_identifier.inner.at(state.current.span));
+        path.push((*first_identifier.unwrap()).at(state.current.span()));
 
-        let (start, mut end) = (first_identifier.span.start, first_identifier.span.end);
+        let (start, mut end) = (
+            first_identifier.span().start(),
+            first_identifier.span().end(),
+        );
 
-        while state.next.inner == Token![.] {
+        while *state.next.unwrap() == Token![.] {
             state.next_token();
-            path.push(
-                state
-                    .consume_identifier("path")?
-                    .inner
-                    .at(state.current.span),
-            );
-            end = state.current.span.end;
+            path.push((*state.consume_identifier("path")?.unwrap()).at(state.current.span()));
+            end = state.current.span().end();
         }
 
         Ok(path.at(start..end))

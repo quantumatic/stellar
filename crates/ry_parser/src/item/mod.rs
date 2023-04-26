@@ -33,7 +33,7 @@ impl Parser for ItemsParser {
         let mut items = vec![];
         let mut docstring = self.first_docstring;
 
-        while state.next.inner != RawToken::EndOfFile {
+        while *state.next.unwrap() != RawToken::EndOfFile {
             items.push(ItemParser.parse_with(state)?.with_doc_comment(docstring));
 
             docstring = state.consume_docstring()?;
@@ -51,12 +51,12 @@ impl Parser for ItemParser {
     fn parse_with(self, state: &mut ParserState<'_>) -> ParseResult<Self::Output> {
         let mut visibility = Visibility::private();
 
-        if state.next.inner == Token![pub] {
-            visibility = Visibility::public(state.next.span);
+        if *state.next.unwrap() == Token![pub] {
+            visibility = Visibility::public(state.next.span());
             state.next_token();
         }
 
-        Ok(match state.next.inner {
+        Ok(match state.next.unwrap() {
             Token![enum] => EnumDeclarationParser { visibility }.parse_with(state)?,
             Token![import] => ImportParser { visibility }.parse_with(state)?,
             Token![struct] => StructDeclarationParser { visibility }.parse_with(state)?,

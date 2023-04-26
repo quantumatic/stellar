@@ -12,16 +12,16 @@ impl Parser for PropertyAccessExpressionParser {
     type Output = Expression;
 
     fn parse_with(self, state: &mut ParserState<'_>) -> ParseResult<Self::Output> {
+        let start = self.left.span().start();
+
         state.next_token();
 
         let property = state.consume_identifier("property")?;
 
-        let span = self.left.span.start..property.span.end;
-
         Ok(RawExpression::from(PropertyAccessExpression {
             left: Box::new(self.left),
-            property,
+            property: state.consume_identifier("property")?,
         })
-        .at(span))
+        .at(start..property.span().end()))
     }
 }

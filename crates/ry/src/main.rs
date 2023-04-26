@@ -97,10 +97,13 @@ fn main() {
                         if show_locations {
                             println!(
                                 "{:08}: [{}]@{}..{}",
-                                current_token_index, token.inner, token.span.start, token.span.end
+                                current_token_index,
+                                token.unwrap(),
+                                token.span().start(),
+                                token.span().end()
                             );
                         } else {
-                            println!("{:08}: [{}]", current_token_index, token.inner);
+                            println!("{:08}: [{}]", current_token_index, token.unwrap());
                         }
 
                         current_token_index += 1;

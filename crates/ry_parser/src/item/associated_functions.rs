@@ -16,17 +16,17 @@ impl Parser for AssociatedFunctionsParser {
     fn parse_with(self, state: &mut ParserState<'_>) -> ParseResult<Self::Output> {
         let mut items = vec![];
 
-        while state.next.inner != Token!['}'] {
+        while *state.next.unwrap() != Token!['}'] {
             let doc = state.consume_docstring()?;
 
-            let visibility = if state.next.inner == Token![pub] {
+            let visibility = if *state.next.unwrap() == Token![pub] {
                 state.next_token();
-                Visibility::public(state.current.span)
+                Visibility::public(state.current.span())
             } else {
                 Visibility::private()
             };
 
-            items.push(match state.next.inner {
+            items.push(match state.next.unwrap() {
                 Token![fun] => Ok(TraitItem::from(
                     FunctionParser { visibility }.parse_with(state)?,
                 )

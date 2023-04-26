@@ -19,7 +19,8 @@ impl Parser for PrefixExpressionParser {
             precedence: Precedence::Unary,
         }
         .parse_with(state)?;
-        let span = op.span.start..inner.span.end;
+
+        let span = op.span().start()..inner.span().end();
 
         Ok(RawExpression::from(UnaryExpression {
             inner: Box::new(inner),

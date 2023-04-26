@@ -14,7 +14,7 @@ impl Parser for ArrayLiteralExpressionParser {
     fn parse_with(self, state: &mut ParserState<'_>) -> ParseResult<Self::Output> {
         state.next_token();
 
-        let start = state.next.span.start;
+        let start = state.next.span().start();
 
         let literal = parse_list!(state, "array literal", Token![']'], || {
             ExpressionParser::default().parse_with(state)
@@ -22,8 +22,7 @@ impl Parser for ArrayLiteralExpressionParser {
 
         state.next_token();
 
-        let end = state.current.span.end;
-
-        Ok(RawExpression::from(ArrayLiteralExpression { literal }).at(start..end))
+        Ok(RawExpression::from(ArrayLiteralExpression { literal })
+            .at(start..state.current.span().end()))
     }
 }

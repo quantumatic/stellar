@@ -42,8 +42,8 @@ impl Parser for ExpressionParser {
     fn parse_with(self, state: &mut ParserState<'_>) -> ParseResult<Self::Output> {
         let mut left = PrimaryExpressionParser.parse_with(state)?;
 
-        while self.precedence < state.next.inner.to_precedence() {
-            left = match &state.next.inner {
+        while self.precedence < state.next.unwrap().to_precedence() {
+            left = match state.next.unwrap() {
                 binop_pattern!() => BinaryExpressionParser { left }.parse_with(state)?,
                 Token!['('] => CallExpressionParser { left }.parse_with(state)?,
                 Token![.] => PropertyAccessExpressionParser { left }.parse_with(state)?,
@@ -65,7 +65,7 @@ impl Parser for WhileExpressionParser {
 
     fn parse_with(self, state: &mut ParserState<'_>) -> ParseResult<Self::Output> {
         state.next_token();
-        let start = state.current.span.start;
+        let start = state.current.span().start();
 
         let condition = ExpressionParser::default().parse_with(state)?;
         let body = StatementsBlockParser.parse_with(state)?;
@@ -74,7 +74,7 @@ impl Parser for WhileExpressionParser {
             condition: Box::new(condition),
             body,
         })
-        .at(start..state.current.span.end))
+        .at(start..state.current.span().end()))
     }
 }
 
@@ -84,19 +84,19 @@ impl Parser for PrimaryExpressionParser {
     type Output = Expression;
 
     fn parse_with(self, state: &mut ParserState<'_>) -> ParseResult<Self::Output> {
-        match state.next.inner {
+        match *state.next.unwrap() {
             RawToken::IntegerLiteral => {
                 state.next_token();
                 match state
                     .lexer
                     .contents
-                    .index(state.current.span)
+                    .index(state.current.span())
                     .replace('_', "")
                     .parse::<u64>()
                 {
                     Ok(literal) => Ok(RawExpression::from(IntegerLiteralExpression { literal })
-                        .at(state.current.span)),
-                    Err(..) => Err(ParseError::integer_overflow(state.current.span)),
+                        .at(state.current.span())),
+                    Err(..) => Err(ParseError::integer_overflow(state.current.span())),
                 }
             }
             RawToken::FloatLiteral => {
@@ -104,39 +104,39 @@ impl Parser for PrimaryExpressionParser {
                 match state
                     .lexer
                     .contents
-                    .index(state.current.span)
+                    .index(state.current.span())
                     .replace('_', "")
                     .parse::<f64>()
                 {
                     Ok(literal) => Ok(RawExpression::from(FloatLiteralExpression { literal })
-                        .at(state.current.span)),
-                    Err(..) => Err(ParseError::float_overflow(state.current.span)),
+                        .at(state.current.span())),
+                    Err(..) => Err(ParseError::float_overflow(state.current.span())),
                 }
             }
             RawToken::StringLiteral => {
                 state.next_token();
                 Ok(RawExpression::from(StringLiteralExpression {
-                    literal: state.lexer.contents.index(state.current.span).to_owned(),
+                    literal: state.lexer.contents.index(state.current.span()).to_owned(),
                 })
-                .at(state.current.span))
+                .at(state.current.span()))
             }
             RawToken::CharLiteral => {
                 state.next_token();
                 Ok(RawExpression::from(StringLiteralExpression {
-                    literal: state.lexer.contents.index(state.current.span).to_owned(),
+                    literal: state.lexer.contents.index(state.current.span()).to_owned(),
                 })
-                .at(state.current.span))
+                .at(state.current.span()))
             }
             Token![true] => {
                 state.next_token();
                 Ok(RawExpression::from(BoolLiteralExpression { literal: true })
-                    .at(state.current.span))
+                    .at(state.current.span()))
             }
             Token![false] => {
                 state.next_token();
                 Ok(
                     RawExpression::from(BoolLiteralExpression { literal: false })
-                        .at(state.current.span),
+                        .at(state.current.span()),
                 )
             }
             prefixop_pattern!() => PrefixExpressionParser.parse_with(state),
@@ -144,7 +144,7 @@ impl Parser for PrimaryExpressionParser {
             Token!['['] => ArrayLiteralExpressionParser.parse_with(state),
             RawToken::Identifier(name) => {
                 state.next_token();
-                Ok(RawExpression::from(IdentifierExpression { name }).at(state.current.span))
+                Ok(RawExpression::from(IdentifierExpression { name }).at(state.current.span()))
             }
             Token![if] => IfExpressionParser.parse_with(state),
             Token![while] => WhileExpressionParser.parse_with(state),

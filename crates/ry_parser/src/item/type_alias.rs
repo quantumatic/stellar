@@ -22,7 +22,7 @@ impl Parser for TypeAliasParser {
         let name = state.consume_identifier("type alias")?;
         let generics = GenericsParser.optionally_parse_with(state)?;
 
-        let r#for = if state.next.inner == Token![=] {
+        let r#for = if *state.next.unwrap() == Token![=] {
             state.next_token();
 
             Some(TypeParser.parse_with(state)?)

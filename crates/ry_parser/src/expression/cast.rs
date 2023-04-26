@@ -12,16 +12,16 @@ impl Parser for CastExpressionParser {
     type Output = Expression;
 
     fn parse_with(self, state: &mut ParserState<'_>) -> ParseResult<Self::Output> {
+        let start = self.left.span().start();
+
         state.next_token();
 
         let right = TypeParser.parse_with(state)?;
-
-        let span = self.left.span.start..state.current.span.end;
 
         Ok(RawExpression::from(AsExpression {
             left: Box::new(self.left),
             right,
         })
-        .at(span))
+        .at(start..state.current.span().end()))
     }
 }

@@ -11,7 +11,7 @@ impl OptionalParser for WhereClauseParser {
     type Output = WhereClause;
 
     fn optionally_parse_with(self, state: &mut ParserState<'_>) -> ParseResult<Self::Output> {
-        if state.next.inner != Token![where] {
+        if *state.next.unwrap() != Token![where] {
             return Ok(vec![]);
         }
 

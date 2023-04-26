@@ -23,7 +23,7 @@ impl Parser for TypeParser {
     type Output = Type;
 
     fn parse_with(self, state: &mut ParserState<'_>) -> ParseResult<Self::Output> {
-        let r#type = match state.next.inner {
+        let r#type = match state.next.unwrap() {
             RawToken::Identifier(..) => PrimaryTypeParser.parse_with(state)?,
             Token![&] => ReferenceTypeParser.parse_with(state)?,
             Token!['['] => ArrayTypeParser.parse_with(state)?,

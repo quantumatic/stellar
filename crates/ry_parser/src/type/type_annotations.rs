@@ -8,7 +8,7 @@ impl OptionalParser for TypeAnnotationsParser {
     type Output = TypeAnnotations;
 
     fn optionally_parse_with(self, state: &mut ParserState<'_>) -> ParseResult<Self::Output> {
-        if state.next.inner != Token!['['] {
+        if *state.next.unwrap() != Token!['['] {
             return Ok(vec![]);
         }
 

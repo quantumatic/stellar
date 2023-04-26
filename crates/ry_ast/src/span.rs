@@ -8,8 +8,8 @@ use std::{fmt::Display, ops::Range};
 /// Represents code block location in source text.
 #[derive(Copy, Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Span {
-    pub start: usize,
-    pub end: usize,
+    start: usize,
+    end: usize,
 }
 
 impl Display for Span {
@@ -20,16 +20,28 @@ impl Display for Span {
 
 impl Span {
     #[inline]
-    pub fn new(start: usize, end: usize) -> Self {
+    #[must_use]
+    pub const fn new(start: usize, end: usize) -> Self {
         Self { start, end }
     }
 
     #[inline]
-    pub fn from_location(location: usize, character_len: usize) -> Self {
+    #[must_use]
+    pub const fn from_location(location: usize, character_len: usize) -> Self {
         Self {
             start: location,
             end: location + character_len,
         }
+    }
+
+    #[inline]
+    pub const fn start(&self) -> usize {
+        self.start
+    }
+
+    #[inline]
+    pub const fn end(&self) -> usize {
+        self.end
     }
 }
 
@@ -55,14 +67,25 @@ impl<'a> SpanIndex for &'a str {
 /// Represents thing located in some [`Span`].
 #[derive(Debug, PartialEq, Clone, Default, Serialize, Deserialize)]
 pub struct Spanned<T> {
-    pub inner: T,
-    pub span: Span,
+    inner: T,
+    span: Span,
 }
 
 impl<T> Spanned<T> {
     #[inline]
+    #[must_use]
     pub const fn new(inner: T, span: Span) -> Self {
         Self { inner, span }
+    }
+
+    #[inline]
+    pub const fn span(&self) -> Span {
+        self.span
+    }
+
+    #[inline]
+    pub const fn unwrap(&self) -> &T {
+        &self.inner
     }
 }
 

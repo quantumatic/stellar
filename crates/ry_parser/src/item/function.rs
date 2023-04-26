@@ -25,7 +25,7 @@ impl Parser for FunctionArgumentParser {
 
         let mut default_value = None;
 
-        if state.next.inner == Token![=] {
+        if *state.next.unwrap() == Token![=] {
             state.next_token();
             default_value = Some(ExpressionParser::default().parse_with(state)?);
         }
@@ -62,7 +62,7 @@ impl Parser for FunctionTypeSignatureParser {
 
         let mut return_type = None;
 
-        if state.next.inner == Token![:] {
+        if *state.next.unwrap() == Token![:] {
             state.next_token();
             return_type = Some(TypeParser.parse_with(state)?);
         }
@@ -110,7 +110,7 @@ impl Parser for FunctionParser {
         }
         .parse_with(state)?;
 
-        match state.next.inner {
+        match state.next.unwrap() {
             Token![;] => {
                 state.next_token();
 

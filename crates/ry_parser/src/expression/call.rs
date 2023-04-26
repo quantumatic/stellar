@@ -15,6 +15,8 @@ impl Parser for CallExpressionParser {
     type Output = Expression;
 
     fn parse_with(self, state: &mut ParserState<'_>) -> ParseResult<Self::Output> {
+        let start = self.left.span().start();
+
         state.next_token();
 
         let arguments = parse_list!(state, "call arguments list", Token![')'], || {
@@ -26,12 +28,10 @@ impl Parser for CallExpressionParser {
 
         state.next_token();
 
-        let span = self.left.span.start..state.current.span.end;
-
         Ok(RawExpression::from(CallExpression {
             left: Box::new(self.left),
             arguments,
         })
-        .at(span))
+        .at(start..state.current.span().end()))
     }
 }
