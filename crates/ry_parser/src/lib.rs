@@ -77,6 +77,7 @@ mod macros;
 /// Represents parser state.
 #[derive(Debug)]
 pub struct ParserState<'a> {
+    /// TODO: remove current and next and make lexer Peekable iterator!
     lexer: Lexer<'a>,
     current: Token,
     next: Token,

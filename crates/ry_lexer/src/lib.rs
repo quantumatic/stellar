@@ -44,7 +44,7 @@
 //! let mut interner = Interner::default();
 //! let mut lexer = Lexer::new("#", &mut interner);
 //!
-//! assert_eq!(lexer.next().unwrap().inner, Error(LexError::UnexpectedChar));
+//! assert_eq!(lexer.next().unwrap().unwrap(), &Error(LexError::UnexpectedChar));
 //! ```
 use ry_ast::{
     span::*,

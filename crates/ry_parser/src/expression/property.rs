@@ -16,12 +16,10 @@ impl Parser for PropertyAccessExpressionParser {
 
         state.next_token();
 
-        let property = state.consume_identifier("property")?;
-
         Ok(RawExpression::from(PropertyAccessExpression {
             left: Box::new(self.left),
             property: state.consume_identifier("property")?,
         })
-        .at(start..property.span().end()))
+        .at(start..state.current.span().end()))
     }
 }
