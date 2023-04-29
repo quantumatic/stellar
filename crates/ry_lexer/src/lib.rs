@@ -1,7 +1,7 @@
 //! This crate provides a lexer for Ry programming language.
 //!
 //! Lexer is a first stage of compilation, state machine
-//! that converts Ry source text into [`Token`]s.
+//! that converts Ry source text into [`type@Token`]s.
 //!
 //! Whitespaces are ignored during scanning process.
 //!

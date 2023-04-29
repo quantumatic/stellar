@@ -77,7 +77,6 @@ mod macros;
 /// Represents parser state.
 #[derive(Debug)]
 pub struct ParserState<'a> {
-    /// TODO: remove current and next and make lexer Peekable iterator!
     lexer: Lexer<'a>,
     current: Token,
     next: Token,
@@ -128,7 +127,18 @@ impl<'a> ParserState<'a> {
         }
     }
 
-    /// Advances the parser to the next token and skips comment tokens.
+    /// Advances the parser to the next token (skips comment tokens).
+    /// # Example:
+    /// ```rust,ignore
+    /// use ry_interner::Interner;
+    /// use ry_ast::Token;
+    ///
+    /// let mut interner = Interner::default();
+    /// let state = crate::ParserState::new("pub fun test() {}", &mut interner);
+    /// assert_eq!(parser.current, Token![pub]);
+    /// state.next_token();
+    /// assert_eq!(parser.current, Token![fun]);
+    /// ```
     fn next_token(&mut self) {
         self.current = self.next.clone();
         self.next = self.lexer.next_no_comments().unwrap_or(
@@ -136,6 +146,7 @@ impl<'a> ParserState<'a> {
         );
     }
 
+    /// Checks if the next token is [`expected`].
     fn expect<N>(&self, expected: RawToken, node: N) -> Result<(), ParseError>
     where
         N: Into<String>,

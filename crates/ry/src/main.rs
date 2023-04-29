@@ -113,7 +113,7 @@ fn main() {
                 }
             }
             Err(_) => {
-                log_with_prefix("error: ", "cannot read given file");
+                log_with_prefix("error", ": cannot read given file");
                 exit(1);
             }
         },
@@ -148,8 +148,8 @@ fn main() {
                             e.emit_diagnostic(&reporter, file_id);
 
                             log_with_prefix(
-                                "error: ",
-                                "cannot emit AST due to the previous errors",
+                                "error",
+                                ": cannot emit AST due to the previous errors",
                             );
 
                             exit(1);
@@ -157,7 +157,7 @@ fn main() {
                     }
                 }
                 Err(_) => {
-                    log_with_prefix("error: ", "cannot read given file");
+                    log_with_prefix("error", ": cannot read given file");
                     exit(1);
                 }
             }

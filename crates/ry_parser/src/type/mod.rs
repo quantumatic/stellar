@@ -45,7 +45,7 @@ mod tests {
     use crate::macros::parser_test;
 
     parser_test!(TypeParser, primary1, "i32");
-    parser_test!(TypeParser, primary2, "Result[T, DivisionError]");
+    parser_test!(TypeParser, primary, "Result[T, DivisionError]");
     parser_test!(TypeParser, array, "[i32]");
     parser_test!(TypeParser, imut_reference, "&i32");
     parser_test!(TypeParser, mut_reference, "&mut i32");

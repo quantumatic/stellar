@@ -362,7 +362,8 @@ where
     }
 }
 
-/// Represents a location of an interned string inside the [`Backend::buffer`] buffer.
+/// Represents a location of an interned string inside the [`Backend`]'s internal
+/// string buffer.
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct Span {
     start: usize,

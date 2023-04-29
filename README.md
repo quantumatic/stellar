@@ -1,11 +1,9 @@
-<p align="center"><img width="50%" height="50%" src="additional/icon/ry2.png" alt="rycon"></p>
-
-# Ry programming language
-![](https://img.shields.io/badge/version-0.0.1%20alpha-red.svg)
+<p align="center"><img width="70%" height="70%" src="additional/icon/banner.png" alt="rycon"></p>
 
 An open source programming language for web development with expressive type system and easy-to-learn syntax that makes it easy to build reliable and efficient software.
 
 Example of hello world program:
+
 ```ry
 import std.io.println;
 
@@ -41,9 +39,9 @@ We use traits like in Rust!
 
 ```ry
 // example of auto trait
-impl[T] Test for T {} 
+impl[T] Test for T {}
 impl[T] Negative[Test] for Option[T] {} // trait will NOT be implemented for options
-impl[T] Negative[Test] for T where T: Default {} // trait will NOT be implemented for types implementing Default 
+impl[T] Negative[Test] for T where T: Default {} // trait will NOT be implemented for types implementing Default
 ```
 
 Sum types, dynamic trait dispatchers as well as type aliases!
@@ -54,6 +52,7 @@ pub type E = Satisfies[D, F];
 ```
 
 # Builds
+
 <table style="margin-left: auto; margin-right: auto;">
 <tr>
 <td>Linux - Ubuntu (latest)</td>
@@ -74,14 +73,19 @@ pub type E = Satisfies[D, F];
 </table>
 
 # Installation
+
 ## Compiling from source code
+
 You need to have Rust installed on your system. Then run:
+
 <pre>
 <b>cargo</b> install --path crates/ry
 </pre>
+
 Then you're good to go coding in Ry!
 
 # Documentation
+
 > Not made
 
 # Architecture
