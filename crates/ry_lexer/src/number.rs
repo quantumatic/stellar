@@ -1,7 +1,6 @@
+use crate::{is_id_start, IterElem, Lexer};
 use ry_ast::{span::*, token::RawToken::*, token::*};
 use std::string::String;
-
-use crate::{IterElem, Lexer};
 
 #[inline]
 pub(crate) fn decimal(c: char) -> bool {
@@ -100,21 +99,28 @@ impl Lexer<'_> {
             self.eat_digits(base, &mut invalid_digit_location, &mut digit_separator);
         }
 
-        // fractional part
-        if self.current == '.' {
-            number_kind = NumberKind::Float;
+        'processing_float: {
+            if self.current == '.' {
+                if is_id_start(self.next) {
+                    break 'processing_float;
+                }
 
-            if prefix == 'o' || prefix == 'b' || prefix == 'x' {
-                return Some(Error(LexError::InvalidRadixPoint).at(start_location..self.location));
+                number_kind = NumberKind::Float;
+
+                self.advance();
+
+                if prefix == 'o' || prefix == 'b' || prefix == 'x' {
+                    return Some(
+                        Error(LexError::InvalidRadixPoint).at(start_location..self.location),
+                    );
+                }
+
+                self.eat_digits(base, &mut invalid_digit_location, &mut digit_separator);
             }
 
-            self.advance();
-
-            self.eat_digits(base, &mut invalid_digit_location, &mut digit_separator);
-        }
-
-        if digit_separator & 1 == 0 {
-            return Some(Error(LexError::HasNoDigits).at(start_location..self.location));
+            if digit_separator & 1 == 0 {
+                return Some(Error(LexError::HasNoDigits).at(start_location..self.location));
+            }
         }
 
         let l = self.current.to_ascii_lowercase();
@@ -168,7 +174,9 @@ impl Lexer<'_> {
         match number_kind {
             NumberKind::Int => Some(IntegerLiteral.at(start_location..self.location)),
             NumberKind::Float => Some(FloatLiteral.at(start_location..self.location)),
-            NumberKind::Invalid => unreachable!(),
+            NumberKind::Invalid => {
+                unreachable!()
+            }
         }
     }
 }

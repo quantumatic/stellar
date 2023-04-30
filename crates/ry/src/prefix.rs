@@ -9,10 +9,13 @@ where
     M: AsRef<str>,
 {
     let mut stdout = StandardStream::stdout(ColorChoice::Always);
-    mytry!(stdout.set_color(ColorSpec::new().set_fg(Some(Color::Red)).set_bold(true)));
+
+    mytry!(stdout.set_color(ColorSpec::new().set_bold(true).set_fg(Some(Color::Blue))));
     mytry!(write!(&mut stdout, "{}", prefix.as_ref()));
-    mytry!(stdout.set_color(ColorSpec::new().set_fg(Some(Color::White))));
+    mytry!(stdout.set_color(ColorSpec::new().set_bold(true).set_fg(Some(Color::White))));
     mytry!(writeln!(&mut stdout, "{}", message.as_ref()));
+    mytry!(stdout.set_color(ColorSpec::new().set_fg(None)));
+    mytry!(write!(&mut stdout, ""));
 }
 
 pub(crate) fn create_unique_file(name: &str, extension: &str) -> (String, File) {

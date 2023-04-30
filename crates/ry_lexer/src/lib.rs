@@ -5,16 +5,6 @@
 //!
 //! Whitespaces are ignored during scanning process.
 //!
-//! Inherited multiline comments are not supported:
-//! This is not valid:
-//! ```ry
-//!  /* /* test */ */
-//! ```
-//! While this is:
-//! ```ry
-//!  /* /* test */
-//! ```
-//!
 //! Lexer is fairly standart. It implements [`Iterator<Item = Token>`] on each step,
 //! and stops at eof (always returns [`EndOfFile`] when it's already eof and so iterator
 //! never returns [`None`]).

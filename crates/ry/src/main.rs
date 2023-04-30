@@ -139,10 +139,10 @@ fn main() {
                             mytry!(file.write_all(json.as_bytes()));
 
                             log_with_prefix(
-                                "   Parsed ",
+                                "    Parsed ",
                                 format!("in {}s", now.elapsed().as_secs_f64()),
                             );
-                            log_with_prefix("   Emmited ", format!("AST in `{}`", filename));
+                            log_with_prefix("   Emitted ", format!("AST in `{}`", filename));
                         }
                         Err(e) => {
                             e.emit_diagnostic(&reporter, file_id);
