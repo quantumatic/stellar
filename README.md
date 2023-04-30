@@ -4,52 +4,52 @@ An open source programming language for web development with expressive type sys
 
 Example of hello world program:
 
-```ry
-import std.io.println;
+<pre>
+<b>import</b> std.io.println;
 
-pub fun main() {
+<b>pub</b> <b>fun</b> main() {
     println("hello world");
 }
-```
+</pre>
 
 No nulls, we use option types!
 
-```ry
-pub fun div[T](a: T, b: T): Option[T] where T: Numeric {
-    if b == 0 {
-        None
-    } else {
-        Some(a / b)
+<pre>
+<b>pub</b> <b>fun</b> div[T](a: T, b: T): <b>Option</b>[T] <b>where</b> T: <b>Numeric</b> {
+    <b>if</b> b <b>==</b> <b>0</b> {
+        <b>None</b>
+    } <b>else</b> {
+        <b>Some</b>(a / b)
     }
 }
-```
+</pre>
 
 We use result types as well with `unwrap_or` and postfix `?` and operator!
 
-```ry
-import std.fs.File;
+<pre>
+<b>import</b> std.fs.File;
 
-pub fun main() {
-    var a = File.open("test.txt")?; // returns (Unit type in this case) if error will occur
-    var num = "27".parse[i32]().unwrap_or(0); // if error will occur, num will be set to 0
+<b>pub</b> <b>fun</b> main() {
+    <b>var</b> a = File.open(<i>"test.txt"</i>)<b>?</b>; // returns (Unit type in this case) if error will occur
+    <b>var</b> num = <i>"27"</i>.parse[<b>i32</b>]().unwrap_or(<b>0</b>); // if error will occur, num will be set to 0
 }
-```
+</pre>
 
 We use traits like in Rust!
 
-```ry
+<pre>
 // example of auto trait
-impl[T] Test for T {}
-impl[T] Negative[Test] for Option[T] {} // trait will NOT be implemented for options
-impl[T] Negative[Test] for T where T: Default {} // trait will NOT be implemented for types implementing Default
-```
+<b>impl</b>[T] Test <b>for</b> T {}
+<b>impl</b>[T] <b>Negative</b>[Test] <b>for</b> <b>Option</b>[T] {} // trait will NOT be implemented for options
+<b>imp</b>l[T] <b>Negative</b>[Test] <b>for</b> T <b>where</b> T: <b>Default</b> {} // trait will NOT be implemented for types implementing Default
+</pre>
 
 Sum types, dynamic trait dispatchers as well as type aliases!
 
-```ry
-pub type A = Sum[B, C];
-pub type E = Satisfies[D, F];
-```
+<pre>
+<b>pub</b> <b>type</b> A = <b>Sum</b>[B, C];
+<b>pub</b> <b>type</b> E = <b>Satisfies</b>[D, F];
+</pre>
 
 # Builds
 
