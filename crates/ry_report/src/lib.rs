@@ -101,15 +101,15 @@ impl Default for ReporterState<'_> {
 }
 
 pub trait Reporter<'source> {
-    fn emit_diagnostic(&self, reporter: &ReporterState, file_id: usize) {
+    fn emit_diagnostic(&self, reporter: &ReporterState) {
         term::emit(
             &mut reporter.writer.lock(),
             &reporter.config,
             &reporter.files,
-            &self.build_diagnostic(file_id),
+            &self.build_diagnostic(),
         )
         .expect("emit_diagnostic() failed")
     }
 
-    fn build_diagnostic(&self, file_id: usize) -> Diagnostic<usize>;
+    fn build_diagnostic(&self) -> Diagnostic<usize>;
 }

@@ -2,6 +2,7 @@
 //! Locations throughout the compiler. Most notably, these locations
 //! are passed around throughout the parser and are stored in each
 //! AST node.
+use codespan_reporting::diagnostic::Label;
 use serde::{Deserialize, Serialize};
 use std::{fmt::Display, ops::Range};
 
@@ -10,6 +11,7 @@ use std::{fmt::Display, ops::Range};
 pub struct Span {
     start: usize,
     end: usize,
+    file_id: usize,
 }
 
 impl Display for Span {
@@ -21,16 +23,11 @@ impl Display for Span {
 impl Span {
     #[inline]
     #[must_use]
-    pub const fn new(start: usize, end: usize) -> Self {
-        Self { start, end }
-    }
-
-    #[inline]
-    #[must_use]
-    pub const fn from_location(location: usize, character_len: usize) -> Self {
+    pub const fn new(start: usize, end: usize, file_id: usize) -> Self {
         Self {
-            start: location,
-            end: location + character_len,
+            start,
+            end,
+            file_id,
         }
     }
 
@@ -43,12 +40,10 @@ impl Span {
     pub const fn end(&self) -> usize {
         self.end
     }
-}
 
-impl From<Range<usize>> for Span {
     #[inline]
-    fn from(val: Range<usize>) -> Self {
-        Self::new(val.start, val.end)
+    pub const fn file_id(&self) -> usize {
+        self.file_id
     }
 }
 
@@ -89,12 +84,6 @@ impl<T> Spanned<T> {
     }
 }
 
-impl<T> From<(T, Span)> for Spanned<T> {
-    fn from(val: (T, Span)) -> Self {
-        Spanned::new(val.0, val.1)
-    }
-}
-
 impl From<Span> for Range<usize> {
     fn from(value: Span) -> Self {
         value.start..value.end
@@ -103,12 +92,20 @@ impl From<Span> for Range<usize> {
 
 pub trait At {
     #[inline]
-    fn at(self, span: impl Into<Span>) -> Spanned<Self>
+    fn at(self, span: Span) -> Spanned<Self>
     where
         Self: Sized,
     {
-        Spanned::new(self, span.into())
+        Spanned::new(self, span)
     }
 }
 
 impl<T: Sized> At for T {}
+
+pub fn make_primary_label(span: Span) -> Label<usize> {
+    Label::primary(span.file_id(), span)
+}
+
+pub fn make_secondary_label(span: Span) -> Label<usize> {
+    Label::secondary(span.file_id(), span)
+}

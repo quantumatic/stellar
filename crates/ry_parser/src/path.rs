@@ -1,5 +1,9 @@
 use crate::{error::ParseResult, Parser, ParserState};
-use ry_ast::{name::Path, span::At, Token};
+use ry_ast::{
+    name::Path,
+    span::{At, Span},
+    Token,
+};
 
 pub(crate) struct PathParser;
 
@@ -22,6 +26,6 @@ impl Parser for PathParser {
             end = state.current.span().end();
         }
 
-        Ok(path.at(start..end))
+        Ok(path.at(Span::new(start, end, state.file_id)))
     }
 }

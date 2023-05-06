@@ -3,7 +3,7 @@ use crate::{error::ParseResult, Parser, ParserState};
 use ry_ast::{
     expression::{Expression, RawExpression, UnaryExpression},
     precedence::Precedence,
-    span::At,
+    span::{At, Span},
 };
 
 pub(crate) struct PrefixExpressionParser;
@@ -20,7 +20,7 @@ impl Parser for PrefixExpressionParser {
         }
         .parse_with(state)?;
 
-        let span = op.span().start()..inner.span().end();
+        let span = Span::new(op.span().start(), inner.span().end(), state.file_id);
 
         Ok(RawExpression::from(UnaryExpression {
             inner: Box::new(inner),

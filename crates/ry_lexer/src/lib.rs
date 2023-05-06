@@ -14,7 +14,7 @@
 //! use ry_interner::Interner;
 //!
 //! let mut interner = Interner::default();
-//! let mut lexer = Lexer::new("", &mut interner);
+//! let mut lexer = Lexer::new(0, "", &mut interner);
 //!
 //! assert_eq!(lexer.next(), None);
 //! assert_eq!(lexer.next(), None); // ok
@@ -32,7 +32,7 @@
 //! use ry_interner::Interner;
 //!
 //! let mut interner = Interner::default();
-//! let mut lexer = Lexer::new("#", &mut interner);
+//! let mut lexer = Lexer::new(0, "#", &mut interner);
 //!
 //! assert_eq!(lexer.next().unwrap().unwrap(), &Error(LexError::UnexpectedChar));
 //! ```
@@ -49,7 +49,8 @@ mod tests;
 
 #[derive(Debug)]
 pub struct Lexer<'a> {
-    pub contents: &'a str,
+    file_id: usize,
+    contents: &'a str,
     current: char,
     next: char,
     chars: Chars<'a>,
@@ -60,16 +61,17 @@ pub struct Lexer<'a> {
 type IterElem = Option<Token>;
 
 impl<'a> Lexer<'a> {
-    pub fn new(contents: &'a str, interner: &'a mut Interner) -> Self {
+    pub fn new(file_id: usize, contents: &'a str, interner: &'a mut Interner) -> Self {
         let mut chars = contents.chars();
 
         let current = chars.next().unwrap_or('\0');
         let next = chars.next().unwrap_or('\0');
 
         Self {
+            file_id,
+            contents,
             current,
             next,
-            contents,
             chars,
             interner,
             location: 0,
@@ -100,18 +102,20 @@ impl<'a> Lexer<'a> {
         self.advance();
     }
 
-    fn char_location(&self, character_len: usize) -> Span {
-        (self.location..self.location + character_len).into()
-    }
-
     fn advance_with(&mut self, raw: RawToken) -> IterElem {
-        let r = Some(Token::new(raw, self.char_location(1)));
+        let r = Some(Token::new(
+            raw,
+            Span::new(self.location, self.location + 1, self.file_id),
+        ));
         self.advance();
         r
     }
 
     fn advance_twice_with(&mut self, raw: RawToken) -> IterElem {
-        let r = Some(Token::new(raw, self.char_location(2)));
+        let r = Some(Token::new(
+            raw,
+            Span::new(self.location, self.location + 2, self.file_id),
+        ));
         self.advance_twice();
         r
     }
@@ -127,101 +131,103 @@ impl<'a> Lexer<'a> {
         &self.contents[start_location..self.location]
     }
 
-    fn eat_escape(&mut self) -> Result<char, (LexError, Span)> {
-        let r = match self.current {
-            'b' => Ok('\u{0008}'),
-            'f' => Ok('\u{000C}'),
-            'n' => Ok('\n'),
-            'r' => Ok('\r'),
-            't' => Ok('\t'),
-            '\'' => Ok('\''),
-            '"' => Ok('"'),
-            '\\' => Ok('\\'),
-            '\0' => Err((LexError::EmptyEscapeSequence, self.char_location(1))),
-            'u' => {
-                self.advance();
+    fn eat_escape(&mut self) -> Result<char, Spanned<LexError>> {
+        let r =
+            match self.current {
+                'b' => Ok('\u{0008}'),
+                'f' => Ok('\u{000C}'),
+                'n' => Ok('\n'),
+                'r' => Ok('\r'),
+                't' => Ok('\t'),
+                '\'' => Ok('\''),
+                '"' => Ok('"'),
+                '\\' => Ok('\\'),
+                '\0' => Err(LexError::EmptyEscapeSequence.at(Span::new(
+                    self.location,
+                    self.location + 1,
+                    self.file_id,
+                ))),
+                'u' => {
+                    self.advance();
 
-                if self.current != '{' {
-                    return Err((
-                        LexError::ExpectedOpenBracketInUnicodeEscapeSequence,
-                        self.char_location(1),
-                    ));
-                }
-
-                self.advance();
-
-                let mut buffer = String::from("");
-
-                for _ in 0..4 {
-                    if !self.current.is_ascii_hexdigit() {
-                        return Err((
-                            LexError::ExpectedDigitInUnicodeEscapeSequence,
-                            self.char_location(1),
-                        ));
+                    if self.current != '{' {
+                        return Err(LexError::ExpectedOpenBracketInUnicodeEscapeSequence
+                            .at(Span::new(self.location, self.location + 1, self.file_id)));
                     }
 
-                    buffer.push(self.current);
                     self.advance();
-                }
 
-                if self.current != '}' {
-                    return Err((
-                        LexError::ExpectedCloseBracketInUnicodeEscapeSequence,
-                        self.char_location(1),
-                    ));
-                }
+                    let mut buffer = String::from("");
 
-                match char::from_u32(u32::from_str_radix(&buffer, 16).unwrap()) {
-                    Some(c) => Ok(c),
-                    None => Err((
-                        LexError::InvalidUnicodeEscapeSequence,
-                        (self.location - 4..self.location).into(),
-                    )),
-                }
-            }
-            'x' => {
-                self.advance();
+                    for _ in 0..4 {
+                        if !self.current.is_ascii_hexdigit() {
+                            return Err(LexError::ExpectedDigitInUnicodeEscapeSequence
+                                .at(Span::new(self.location, self.location + 1, self.file_id)));
+                        }
 
-                if self.current != '{' {
-                    return Err((
-                        LexError::ExpectedOpenBracketInByteEscapeSequence,
-                        self.char_location(1),
-                    ));
-                }
-
-                self.advance();
-
-                let mut buffer = String::from("");
-
-                for _ in 0..2 {
-                    if !self.current.is_ascii_hexdigit() {
-                        return Err((
-                            LexError::ExpectedDigitInByteEscapeSequence,
-                            self.char_location(1),
-                        ));
+                        buffer.push(self.current);
+                        self.advance();
                     }
 
-                    buffer.push(self.current);
+                    if self.current != '}' {
+                        return Err(LexError::ExpectedCloseBracketInUnicodeEscapeSequence
+                            .at(Span::new(self.location, self.location + 1, self.file_id)));
+                    }
+
+                    match char::from_u32(u32::from_str_radix(&buffer, 16).unwrap()) {
+                        Some(c) => Ok(c),
+                        None => Err(LexError::InvalidUnicodeEscapeSequence.at(Span::new(
+                            self.location,
+                            self.location + 1,
+                            self.file_id,
+                        ))),
+                    }
+                }
+                'x' => {
                     self.advance();
-                }
 
-                if self.current != '}' {
-                    return Err((
-                        LexError::ExpectedCloseBracketInByteEscapeSequence,
-                        self.char_location(1),
-                    ));
-                }
+                    if self.current != '{' {
+                        return Err(LexError::ExpectedOpenBracketInByteEscapeSequence
+                            .at(Span::new(self.location, self.location + 1, self.file_id)));
+                    }
 
-                match char::from_u32(u32::from_str_radix(&buffer, 16).unwrap()) {
-                    Some(c) => Ok(c),
-                    None => Err((
-                        LexError::InvalidByteEscapeSequence,
-                        (self.location - 4..self.location).into(),
-                    )),
+                    self.advance();
+
+                    let mut buffer = String::from("");
+
+                    for _ in 0..2 {
+                        if !self.current.is_ascii_hexdigit() {
+                            return Err(LexError::ExpectedDigitInByteEscapeSequence.at(Span::new(
+                                self.location,
+                                self.location + 1,
+                                self.file_id,
+                            )));
+                        }
+
+                        buffer.push(self.current);
+                        self.advance();
+                    }
+
+                    if self.current != '}' {
+                        return Err(LexError::ExpectedCloseBracketInByteEscapeSequence
+                            .at(Span::new(self.location, self.location + 1, self.file_id)));
+                    }
+
+                    match char::from_u32(u32::from_str_radix(&buffer, 16).unwrap()) {
+                        Some(c) => Ok(c),
+                        None => Err(LexError::InvalidByteEscapeSequence.at(Span::new(
+                            self.location - 4,
+                            self.location,
+                            self.file_id,
+                        ))),
+                    }
                 }
-            }
-            _ => Err((LexError::UnknownEscapeSequence, self.char_location(1))),
-        };
+                _ => Err(LexError::UnknownEscapeSequence.at(Span::new(
+                    self.location,
+                    self.location + 1,
+                    self.file_id,
+                ))),
+            };
 
         self.advance();
 
@@ -240,14 +246,16 @@ impl<'a> Lexer<'a> {
                 let e = self.eat_escape();
 
                 if let Err(e) = e {
-                    return Some((Error(e.0), e.1).into());
+                    return Some(RawToken::from(*e.unwrap()).at(e.span()));
                 }
             }
 
             if self.current == '\n' || self.eof() {
-                return Some(
-                    Error(LexError::UnterminatedCharLiteral).at(start_location..self.location),
-                );
+                return Some(Error(LexError::UnterminatedCharLiteral).at(Span::new(
+                    start_location,
+                    self.location,
+                    self.file_id,
+                )));
             }
 
             size += 1;
@@ -259,17 +267,23 @@ impl<'a> Lexer<'a> {
 
         match size {
             2..=i32::MAX => {
-                return Some(
-                    Error(LexError::MoreThanOneCharInCharLiteral).at(start_location..self.location),
-                );
+                return Some(Error(LexError::MoreThanOneCharInCharLiteral).at(Span::new(
+                    start_location,
+                    self.location,
+                    self.file_id,
+                )));
             }
             0 => {
-                return Some(Error(LexError::EmptyCharLiteral).at(start_location..self.location));
+                return Some(Error(LexError::EmptyCharLiteral).at(Span::new(
+                    start_location,
+                    self.location,
+                    self.file_id,
+                )));
             }
             _ => {}
         }
 
-        Some(CharLiteral.at(start_location..self.location))
+        Some(CharLiteral.at(Span::new(start_location, self.location, self.file_id)))
     }
 
     fn eat_string(&mut self) -> IterElem {
@@ -292,7 +306,7 @@ impl<'a> Lexer<'a> {
                 let e = self.eat_escape();
 
                 if let Err(e) = e {
-                    return Some((Error(e.0), e.1).into());
+                    return Some(RawToken::from(*e.unwrap()).at(e.span()));
                 } else if let Ok(c) = e {
                     buffer.push(c);
                 }
@@ -302,14 +316,16 @@ impl<'a> Lexer<'a> {
         }
 
         if self.eof() || self.current == '\n' {
-            return Some(
-                Error(LexError::UnterminatedStringLiteral).at(start_location..self.location),
-            );
+            return Some(Error(LexError::UnterminatedStringLiteral).at(Span::new(
+                start_location,
+                self.location,
+                self.file_id,
+            )));
         }
 
         self.advance();
 
-        Some(StringLiteral.at(start_location..self.location))
+        Some(StringLiteral.at(Span::new(start_location, self.location, self.file_id)))
     }
 
     fn eat_wrapped_id(&mut self) -> IterElem {
@@ -322,18 +338,28 @@ impl<'a> Lexer<'a> {
         })[1..];
 
         if self.current != '`' {
-            return Some(
-                Error(LexError::UnterminatedWrappedIdentifier).at(start_location..self.location),
-            );
+            return Some(Error(LexError::UnterminatedWrappedIdentifier).at(Span::new(
+                start_location,
+                self.location,
+                self.file_id,
+            )));
         }
 
         if name.is_empty() {
-            return Some(Error(LexError::EmptyWrappedIdentifier).at(start_location..self.location));
+            return Some(Error(LexError::EmptyWrappedIdentifier).at(Span::new(
+                start_location,
+                self.location,
+                self.file_id,
+            )));
         }
 
         self.advance();
 
-        Some(Identifier(self.interner.get_or_intern(name)).at(start_location..self.location))
+        Some(Identifier(self.interner.get_or_intern(name)).at(Span::new(
+            start_location,
+            self.location,
+            self.file_id,
+        )))
     }
 
     fn eat_comment(&mut self) -> IterElem {
@@ -343,7 +369,7 @@ impl<'a> Lexer<'a> {
 
         self.advance_while(start_location + 2, |current, _| (current != '\n'));
 
-        Some(Comment.at(start_location..self.location))
+        Some(Comment.at(Span::new(start_location, self.location, self.file_id)))
     }
 
     /// In this case [`bool`] is true when doc comment is describing
@@ -363,7 +389,7 @@ impl<'a> Lexer<'a> {
             } else {
                 LocalDocComment
             }
-            .at(start_location..self.location),
+            .at(Span::new(start_location, self.location, self.file_id)),
         )
     }
 
@@ -372,10 +398,14 @@ impl<'a> Lexer<'a> {
         let name = self.advance_while(start_location, |current, _| is_id_continue(current));
 
         match RESERVED.get(name) {
-            Some(reserved) => Some((*reserved).at(start_location..self.location)),
-            None => Some(
-                Identifier(self.interner.get_or_intern(name)).at(start_location..self.location),
-            ),
+            Some(reserved) => {
+                Some((*reserved).at(Span::new(start_location, self.location, self.file_id)))
+            }
+            None => Some(Identifier(self.interner.get_or_intern(name)).at(Span::new(
+                start_location,
+                self.location,
+                self.file_id,
+            ))),
         }
     }
 

@@ -26,7 +26,7 @@ use crate::{
 use ry_ast::{
     expression::*,
     precedence::Precedence,
-    span::{At, SpanIndex},
+    span::{At, Span, SpanIndex},
     token::RawToken,
     Token,
 };
@@ -74,7 +74,7 @@ impl Parser for WhileExpressionParser {
             condition: Box::new(condition),
             body,
         })
-        .at(start..state.current.span().end()))
+        .at(Span::new(start, state.current.span().end(), state.file_id)))
     }
 }
 
@@ -88,7 +88,6 @@ impl Parser for PrimaryExpressionParser {
             RawToken::IntegerLiteral => {
                 state.next_token();
                 match state
-                    .lexer
                     .contents
                     .index(state.current.span())
                     .replace('_', "")
@@ -102,7 +101,6 @@ impl Parser for PrimaryExpressionParser {
             RawToken::FloatLiteral => {
                 state.next_token();
                 match state
-                    .lexer
                     .contents
                     .index(state.current.span())
                     .replace('_', "")
@@ -116,14 +114,14 @@ impl Parser for PrimaryExpressionParser {
             RawToken::StringLiteral => {
                 state.next_token();
                 Ok(RawExpression::from(StringLiteralExpression {
-                    literal: state.lexer.contents.index(state.current.span()).to_owned(),
+                    literal: state.contents.index(state.current.span()).to_owned(),
                 })
                 .at(state.current.span()))
             }
             RawToken::CharLiteral => {
                 state.next_token();
                 Ok(RawExpression::from(StringLiteralExpression {
-                    literal: state.lexer.contents.index(state.current.span()).to_owned(),
+                    literal: state.contents.index(state.current.span()).to_owned(),
                 })
                 .at(state.current.span()))
             }

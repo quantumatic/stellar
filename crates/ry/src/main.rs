@@ -87,7 +87,7 @@ fn main() {
             show_locations,
         } => match fs::read_to_string(filepath) {
             Ok(contents) => {
-                let mut lexer = Lexer::new(&contents, &mut interner);
+                let mut lexer = Lexer::new(0, &contents, &mut interner);
                 let mut current_token_index = 0;
 
                 loop {
@@ -123,7 +123,7 @@ fn main() {
             match fs::read_to_string(filepath) {
                 Ok(contents) => {
                     let file_id = reporter.add_file(filepath, &contents);
-                    let mut parser = ParserState::new(&contents, &mut interner);
+                    let mut parser = ParserState::new(file_id, &contents, &mut interner);
 
                     let now = Instant::now();
 
@@ -145,7 +145,7 @@ fn main() {
                             log_with_prefix("   Emitted ", format!("AST in `{}`", filename));
                         }
                         Err(e) => {
-                            e.emit_diagnostic(&reporter, file_id);
+                            e.emit_diagnostic(&reporter);
 
                             log_with_prefix(
                                 "error",

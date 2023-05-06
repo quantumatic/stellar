@@ -2,7 +2,7 @@ use super::type_annotations::TypeAnnotationsParser;
 use crate::{error::ParseResult, path::PathParser, OptionalParser, Parser, ParserState};
 use ry_ast::{
     r#type::{PrimaryType, RawType, Type},
-    span::At,
+    span::{At, Span},
 };
 
 pub(crate) struct PrimaryTypeParser;
@@ -19,6 +19,6 @@ impl Parser for PrimaryTypeParser {
             path,
             type_annotations,
         })
-        .at(start..state.current.span().end()))
+        .at(Span::new(start, state.current.span().end(), state.file_id)))
     }
 }

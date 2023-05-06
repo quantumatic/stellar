@@ -110,16 +110,22 @@ impl Lexer<'_> {
                 self.advance();
 
                 if prefix == 'o' || prefix == 'b' || prefix == 'x' {
-                    return Some(
-                        Error(LexError::InvalidRadixPoint).at(start_location..self.location),
-                    );
+                    return Some(Error(LexError::InvalidRadixPoint).at(Span::new(
+                        start_location,
+                        self.location,
+                        self.file_id,
+                    )));
                 }
 
                 self.eat_digits(base, &mut invalid_digit_location, &mut digit_separator);
             }
 
             if digit_separator & 1 == 0 {
-                return Some(Error(LexError::HasNoDigits).at(start_location..self.location));
+                return Some(Error(LexError::HasNoDigits).at(Span::new(
+                    start_location,
+                    self.location,
+                    self.file_id,
+                )));
             }
         }
 
@@ -127,8 +133,11 @@ impl Lexer<'_> {
         if l == 'e' {
             if prefix != '\0' && prefix != '0' {
                 return Some(
-                    Error(LexError::ExponentRequiresDecimalMantissa)
-                        .at(start_location..self.location),
+                    Error(LexError::ExponentRequiresDecimalMantissa).at(Span::new(
+                        start_location,
+                        self.location,
+                        self.file_id,
+                    )),
                 );
             }
 
@@ -145,9 +154,11 @@ impl Lexer<'_> {
             digit_separator |= ds;
 
             if ds & 1 == 0 {
-                return Some(
-                    Error(LexError::ExponentHasNoDigits).at(start_location..self.location),
-                );
+                return Some(Error(LexError::ExponentHasNoDigits).at(Span::new(
+                    start_location,
+                    self.location,
+                    self.file_id,
+                )));
             }
         }
 
@@ -155,25 +166,33 @@ impl Lexer<'_> {
 
         if let Some(location) = invalid_digit_location {
             if number_kind == NumberKind::Int {
-                return Some(Token::new(
-                    Error(LexError::InvalidDigit),
-                    Span::from_location(location, 1),
-                ));
+                return Some(Error(LexError::InvalidDigit).at(Span::new(
+                    location,
+                    location + 1,
+                    self.file_id,
+                )));
             }
         }
 
         let s = invalid_separator(buffer.to_owned());
 
         if digit_separator & 2 != 0 && s >= 0 {
-            return Some(Token::new(
-                Error(LexError::UnderscoreMustSeparateSuccessiveDigits),
-                Span::from_location(s as usize + start_location, 1),
-            ));
+            return Some(
+                Error(LexError::UnderscoreMustSeparateSuccessiveDigits).at(Span::new(
+                    s as usize + start_location,
+                    s as usize + start_location + 1,
+                    self.file_id,
+                )),
+            );
         }
 
         match number_kind {
-            NumberKind::Int => Some(IntegerLiteral.at(start_location..self.location)),
-            NumberKind::Float => Some(FloatLiteral.at(start_location..self.location)),
+            NumberKind::Int => {
+                Some(IntegerLiteral.at(Span::new(start_location, self.location, self.file_id)))
+            }
+            NumberKind::Float => {
+                Some(FloatLiteral.at(Span::new(start_location, self.location, self.file_id)))
+            }
             NumberKind::Invalid => {
                 unreachable!()
             }

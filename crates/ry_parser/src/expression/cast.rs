@@ -1,7 +1,7 @@
 use crate::{error::ParseResult, r#type::TypeParser, Parser, ParserState};
 use ry_ast::{
     expression::{AsExpression, Expression, RawExpression},
-    span::At,
+    span::{At, Span},
 };
 
 pub(crate) struct CastExpressionParser {
@@ -22,6 +22,6 @@ impl Parser for CastExpressionParser {
             left: Box::new(self.left),
             right,
         })
-        .at(start..state.current.span().end()))
+        .at(Span::new(start, state.current.span().end(), state.file_id)))
     }
 }

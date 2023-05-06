@@ -3,7 +3,7 @@ use crate::{error::ParseResult, macros::parse_list, Parser, ParserState};
 use ry_ast::{
     expression::{CallExpression, Expression, RawExpression},
     precedence::Precedence,
-    span::At,
+    span::{At, Span},
     Token,
 };
 
@@ -32,6 +32,6 @@ impl Parser for CallExpressionParser {
             left: Box::new(self.left),
             arguments,
         })
-        .at(start..state.current.span().end()))
+        .at(Span::new(start, state.current.span().end(), state.file_id)))
     }
 }

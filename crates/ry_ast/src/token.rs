@@ -85,6 +85,15 @@ impl Display for LexError {
     }
 }
 
+impl From<RawToken> for LexError {
+    fn from(value: RawToken) -> Self {
+        match value {
+            RawToken::Error(e) => e,
+            _ => unreachable!(),
+        }
+    }
+}
+
 /// Either the number is integer, float or imaginary literal.
 #[derive(Debug, Clone, PartialEq, Copy)]
 pub enum NumberKind {
@@ -305,6 +314,12 @@ impl Display for RawToken {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str(self.as_ref())?;
         Ok(())
+    }
+}
+
+impl From<LexError> for RawToken {
+    fn from(value: LexError) -> Self {
+        Self::Error(value)
     }
 }
 

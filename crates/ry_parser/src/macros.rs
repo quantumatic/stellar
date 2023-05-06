@@ -5,7 +5,7 @@ macro_rules! parser_test {
         #[allow(unused_qualifications)]
         fn $name() {
             let mut string_interner = ry_interner::Interner::default();
-            let mut parser_state = crate::ParserState::new($source, &mut string_interner);
+            let mut parser_state = crate::ParserState::new(0, $source, &mut string_interner);
             assert!(
                 crate::Parser::parse_with(<super::$parser>::default(), &mut parser_state).is_ok()
             );

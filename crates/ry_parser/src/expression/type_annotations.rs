@@ -1,7 +1,7 @@
 use crate::{error::ParseResult, r#type::TypeAnnotationsParser, Parser, ParserState};
 use ry_ast::{
     expression::{Expression, RawExpression, TypeAnnotationsExpression},
-    span::At,
+    span::{At, Span},
 };
 
 pub(crate) struct TypeAnnotationsExpressionParser {
@@ -14,7 +14,11 @@ impl Parser for TypeAnnotationsExpressionParser {
     fn parse_with(self, state: &mut ParserState<'_>) -> ParseResult<Self::Output> {
         let type_annotations = TypeAnnotationsParser.parse_with(state)?;
 
-        let span = self.left.span().start()..state.current.span().end();
+        let span = Span::new(
+            self.left.span().start(),
+            state.current.span().end(),
+            state.file_id,
+        );
 
         Ok(RawExpression::from(TypeAnnotationsExpression {
             left: Box::new(self.left),

@@ -64,7 +64,7 @@ use item::ItemsParser;
 use ry_ast::{
     declaration::Docstring,
     name::Name,
-    span::{At, SpanIndex},
+    span::{At, Span, SpanIndex},
     token::{RawToken, Token},
     ProgramUnit,
 };
@@ -77,6 +77,8 @@ mod macros;
 /// Represents parser state.
 #[derive(Debug)]
 pub struct ParserState<'a> {
+    contents: &'a str,
+    file_id: usize,
     lexer: Lexer<'a>,
     current: Token,
     next: Token,
@@ -109,18 +111,20 @@ impl<'a> ParserState<'a> {
     /// use ry_interner::Interner;
     ///
     /// let mut interner = Interner::default();
-    /// let parser = ParserState::new("pub fun test() {}", &mut interner);
+    /// let parser = ParserState::new(0, "pub fun test() {}", &mut interner);
     /// ```
     #[must_use]
-    pub fn new(contents: &'a str, interner: &'a mut Interner) -> Self {
-        let mut lexer = Lexer::new(contents, interner);
+    pub fn new(file_id: usize, contents: &'a str, interner: &'a mut Interner) -> Self {
+        let mut lexer = Lexer::new(file_id, contents, interner);
 
         let current = lexer
             .next_no_comments()
-            .unwrap_or(RawToken::EndOfFile.at(0..1));
+            .unwrap_or(RawToken::EndOfFile.at(Span::new(0, 1, file_id)));
         let next = current.clone();
 
         Self {
+            contents,
+            file_id,
             lexer,
             current,
             next,
@@ -134,16 +138,21 @@ impl<'a> ParserState<'a> {
     /// use ry_ast::Token;
     ///
     /// let mut interner = Interner::default();
-    /// let state = crate::ParserState::new("pub fun test() {}", &mut interner);
+    /// let state = crate::ParserState::new(0, "pub fun test() {}", &mut interner);
     /// assert_eq!(parser.current, Token![pub]);
     /// state.next_token();
     /// assert_eq!(parser.current, Token![fun]);
     /// ```
     fn next_token(&mut self) {
         self.current = self.next.clone();
-        self.next = self.lexer.next_no_comments().unwrap_or(
-            RawToken::EndOfFile.at(self.current.span().end()..self.current.span().end() + 1),
-        );
+        self.next = self
+            .lexer
+            .next_no_comments()
+            .unwrap_or(RawToken::EndOfFile.at(Span::new(
+                self.current.span().end(),
+                self.current.span().end() + 1,
+                self.file_id,
+            )));
     }
 
     /// Checks if the next token is [`expected`].
@@ -200,10 +209,10 @@ impl<'a> ParserState<'a> {
         loop {
             match self.next.unwrap() {
                 RawToken::GlobalDocComment => {
-                    module_docstring.push(self.lexer.contents.index(self.next.span()).to_owned())
+                    module_docstring.push(self.contents.index(self.next.span()).to_owned())
                 }
                 RawToken::LocalDocComment => {
-                    local_docstring.push(self.lexer.contents.index(self.next.span()).to_owned())
+                    local_docstring.push(self.contents.index(self.next.span()).to_owned())
                 }
                 _ => return Ok((module_docstring, local_docstring)),
             }
@@ -220,7 +229,7 @@ impl<'a> ParserState<'a> {
 
         loop {
             if *self.next.unwrap() == RawToken::LocalDocComment {
-                result.push(self.lexer.contents.index(self.next.span()).to_owned());
+                result.push(self.contents.index(self.next.span()).to_owned());
             } else {
                 return Ok(result);
             }
@@ -236,7 +245,7 @@ impl<'a> ParserState<'a> {
     /// use ry_interner::Interner;
     ///
     /// let mut interner = Interner::default();
-    /// let mut parser = ParserState::new("fun test() {}", &mut interner);
+    /// let mut parser = ParserState::new(0, "fun test() {}", &mut interner);
     /// assert!(parser.parse().is_ok());
     /// ```
     ///

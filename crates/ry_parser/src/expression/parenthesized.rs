@@ -3,7 +3,7 @@ use crate::{error::ParseResult, Parser, ParserState};
 use ry_ast::{
     expression::{Expression, ParenthesizedExpression, RawExpression},
     precedence::Precedence,
-    span::At,
+    span::{At, Span},
     Token,
 };
 
@@ -26,6 +26,6 @@ impl Parser for ParenthesizedExpressionParser {
         Ok(RawExpression::from(ParenthesizedExpression {
             inner: Box::new(inner),
         })
-        .at(start..state.current.span().end()))
+        .at(Span::new(start, state.current.span().end(), state.file_id)))
     }
 }

@@ -1,7 +1,7 @@
 use crate::{error::ParseResult, Parser, ParserState};
 use ry_ast::{
     expression::{Expression, RawExpression, UnaryExpression},
-    span::At,
+    span::{At, Span},
 };
 
 pub(crate) struct PostfixExpressionParser {
@@ -21,6 +21,6 @@ impl Parser for PostfixExpressionParser {
             op: state.current.clone(),
             postfix: true,
         })
-        .at(start..state.current.span().end()))
+        .at(Span::new(start, state.current.span().end(), state.file_id)))
     }
 }

@@ -2,7 +2,7 @@ use super::ExpressionParser;
 use crate::{error::ParseResult, statement::StatementsBlockParser, Parser, ParserState};
 use ry_ast::{
     expression::{Expression, IfBlock, IfExpression, RawExpression},
-    span::At,
+    span::{At, Span},
     Token,
 };
 
@@ -42,7 +42,12 @@ impl Parser for IfExpressionParser {
             });
         }
 
-        Ok(RawExpression::from(IfExpression { if_blocks, r#else })
-            .at(start..state.current.span().end()))
+        Ok(
+            RawExpression::from(IfExpression { if_blocks, r#else }).at(Span::new(
+                start,
+                state.current.span().end(),
+                state.file_id,
+            )),
+        )
     }
 }

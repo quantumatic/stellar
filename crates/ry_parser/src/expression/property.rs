@@ -1,7 +1,7 @@
 use crate::{error::ParseResult, Parser, ParserState};
 use ry_ast::{
     expression::{Expression, PropertyAccessExpression, RawExpression},
-    span::At,
+    span::{At, Span},
 };
 
 pub(crate) struct PropertyAccessExpressionParser {
@@ -20,6 +20,6 @@ impl Parser for PropertyAccessExpressionParser {
             left: Box::new(self.left),
             property: state.consume_identifier("property")?,
         })
-        .at(start..state.current.span().end()))
+        .at(Span::new(start, state.current.span().end(), state.file_id)))
     }
 }

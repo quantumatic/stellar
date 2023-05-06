@@ -1,7 +1,7 @@
 //! Error and result implementation for the state.
-use codespan_reporting::diagnostic::{Diagnostic, Label};
+use codespan_reporting::diagnostic::Diagnostic;
 use ry_ast::{
-    span::{At, Span, Spanned},
+    span::{make_primary_label, At, Span, Spanned},
     token::{LexError, RawToken, Token},
 };
 use ry_report::Reporter;
@@ -138,12 +138,12 @@ impl Display for ParseError {
 }
 
 impl Reporter<'_> for ParseError {
-    fn build_diagnostic(&self, file_id: usize) -> Diagnostic<usize> {
+    fn build_diagnostic(&self) -> Diagnostic<usize> {
         match self {
             Self::Lexer { error } => Diagnostic::error()
                 .with_message(self.to_string())
                 .with_code("E000")
-                .with_labels(vec![Label::primary(file_id, error.span())]),
+                .with_labels(vec![make_primary_label(error.span())]),
             Self::UnexpectedToken {
                 got,
                 expected,
@@ -151,11 +151,11 @@ impl Reporter<'_> for ParseError {
             } => Diagnostic::error()
                 .with_message(format!("unexpected {}", got.unwrap()))
                 .with_code("E001")
-                .with_labels(vec![Label::primary(file_id, got.span())
+                .with_labels(vec![make_primary_label(got.span())
                     .with_message(format!("expected {expected} for {node}"))]),
             Self::IntegerOverflow { at } => Diagnostic::error()
                 .with_message("unexpected integer overflow".to_owned())
-                .with_labels(vec![Label::primary(file_id, *at)
+                .with_labels(vec![make_primary_label(*at)
                     .with_message("error appeared when parsing this integer")])
                 .with_notes(vec![
                     "note: integer cannot exceed the maximum value of `u64` (u64.max() == 18_446_744_073_709_551_615)".to_owned(),
@@ -163,7 +163,7 @@ impl Reporter<'_> for ParseError {
                 ]),
             Self::FloatOverflow { at } => Diagnostic::error()
                 .with_message("unexpected number overflow".to_owned())
-                .with_labels(vec![Label::primary(file_id, *at)
+                .with_labels(vec![make_primary_label(*at)
                     .with_message("error appeared when parsing this float literal")])
                     .with_notes(vec![
                         "note: float literal cannot exceed the maximum value of `f64` (f64.max() == 1.7976931348623157E+308)".to_owned(),

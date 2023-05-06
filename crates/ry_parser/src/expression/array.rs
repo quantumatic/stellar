@@ -2,7 +2,7 @@ use super::ExpressionParser;
 use crate::{error::ParseResult, macros::parse_list, Parser, ParserState};
 use ry_ast::{
     expression::{ArrayLiteralExpression, Expression, RawExpression},
-    span::At,
+    span::{At, Span},
     Token,
 };
 
@@ -22,7 +22,12 @@ impl Parser for ArrayLiteralExpressionParser {
 
         state.next_token();
 
-        Ok(RawExpression::from(ArrayLiteralExpression { literal })
-            .at(start..state.current.span().end()))
+        Ok(
+            RawExpression::from(ArrayLiteralExpression { literal }).at(Span::new(
+                start,
+                state.current.span().end(),
+                state.file_id,
+            )),
+        )
     }
 }

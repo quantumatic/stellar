@@ -2,7 +2,7 @@ use super::ExpressionParser;
 use crate::{error::ParseResult, statement::StatementsBlockParser, Parser, ParserState};
 use ry_ast::{
     expression::{Expression, RawExpression, WhileExpression},
-    span::At,
+    span::{At, Span},
 };
 
 pub(crate) struct WhileExpressionParser;
@@ -21,6 +21,6 @@ impl Parser for WhileExpressionParser {
             condition: Box::new(condition),
             body,
         })
-        .at(start..state.current.span().end()))
+        .at(Span::new(start, state.current.span().end(), state.file_id)))
     }
 }
