@@ -47,6 +47,5 @@ mod tests {
     parser_test!(TypeParser, primary1, "i32");
     parser_test!(TypeParser, primary, "Result[T, DivisionError]");
     parser_test!(TypeParser, array, "[i32]");
-    parser_test!(TypeParser, imut_reference, "&i32");
-    parser_test!(TypeParser, mut_reference, "&mut i32");
+    parser_test!(TypeParser, reference, "&i32");
 }
