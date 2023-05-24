@@ -51,6 +51,6 @@ mod tests {
     parser_test!(
         TraitDeclarationParser,
         trait2,
-        "trait Into[T] { fun into(self: &Self): T; }"
+        "trait Into[T] { fun into(self: Self): T; }"
     );
 }
