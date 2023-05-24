@@ -39,6 +39,6 @@ impl Parser for VarStatementParser {
 mod tests {
     use crate::macros::parser_test;
 
-    parser_test!(VarStatementParser, imut_var, "var a = 3;");
-    parser_test!(VarStatementParser, mut_var, "var b: i32 = 3;");
+    parser_test!(VarStatementParser, var_without_type, "var a = 3;");
+    parser_test!(VarStatementParser, var_with_type, "var b: i32 = 3;");
 }
