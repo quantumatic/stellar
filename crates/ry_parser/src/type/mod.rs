@@ -1,7 +1,6 @@
 mod array;
 mod generics;
 mod primary;
-mod reference;
 mod type_annotations;
 mod where_clause;
 
