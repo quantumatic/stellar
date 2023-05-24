@@ -7,8 +7,7 @@ mod where_clause;
 
 pub(crate) use self::{
     array::ArrayTypeParser, generics::*, primary::PrimaryTypeParser,
-    reference::ReferenceTypeParser, type_annotations::TypeAnnotationsParser,
-    where_clause::WhereClauseParser,
+    type_annotations::TypeAnnotationsParser, where_clause::WhereClauseParser,
 };
 use crate::{
     error::{expected, ParseError, ParseResult},
@@ -25,7 +24,6 @@ impl Parser for TypeParser {
     fn parse_with(self, state: &mut ParserState<'_>) -> ParseResult<Self::Output> {
         let r#type = match state.next.unwrap() {
             RawToken::Identifier(..) => PrimaryTypeParser.parse_with(state)?,
-            Token![&] => ReferenceTypeParser.parse_with(state)?,
             Token!['['] => ArrayTypeParser.parse_with(state)?,
             _ => {
                 return Err(ParseError::unexpected_token(
@@ -47,5 +45,4 @@ mod tests {
     parser_test!(TypeParser, primary1, "i32");
     parser_test!(TypeParser, primary, "Result[T, DivisionError]");
     parser_test!(TypeParser, array, "[i32]");
-    parser_test!(TypeParser, reference, "&i32");
 }
