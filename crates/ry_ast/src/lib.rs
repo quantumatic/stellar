@@ -47,13 +47,11 @@
 pub mod precedence;
 pub mod span;
 pub mod token;
-pub mod visitor;
 
 use ry_interner::Symbol;
 use span::{Span, Spanned};
 use std::collections::HashMap;
 use token::Token;
-use visitor::*;
 
 #[derive(Debug, PartialEq)]
 pub enum Literal {
