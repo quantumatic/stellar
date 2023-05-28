@@ -2,18 +2,14 @@
 
 > **<sup>Syntax</sup>**\
 > _Function_ :\
-> &nbsp;&nbsp; `pub`<sup>?</sup> `fun`
->   [IDENTIFIER]
->   [_Generics_]<sup>?</sup>
->   `(` _FunctionArguments_ `)`
->   [_WhereClause_]<sup>?</sup>
->   ( [_StatementsBlock_] | `;` )
-> 
+> &nbsp;&nbsp; `pub`<sup>?</sup> `fun` > [IDENTIFIER][_generics_]<sup>?</sup> > `(` _FunctionArguments_ `)` > [_WhereClause_]<sup>?</sup>
+> ( [_StatementsBlock_] | `;` )
+>
 > _FunctionArguments_ :\
 > &nbsp;&nbsp; _FunctionArgument_ (`,` _FunctionArgument_)<sup>\*</sup> (`,` `...`)<sup>?</sup> `,`<sup>?</sup>
-> 
+>
 > _FunctionArgument_ :\
-> &nbsp;&nbsp; [IDENTIFIER] `:` [_Type_]
+> &nbsp;&nbsp; [IDENTIFIER] `:` [_Type_] <br> &nbsp;&nbsp; | `self`
 
 ## Examples:
 
@@ -31,8 +27,8 @@ pub fun len(s: string): usize {
 }
 ```
 
-[IDENTIFIER]: identifier.md
-[_Generics_]: generics.md
-[_WhereClause_]: where_clause.md
-[_Type_]: type.md
-[_StatementsBlock_]: statements_block.md
+[identifier]: identifier.md
+[_generics_]: generics.md
+[_whereclause_]: where_clause.md
+[_type_]: type.md
+[_statementsblock_]: statements_block.md

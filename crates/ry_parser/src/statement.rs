@@ -1,13 +1,5 @@
-mod defer;
-mod r#return;
-mod var;
-
-use self::{defer::DeferStatementParser, r#return::ReturnStatementParser, var::VarStatementParser};
 use crate::{expression::ExpressionParser, ParseResult, Parser, ParserState};
-use ry_ast::{
-    statement::{ExpressionStatement, Statement, StatementsBlock},
-    Token,
-};
+use ry_ast::{Statement, StatementsBlock, Token};
 
 pub(crate) struct StatementParser;
 
@@ -21,7 +13,6 @@ impl Parser for StatementParser {
         let statement = match state.next.unwrap() {
             Token![return] => ReturnStatementParser.parse_with(state)?,
             Token![defer] => DeferStatementParser.parse_with(state)?,
-            Token![var] => VarStatementParser.parse_with(state)?,
             _ => {
                 let expression = ExpressionParser::default().parse_with(state)?;
 
@@ -37,17 +28,15 @@ impl Parser for StatementParser {
                 }
 
                 if last_statement_in_block || !must_have_semicolon_at_the_end {
-                    ExpressionStatement {
+                    Statement::Expression {
                         has_semicolon: false,
                         expression,
                     }
-                    .into()
                 } else {
-                    ExpressionStatement {
+                    Statement::Expression {
                         has_semicolon: true,
                         expression,
                     }
-                    .into()
                 }
             }
         };
@@ -83,4 +72,42 @@ impl Parser for StatementsBlockParser {
 
         Ok(block)
     }
+}
+
+#[derive(Default)]
+pub(crate) struct DeferStatementParser;
+
+impl Parser for DeferStatementParser {
+    type Output = Statement;
+
+    fn parse_with(self, state: &mut ParserState<'_>) -> ParseResult<Self::Output> {
+        state.next_token();
+
+        Ok(Statement::Defer {
+            call: ExpressionParser::default().parse_with(state)?,
+        })
+    }
+}
+
+#[derive(Default)]
+pub(crate) struct ReturnStatementParser;
+
+impl Parser for ReturnStatementParser {
+    type Output = Statement;
+
+    fn parse_with(self, state: &mut ParserState<'_>) -> ParseResult<Self::Output> {
+        state.next_token();
+
+        Ok(Statement::Return {
+            expression: ExpressionParser::default().parse_with(state)?,
+        })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::macros::parser_test;
+
+    parser_test!(ReturnStatementParser, r#return, "return a?.b.unwrap_or(0);");
+    parser_test!(DeferStatementParser, defer, "defer call();");
 }

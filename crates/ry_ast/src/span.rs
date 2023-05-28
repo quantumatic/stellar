@@ -3,11 +3,10 @@
 //! are passed around throughout the parser and are stored in each
 //! AST node.
 use codespan_reporting::diagnostic::Label;
-use serde::{Deserialize, Serialize};
 use std::{fmt::Display, ops::Range};
 
 /// Represents code block location in source text.
-#[derive(Copy, Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Copy, Clone, Hash, Debug, Default, PartialEq, Eq)]
 pub struct Span {
     start: usize,
     end: usize,
@@ -60,7 +59,7 @@ impl<'a> SpanIndex for &'a str {
 }
 
 /// Represents thing located in some [`Span`].
-#[derive(Debug, PartialEq, Clone, Default, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Clone, Default, Eq, Hash)]
 pub struct Spanned<T> {
     inner: T,
     span: Span,

@@ -46,6 +46,7 @@
 
 use crate::prefix::log_with_prefix;
 use clap::{arg, Parser, Subcommand};
+use new_project::create_new_project_folder;
 use prefix::create_unique_file;
 use ry_interner::Interner;
 use ry_lexer::Lexer;
@@ -54,6 +55,7 @@ use ry_report::{Reporter, ReporterState};
 use std::{fs, io::Write, process::exit, time::Instant};
 
 mod error;
+mod new_project;
 mod prefix;
 
 #[derive(clap::Parser)]
@@ -73,6 +75,9 @@ enum Commands {
     },
     Parse {
         filepath: String,
+    },
+    New {
+        project_name: String,
     },
 }
 
@@ -133,10 +138,10 @@ fn main() {
 
                     match ast {
                         Ok(program_unit) => {
-                            let json = mytry!(serde_json::to_string_pretty(&program_unit));
+                            let ast_string = format!("{:?}", program_unit);
 
-                            let (filename, mut file) = create_unique_file("ast", "json");
-                            mytry!(file.write_all(json.as_bytes()));
+                            let (filename, mut file) = create_unique_file("ast", "txt");
+                            mytry!(file.write_all(ast_string.as_bytes()));
 
                             log_with_prefix(
                                 "    Parsed ",
@@ -161,6 +166,9 @@ fn main() {
                     exit(1);
                 }
             }
+        }
+        Commands::New { project_name } => {
+            create_new_project_folder(&project_name);
         }
     }
 }

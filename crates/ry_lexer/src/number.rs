@@ -2,26 +2,28 @@ use crate::{is_id_start, IterElem, Lexer};
 use ry_ast::{span::*, token::RawToken::*, token::*};
 use std::string::String;
 
+/// True if `c` is a valid decimal digit.
 #[inline]
 pub(crate) fn decimal(c: char) -> bool {
     c.is_ascii_digit()
 }
 
+/// True if `c` is a valid hexadecimal digit.
 #[inline]
 pub(crate) fn hexadecimal(c: char) -> bool {
     c.is_ascii_digit() || ('a'..='f').contains(&c.to_ascii_lowercase())
 }
 
 fn invalid_separator(buffer: String) -> i32 {
-    let mut x1 = ' ';
+    let mut base = ' ';
     let mut d = '.';
     let mut i = 0;
 
     let bytes = buffer.as_bytes();
 
     if buffer.len() >= 2 && bytes[0] as char == '0' {
-        x1 = bytes[1] as char;
-        if x1 == 'x' || x1 == 'o' || x1 == 'b' {
+        base = bytes[1] as char;
+        if base == 'x' || base == 'o' || base == 'b' {
             d = '0';
             i = 2;
         }
@@ -34,7 +36,7 @@ fn invalid_separator(buffer: String) -> i32 {
             if p != '0' {
                 return i as i32;
             }
-        } else if decimal(d) || x1 == 'x' && hexadecimal(d) {
+        } else if decimal(d) || base == 'x' && hexadecimal(d) {
             d = '0';
         } else {
             if p == '_' {

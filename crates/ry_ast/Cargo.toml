@@ -8,5 +8,4 @@ authors = ["Adi Salimgereyev <adisalimgereev@gmail.com>"]
 [dependencies]
 phf = { version = "0.11.1", features = ["macros"] }
 ry_interner = { path = "../ry_interner" }
-serde = { version = "1.0.160", features = ["derive"] }
 codespan-reporting = "0.11.1"

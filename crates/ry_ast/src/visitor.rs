@@ -44,13 +44,13 @@ pub trait VisitWith {
 pub trait Visitor: Sized {
     type BreakTy;
 
-    define_visit!(visit_program_unit, ProgramUnit);
-    define_visit!(visit_item, Documented<Item>);
+    // define_visit!(visit_program_unit, ProgramUnit);
+    // define_visit!(visit_item, Documented<Item>);
 }
 
 pub trait VisitorMut: Sized {
     type BreakTy;
 
-    define_visit_mut!(visit_program_unit, ProgramUnit);
-    define_visit_mut!(visit_item, Documented<Item>);
+    // define_visit_mut!(visit_program_unit, ProgramUnit);
+    // define_visit_mut!(visit_item, Documented<Item>);
 }

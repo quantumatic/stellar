@@ -3,11 +3,10 @@
 use crate::{precedence::Precedence, span::Spanned};
 use phf::phf_map;
 use ry_interner::Symbol;
-use serde::{Deserialize, Serialize};
 use std::fmt::Display;
 
 /// Represents error that lexer can fail with.
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum LexError {
     DigitDoesNotCorrespondToBase,
     EmptyCharLiteral,
@@ -102,7 +101,7 @@ pub enum NumberKind {
     Float,
 }
 
-#[derive(Debug, Clone, PartialEq, Copy, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Copy)]
 pub enum Keyword {
     As,
     Defer,
@@ -154,7 +153,7 @@ impl Display for Keyword {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Copy, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Copy)]
 pub enum Punctuator {
     And,
     AndAnd,
@@ -257,7 +256,7 @@ impl Display for Punctuator {
 }
 
 /// Represents token without a specific location in source text.
-#[derive(Copy, Clone, Debug, PartialEq, Default, Serialize, Deserialize)]
+#[derive(Copy, Clone, Debug, PartialEq, Default)]
 pub enum RawToken {
     TrueBoolLiteral,
     FalseBoolLiteral,

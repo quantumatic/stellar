@@ -2,7 +2,6 @@
 //!
 //! It uses the lexer from the ry_lexer crate to tokenize the input source
 //! code and produces an Abstract Syntax Tree (AST) that represents the parsed code.
-
 #![doc(
     html_logo_url = "https://raw.githubusercontent.com/abs0luty/Ry/main/additional/icon/ry.png",
     html_favicon_url = "https://raw.githubusercontent.com/abs0luty/Ry/main/additional/icon/ry.png"
@@ -54,19 +53,17 @@
 
 pub mod error;
 mod expression;
-mod item;
+mod items;
 mod path;
 mod statement;
 mod r#type;
 
 use error::{expected, ParseError, ParseResult};
-use item::ItemsParser;
+use items::ItemsParser;
 use ry_ast::{
-    declaration::Docstring,
-    name::Name,
     span::{At, Span, SpanIndex},
     token::{RawToken, Token},
-    ProgramUnit,
+    Docstring, Identifier, ProgramUnit,
 };
 use ry_interner::Interner;
 use ry_lexer::Lexer;
@@ -180,7 +177,7 @@ impl<'a> ParserState<'a> {
         Ok(())
     }
 
-    fn consume_identifier<N>(&mut self, node: N) -> Result<Name, ParseError>
+    fn consume_identifier<N>(&mut self, node: N) -> Result<Identifier, ParseError>
     where
         N: Into<String>,
     {

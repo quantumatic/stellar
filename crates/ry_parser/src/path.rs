@@ -1,8 +1,7 @@
 use crate::{error::ParseResult, Parser, ParserState};
 use ry_ast::{
-    name::Path,
     span::{At, Span},
-    Token,
+    Path, Token,
 };
 
 pub(crate) struct PathParser;
