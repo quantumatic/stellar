@@ -10,7 +10,7 @@ use crate::{
     macros::{binop_pattern, parse_list, postfixop_pattern, prefixop_pattern},
     r#type::{GenericArgumentsParser, TypeParser},
     statement::StatementsBlockParser,
-    Parser, ParserState,
+    Cursor, Parse,
 };
 
 #[derive(Default)]
@@ -18,20 +18,56 @@ pub(crate) struct ExpressionParser {
     pub(crate) precedence: Precedence,
 }
 
-impl Parser for ExpressionParser {
+struct WhileExpressionParser;
+
+struct PrimaryExpressionParser;
+
+struct GenericArgumentsExpressionParser {
+    pub(crate) left: Spanned<Expression>,
+}
+
+struct PropertyAccessExpressionParser {
+    pub(crate) left: Spanned<Expression>,
+}
+
+struct PrefixExpressionParser;
+
+struct PostfixExpressionParser {
+    pub(crate) left: Spanned<Expression>,
+}
+
+struct CastExpressionParser {
+    pub(crate) left: Spanned<Expression>,
+}
+
+struct IfExpressionParser;
+
+struct ParenthesizedExpressionParser;
+
+struct CallExpressionParser {
+    pub(crate) left: Spanned<Expression>,
+}
+
+struct BinaryExpressionParser {
+    pub(crate) left: Spanned<Expression>,
+}
+
+pub(crate) struct ArrayLiteralExpressionParser;
+
+impl Parse for ExpressionParser {
     type Output = Spanned<Expression>;
 
-    fn parse_with(self, state: &mut ParserState<'_>) -> ParseResult<Self::Output> {
-        let mut left = PrimaryExpressionParser.parse_with(state)?;
+    fn parse_with(self, cursor: &mut Cursor<'_>) -> ParseResult<Self::Output> {
+        let mut left = PrimaryExpressionParser.parse_with(cursor)?;
 
-        while self.precedence < state.next.unwrap().to_precedence() {
-            left = match state.next.unwrap() {
-                binop_pattern!() => BinaryExpressionParser { left }.parse_with(state)?,
-                Token!['('] => CallExpressionParser { left }.parse_with(state)?,
-                Token![.] => PropertyAccessExpressionParser { left }.parse_with(state)?,
-                Token!['['] => GenericArgumentsExpressionParser { left }.parse_with(state)?,
-                postfixop_pattern!() => PostfixExpressionParser { left }.parse_with(state)?,
-                Token![as] => CastExpressionParser { left }.parse_with(state)?,
+        while self.precedence < cursor.next.unwrap().to_precedence() {
+            left = match cursor.next.unwrap() {
+                binop_pattern!() => BinaryExpressionParser { left }.parse_with(cursor)?,
+                Token!['('] => CallExpressionParser { left }.parse_with(cursor)?,
+                Token![.] => PropertyAccessExpressionParser { left }.parse_with(cursor)?,
+                Token!['['] => GenericArgumentsExpressionParser { left }.parse_with(cursor)?,
+                postfixop_pattern!() => PostfixExpressionParser { left }.parse_with(cursor)?,
+                Token![as] => CastExpressionParser { left }.parse_with(cursor)?,
                 _ => break,
             };
         }
@@ -40,94 +76,94 @@ impl Parser for ExpressionParser {
     }
 }
 
-pub(crate) struct WhileExpressionParser;
-
-impl Parser for WhileExpressionParser {
+impl Parse for WhileExpressionParser {
     type Output = Spanned<Expression>;
 
-    fn parse_with(self, state: &mut ParserState<'_>) -> ParseResult<Self::Output> {
-        state.next_token();
-        let start = state.current.span().start();
+    fn parse_with(self, cursor: &mut Cursor<'_>) -> ParseResult<Self::Output> {
+        cursor.next_token();
+        let start = cursor.current.span().start();
 
-        let condition = ExpressionParser::default().parse_with(state)?;
-        let body = StatementsBlockParser.parse_with(state)?;
+        let condition = ExpressionParser::default().parse_with(cursor)?;
+        let body = StatementsBlockParser.parse_with(cursor)?;
 
         Ok(Expression::While {
             condition: Box::new(condition),
             body,
         }
-        .at(Span::new(start, state.current.span().end(), state.file_id)))
+        .at(Span::new(
+            start,
+            cursor.current.span().end(),
+            cursor.file_id,
+        )))
     }
 }
 
-pub(crate) struct PrimaryExpressionParser;
-
-impl Parser for PrimaryExpressionParser {
+impl Parse for PrimaryExpressionParser {
     type Output = Spanned<Expression>;
 
-    fn parse_with(self, state: &mut ParserState<'_>) -> ParseResult<Self::Output> {
-        match *state.next.unwrap() {
+    fn parse_with(self, cursor: &mut Cursor<'_>) -> ParseResult<Self::Output> {
+        match *cursor.next.unwrap() {
             RawToken::IntegerLiteral => {
-                state.next_token();
-                match state
+                cursor.next_token();
+                match cursor
                     .contents
-                    .index(state.current.span())
+                    .index(cursor.current.span())
                     .replace('_', "")
                     .parse::<u64>()
                 {
-                    Ok(integer) => {
-                        Ok(Expression::Literal(Literal::Integer(integer)).at(state.current.span()))
-                    }
-                    Err(..) => Err(ParseError::integer_overflow(state.current.span())),
+                    Ok(integer) => Ok(
+                        Expression::Literal(Literal::Integer(integer)).at(cursor.current.span())
+                    ),
+                    Err(..) => Err(ParseError::integer_overflow(cursor.current.span())),
                 }
             }
             RawToken::FloatLiteral => {
-                state.next_token();
-                match state
+                cursor.next_token();
+                match cursor
                     .contents
-                    .index(state.current.span())
+                    .index(cursor.current.span())
                     .replace('_', "")
                     .parse::<f64>()
                 {
                     Ok(float) => {
-                        Ok(Expression::Literal(Literal::Float(float)).at(state.current.span()))
+                        Ok(Expression::Literal(Literal::Float(float)).at(cursor.current.span()))
                     }
-                    Err(..) => Err(ParseError::float_overflow(state.current.span())),
+                    Err(..) => Err(ParseError::float_overflow(cursor.current.span())),
                 }
             }
             RawToken::StringLiteral => {
-                state.next_token();
+                cursor.next_token();
                 Ok(Expression::Literal(Literal::String(
-                    state.contents.index(state.current.span()).to_owned(),
+                    cursor.contents.index(cursor.current.span()).to_owned(),
                 ))
-                .at(state.current.span()))
+                .at(cursor.current.span()))
             }
             RawToken::CharLiteral => {
-                state.next_token();
+                cursor.next_token();
                 Ok(Expression::Literal(Literal::String(
-                    state.contents.index(state.current.span()).to_owned(),
+                    cursor.contents.index(cursor.current.span()).to_owned(),
                 ))
-                .at(state.current.span()))
+                .at(cursor.current.span()))
             }
             Token![true] => {
-                state.next_token();
-                Ok(Expression::Literal(Literal::Boolean(true)).at(state.current.span()))
+                cursor.next_token();
+                Ok(Expression::Literal(Literal::Boolean(true)).at(cursor.current.span()))
             }
             Token![false] => {
-                state.next_token();
-                Ok(Expression::Literal(Literal::Boolean(false)).at(state.current.span()))
+                cursor.next_token();
+                Ok(Expression::Literal(Literal::Boolean(false)).at(cursor.current.span()))
             }
-            prefixop_pattern!() => PrefixExpressionParser.parse_with(state),
-            Token!['('] => ParenthesizedExpressionParser.parse_with(state),
-            Token!['['] => ArrayLiteralExpressionParser.parse_with(state),
+            prefixop_pattern!() => PrefixExpressionParser.parse_with(cursor),
+            Token!['('] => ParenthesizedExpressionParser.parse_with(cursor),
+            Token!['['] => ArrayLiteralExpressionParser.parse_with(cursor),
             RawToken::Identifier(identifier) => {
-                state.next_token();
-                Ok(Expression::Identifier(identifier).at(state.current.span()))
+                cursor.next_token();
+                Ok(Expression::Identifier(identifier).at(cursor.current.span()))
             }
-            Token![if] => IfExpressionParser.parse_with(state),
-            Token![while] => WhileExpressionParser.parse_with(state),
+            Token![if] => IfExpressionParser.parse_with(cursor),
+            Token![while] => WhileExpressionParser.parse_with(cursor),
             _ => Err(ParseError::unexpected_token(
-                state.next.clone(),
+                cursor.next.clone(),
                 expected!(
                     "integer literal",
                     "float literal",
@@ -147,20 +183,16 @@ impl Parser for PrimaryExpressionParser {
     }
 }
 
-pub(crate) struct GenericArgumentsExpressionParser {
-    pub(crate) left: Spanned<Expression>,
-}
-
-impl Parser for GenericArgumentsExpressionParser {
+impl Parse for GenericArgumentsExpressionParser {
     type Output = Spanned<Expression>;
 
-    fn parse_with(self, state: &mut ParserState<'_>) -> ParseResult<Self::Output> {
-        let arguments = GenericArgumentsParser.parse_with(state)?;
+    fn parse_with(self, cursor: &mut Cursor<'_>) -> ParseResult<Self::Output> {
+        let arguments = GenericArgumentsParser.parse_with(cursor)?;
 
         let span = Span::new(
             self.left.span().start(),
-            state.current.span().end(),
-            state.file_id,
+            cursor.current.span().end(),
+            cursor.file_id,
         );
 
         Ok(Expression::GenericArguments {
@@ -171,41 +203,39 @@ impl Parser for GenericArgumentsExpressionParser {
     }
 }
 
-pub(crate) struct PropertyAccessExpressionParser {
-    pub(crate) left: Spanned<Expression>,
-}
-
-impl Parser for PropertyAccessExpressionParser {
+impl Parse for PropertyAccessExpressionParser {
     type Output = Spanned<Expression>;
 
-    fn parse_with(self, state: &mut ParserState<'_>) -> ParseResult<Self::Output> {
+    fn parse_with(self, cursor: &mut Cursor<'_>) -> ParseResult<Self::Output> {
         let start = self.left.span().start();
 
-        state.next_token();
+        cursor.next_token();
 
         Ok(Expression::Property {
             left: Box::new(self.left),
-            right: state.consume_identifier("property")?,
+            right: cursor.consume_identifier("property")?,
         }
-        .at(Span::new(start, state.current.span().end(), state.file_id)))
+        .at(Span::new(
+            start,
+            cursor.current.span().end(),
+            cursor.file_id,
+        )))
     }
 }
 
-pub(crate) struct PrefixExpressionParser;
-
-impl Parser for PrefixExpressionParser {
+impl Parse for PrefixExpressionParser {
     type Output = Spanned<Expression>;
 
-    fn parse_with(self, state: &mut ParserState<'_>) -> ParseResult<Self::Output> {
-        let operator = state.next.clone();
-        state.next_token();
+    fn parse_with(self, cursor: &mut Cursor<'_>) -> ParseResult<Self::Output> {
+        let operator = cursor.next.clone();
+        cursor.next_token();
 
         let inner = ExpressionParser {
             precedence: Precedence::Unary,
         }
-        .parse_with(state)?;
+        .parse_with(cursor)?;
 
-        let span = Span::new(operator.span().start(), inner.span().end(), state.file_id);
+        let span = Span::new(operator.span().start(), inner.span().end(), cursor.file_id);
 
         Ok(Expression::Unary {
             inner: Box::new(inner),
@@ -216,220 +246,227 @@ impl Parser for PrefixExpressionParser {
     }
 }
 
-pub(crate) struct PostfixExpressionParser {
-    pub(crate) left: Spanned<Expression>,
-}
-
-impl Parser for PostfixExpressionParser {
+impl Parse for PostfixExpressionParser {
     type Output = Spanned<Expression>;
 
-    fn parse_with(self, state: &mut ParserState<'_>) -> ParseResult<Self::Output> {
+    fn parse_with(self, cursor: &mut Cursor<'_>) -> ParseResult<Self::Output> {
         let start = self.left.span().start();
 
-        state.next_token();
+        cursor.next_token();
 
         Ok(Expression::Unary {
             inner: Box::new(self.left),
-            operator: state.current.clone(),
+            operator: cursor.current.clone(),
             postfix: true,
         }
-        .at(Span::new(start, state.current.span().end(), state.file_id)))
+        .at(Span::new(
+            start,
+            cursor.current.span().end(),
+            cursor.file_id,
+        )))
     }
 }
 
-pub(crate) struct ParenthesizedExpressionParser;
-
-impl Parser for ParenthesizedExpressionParser {
+impl Parse for ParenthesizedExpressionParser {
     type Output = Spanned<Expression>;
 
-    fn parse_with(self, state: &mut ParserState<'_>) -> ParseResult<Self::Output> {
-        state.next_token();
-        let start = state.current.span().start();
+    fn parse_with(self, cursor: &mut Cursor<'_>) -> ParseResult<Self::Output> {
+        cursor.next_token();
+        let start = cursor.current.span().start();
 
         let inner = ExpressionParser {
             precedence: Precedence::Lowest,
         }
-        .parse_with(state)?;
+        .parse_with(cursor)?;
 
-        state.consume(Token![')'], "parenthesized expression")?;
+        cursor.consume(Token![')'], "parenthesized expression")?;
 
         Ok(Expression::Parenthesized {
             inner: Box::new(inner),
         }
-        .at(Span::new(start, state.current.span().end(), state.file_id)))
+        .at(Span::new(
+            start,
+            cursor.current.span().end(),
+            cursor.file_id,
+        )))
     }
 }
 
-pub(crate) struct IfExpressionParser;
-
-impl Parser for IfExpressionParser {
+impl Parse for IfExpressionParser {
     type Output = Spanned<Expression>;
 
-    fn parse_with(self, state: &mut ParserState<'_>) -> ParseResult<Self::Output> {
-        state.next_token();
+    fn parse_with(self, cursor: &mut Cursor<'_>) -> ParseResult<Self::Output> {
+        cursor.next_token();
 
-        let start = state.current.span().start();
+        let start = cursor.current.span().start();
 
         let mut if_blocks = vec![(
-            ExpressionParser::default().parse_with(state)?,
-            StatementsBlockParser.parse_with(state)?,
+            ExpressionParser::default().parse_with(cursor)?,
+            StatementsBlockParser.parse_with(cursor)?,
         )];
 
         let mut r#else = None;
 
-        while *state.next.unwrap() == Token![else] {
-            state.next_token();
+        while *cursor.next.unwrap() == Token![else] {
+            cursor.next_token();
 
-            match state.next.unwrap() {
+            match cursor.next.unwrap() {
                 Token![if] => {}
                 _ => {
-                    r#else = Some(StatementsBlockParser.parse_with(state)?);
+                    r#else = Some(StatementsBlockParser.parse_with(cursor)?);
                     break;
                 }
             }
 
-            state.next_token();
+            cursor.next_token();
 
             if_blocks.push((
-                ExpressionParser::default().parse_with(state)?,
-                StatementsBlockParser.parse_with(state)?,
+                ExpressionParser::default().parse_with(cursor)?,
+                StatementsBlockParser.parse_with(cursor)?,
             ));
         }
 
         Ok(Expression::If { if_blocks, r#else }.at(Span::new(
             start,
-            state.current.span().end(),
-            state.file_id,
+            cursor.current.span().end(),
+            cursor.file_id,
         )))
     }
 }
 
-pub(crate) struct CastExpressionParser {
-    pub(crate) left: Spanned<Expression>,
-}
-
-impl Parser for CastExpressionParser {
+impl Parse for CastExpressionParser {
     type Output = Spanned<Expression>;
 
-    fn parse_with(self, state: &mut ParserState<'_>) -> ParseResult<Self::Output> {
+    fn parse_with(self, cursor: &mut Cursor<'_>) -> ParseResult<Self::Output> {
         let start = self.left.span().start();
 
-        state.next_token();
+        cursor.next_token();
 
-        let right = TypeParser.parse_with(state)?;
+        let right = TypeParser.parse_with(cursor)?;
 
         Ok(Expression::As {
             left: Box::new(self.left),
             right,
         }
-        .at(Span::new(start, state.current.span().end(), state.file_id)))
+        .at(Span::new(
+            start,
+            cursor.current.span().end(),
+            cursor.file_id,
+        )))
     }
 }
 
-pub(crate) struct CallExpressionParser {
-    pub(crate) left: Spanned<Expression>,
-}
-
-impl Parser for CallExpressionParser {
+impl Parse for CallExpressionParser {
     type Output = Spanned<Expression>;
 
-    fn parse_with(self, state: &mut ParserState<'_>) -> ParseResult<Self::Output> {
+    fn parse_with(self, cursor: &mut Cursor<'_>) -> ParseResult<Self::Output> {
         let start = self.left.span().start();
 
-        state.next_token();
+        cursor.next_token();
 
-        let arguments = parse_list!(state, "call arguments list", Token![')'], || {
+        let arguments = parse_list!(cursor, "call arguments list", Token![')'], || {
             ExpressionParser {
                 precedence: Precedence::Lowest,
             }
-            .parse_with(state)
+            .parse_with(cursor)
         });
 
-        state.next_token();
+        cursor.next_token();
 
         Ok(Expression::Call {
             left: Box::new(self.left),
             arguments,
         }
-        .at(Span::new(start, state.current.span().end(), state.file_id)))
+        .at(Span::new(
+            start,
+            cursor.current.span().end(),
+            cursor.file_id,
+        )))
     }
 }
 
-pub(crate) struct BinaryExpressionParser {
-    pub(crate) left: Spanned<Expression>,
-}
-
-impl Parser for BinaryExpressionParser {
+impl Parse for BinaryExpressionParser {
     type Output = Spanned<Expression>;
 
-    fn parse_with(self, state: &mut ParserState<'_>) -> ParseResult<Self::Output> {
+    fn parse_with(self, cursor: &mut Cursor<'_>) -> ParseResult<Self::Output> {
         let start = self.left.span().start();
 
-        let operator = state.next.clone();
-        let precedence = state.next.unwrap().to_precedence();
+        let operator = cursor.next.clone();
+        let precedence = cursor.next.unwrap().to_precedence();
 
-        state.next_token();
+        cursor.next_token();
 
-        let right = ExpressionParser { precedence }.parse_with(state)?;
+        let right = ExpressionParser { precedence }.parse_with(cursor)?;
 
         Ok(Expression::Binary {
             left: Box::new(self.left),
             right: Box::new(right),
             operator,
         }
-        .at(Span::new(start, state.current.span().end(), state.file_id)))
+        .at(Span::new(
+            start,
+            cursor.current.span().end(),
+            cursor.file_id,
+        )))
     }
 }
 
-pub(crate) struct ArrayLiteralExpressionParser;
-
-impl Parser for ArrayLiteralExpressionParser {
+impl Parse for ArrayLiteralExpressionParser {
     type Output = Spanned<Expression>;
 
-    fn parse_with(self, state: &mut ParserState<'_>) -> ParseResult<Self::Output> {
-        state.next_token();
+    fn parse_with(self, cursor: &mut Cursor<'_>) -> ParseResult<Self::Output> {
+        cursor.next_token();
 
-        let start = state.next.span().start();
+        let start = cursor.next.span().start();
 
-        let elements = parse_list!(state, "array literal", Token![']'], || {
-            ExpressionParser::default().parse_with(state)
+        let elements = parse_list!(cursor, "array literal", Token![']'], || {
+            ExpressionParser::default().parse_with(cursor)
         });
 
-        state.next_token();
+        cursor.next_token();
 
         Ok(Expression::Array { elements }.at(Span::new(
             start,
-            state.current.span().end(),
-            state.file_id,
+            cursor.current.span().end(),
+            cursor.file_id,
         )))
     }
 }
 
 #[cfg(test)]
 mod expression_tests {
-    use crate::macros::parser_test;
+    use super::ExpressionParser;
+    use crate::macros::parse_test;
 
-    parser_test!(ExpressionParser, literal1, "3");
-    parser_test!(ExpressionParser, literal2, "\"hello\"");
-    parser_test!(ExpressionParser, literal3, "true");
-    parser_test!(ExpressionParser, array, "[1, 2, \"3\".into()]");
-    parser_test!(
-        ExpressionParser,
+    parse_test!(ExpressionParser::default(), literal1, "3");
+    parse_test!(ExpressionParser::default(), literal2, "\"hello\"");
+    parse_test!(ExpressionParser::default(), literal3, "true");
+    parse_test!(ExpressionParser::default(), array, "[1, 2, \"3\".into()]");
+    parse_test!(
+        ExpressionParser::default(),
         binary,
         "!(1 + 2) + 3 / (3 + a.unwrap_or(0) * 4)"
     );
-    parser_test!(ExpressionParser, cast, "1 as f32");
-    parser_test!(ExpressionParser, call, "l(2 * b() + 2).a()");
-    parser_test!(ExpressionParser, call_with_generics, "sizeof[i32]()");
-    parser_test!(
-        ExpressionParser,
+    parse_test!(ExpressionParser::default(), cast, "1 as f32");
+    parse_test!(ExpressionParser::default(), call, "l(2 * b() + 2).a()");
+    parse_test!(
+        ExpressionParser::default(),
+        call_with_generics,
+        "sizeof[i32]()"
+    );
+    parse_test!(
+        ExpressionParser::default(),
         ifelse,
         "if false { 2.3 } else if false { 5 as f32 } else { 2.0 }"
     );
-    parser_test!(
-        ExpressionParser,
+    parse_test!(
+        ExpressionParser::default(),
         r#while,
         "while true { print(\"hello\"); }"
     );
-    parser_test!(ExpressionParser, postfix, "Some(a().unwrap_or(0) + b()?)");
+    parse_test!(
+        ExpressionParser::default(),
+        postfix,
+        "Some(a().unwrap_or(0) + b()?)"
+    );
 }

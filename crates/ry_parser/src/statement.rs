@@ -1,24 +1,30 @@
-use crate::{expression::ExpressionParser, ParseResult, Parser, ParserState};
+use crate::{expression::ExpressionParser, Cursor, Parse, ParseResult};
 use ry_ast::{Statement, StatementsBlock, Token};
 
-pub(crate) struct StatementParser;
+struct StatementParser;
 
-impl Parser for StatementParser {
+pub(crate) struct StatementsBlockParser;
+
+struct DeferStatementParser;
+
+struct ReturnStatementParser;
+
+impl Parse for StatementParser {
     type Output = (Statement, bool);
 
-    fn parse_with(self, state: &mut ParserState<'_>) -> ParseResult<Self::Output> {
+    fn parse_with(self, cursor: &mut Cursor<'_>) -> ParseResult<Self::Output> {
         let mut last_statement_in_block = false;
         let mut must_have_semicolon_at_the_end = true;
 
-        let statement = match state.next.unwrap() {
-            Token![return] => ReturnStatementParser.parse_with(state)?,
-            Token![defer] => DeferStatementParser.parse_with(state)?,
+        let statement = match cursor.next.unwrap() {
+            Token![return] => ReturnStatementParser.parse_with(cursor)?,
+            Token![defer] => DeferStatementParser.parse_with(cursor)?,
             _ => {
-                let expression = ExpressionParser::default().parse_with(state)?;
+                let expression = ExpressionParser::default().parse_with(cursor)?;
 
                 must_have_semicolon_at_the_end = !expression.unwrap().with_block();
 
-                match state.next.unwrap() {
+                match cursor.next.unwrap() {
                     Token![;] => {}
                     _ => {
                         if must_have_semicolon_at_the_end {
@@ -42,25 +48,23 @@ impl Parser for StatementParser {
         };
 
         if !last_statement_in_block && must_have_semicolon_at_the_end {
-            state.consume(Token![;], "end of the statement")?;
+            cursor.consume(Token![;], "end of the statement")?;
         }
 
         Ok((statement, last_statement_in_block))
     }
 }
 
-pub(crate) struct StatementsBlockParser;
-
-impl Parser for StatementsBlockParser {
+impl Parse for StatementsBlockParser {
     type Output = StatementsBlock;
 
-    fn parse_with(self, state: &mut ParserState<'_>) -> ParseResult<Self::Output> {
-        state.consume(Token!['{'], "statements block")?;
+    fn parse_with(self, cursor: &mut Cursor<'_>) -> ParseResult<Self::Output> {
+        cursor.consume(Token!['{'], "statements block")?;
 
         let mut block = vec![];
 
-        while *state.next.unwrap() != Token!['}'] {
-            let (statement, last) = StatementParser.parse_with(state)?;
+        while *cursor.next.unwrap() != Token!['}'] {
+            let (statement, last) = StatementParser.parse_with(cursor)?;
             block.push(statement);
 
             if last {
@@ -68,46 +72,41 @@ impl Parser for StatementsBlockParser {
             }
         }
 
-        state.consume(Token!['}'], "end of the statements block")?;
+        cursor.consume(Token!['}'], "end of the statements block")?;
 
         Ok(block)
     }
 }
 
-#[derive(Default)]
-pub(crate) struct DeferStatementParser;
-
-impl Parser for DeferStatementParser {
+impl Parse for DeferStatementParser {
     type Output = Statement;
 
-    fn parse_with(self, state: &mut ParserState<'_>) -> ParseResult<Self::Output> {
-        state.next_token();
+    fn parse_with(self, cursor: &mut Cursor<'_>) -> ParseResult<Self::Output> {
+        cursor.next_token();
 
         Ok(Statement::Defer {
-            call: ExpressionParser::default().parse_with(state)?,
+            call: ExpressionParser::default().parse_with(cursor)?,
         })
     }
 }
 
-#[derive(Default)]
-pub(crate) struct ReturnStatementParser;
-
-impl Parser for ReturnStatementParser {
+impl Parse for ReturnStatementParser {
     type Output = Statement;
 
-    fn parse_with(self, state: &mut ParserState<'_>) -> ParseResult<Self::Output> {
-        state.next_token();
+    fn parse_with(self, cursor: &mut Cursor<'_>) -> ParseResult<Self::Output> {
+        cursor.next_token();
 
         Ok(Statement::Return {
-            expression: ExpressionParser::default().parse_with(state)?,
+            expression: ExpressionParser::default().parse_with(cursor)?,
         })
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::macros::parser_test;
+    use super::StatementParser;
+    use crate::macros::parse_test;
 
-    parser_test!(ReturnStatementParser, r#return, "return a?.b.unwrap_or(0);");
-    parser_test!(DeferStatementParser, defer, "defer call();");
+    parse_test!(StatementParser, r#return, "return a?.b.unwrap_or(0);");
+    parse_test!(StatementParser, defer, "defer call();");
 }

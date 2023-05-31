@@ -50,8 +50,7 @@ use new_project::create_new_project_folder;
 use prefix::create_unique_file;
 use ry_interner::Interner;
 use ry_lexer::Lexer;
-use ry_parser::ParserState;
-use ry_report::{Reporter, ReporterState};
+use ry_report::{Report, Reporter};
 use std::{fs, io::Write, process::exit, time::Instant};
 
 mod error;
@@ -82,7 +81,7 @@ enum Commands {
 }
 
 fn main() {
-    let mut reporter = ReporterState::default();
+    let mut reporter = Reporter::default();
 
     let mut interner = Interner::default();
 
@@ -128,13 +127,13 @@ fn main() {
             match fs::read_to_string(filepath) {
                 Ok(contents) => {
                     let file_id = reporter.add_file(filepath, &contents);
-                    let mut parser = ParserState::new(file_id, &contents, &mut interner);
+                    let mut cursor = ry_parser::Cursor::new(file_id, &contents, &mut interner);
 
                     let now = Instant::now();
 
                     log_with_prefix("   Parsing ", filepath);
 
-                    let ast = parser.parse();
+                    let ast = cursor.parse();
 
                     match ast {
                         Ok(program_unit) => {

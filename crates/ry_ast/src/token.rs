@@ -169,6 +169,7 @@ pub enum Punctuator {
     Colon,
     Comma,
     Dot,
+    DotDot,
     Eq,
     GreaterThan,
     GreaterThanOrEq,
@@ -197,6 +198,7 @@ pub enum Punctuator {
     SlashEq,
     Xor,
     XorEq,
+    HashTag,
 }
 
 impl AsRef<str> for Punctuator {
@@ -237,6 +239,7 @@ impl AsRef<str> for Punctuator {
             Self::CloseBrace => "`}`",
             Self::Comma => "`,`",
             Self::Dot => "`.`",
+            Self::DotDot => "`..`",
             Self::Semicolon => "`;`",
             Self::Colon => "`:`",
             Self::PlusPlus => "`++`",
@@ -244,6 +247,7 @@ impl AsRef<str> for Punctuator {
             Self::AsteriskAsterisk => "`**`",
             Self::Percent => "`%`",
             Self::AtSign => "`@`",
+            Self::HashTag => "`#`",
         }
     }
 }
@@ -373,8 +377,10 @@ macro_rules! Token {
     ['}'] =>                {$crate::token::RawToken::Punctuator($crate::token::Punctuator::CloseBrace)};
     [,] =>                  {$crate::token::RawToken::Punctuator($crate::token::Punctuator::Comma)};
     [.] =>                  {$crate::token::RawToken::Punctuator($crate::token::Punctuator::Dot)};
+    [..] =>                 {$crate::token::RawToken::Punctuator($crate::token::Punctuator::DotDot)};
     [;] =>                  {$crate::token::RawToken::Punctuator($crate::token::Punctuator::Semicolon)};
     [%] =>                  {$crate::token::RawToken::Punctuator($crate::token::Punctuator::Percent)};
+    [#] =>                  {$crate::token::RawToken::Punctuator($crate::token::Punctuator::HashTag)};
     [true] =>               {$crate::token::RawToken::TrueBoolLiteral};
     [false] =>              {$crate::token::RawToken::FalseBoolLiteral};
     [import] =>             {$crate::token::RawToken::Keyword($crate::token::Keyword::Import)};
@@ -438,7 +444,7 @@ impl Punctuator {
             Self::LessThan | Self::LessThanOrEq | Self::GreaterThan | Self::GreaterThanOrEq => {
                 Precedence::LessOrGreater
             }
-            Self::OpenBracket => Precedence::TypeAnnotations,
+            Self::OpenBracket => Precedence::GenericArgument,
             Self::LeftShift | Self::RightShift => Precedence::LeftRightShift,
             Self::Plus | Self::Minus => Precedence::Sum,
             Self::Asterisk | Self::Slash => Precedence::Product,

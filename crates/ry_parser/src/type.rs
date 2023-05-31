@@ -2,7 +2,7 @@ use crate::{
     error::{expected, ParseError, ParseResult},
     macros::parse_list,
     path::PathParser,
-    OptionalParser, Parser, ParserState,
+    Cursor, OptionalParser, Parse,
 };
 use ry_ast::{
     span::{At, Span, Spanned},
@@ -10,19 +10,28 @@ use ry_ast::{
     GenericParameter, Token, Type, WhereClause, WhereClauseItem,
 };
 
-#[derive(Default)]
 pub(crate) struct TypeParser;
 
-impl Parser for TypeParser {
+struct ArrayTypeParser;
+
+pub(crate) struct GenericParametersParser;
+
+struct PrimaryTypeParser;
+
+pub(crate) struct GenericArgumentsParser;
+
+pub(crate) struct WhereClauseParser;
+
+impl Parse for TypeParser {
     type Output = Spanned<Type>;
 
-    fn parse_with(self, state: &mut ParserState<'_>) -> ParseResult<Self::Output> {
-        let r#type = match state.next.unwrap() {
-            RawToken::Identifier(..) => PrimaryTypeParser.parse_with(state)?,
-            Token!['['] => ArrayTypeParser.parse_with(state)?,
+    fn parse_with(self, cursor: &mut Cursor<'_>) -> ParseResult<Self::Output> {
+        let r#type = match cursor.next.unwrap() {
+            RawToken::Identifier(..) => PrimaryTypeParser.parse_with(cursor)?,
+            Token!['['] => ArrayTypeParser.parse_with(cursor)?,
             _ => {
                 return Err(ParseError::unexpected_token(
-                    state.next.clone(),
+                    cursor.next.clone(),
                     expected!("identifier", Token![&], Token!['[']),
                     "type",
                 ));
@@ -33,48 +42,48 @@ impl Parser for TypeParser {
     }
 }
 
-pub(crate) struct ArrayTypeParser;
-
-impl Parser for ArrayTypeParser {
+impl Parse for ArrayTypeParser {
     type Output = Spanned<Type>;
 
-    fn parse_with(self, state: &mut ParserState<'_>) -> ParseResult<Self::Output> {
-        state.next_token();
-        let start = state.current.span().start();
+    fn parse_with(self, cursor: &mut Cursor<'_>) -> ParseResult<Self::Output> {
+        cursor.next_token();
+        let start = cursor.current.span().start();
 
-        let element_type = TypeParser.parse_with(state)?;
+        let element_type = TypeParser.parse_with(cursor)?;
 
-        state.consume(Token![']'], "array type")?;
+        cursor.consume(Token![']'], "array type")?;
 
         Ok(Type::Array {
             element_type: Box::new(element_type),
         }
-        .at(Span::new(start, state.current.span().end(), state.file_id)))
+        .at(Span::new(
+            start,
+            cursor.current.span().end(),
+            cursor.file_id,
+        )))
     }
 }
-
-pub(crate) struct GenericParametersParser;
 
 impl OptionalParser for GenericParametersParser {
     type Output = Vec<GenericParameter>;
 
-    fn optionally_parse_with(self, state: &mut ParserState<'_>) -> ParseResult<Self::Output> {
-        if *state.next.unwrap() != Token!['['] {
+    fn optionally_parse_with(self, cursor: &mut Cursor<'_>) -> ParseResult<Self::Output> {
+        if *cursor.next.unwrap() != Token!['['] {
             return Ok(vec![]);
         }
 
-        state.next_token();
+        cursor.next_token();
 
         let result = parse_list!(
-            state,
+            cursor,
             "generics",
             Token![']'],
             || -> ParseResult<GenericParameter> {
-                let name = state.consume_identifier("generic name")?;
+                let name = cursor.consume_identifier("generic name")?;
 
-                let constraint = if *state.next.unwrap() == Token![:] {
-                    state.next_token();
-                    Some(TypeParser.parse_with(state)?)
+                let constraint = if *cursor.next.unwrap() == Token![:] {
+                    cursor.next_token();
+                    Some(TypeParser.parse_with(cursor)?)
                 } else {
                     None
                 };
@@ -83,82 +92,80 @@ impl OptionalParser for GenericParametersParser {
             }
         );
 
-        state.next_token();
+        cursor.next_token();
 
         Ok(result)
     }
 }
 
-pub(crate) struct PrimaryTypeParser;
-
-impl Parser for PrimaryTypeParser {
+impl Parse for PrimaryTypeParser {
     type Output = Spanned<Type>;
 
-    fn parse_with(self, state: &mut ParserState<'_>) -> ParseResult<Self::Output> {
-        let start = state.next.span().start();
-        let path = PathParser.parse_with(state)?;
-        let generic_arguments = GenericArgumentsParser.optionally_parse_with(state)?;
+    fn parse_with(self, cursor: &mut Cursor<'_>) -> ParseResult<Self::Output> {
+        let start = cursor.next.span().start();
+        let path = PathParser.parse_with(cursor)?;
+        let generic_arguments = GenericArgumentsParser.optionally_parse_with(cursor)?;
 
         Ok(Type::Primary {
             path,
             generic_arguments,
         }
-        .at(Span::new(start, state.current.span().end(), state.file_id)))
+        .at(Span::new(
+            start,
+            cursor.current.span().end(),
+            cursor.file_id,
+        )))
     }
 }
-
-pub(crate) struct GenericArgumentsParser;
 
 impl OptionalParser for GenericArgumentsParser {
     type Output = Vec<Spanned<Type>>;
 
-    fn optionally_parse_with(self, state: &mut ParserState<'_>) -> ParseResult<Self::Output> {
-        if *state.next.unwrap() != Token!['['] {
+    fn optionally_parse_with(self, cursor: &mut Cursor<'_>) -> ParseResult<Self::Output> {
+        if *cursor.next.unwrap() != Token!['['] {
             return Ok(vec![]);
         }
 
-        self.parse_with(state)
+        self.parse_with(cursor)
     }
 }
 
-impl Parser for GenericArgumentsParser {
+impl Parse for GenericArgumentsParser {
     type Output = Vec<Spanned<Type>>;
 
-    fn parse_with(self, state: &mut ParserState<'_>) -> ParseResult<Self::Output> {
-        state.next_token();
+    fn parse_with(self, cursor: &mut Cursor<'_>) -> ParseResult<Self::Output> {
+        cursor.next_token();
 
-        let result = parse_list!(state, "type annotations", Token![']'], || {
-            TypeParser.parse_with(state)
+        let result = parse_list!(cursor, "type annotations", Token![']'], || {
+            TypeParser.parse_with(cursor)
         });
 
-        state.next_token();
+        cursor.next_token();
 
         Ok(result)
     }
 }
 
-pub(crate) struct WhereClauseParser;
-
 impl OptionalParser for WhereClauseParser {
     type Output = WhereClause;
 
-    fn optionally_parse_with(self, state: &mut ParserState<'_>) -> ParseResult<Self::Output> {
-        if *state.next.unwrap() != Token![where] {
+    fn optionally_parse_with(self, cursor: &mut Cursor<'_>) -> ParseResult<Self::Output> {
+        if *cursor.next.unwrap() != Token![where] {
             return Ok(vec![]);
         }
 
-        state.next_token();
+        cursor.next_token();
 
         Ok(parse_list!(
-            state,
+            cursor,
             "where clause",
             Token!['{'] | Token![;],
             || -> ParseResult<WhereClauseItem> {
-                let r#type = TypeParser.parse_with(state)?;
+                let r#type = TypeParser.parse_with(cursor)?;
 
-                state.consume(Token![:], "where clause")?;
+                cursor.consume(Token![:], "where clause")?;
 
-                let constraint = TypeParser.parse_with(state)?;
+                let constraint = TypeParser.parse_with(cursor)?;
 
                 Ok(WhereClauseItem { r#type, constraint })
             }
@@ -168,9 +175,10 @@ impl OptionalParser for WhereClauseParser {
 
 #[cfg(test)]
 mod tests {
-    use crate::macros::parser_test;
+    use super::TypeParser;
+    use crate::macros::parse_test;
 
-    parser_test!(TypeParser, primary1, "i32");
-    parser_test!(TypeParser, primary, "Result[T, DivisionError]");
-    parser_test!(TypeParser, array, "[i32]");
+    parse_test!(TypeParser, primary1, "i32");
+    parse_test!(TypeParser, primary, "Result[T, DivisionError]");
+    parse_test!(TypeParser, array, "[i32]");
 }

@@ -1,10 +1,10 @@
-//! Error and result implementation for the state.
+//! Error and result implementation for the cursor.
 use codespan_reporting::diagnostic::Diagnostic;
 use ry_ast::{
     span::{make_primary_label, At, Span, Spanned},
     token::{LexError, RawToken, Token},
 };
-use ry_report::Reporter;
+use ry_report::Report;
 use std::fmt::Display;
 
 /// Represents list of expected tokens.
@@ -137,7 +137,7 @@ impl Display for ParseError {
     }
 }
 
-impl Reporter<'_> for ParseError {
+impl Report<'_> for ParseError {
     fn build_diagnostic(&self) -> Diagnostic<usize> {
         match self {
             Self::Lexer { error } => Diagnostic::error()

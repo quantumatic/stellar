@@ -50,7 +50,6 @@ pub mod token;
 
 use ry_interner::Symbol;
 use span::{Span, Spanned};
-use std::collections::HashMap;
 use token::Token;
 
 #[derive(Debug, PartialEq)]
@@ -68,26 +67,29 @@ pub type Path = Spanned<Vec<Identifier>>;
 
 #[derive(Debug, PartialEq)]
 pub enum Pattern {
-    LiteralPattern(Literal),
-    IdentifierPattern {
+    Literal(Spanned<Literal>),
+    Identifier {
         identifier: Identifier,
-        pattern: Option<Box<Pattern>>,
+        pattern: Option<Box<Spanned<Pattern>>>,
     },
-    StructPattern {
+    Struct {
         r#struct: Path,
-        fields: HashMap<Identifier, Pattern>,
+        fields: Vec<(Identifier, Option<Spanned<Pattern>>)>,
     },
-    EnumItemTuplePattern {
+    EnumItemTuple {
         r#enum: Path,
-        tuple_elements: Vec<Pattern>,
+        inner_patterns: Vec<Spanned<Pattern>>,
     },
-    PathPattern {
+    Tuple {
+        inner_patterns: Vec<Spanned<Pattern>>,
+    },
+    Path {
         path: Path,
     },
-    ArrayPattern {
-        inner_patterns: Vec<Pattern>,
+    Array {
+        inner_patterns: Vec<Spanned<Pattern>>,
     },
-    RestPattern, // ..
+    Rest, // ..
 }
 
 #[derive(Debug, PartialEq)]

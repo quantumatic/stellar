@@ -1,4 +1,4 @@
-//! This crate provides a parser for Ry programming language
+//! This crate provides a cursor for Ry programming language
 //!
 //! It uses the lexer from the ry_lexer crate to tokenize the input source
 //! code and produces an Abstract Syntax Tree (AST) that represents the parsed code.
@@ -54,7 +54,9 @@
 pub mod error;
 mod expression;
 mod items;
+mod literal;
 mod path;
+mod pattern;
 mod statement;
 mod r#type;
 
@@ -71,9 +73,9 @@ use ry_lexer::Lexer;
 #[macro_use]
 mod macros;
 
-/// Represents parser state.
+/// Represents token iterator.
 #[derive(Debug)]
-pub struct ParserState<'a> {
+pub struct Cursor<'a> {
     contents: &'a str,
     file_id: usize,
     lexer: Lexer<'a>,
@@ -81,34 +83,38 @@ pub struct ParserState<'a> {
     next: Token,
 }
 
-pub(crate) trait Parser
+pub(crate) trait Parse
 where
     Self: Sized,
 {
+    /// Output AST node type.
     type Output;
 
-    fn parse_with(self, state: &mut ParserState<'_>) -> ParseResult<Self::Output>;
+    /// Parse AST node of type [`Self::Output`].
+    fn parse_with(self, cursor: &mut Cursor<'_>) -> ParseResult<Self::Output>;
 }
 
 pub(crate) trait OptionalParser
 where
     Self: Sized,
 {
+    /// Output AST node type.
     type Output;
 
-    fn optionally_parse_with(self, state: &mut ParserState<'_>) -> ParseResult<Self::Output>;
+    /// Optionally parse AST node of type [`Self::Output`].
+    fn optionally_parse_with(self, cursor: &mut Cursor<'_>) -> ParseResult<Self::Output>;
 }
 
-impl<'a> ParserState<'a> {
-    /// Creates initial parser state.
+impl<'a> Cursor<'a> {
+    /// Creates initial cursor.
     ///
     /// # Usage
     /// ```
-    /// use ry_parser::ParserState;
+    /// use ry_parser::Cursor;
     /// use ry_interner::Interner;
     ///
     /// let mut interner = Interner::default();
-    /// let parser = ParserState::new(0, "pub fun test() {}", &mut interner);
+    /// let cursor = Cursor::new(0, "pub fun test() {}", &mut interner);
     /// ```
     #[must_use]
     pub fn new(file_id: usize, contents: &'a str, interner: &'a mut Interner) -> Self {
@@ -128,17 +134,18 @@ impl<'a> ParserState<'a> {
         }
     }
 
-    /// Advances the parser to the next token (skips comment tokens).
+    /// Advances the cursor to the next token (skips comment tokens).
     /// # Example:
     /// ```rust,ignore
+    /// use ry_cursor::Cursor;
     /// use ry_interner::Interner;
     /// use ry_ast::Token;
     ///
     /// let mut interner = Interner::default();
-    /// let state = crate::ParserState::new(0, "pub fun test() {}", &mut interner);
-    /// assert_eq!(parser.current, Token![pub]);
-    /// state.next_token();
-    /// assert_eq!(parser.current, Token![fun]);
+    /// let cursor = Cursor::new(0, "pub fun test() {}", &mut interner);
+    /// assert_eq!(cursor.current, Token![pub]);
+    /// cursor.next_token();
+    /// assert_eq!(cursor.current, Token![fun]);
     /// ```
     fn next_token(&mut self) {
         self.current = self.next.clone();
@@ -238,12 +245,12 @@ impl<'a> ParserState<'a> {
     /// Returns [`ParseResult<ProgramUnit>`] where [`ProgramUnit`] represents
     /// AST for a Ry module.
     /// ```
-    /// use ry_parser::ParserState;
+    /// use ry_parser::Cursor;
     /// use ry_interner::Interner;
     ///
     /// let mut interner = Interner::default();
-    /// let mut parser = ParserState::new(0, "fun test() {}", &mut interner);
-    /// assert!(parser.parse().is_ok());
+    /// let mut cursor = Cursor::new(0, "fun test() {}", &mut interner);
+    /// assert!(cursor.parse().is_ok());
     /// ```
     ///
     /// # Errors

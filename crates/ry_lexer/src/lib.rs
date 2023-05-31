@@ -32,7 +32,7 @@
 //! use ry_interner::Interner;
 //!
 //! let mut interner = Interner::default();
-//! let mut lexer = Lexer::new(0, "#", &mut interner);
+//! let mut lexer = Lexer::new(0, "١", &mut interner);
 //!
 //! assert_eq!(lexer.next().unwrap().unwrap(), &Error(LexError::UnexpectedChar));
 //! ```
@@ -487,6 +487,8 @@ impl<'c> Iterator for Lexer<'c> {
             ('*', '=') => self.advance_twice_with(Token![*=]),
             ('*', _) => self.advance_with(Token![*]),
 
+            ('#', _) => self.advance_with(Token![#]),
+
             ('/', '/') => {
                 self.advance();
 
@@ -528,6 +530,8 @@ impl<'c> Iterator for Lexer<'c> {
             (',', _) => self.advance_with(Token![,]),
             (';', _) => self.advance_with(Token![;]),
             ('%', _) => self.advance_with(Token![%]),
+
+            ('.', '.') => self.advance_twice_with(Token![..]),
 
             (c, n) => {
                 if number::decimal(c) || (c == '.' && number::decimal(n)) {

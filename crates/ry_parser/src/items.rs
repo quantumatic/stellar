@@ -5,26 +5,63 @@ use crate::{
     path::PathParser,
     r#type::{GenericParametersParser, TypeParser, WhereClauseParser},
     statement::StatementsBlockParser,
-    OptionalParser, Parser, ParserState,
+    Cursor, OptionalParser, Parse,
 };
 use ry_ast::{
     token::RawToken, Docstring, Documented, Function, FunctionParameter, Identifier, Item, Items,
     StructMember, Token, TraitItem, TypeAlias, Visibility, WithDocComment,
 };
 
-#[derive(Default)]
-pub(crate) struct ImportParser {
+struct ImportParser {
     pub(crate) visibility: Visibility,
 }
 
-impl Parser for ImportParser {
+struct StructItemParser {
+    pub(crate) visibility: Visibility,
+}
+
+struct StructMembersParser;
+
+struct StructMemberParser;
+
+struct FunctionParser {
+    pub(crate) visibility: Visibility,
+}
+
+struct FunctionParameterParser;
+
+struct TypeAliasParser {
+    pub(crate) visibility: Visibility,
+}
+
+struct TraitItemParser {
+    pub(crate) visibility: Visibility,
+}
+
+struct TraitItemsParser;
+
+struct ImplItemParser {
+    pub(crate) visibility: Visibility,
+}
+
+struct EnumDeclarationParser {
+    pub(crate) visibility: Visibility,
+}
+
+pub(crate) struct ItemsParser {
+    pub(crate) first_docstring: Docstring,
+}
+
+pub(crate) struct ItemParser;
+
+impl Parse for ImportParser {
     type Output = Item;
 
-    fn parse_with(self, state: &mut ParserState<'_>) -> ParseResult<Self::Output> {
-        state.next_token();
+    fn parse_with(self, cursor: &mut Cursor<'_>) -> ParseResult<Self::Output> {
+        cursor.next_token();
 
-        let path = PathParser.parse_with(state)?;
-        state.consume(Token![;], "import")?;
+        let path = PathParser.parse_with(cursor)?;
+        cursor.consume(Token![;], "import")?;
 
         Ok(Item::Import {
             visibility: self.visibility,
@@ -33,26 +70,24 @@ impl Parser for ImportParser {
     }
 }
 
-pub(crate) struct StructMemberParser;
-
-impl Parser for StructMemberParser {
+impl Parse for StructMemberParser {
     type Output = StructMember;
 
-    fn parse_with(self, state: &mut ParserState<'_>) -> ParseResult<Self::Output> {
+    fn parse_with(self, cursor: &mut Cursor<'_>) -> ParseResult<Self::Output> {
         let mut visibility = Visibility::private();
 
-        if *state.next.unwrap() == Token![pub] {
-            state.next_token();
-            visibility = Visibility::public(state.current.span());
+        if *cursor.next.unwrap() == Token![pub] {
+            cursor.next_token();
+            visibility = Visibility::public(cursor.current.span());
         }
 
-        let name = state.consume_identifier("struct member name in struct definition")?;
+        let name = cursor.consume_identifier("struct member name in struct definition")?;
 
-        state.consume(Token![:], "struct member definition")?;
+        cursor.consume(Token![:], "struct member definition")?;
 
-        let r#type = TypeParser.parse_with(state)?;
+        let r#type = TypeParser.parse_with(cursor)?;
 
-        state.consume(Token![;], "struct member definition")?;
+        cursor.consume(Token![;], "struct member definition")?;
 
         Ok(StructMember {
             visibility,
@@ -62,20 +97,18 @@ impl Parser for StructMemberParser {
     }
 }
 
-pub(crate) struct StructMembersParser;
-
-impl Parser for StructMembersParser {
+impl Parse for StructMembersParser {
     type Output = Vec<Documented<StructMember>>;
 
-    fn parse_with(self, state: &mut ParserState<'_>) -> ParseResult<Self::Output> {
+    fn parse_with(self, cursor: &mut Cursor<'_>) -> ParseResult<Self::Output> {
         let mut members = vec![];
 
-        while *state.next.unwrap() != Token!['}'] {
-            let docstring = state.consume_docstring()?;
+        while *cursor.next.unwrap() != Token!['}'] {
+            let docstring = cursor.consume_docstring()?;
 
             members.push(
                 StructMemberParser
-                    .parse_with(state)?
+                    .parse_with(cursor)?
                     .with_doc_comment(docstring),
             );
         }
@@ -84,28 +117,23 @@ impl Parser for StructMembersParser {
     }
 }
 
-#[derive(Default)]
-pub(crate) struct StructItemParser {
-    pub(crate) visibility: Visibility,
-}
-
-impl Parser for StructItemParser {
+impl Parse for StructItemParser {
     type Output = Item;
 
-    fn parse_with(self, state: &mut ParserState<'_>) -> ParseResult<Self::Output> {
-        state.next_token();
+    fn parse_with(self, cursor: &mut Cursor<'_>) -> ParseResult<Self::Output> {
+        cursor.next_token();
 
-        let name = state.consume_identifier("struct name in struct declaration")?;
+        let name = cursor.consume_identifier("struct name in struct declaration")?;
 
-        let generic_parameters = GenericParametersParser.optionally_parse_with(state)?;
+        let generic_parameters = GenericParametersParser.optionally_parse_with(cursor)?;
 
-        let where_clause = WhereClauseParser.optionally_parse_with(state)?;
+        let where_clause = WhereClauseParser.optionally_parse_with(cursor)?;
 
-        state.next_token();
+        cursor.next_token();
 
-        let members = StructMembersParser.parse_with(state)?;
+        let members = StructMembersParser.parse_with(cursor)?;
 
-        state.consume(Token!['}'], "struct declaration")?;
+        cursor.consume(Token!['}'], "struct declaration")?;
 
         Ok(Item::Struct {
             visibility: self.visibility,
@@ -117,23 +145,21 @@ impl Parser for StructItemParser {
     }
 }
 
-pub(crate) struct FunctionParameterParser;
-
-impl Parser for FunctionParameterParser {
+impl Parse for FunctionParameterParser {
     type Output = FunctionParameter;
 
-    fn parse_with(self, state: &mut ParserState<'_>) -> ParseResult<Self::Output> {
-        let name = state.consume_identifier("function argument name")?;
+    fn parse_with(self, cursor: &mut Cursor<'_>) -> ParseResult<Self::Output> {
+        let name = cursor.consume_identifier("function argument name")?;
 
-        state.consume(Token![:], "function argument name")?;
+        cursor.consume(Token![:], "function argument name")?;
 
-        let r#type = TypeParser.parse_with(state)?;
+        let r#type = TypeParser.parse_with(cursor)?;
 
         let mut default_value = None;
 
-        if *state.next.unwrap() == Token![=] {
-            state.next_token();
-            default_value = Some(ExpressionParser::default().parse_with(state)?);
+        if *cursor.next.unwrap() == Token![=] {
+            cursor.next_token();
+            default_value = Some(ExpressionParser::default().parse_with(cursor)?);
         }
 
         Ok(FunctionParameter {
@@ -144,37 +170,32 @@ impl Parser for FunctionParameterParser {
     }
 }
 
-#[derive(Default)]
-pub(crate) struct FunctionParser {
-    pub(crate) visibility: Visibility,
-}
-
-impl Parser for FunctionParser {
+impl Parse for FunctionParser {
     type Output = Function;
 
-    fn parse_with(self, state: &mut ParserState<'_>) -> ParseResult<Self::Output> {
-        state.next_token();
+    fn parse_with(self, cursor: &mut Cursor<'_>) -> ParseResult<Self::Output> {
+        cursor.next_token();
 
-        let name = state.consume_identifier("function name in function declaration")?;
+        let name = cursor.consume_identifier("function name in function declaration")?;
 
-        let generic_parameters = GenericParametersParser.optionally_parse_with(state)?;
+        let generic_parameters = GenericParametersParser.optionally_parse_with(cursor)?;
 
-        state.consume(Token!['('], "function declaration")?;
+        cursor.consume(Token!['('], "function declaration")?;
 
-        let parameters = parse_list!(state, "function parameters", Token![')'], || {
-            FunctionParameterParser.parse_with(state)
+        let parameters = parse_list!(cursor, "function parameters", Token![')'], || {
+            FunctionParameterParser.parse_with(cursor)
         });
 
-        state.next_token();
+        cursor.next_token();
 
         let mut return_type = None;
 
-        if *state.next.unwrap() == Token![:] {
-            state.next_token();
-            return_type = Some(TypeParser.parse_with(state)?);
+        if *cursor.next.unwrap() == Token![:] {
+            cursor.next_token();
+            return_type = Some(TypeParser.parse_with(cursor)?);
         }
 
-        let where_clause = WhereClauseParser.optionally_parse_with(state)?;
+        let where_clause = WhereClauseParser.optionally_parse_with(cursor)?;
 
         Ok(Function {
             visibility: self.visibility,
@@ -183,18 +204,18 @@ impl Parser for FunctionParser {
             parameters,
             return_type,
             where_clause,
-            body: match state.next.unwrap() {
+            body: match cursor.next.unwrap() {
                 Token![;] => {
-                    state.next_token();
+                    cursor.next_token();
 
                     None
                 }
-                Token!['{'] => Some(StatementsBlockParser.parse_with(state)?),
+                Token!['{'] => Some(StatementsBlockParser.parse_with(cursor)?),
                 _ => {
-                    state.next_token();
+                    cursor.next_token();
 
                     return Err(ParseError::unexpected_token(
-                        state.current.clone(),
+                        cursor.current.clone(),
                         expected!(Token![;], Token!['(']),
                         "end of function",
                     ));
@@ -204,35 +225,33 @@ impl Parser for FunctionParser {
     }
 }
 
-pub(crate) struct TraitItemsParser;
-
-impl Parser for TraitItemsParser {
+impl Parse for TraitItemsParser {
     type Output = Vec<Documented<TraitItem>>;
 
-    fn parse_with(self, state: &mut ParserState<'_>) -> ParseResult<Self::Output> {
+    fn parse_with(self, cursor: &mut Cursor<'_>) -> ParseResult<Self::Output> {
         let mut items = vec![];
 
-        while *state.next.unwrap() != Token!['}'] {
-            let doc = state.consume_docstring()?;
+        while *cursor.next.unwrap() != Token!['}'] {
+            let doc = cursor.consume_docstring()?;
 
-            let visibility = if *state.next.unwrap() == Token![pub] {
-                state.next_token();
-                Visibility::public(state.current.span())
+            let visibility = if *cursor.next.unwrap() == Token![pub] {
+                cursor.next_token();
+                Visibility::public(cursor.current.span())
             } else {
                 Visibility::private()
             };
 
-            items.push(match state.next.unwrap() {
+            items.push(match cursor.next.unwrap() {
                 Token![fun] => Ok(TraitItem::AssociatedFunction(
-                    FunctionParser { visibility }.parse_with(state)?,
+                    FunctionParser { visibility }.parse_with(cursor)?,
                 )
                 .with_doc_comment(doc)),
                 Token![type] => Ok(TraitItem::TypeAlias(
-                    TypeAliasParser { visibility }.parse_with(state)?,
+                    TypeAliasParser { visibility }.parse_with(cursor)?,
                 )
                 .with_doc_comment(doc)),
                 _ => Err(ParseError::unexpected_token(
-                    state.next.clone(),
+                    cursor.next.clone(),
                     expected!(Token![fun], Token![type]),
                     "trait item",
                 )),
@@ -243,29 +262,24 @@ impl Parser for TraitItemsParser {
     }
 }
 
-#[derive(Default)]
-pub(crate) struct TypeAliasParser {
-    pub(crate) visibility: Visibility,
-}
-
-impl Parser for TypeAliasParser {
+impl Parse for TypeAliasParser {
     type Output = TypeAlias;
 
-    fn parse_with(self, state: &mut ParserState<'_>) -> ParseResult<Self::Output> {
-        state.next_token();
+    fn parse_with(self, cursor: &mut Cursor<'_>) -> ParseResult<Self::Output> {
+        cursor.next_token();
 
-        let name = state.consume_identifier("type alias")?;
-        let generic_parameters = GenericParametersParser.optionally_parse_with(state)?;
+        let name = cursor.consume_identifier("type alias")?;
+        let generic_parameters = GenericParametersParser.optionally_parse_with(cursor)?;
 
-        let value = if *state.next.unwrap() == Token![=] {
-            state.next_token();
+        let value = if *cursor.next.unwrap() == Token![=] {
+            cursor.next_token();
 
-            Some(TypeParser.parse_with(state)?)
+            Some(TypeParser.parse_with(cursor)?)
         } else {
             None
         };
 
-        state.consume(Token![;], "type alias")?;
+        cursor.consume(Token![;], "type alias")?;
 
         Ok(TypeAlias {
             visibility: self.visibility,
@@ -276,28 +290,23 @@ impl Parser for TypeAliasParser {
     }
 }
 
-#[derive(Default)]
-pub(crate) struct TraitItemParser {
-    pub(crate) visibility: Visibility,
-}
-
-impl Parser for TraitItemParser {
+impl Parse for TraitItemParser {
     type Output = Item;
 
-    fn parse_with(self, state: &mut ParserState<'_>) -> ParseResult<Self::Output> {
-        state.next_token();
+    fn parse_with(self, cursor: &mut Cursor<'_>) -> ParseResult<Self::Output> {
+        cursor.next_token();
 
-        let name = state.consume_identifier("trait name in trait declaration")?;
+        let name = cursor.consume_identifier("trait name in trait declaration")?;
 
-        let generic_parameters = GenericParametersParser.optionally_parse_with(state)?;
+        let generic_parameters = GenericParametersParser.optionally_parse_with(cursor)?;
 
-        let where_clause = WhereClauseParser.optionally_parse_with(state)?;
+        let where_clause = WhereClauseParser.optionally_parse_with(cursor)?;
 
-        state.consume(Token!['{'], "trait declaration")?;
+        cursor.consume(Token!['{'], "trait declaration")?;
 
-        let items = TraitItemsParser.parse_with(state)?;
+        let items = TraitItemsParser.parse_with(cursor)?;
 
-        state.consume(Token!['}'], "trait declaration")?;
+        cursor.consume(Token!['}'], "trait declaration")?;
 
         Ok(Item::Trait {
             visibility: self.visibility,
@@ -309,36 +318,31 @@ impl Parser for TraitItemParser {
     }
 }
 
-#[derive(Default)]
-pub(crate) struct ImplItemParser {
-    pub(crate) visibility: Visibility,
-}
-
-impl Parser for ImplItemParser {
+impl Parse for ImplItemParser {
     type Output = Item;
 
-    fn parse_with(self, state: &mut ParserState<'_>) -> ParseResult<Self::Output> {
-        state.next_token();
+    fn parse_with(self, cursor: &mut Cursor<'_>) -> ParseResult<Self::Output> {
+        cursor.next_token();
 
-        let generic_parameters = GenericParametersParser.optionally_parse_with(state)?;
+        let generic_parameters = GenericParametersParser.optionally_parse_with(cursor)?;
 
-        let mut r#type = TypeParser.parse_with(state)?;
+        let mut r#type = TypeParser.parse_with(cursor)?;
         let mut r#trait = None;
 
-        if *state.next.unwrap() == Token![for] {
-            state.next_token();
+        if *cursor.next.unwrap() == Token![for] {
+            cursor.next_token();
 
             r#trait = Some(r#type);
-            r#type = TypeParser.parse_with(state)?;
+            r#type = TypeParser.parse_with(cursor)?;
         }
 
-        let where_clause = WhereClauseParser.optionally_parse_with(state)?;
+        let where_clause = WhereClauseParser.optionally_parse_with(cursor)?;
 
-        state.consume(Token!['{'], "type implementation")?;
+        cursor.consume(Token!['{'], "type implementation")?;
 
-        let items = TraitItemsParser.parse_with(state)?;
+        let items = TraitItemsParser.parse_with(cursor)?;
 
-        state.consume(Token!['}'], "type implementation")?;
+        cursor.consume(Token!['}'], "type implementation")?;
 
         Ok(Item::Impl {
             visibility: self.visibility,
@@ -351,34 +355,29 @@ impl Parser for ImplItemParser {
     }
 }
 
-#[derive(Default)]
-pub(crate) struct EnumDeclarationParser {
-    pub(crate) visibility: Visibility,
-}
-
-impl Parser for EnumDeclarationParser {
+impl Parse for EnumDeclarationParser {
     type Output = Item;
 
-    fn parse_with(self, state: &mut ParserState<'_>) -> ParseResult<Self::Output> {
-        state.next_token();
+    fn parse_with(self, cursor: &mut Cursor<'_>) -> ParseResult<Self::Output> {
+        cursor.next_token();
 
-        let name = state.consume_identifier("enum name in enum declaration")?;
+        let name = cursor.consume_identifier("enum name in enum declaration")?;
 
-        state.consume(Token!['{'], "enum declaration")?;
+        cursor.consume(Token!['{'], "enum declaration")?;
 
         let variants = parse_list!(
-            state,
+            cursor,
             "enum declaration",
             Token!['}'],
             || -> ParseResult<Documented<Identifier>> {
-                let doc = state.consume_docstring()?;
-                Ok(state
+                let doc = cursor.consume_docstring()?;
+                Ok(cursor
                     .consume_identifier("enum variant name")?
                     .with_doc_comment(doc))
             }
         );
 
-        state.next_token();
+        cursor.next_token();
 
         Ok(Item::Enum {
             visibility: self.visibility,
@@ -388,51 +387,45 @@ impl Parser for EnumDeclarationParser {
     }
 }
 
-pub(crate) struct ItemsParser {
-    pub(crate) first_docstring: Docstring,
-}
-
-impl Parser for ItemsParser {
+impl Parse for ItemsParser {
     type Output = Items;
 
-    fn parse_with(self, state: &mut ParserState<'_>) -> ParseResult<Self::Output> {
+    fn parse_with(self, cursor: &mut Cursor<'_>) -> ParseResult<Self::Output> {
         let mut items = vec![];
         let mut docstring = self.first_docstring;
 
-        while *state.next.unwrap() != RawToken::EndOfFile {
-            items.push(ItemParser.parse_with(state)?.with_doc_comment(docstring));
+        while *cursor.next.unwrap() != RawToken::EndOfFile {
+            items.push(ItemParser.parse_with(cursor)?.with_doc_comment(docstring));
 
-            docstring = state.consume_docstring()?;
+            docstring = cursor.consume_docstring()?;
         }
 
         Ok(items)
     }
 }
 
-pub(crate) struct ItemParser;
-
-impl Parser for ItemParser {
+impl Parse for ItemParser {
     type Output = Item;
 
-    fn parse_with(self, state: &mut ParserState<'_>) -> ParseResult<Self::Output> {
+    fn parse_with(self, cursor: &mut Cursor<'_>) -> ParseResult<Self::Output> {
         let mut visibility = Visibility::private();
 
-        if *state.next.unwrap() == Token![pub] {
-            visibility = Visibility::public(state.next.span());
-            state.next_token();
+        if *cursor.next.unwrap() == Token![pub] {
+            visibility = Visibility::public(cursor.next.span());
+            cursor.next_token();
         }
 
-        Ok(match state.next.unwrap() {
-            Token![enum] => EnumDeclarationParser { visibility }.parse_with(state)?,
-            Token![import] => ImportParser { visibility }.parse_with(state)?,
-            Token![struct] => StructItemParser { visibility }.parse_with(state)?,
-            Token![trait] => TraitItemParser { visibility }.parse_with(state)?,
-            Token![fun] => Item::Function(FunctionParser { visibility }.parse_with(state)?),
-            Token![impl] => ImplItemParser { visibility }.parse_with(state)?,
-            Token![type] => Item::TypeAlias(TypeAliasParser { visibility }.parse_with(state)?),
+        Ok(match cursor.next.unwrap() {
+            Token![enum] => EnumDeclarationParser { visibility }.parse_with(cursor)?,
+            Token![import] => ImportParser { visibility }.parse_with(cursor)?,
+            Token![struct] => StructItemParser { visibility }.parse_with(cursor)?,
+            Token![trait] => TraitItemParser { visibility }.parse_with(cursor)?,
+            Token![fun] => Item::Function(FunctionParser { visibility }.parse_with(cursor)?),
+            Token![impl] => ImplItemParser { visibility }.parse_with(cursor)?,
+            Token![type] => Item::TypeAlias(TypeAliasParser { visibility }.parse_with(cursor)?),
             _ => {
                 let error = Err(ParseError::unexpected_token(
-                    state.next.clone(),
+                    cursor.next.clone(),
                     expected!(
                         Token![import],
                         Token![fun],
@@ -444,7 +437,7 @@ impl Parser for ItemParser {
                     ),
                     "item",
                 ));
-                state.next_token();
+                cursor.next_token();
                 return error;
             }
         })
@@ -453,45 +446,46 @@ impl Parser for ItemParser {
 
 #[cfg(test)]
 mod tests {
-    use crate::macros::parser_test;
+    use super::ItemParser;
+    use crate::macros::parse_test;
 
-    parser_test!(FunctionParser, function1, "fun test();");
-    parser_test!(FunctionParser, function2, "fun test[A](a: A): A { a }");
-    parser_test!(
-        FunctionParser,
+    parse_test!(ItemParser, function1, "fun test();");
+    parse_test!(ItemParser, function2, "fun test[A](a: A): A { a }");
+    parse_test!(
+        ItemParser,
         function3,
         "fun unwrap[T, B: Option[T]](a: B): T { a.unwrap() }"
     );
-    parser_test!(ImplItemParser, impl1, "impl[T] NotOption for T {}");
-    parser_test!(
-        ImplItemParser,
+    parse_test!(ItemParser, impl1, "impl[T] NotOption for T {}");
+    parse_test!(
+        ItemParser,
         impl2,
         "impl[T] Into[Option[M]] for Tuple[T, M] where M: Into[T] {}"
     );
-    parser_test!(ImportParser, single_import, "import test;");
-    parser_test!(ImportParser, imports, "import test; import test2.test;");
-    parser_test!(StructItemParser, empty_struct, "struct test {}");
-    parser_test!(
-        StructItemParser,
+    parse_test!(ItemParser, single_import, "import test;");
+    parse_test!(ItemParser, imports, "import test; import test2.test;");
+    parse_test!(ItemParser, empty_struct, "struct test {}");
+    parse_test!(
+        ItemParser,
         r#struct1,
         "struct Point[T: Numeric] { pub x: T; pub y: T; }"
     );
-    parser_test!(
-        StructItemParser,
+    parse_test!(
+        ItemParser,
         r#struct2,
         "struct Lexer[S] where S: Iterator[char] { contents: S; }"
     );
-    parser_test!(TraitItemParser, empty_trait, "trait test {}");
-    parser_test!(TraitItemParser, trait1, "trait test { fun f(); }");
-    parser_test!(
-        TraitItemParser,
+    parse_test!(ItemParser, empty_trait, "trait test {}");
+    parse_test!(ItemParser, trait1, "trait test { fun f(); }");
+    parse_test!(
+        ItemParser,
         trait2,
         "trait Into[T] { fun into(self: Self): T; }"
     );
-    parser_test!(TypeAliasParser, empty_type_alias, "type A;");
-    parser_test!(TypeAliasParser, type_alias1, "type B = Option[i32];");
-    parser_test!(TypeAliasParser, type_alias2, "type B[T] = Option[T];");
-    parser_test!(EnumDeclarationParser, no_variants, "enum test {}");
-    parser_test!(EnumDeclarationParser, single_variant, "enum test { a }");
-    parser_test!(EnumDeclarationParser, variants, "enum test { a, b, c, }");
+    parse_test!(ItemParser, empty_type_alias, "type A;");
+    parse_test!(ItemParser, type_alias1, "type B = Option[i32];");
+    parse_test!(ItemParser, type_alias2, "type B[T] = Option[T];");
+    parse_test!(ItemParser, no_variants, "enum test {}");
+    parse_test!(ItemParser, single_variant, "enum test { a }");
+    parse_test!(ItemParser, variants, "enum test { a, b, c, }");
 }

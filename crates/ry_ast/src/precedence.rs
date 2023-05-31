@@ -41,5 +41,5 @@ pub enum Precedence {
     // a.b
     Property,
     // a[i32]
-    TypeAnnotations,
+    GenericArgument,
 }

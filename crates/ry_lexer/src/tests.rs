@@ -18,7 +18,7 @@ mod tests {
     lexer_test!(comment, "//test comment", Comment);
     lexer_test!(global_doc_comment, "///test comment", LocalDocComment);
     lexer_test!(local_doc_comment, "//!test comment", GlobalDocComment);
-    lexer_test!(unexpected_char, "#", Error(LexError::UnexpectedChar));
+    lexer_test!(unexpected_char, "١", Error(LexError::UnexpectedChar));
     lexer_test!(string, "\"test\"", StringLiteral);
     lexer_test!(
         string2,

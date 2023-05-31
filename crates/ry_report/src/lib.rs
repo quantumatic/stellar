@@ -68,13 +68,13 @@ use codespan_reporting::{
 };
 
 /// Stores basic `codespan_reporting` structs for reporting errors.
-pub struct ReporterState<'f> {
+pub struct Reporter<'f> {
     pub writer: StandardStream,
     pub config: Config,
     pub files: SimpleFiles<&'f str, &'f str>,
 }
 
-impl<'f> ReporterState<'f> {
+impl<'f> Reporter<'f> {
     pub fn emit_global_error(&self, msg: &str) {
         term::emit(
             &mut self.writer.lock(),
@@ -90,7 +90,7 @@ impl<'f> ReporterState<'f> {
     }
 }
 
-impl Default for ReporterState<'_> {
+impl Default for Reporter<'_> {
     fn default() -> Self {
         Self {
             writer: StandardStream::stderr(ColorChoice::Always),
@@ -100,8 +100,8 @@ impl Default for ReporterState<'_> {
     }
 }
 
-pub trait Reporter<'source> {
-    fn emit_diagnostic(&self, reporter: &ReporterState) {
+pub trait Report<'source> {
+    fn emit_diagnostic(&self, reporter: &Reporter) {
         term::emit(
             &mut reporter.writer.lock(),
             &reporter.config,
