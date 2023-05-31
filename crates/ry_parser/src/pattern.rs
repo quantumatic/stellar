@@ -123,11 +123,9 @@ impl Parse for StructPatternParser {
     type Output = Spanned<Pattern>;
 
     fn parse_with(self, cursor: &mut Cursor<'_>) -> ParseResult<Self::Output> {
-        cursor.next_token();
+        cursor.next_token(); // `{`
 
         let fields = parse_list!(cursor, "struct pattern", Token!['}'], || {
-            if cursor.next.unwrap() == &Token![..] {}
-
             let member_name = cursor.consume_identifier("struct pattern")?;
             let pattern = if cursor.next.unwrap() == &Token![:] {
                 cursor.next_token();
@@ -160,7 +158,7 @@ impl Parse for ArrayPatternParser {
     type Output = Spanned<Pattern>;
 
     fn parse_with(self, cursor: &mut Cursor<'_>) -> ParseResult<Self::Output> {
-        cursor.next_token();
+        cursor.next_token(); // `[`
 
         let start = cursor.current.span().start();
 
@@ -168,7 +166,7 @@ impl Parse for ArrayPatternParser {
             PatternParser.parse_with(cursor)
         });
 
-        cursor.next_token();
+        cursor.next_token(); // `]`
 
         Ok(Pattern::Array { inner_patterns }.at(Span::new(
             start,
@@ -191,7 +189,7 @@ impl Parse for TuplePatternParser {
             PatternParser.parse_with(cursor)
         });
 
-        cursor.next_token();
+        cursor.next_token(); // `)`
 
         Ok(Pattern::Tuple { inner_patterns }.at(Span::new(
             start,

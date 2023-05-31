@@ -104,6 +104,9 @@ pub enum Type {
         path: Path,
         generic_arguments: Vec<Spanned<Type>>,
     },
+    Tuple {
+        element_types: Vec<Spanned<Type>>,
+    },
 }
 
 #[derive(Debug, PartialEq)]
@@ -171,6 +174,9 @@ pub enum Expression {
     GenericArguments {
         left: Box<Spanned<Expression>>,
         arguments: Vec<Spanned<Type>>,
+    },
+    Tuple {
+        elements: Vec<Spanned<Expression>>,
     },
 }
 

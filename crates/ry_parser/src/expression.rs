@@ -52,7 +52,9 @@ struct BinaryExpressionParser {
     pub(crate) left: Spanned<Expression>,
 }
 
-pub(crate) struct ArrayLiteralExpressionParser;
+struct ArrayLiteralExpressionParser;
+
+struct TupleExpressionParser;
 
 impl Parse for ExpressionParser {
     type Output = Spanned<Expression>;
@@ -156,6 +158,7 @@ impl Parse for PrimaryExpressionParser {
             prefixop_pattern!() => PrefixExpressionParser.parse_with(cursor),
             Token!['('] => ParenthesizedExpressionParser.parse_with(cursor),
             Token!['['] => ArrayLiteralExpressionParser.parse_with(cursor),
+            Token![#] => TupleExpressionParser.parse_with(cursor),
             RawToken::Identifier(identifier) => {
                 cursor.next_token();
                 Ok(Expression::Identifier(identifier).at(cursor.current.span()))
@@ -170,6 +173,7 @@ impl Parse for PrimaryExpressionParser {
                     "string literal",
                     "char literal",
                     "boolean literal",
+                    Token![#],
                     Token!['('],
                     Token!['['],
                     "identifier",
@@ -432,6 +436,30 @@ impl Parse for ArrayLiteralExpressionParser {
     }
 }
 
+impl Parse for TupleExpressionParser {
+    type Output = Spanned<Expression>;
+
+    fn parse_with(self, cursor: &mut Cursor<'_>) -> ParseResult<Self::Output> {
+        cursor.next_token(); // `#`
+
+        let start = cursor.current.span().start();
+
+        cursor.consume(Token!['('], "tuple expression")?;
+
+        let elements = parse_list!(cursor, "tuple expression", Token![')'], || {
+            ExpressionParser::default().parse_with(cursor)
+        });
+
+        cursor.next_token(); // `)`
+
+        Ok(Expression::Tuple { elements }.at(Span::new(
+            start,
+            cursor.current.span().end(),
+            cursor.file_id,
+        )))
+    }
+}
+
 #[cfg(test)]
 mod expression_tests {
     use super::ExpressionParser;
@@ -441,6 +469,7 @@ mod expression_tests {
     parse_test!(ExpressionParser::default(), literal2, "\"hello\"");
     parse_test!(ExpressionParser::default(), literal3, "true");
     parse_test!(ExpressionParser::default(), array, "[1, 2, \"3\".into()]");
+    parse_test!(ExpressionParser::default(), tuple, "#(1, 3.2, \"hello\")");
     parse_test!(
         ExpressionParser::default(),
         binary,

@@ -14,9 +14,11 @@ pub(crate) struct TypeParser;
 
 struct ArrayTypeParser;
 
-pub(crate) struct GenericParametersParser;
-
 struct PrimaryTypeParser;
+
+struct TupleTypeParser;
+
+pub(crate) struct GenericParametersParser;
 
 pub(crate) struct GenericArgumentsParser;
 
@@ -26,19 +28,16 @@ impl Parse for TypeParser {
     type Output = Spanned<Type>;
 
     fn parse_with(self, cursor: &mut Cursor<'_>) -> ParseResult<Self::Output> {
-        let r#type = match cursor.next.unwrap() {
-            RawToken::Identifier(..) => PrimaryTypeParser.parse_with(cursor)?,
-            Token!['['] => ArrayTypeParser.parse_with(cursor)?,
-            _ => {
-                return Err(ParseError::unexpected_token(
-                    cursor.next.clone(),
-                    expected!("identifier", Token![&], Token!['[']),
-                    "type",
-                ));
-            }
-        };
-
-        Ok(r#type)
+        match cursor.next.unwrap() {
+            RawToken::Identifier(..) => PrimaryTypeParser.parse_with(cursor),
+            Token!['['] => ArrayTypeParser.parse_with(cursor),
+            Token![#] => TupleTypeParser.parse_with(cursor),
+            _ => Err(ParseError::unexpected_token(
+                cursor.next.clone(),
+                expected!("identifier", Token![&], Token!['['], Token![#]),
+                "type",
+            )),
+        }
     }
 }
 
@@ -57,6 +56,29 @@ impl Parse for ArrayTypeParser {
             element_type: Box::new(element_type),
         }
         .at(Span::new(
+            start,
+            cursor.current.span().end(),
+            cursor.file_id,
+        )))
+    }
+}
+
+impl Parse for TupleTypeParser {
+    type Output = Spanned<Type>;
+
+    fn parse_with(self, cursor: &mut Cursor<'_>) -> ParseResult<Self::Output> {
+        cursor.next_token(); // `#`
+        let start = cursor.current.span().start();
+
+        cursor.consume(Token!['('], "tuple type")?;
+
+        let element_types = parse_list!(cursor, "tuple type", Token![')'], || {
+            TypeParser.parse_with(cursor)
+        });
+
+        cursor.next_token(); // `)`
+
+        Ok(Type::Tuple { element_types }.at(Span::new(
             start,
             cursor.current.span().end(),
             cursor.file_id,
@@ -181,4 +203,5 @@ mod tests {
     parse_test!(TypeParser, primary1, "i32");
     parse_test!(TypeParser, primary, "Result[T, DivisionError]");
     parse_test!(TypeParser, array, "[i32]");
+    parse_test!(TypeParser, tuple, "#(i32, string, char)");
 }
