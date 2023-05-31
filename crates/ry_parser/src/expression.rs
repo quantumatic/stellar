@@ -2,7 +2,7 @@ use ry_ast::{
     precedence::Precedence,
     span::{At, Span, SpanIndex, Spanned},
     token::RawToken,
-    Expression, Literal, Token,
+    Expression, Literal, StructExpressionUnit, Token,
 };
 
 use crate::{
@@ -56,6 +56,12 @@ struct ArrayLiteralExpressionParser;
 
 struct TupleExpressionParser;
 
+struct StructExpressionParser {
+    pub(crate) left: Spanned<Expression>,
+}
+
+struct StructExpressionUnitParser;
+
 impl Parse for ExpressionParser {
     type Output = Spanned<Expression>;
 
@@ -66,7 +72,14 @@ impl Parse for ExpressionParser {
             left = match cursor.next.unwrap() {
                 binop_pattern!() => BinaryExpressionParser { left }.parse_with(cursor)?,
                 Token!['('] => CallExpressionParser { left }.parse_with(cursor)?,
-                Token![.] => PropertyAccessExpressionParser { left }.parse_with(cursor)?,
+                Token![.] => {
+                    cursor.next_token();
+
+                    match cursor.next.unwrap() {
+                        Token!['{'] => StructExpressionParser { left }.parse_with(cursor)?,
+                        _ => PropertyAccessExpressionParser { left }.parse_with(cursor)?,
+                    }
+                }
                 Token!['['] => GenericArgumentsExpressionParser { left }.parse_with(cursor)?,
                 postfixop_pattern!() => PostfixExpressionParser { left }.parse_with(cursor)?,
                 Token![as] => CastExpressionParser { left }.parse_with(cursor)?,
@@ -175,6 +188,7 @@ impl Parse for PrimaryExpressionParser {
                     "boolean literal",
                     Token![#],
                     Token!['('],
+                    Token!['{'],
                     Token!['['],
                     "identifier",
                     Token![if],
@@ -211,8 +225,6 @@ impl Parse for PropertyAccessExpressionParser {
 
     fn parse_with(self, cursor: &mut Cursor<'_>) -> ParseResult<Self::Output> {
         let start = self.left.span().start();
-
-        cursor.next_token();
 
         Ok(Expression::Property {
             left: Box::new(self.left),
@@ -310,7 +322,7 @@ impl Parse for IfExpressionParser {
 
         let mut r#else = None;
 
-        while *cursor.next.unwrap() == Token![else] {
+        while cursor.next.unwrap() == &Token![else] {
             cursor.next_token();
 
             match cursor.next.unwrap() {
@@ -460,6 +472,49 @@ impl Parse for TupleExpressionParser {
     }
 }
 
+impl Parse for StructExpressionParser {
+    type Output = Spanned<Expression>;
+
+    fn parse_with(self, cursor: &mut Cursor<'_>) -> ParseResult<Self::Output> {
+        cursor.next_token(); // `{`
+
+        let fields = parse_list!(cursor, "struct expression", Token!['}'], || {
+            StructExpressionUnitParser.parse_with(cursor)
+        });
+
+        cursor.next_token(); // `}`
+
+        let span = Span::new(
+            self.left.span().start(),
+            cursor.current.span().end(),
+            cursor.file_id,
+        );
+
+        Ok(Expression::Struct {
+            left: Box::new(self.left),
+            fields,
+        }
+        .at(span))
+    }
+}
+
+impl Parse for StructExpressionUnitParser {
+    type Output = StructExpressionUnit;
+
+    fn parse_with(self, cursor: &mut Cursor<'_>) -> ParseResult<Self::Output> {
+        let name = cursor.consume_identifier("struct field")?;
+
+        let value = if cursor.next.unwrap() == &Token![:] {
+            cursor.next_token();
+            Some(ExpressionParser::default().parse_with(cursor)?)
+        } else {
+            None
+        };
+
+        Ok(StructExpressionUnit { name, value })
+    }
+}
+
 #[cfg(test)]
 mod expression_tests {
     use super::ExpressionParser;
@@ -496,5 +551,10 @@ mod expression_tests {
         ExpressionParser::default(),
         postfix,
         "Some(a().unwrap_or(0) + b()?)"
+    );
+    parse_test!(
+        ExpressionParser::default(),
+        r#struct,
+        "Person.{ age: 3, name }"
     );
 }

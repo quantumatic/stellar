@@ -178,6 +178,16 @@ pub enum Expression {
     Tuple {
         elements: Vec<Spanned<Expression>>,
     },
+    Struct {
+        left: Box<Spanned<Expression>>,
+        fields: Vec<StructExpressionUnit>,
+    },
+}
+
+#[derive(Debug, PartialEq)]
+pub struct StructExpressionUnit {
+    pub name: Identifier,
+    pub value: Option<Spanned<Expression>>,
 }
 
 impl Expression {
