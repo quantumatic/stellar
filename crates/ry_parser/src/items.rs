@@ -8,8 +8,8 @@ use crate::{
     Cursor, OptionalParser, Parse,
 };
 use ry_ast::{
-    token::RawToken, Docstring, Documented, Function, FunctionParameter, Identifier, Item, Items,
-    StructMember, Token, TraitItem, TypeAlias, Visibility, WithDocComment,
+    token::RawToken, Docstring, Documented, EnumItem, Function, FunctionParameter, Identifier,
+    Item, Items, StructField, Token, TraitItem, TupleField, TypeAlias, Visibility, WithDocComment,
 };
 
 struct ImportParser {
@@ -20,9 +20,9 @@ struct StructItemParser {
     pub(crate) visibility: Visibility,
 }
 
-struct StructMembersParser;
+struct StructFieldsParser;
 
-struct StructMemberParser;
+struct StructFieldParser;
 
 struct FunctionParser {
     pub(crate) visibility: Visibility,
@@ -44,8 +44,18 @@ struct ImplItemParser {
     pub(crate) visibility: Visibility,
 }
 
-struct EnumDeclarationParser {
+struct EnumParser {
     pub(crate) visibility: Visibility,
+}
+
+struct EnumItemParser;
+
+struct EnumItemTupleParser {
+    pub(crate) name: Identifier,
+}
+
+struct EnumItemStructParser {
+    pub(crate) name: Identifier,
 }
 
 pub(crate) struct ItemsParser {
@@ -70,8 +80,8 @@ impl Parse for ImportParser {
     }
 }
 
-impl Parse for StructMemberParser {
-    type Output = StructMember;
+impl Parse for StructFieldParser {
+    type Output = StructField;
 
     fn parse_with(self, cursor: &mut Cursor<'_>) -> ParseResult<Self::Output> {
         let mut visibility = Visibility::private();
@@ -81,15 +91,13 @@ impl Parse for StructMemberParser {
             visibility = Visibility::public(cursor.current.span());
         }
 
-        let name = cursor.consume_identifier("struct member name in struct definition")?;
+        let name = cursor.consume_identifier("struct field")?;
 
-        cursor.consume(Token![:], "struct member definition")?;
+        cursor.consume(Token![:], "struct field")?;
 
         let r#type = TypeParser.parse_with(cursor)?;
 
-        cursor.consume(Token![;], "struct member definition")?;
-
-        Ok(StructMember {
+        Ok(StructField {
             visibility,
             name,
             r#type,
@@ -97,23 +105,27 @@ impl Parse for StructMemberParser {
     }
 }
 
-impl Parse for StructMembersParser {
-    type Output = Vec<Documented<StructMember>>;
+impl Parse for StructFieldsParser {
+    type Output = Vec<Documented<StructField>>;
 
     fn parse_with(self, cursor: &mut Cursor<'_>) -> ParseResult<Self::Output> {
-        let mut members = vec![];
+        cursor.consume(Token!['{'], "struct fields")?;
 
-        while *cursor.next.unwrap() != Token!['}'] {
-            let docstring = cursor.consume_docstring()?;
-
-            members.push(
-                StructMemberParser
+        let fields = parse_list!(
+            cursor,
+            "struct fields",
+            Token!['}'],
+            || -> ParseResult<Documented<StructField>> {
+                let docstring = cursor.consume_docstring()?;
+                Ok(StructFieldParser
                     .parse_with(cursor)?
-                    .with_doc_comment(docstring),
-            );
-        }
+                    .with_doc_comment(docstring))
+            }
+        );
 
-        Ok(members)
+        cursor.next_token(); // `}`
+
+        Ok(fields)
     }
 }
 
@@ -123,24 +135,20 @@ impl Parse for StructItemParser {
     fn parse_with(self, cursor: &mut Cursor<'_>) -> ParseResult<Self::Output> {
         cursor.next_token();
 
-        let name = cursor.consume_identifier("struct name in struct declaration")?;
+        let name = cursor.consume_identifier("struct name")?;
 
         let generic_parameters = GenericParametersParser.optionally_parse_with(cursor)?;
 
         let where_clause = WhereClauseParser.optionally_parse_with(cursor)?;
 
-        cursor.next_token();
-
-        let members = StructMembersParser.parse_with(cursor)?;
-
-        cursor.consume(Token!['}'], "struct declaration")?;
+        let fields = StructFieldsParser.parse_with(cursor)?;
 
         Ok(Item::Struct {
             visibility: self.visibility,
             name,
             generic_parameters,
             where_clause,
-            members,
+            fields,
         })
     }
 }
@@ -149,9 +157,9 @@ impl Parse for FunctionParameterParser {
     type Output = FunctionParameter;
 
     fn parse_with(self, cursor: &mut Cursor<'_>) -> ParseResult<Self::Output> {
-        let name = cursor.consume_identifier("function argument name")?;
+        let name = cursor.consume_identifier("function parameter name")?;
 
-        cursor.consume(Token![:], "function argument name")?;
+        cursor.consume(Token![:], "function parameter name")?;
 
         let r#type = TypeParser.parse_with(cursor)?;
 
@@ -176,11 +184,11 @@ impl Parse for FunctionParser {
     fn parse_with(self, cursor: &mut Cursor<'_>) -> ParseResult<Self::Output> {
         cursor.next_token();
 
-        let name = cursor.consume_identifier("function name in function declaration")?;
+        let name = cursor.consume_identifier("function name")?;
 
         let generic_parameters = GenericParametersParser.optionally_parse_with(cursor)?;
 
-        cursor.consume(Token!['('], "function declaration")?;
+        cursor.consume(Token!['('], "function")?;
 
         let parameters = parse_list!(cursor, "function parameters", Token![')'], || {
             FunctionParameterParser.parse_with(cursor)
@@ -355,34 +363,98 @@ impl Parse for ImplItemParser {
     }
 }
 
-impl Parse for EnumDeclarationParser {
+impl Parse for EnumParser {
     type Output = Item;
 
     fn parse_with(self, cursor: &mut Cursor<'_>) -> ParseResult<Self::Output> {
         cursor.next_token();
 
-        let name = cursor.consume_identifier("enum name in enum declaration")?;
+        let name = cursor.consume_identifier("enum name")?;
 
-        cursor.consume(Token!['{'], "enum declaration")?;
+        let generic_parameters = GenericParametersParser.optionally_parse_with(cursor)?;
 
-        let variants = parse_list!(
+        cursor.consume(Token!['{'], "enum")?;
+
+        let items = parse_list!(
             cursor,
-            "enum declaration",
+            "enum items",
             Token!['}'],
-            || -> ParseResult<Documented<Identifier>> {
+            || -> ParseResult<Documented<EnumItem>> {
                 let doc = cursor.consume_docstring()?;
-                Ok(cursor
-                    .consume_identifier("enum variant name")?
-                    .with_doc_comment(doc))
+                Ok(EnumItemParser.parse_with(cursor)?.with_doc_comment(doc))
             }
         );
 
-        cursor.next_token();
+        cursor.next_token(); // `}`
+
+        let where_clause = WhereClauseParser.optionally_parse_with(cursor)?;
 
         Ok(Item::Enum {
             visibility: self.visibility,
             name,
-            variants,
+            generic_parameters,
+            where_clause,
+            items,
+        })
+    }
+}
+
+impl Parse for EnumItemParser {
+    type Output = EnumItem;
+
+    fn parse_with(self, cursor: &mut Cursor<'_>) -> ParseResult<Self::Output> {
+        let name = cursor.consume_identifier("enum item")?;
+
+        match cursor.next.unwrap() {
+            Token!['{'] => EnumItemStructParser { name }.parse_with(cursor),
+            Token!['('] => EnumItemTupleParser { name }.parse_with(cursor),
+            _ => Ok(EnumItem::Identifier(name)),
+        }
+    }
+}
+
+impl Parse for EnumItemStructParser {
+    type Output = EnumItem;
+
+    fn parse_with(self, cursor: &mut Cursor<'_>) -> ParseResult<Self::Output> {
+        let fields = StructFieldsParser.parse_with(cursor)?;
+
+        Ok(EnumItem::Struct {
+            name: self.name,
+            fields,
+        })
+    }
+}
+
+impl Parse for EnumItemTupleParser {
+    type Output = EnumItem;
+
+    fn parse_with(self, cursor: &mut Cursor<'_>) -> ParseResult<Self::Output> {
+        cursor.next_token(); // `(`
+
+        let fields = parse_list!(
+            cursor,
+            "enum item tuple",
+            Token![')'],
+            || -> ParseResult<TupleField> {
+                let visibility = if cursor.next.unwrap() == &Token![pub] {
+                    cursor.next_token();
+                    Visibility::public(cursor.current.span())
+                } else {
+                    Visibility::private()
+                };
+
+                let r#type = TypeParser.parse_with(cursor)?;
+
+                Ok(TupleField { visibility, r#type })
+            }
+        );
+
+        cursor.next_token(); // `)`
+
+        Ok(EnumItem::Tuple {
+            name: self.name,
+            fields,
         })
     }
 }
@@ -416,7 +488,7 @@ impl Parse for ItemParser {
         }
 
         Ok(match cursor.next.unwrap() {
-            Token![enum] => EnumDeclarationParser { visibility }.parse_with(cursor)?,
+            Token![enum] => EnumParser { visibility }.parse_with(cursor)?,
             Token![import] => ImportParser { visibility }.parse_with(cursor)?,
             Token![struct] => StructItemParser { visibility }.parse_with(cursor)?,
             Token![trait] => TraitItemParser { visibility }.parse_with(cursor)?,
@@ -468,12 +540,12 @@ mod tests {
     parse_test!(
         ItemParser,
         r#struct1,
-        "struct Point[T: Numeric] { pub x: T; pub y: T; }"
+        "struct Point[T: Numeric] { pub x: T, pub y: T }"
     );
     parse_test!(
         ItemParser,
         r#struct2,
-        "struct Lexer[S] where S: Iterator[char] { contents: S; }"
+        "struct Lexer[S] where S: Iterator[char] { contents: S }"
     );
     parse_test!(ItemParser, empty_trait, "trait test {}");
     parse_test!(ItemParser, trait1, "trait test { fun f(); }");
@@ -486,6 +558,19 @@ mod tests {
     parse_test!(ItemParser, type_alias1, "type B = Option[i32];");
     parse_test!(ItemParser, type_alias2, "type B[T] = Option[T];");
     parse_test!(ItemParser, no_variants, "enum test {}");
-    parse_test!(ItemParser, single_variant, "enum test { a }");
-    parse_test!(ItemParser, variants, "enum test { a, b, c, }");
+    parse_test!(ItemParser, single_variant, "enum test { a, b, c }");
+    parse_test!(ItemParser, enum1, "enum Result[T, E] { Ok(T), Err(E) }");
+    parse_test!(ItemParser, enum2, "enum Option[T] { Some(T), None }");
+    parse_test!(
+        ItemParser,
+        enum3,
+        "pub enum UserPrincipal {
+        Full {
+            email: string,
+            phone_number: PhoneNumber,
+        },
+        EmailOnly { email: string },
+        PhoneNumberOnly { phone_number: PhoneNumber },
+    }"
+    );
 }

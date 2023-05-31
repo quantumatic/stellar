@@ -229,7 +229,9 @@ pub enum Item {
     Enum {
         visibility: Visibility,
         name: Identifier,
-        variants: Vec<Documented<Identifier>>,
+        generic_parameters: Vec<GenericParameter>,
+        where_clause: WhereClause,
+        items: Vec<Documented<EnumItem>>,
     },
     Function(Function),
     Import {
@@ -256,13 +258,32 @@ pub enum Item {
         name: Identifier,
         generic_parameters: Vec<GenericParameter>,
         where_clause: WhereClause,
-        members: Vec<Documented<StructMember>>,
+        fields: Vec<Documented<StructField>>,
     },
     TypeAlias(TypeAlias),
 }
 
 #[derive(Debug, PartialEq)]
-pub struct StructMember {
+pub enum EnumItem {
+    Identifier(Identifier),
+    Tuple {
+        name: Identifier,
+        fields: Vec<TupleField>,
+    },
+    Struct {
+        name: Identifier,
+        fields: Vec<Documented<StructField>>,
+    },
+}
+
+#[derive(Debug, PartialEq)]
+pub struct TupleField {
+    pub visibility: Visibility,
+    pub r#type: Spanned<Type>,
+}
+
+#[derive(Debug, PartialEq)]
+pub struct StructField {
     pub visibility: Visibility,
     pub name: Identifier,
     pub r#type: Spanned<Type>,
