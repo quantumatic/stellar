@@ -89,6 +89,9 @@ pub enum Pattern {
     Array {
         inner_patterns: Vec<Spanned<Pattern>>,
     },
+    Grouped {
+        inner: Box<Spanned<Pattern>>,
+    },
     Rest, // ..
 }
 

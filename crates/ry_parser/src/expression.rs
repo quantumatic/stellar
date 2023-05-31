@@ -167,7 +167,6 @@ impl Parse for PrimaryExpressionParser {
                 expected!(
                     "integer literal",
                     "float literal",
-                    "imaginary number literal",
                     "string literal",
                     "char literal",
                     "boolean literal",

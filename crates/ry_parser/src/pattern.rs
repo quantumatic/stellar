@@ -1,5 +1,5 @@
 use crate::{
-    error::{ParseError, ParseResult},
+    error::{expected, ParseError, ParseResult},
     literal::LiteralParser,
     macros::parse_list,
     path::PathParser,
@@ -14,6 +14,8 @@ use ry_ast::{
 pub(crate) struct PatternParser;
 
 struct ArrayPatternParser;
+
+struct GroupedPatternParser;
 
 struct TuplePatternParser;
 
@@ -56,7 +58,11 @@ impl Parse for PatternParser {
 
                 // If it is only 1 identifier
                 if path.unwrap().len() == 1 {
-                    let identifier = path.unwrap().get(0).unwrap().to_owned();
+                    let identifier = path
+                        .unwrap()
+                        .get(0)
+                        .expect("Error appeared when parsing identifier pattern")
+                        .to_owned();
 
                     let pattern = if cursor.next.unwrap() == &Token![@] {
                         cursor.next_token();
@@ -87,10 +93,26 @@ impl Parse for PatternParser {
             Token!['['] => ArrayPatternParser.parse_with(cursor),
             Token![..] => {
                 cursor.next_token();
-                return Ok(Pattern::Rest.at(cursor.next.span()));
+                Ok(Pattern::Rest.at(cursor.next.span()))
             }
+            Token!['('] => GroupedPatternParser.parse_with(cursor),
             Token![#] => TuplePatternParser.parse_with(cursor),
-            _ => todo!(),
+            _ => Err(ParseError::unexpected_token(
+                cursor.next.clone(),
+                expected!(
+                    "integer literal",
+                    "float literal",
+                    "string literal",
+                    "char literal",
+                    "boolean literal",
+                    Token![#],
+                    Token!['['],
+                    "identifier",
+                    Token![if],
+                    Token![while]
+                ),
+                "expression",
+            )),
         }
     }
 }
@@ -203,6 +225,26 @@ impl Parse for EnumItemTuplePatternParser {
     }
 }
 
+impl Parse for GroupedPatternParser {
+    type Output = Spanned<Pattern>;
+
+    fn parse_with(self, cursor: &mut Cursor<'_>) -> ParseResult<Self::Output> {
+        cursor.next_token(); // `(`
+
+        let start = cursor.current.span().start();
+
+        let inner = Box::new(PatternParser.parse_with(cursor)?);
+
+        cursor.consume(Token![')'], "grouped pattern")?;
+
+        Ok(Pattern::Grouped { inner }.at(Span::new(
+            start,
+            cursor.current.span().end(),
+            cursor.file_id,
+        )))
+    }
+}
+
 #[cfg(test)]
 mod pattern_tests {
     use crate::{macros::parse_test, pattern::PatternParser};
@@ -215,4 +257,5 @@ mod pattern_tests {
     parse_test!(PatternParser, struct_pattern, "test { a: 2, b, c: d }");
     parse_test!(PatternParser, tuple_pattern, "#(a, 2, ..)");
     parse_test!(PatternParser, enum_item_tuple_pattern, "Some(a)");
+    parse_test!(PatternParser, grouped_pattern, "(Some(a))");
 }

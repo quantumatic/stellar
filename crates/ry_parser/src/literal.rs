@@ -60,7 +60,7 @@ impl Parse for LiteralParser {
                 Ok(Literal::Boolean(false).at(cursor.current.span()))
             }
             _ => {
-                unimplemented!()
+                unreachable!()
             }
         }
     }
