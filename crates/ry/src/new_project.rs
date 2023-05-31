@@ -1,10 +1,9 @@
+use crate::prefix::log_with_prefix;
 use std::{
     fs::{self, File},
     io::Write,
     process::exit,
 };
-
-use crate::{myunwrap, prefix::log_with_prefix};
 
 fn check_project_name(name: &str) -> Option<usize> {
     let mut chars = name.chars();
@@ -30,7 +29,10 @@ pub(crate) fn create_new_project_folder(project_name: &str) {
             "note",
             format!(
                 ": character `{}` doesn't correspond to the pattern: {}",
-                myunwrap!(project_name.chars().nth(e)),
+                project_name.chars().nth(e).unwrap_or_else(|| panic!(
+                    "Cannot get the {}-nth character of project name",
+                    e
+                )),
                 if e != 0 {
                     "`0` to `9`, `a` to `z`, `A` to `Z` or `_`"
                 } else {

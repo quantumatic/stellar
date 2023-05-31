@@ -61,7 +61,9 @@ impl Parse for PatternParser {
                     let identifier = path
                         .unwrap()
                         .get(0)
-                        .expect("Error appeared when parsing identifier pattern")
+                        .expect(
+                            "Cannot get first identifier in path when parsing identifier pattern",
+                        )
                         .to_owned();
 
                     let pattern = if cursor.next.unwrap() == &Token![@] {

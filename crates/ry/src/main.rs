@@ -53,7 +53,6 @@ use ry_lexer::Lexer;
 use ry_report::{Report, Reporter};
 use std::{fs, io::Write, process::exit, time::Instant};
 
-mod error;
 mod new_project;
 mod prefix;
 
@@ -140,7 +139,8 @@ fn main() {
                             let ast_string = format!("{:?}", program_unit);
 
                             let (filename, mut file) = create_unique_file("ast", "txt");
-                            mytry!(file.write_all(ast_string.as_bytes()));
+                            file.write_all(ast_string.as_bytes())
+                                .unwrap_or_else(|_| panic!("Cannot write to file {}", filename));
 
                             log_with_prefix(
                                 "    Parsed ",
