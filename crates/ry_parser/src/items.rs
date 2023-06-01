@@ -28,7 +28,7 @@ struct FunctionParser {
     pub(crate) visibility: Visibility,
 }
 
-struct FunctionParameterParser;
+pub(crate) struct FunctionParameterParser;
 
 struct TypeAliasParser {
     pub(crate) visibility: Visibility,

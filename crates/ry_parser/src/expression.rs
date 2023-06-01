@@ -7,6 +7,7 @@ use ry_ast::{
 
 use crate::{
     error::{expected, ParseError, ParseResult},
+    items::FunctionParameterParser,
     literal::LiteralParser,
     macros::{binop_pattern, parse_list, postfixop_pattern, prefixop_pattern},
     pattern::PatternParser,
@@ -71,6 +72,8 @@ struct StructExpressionParser {
 struct StructExpressionUnitParser;
 
 struct LetExpressionParser;
+
+struct FunctionExpressionParser;
 
 struct StatementsBlockExpressionParser;
 
@@ -198,6 +201,7 @@ impl Parse for PrimaryExpressionParser {
             Token!['('] => ParenthesizedExpressionParser.parse_with(cursor),
             Token!['['] => ArrayLiteralExpressionParser.parse_with(cursor),
             Token!['{'] => StatementsBlockExpressionParser.parse_with(cursor),
+            Token![|] => FunctionExpressionParser.parse_with(cursor),
             Token![#] => TupleExpressionParser.parse_with(cursor),
             Token![let] => LetExpressionParser.parse_with(cursor),
             Token![if] => IfExpressionParser.parse_with(cursor),
@@ -212,6 +216,7 @@ impl Parse for PrimaryExpressionParser {
                     "char literal",
                     "boolean literal",
                     Token![#],
+                    Token![|],
                     Token!['('],
                     Token!['{'],
                     Token!['['],
@@ -574,6 +579,42 @@ impl Parse for StatementsBlockExpressionParser {
     }
 }
 
+impl Parse for FunctionExpressionParser {
+    type Output = Spanned<Expression>;
+
+    fn parse_with(self, cursor: &mut Cursor<'_>) -> ParseResult<Self::Output> {
+        cursor.next_token(); // `|`
+        let start = cursor.current.span().start();
+
+        let parameters = parse_list!(cursor, "function expression parameters", Token![|], || {
+            FunctionParameterParser.parse_with(cursor)
+        });
+
+        cursor.next_token();
+
+        let return_type = if cursor.next.unwrap() == &Token![:] {
+            cursor.next_token();
+
+            Some(TypeParser.parse_with(cursor)?)
+        } else {
+            None
+        };
+
+        let block = StatementsBlockParser.parse_with(cursor)?;
+
+        Ok(Expression::Function {
+            parameters,
+            return_type,
+            block,
+        }
+        .at(Span::new(
+            start,
+            cursor.current.span().end(),
+            cursor.file_id,
+        )))
+    }
+}
+
 #[cfg(test)]
 mod expression_tests {
     use super::ExpressionParser;
@@ -626,5 +667,10 @@ mod expression_tests {
         ExpressionParser::default(),
         r#match,
         "match Some(3) with { Some(a) then println(a), .. then {} }"
+    );
+    parse_test!(
+        ExpressionParser::default(),
+        function,
+        "let sum = |a: i32, b: i32|: i32 { a + b };"
     );
 }

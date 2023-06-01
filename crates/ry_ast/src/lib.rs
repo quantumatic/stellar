@@ -199,6 +199,11 @@ pub enum Expression {
         expression: Box<Spanned<Expression>>,
         block: Vec<MatchExpressionUnit>,
     },
+    Function {
+        parameters: Vec<FunctionParameter>,
+        return_type: Option<Spanned<Type>>,
+        block: StatementsBlock,
+    },
 }
 
 #[derive(Debug, PartialEq)]
