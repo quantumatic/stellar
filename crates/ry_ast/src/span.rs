@@ -44,6 +44,14 @@ impl Span {
     pub const fn file_id(&self) -> usize {
         self.file_id
     }
+
+    pub fn to_primary_label(self) -> Label<usize> {
+        Label::primary(self.file_id(), self)
+    }
+
+    pub fn to_secondary_label(self) -> Label<usize> {
+        Label::secondary(self.file_id(), self)
+    }
 }
 
 pub trait SpanIndex {
@@ -105,11 +113,3 @@ pub trait At {
 }
 
 impl<T: Sized> At for T {}
-
-pub fn make_primary_label(span: Span) -> Label<usize> {
-    Label::primary(span.file_id(), span)
-}
-
-pub fn make_secondary_label(span: Span) -> Label<usize> {
-    Label::secondary(span.file_id(), span)
-}

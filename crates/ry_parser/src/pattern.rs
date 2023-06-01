@@ -1,15 +1,10 @@
-use crate::{
-    error::{expected, ParseError, ParseResult},
-    literal::LiteralParser,
-    macros::parse_list,
-    path::PathParser,
-    Cursor, Parse,
-};
+use crate::{literal::LiteralParser, macros::parse_list, path::PathParser, Cursor, Parse};
 use ry_ast::{
     span::{At, Span, Spanned},
     token::RawToken,
     Path, Pattern, Token,
 };
+use ry_diagnostics::{expected, parser::ParseDiagnostic, Report};
 
 pub(crate) struct PatternParser;
 
@@ -30,9 +25,9 @@ struct EnumItemTuplePatternParser {
 }
 
 impl Parse for PatternParser {
-    type Output = Spanned<Pattern>;
+    type Output = Option<Spanned<Pattern>>;
 
-    fn parse_with(self, cursor: &mut Cursor<'_>) -> ParseResult<Self::Output> {
+    fn parse_with(self, cursor: &mut Cursor<'_>) -> Self::Output {
         let left = PatternExceptOrParser.parse_with(cursor)?;
 
         if cursor.next.unwrap() == &Token![|] {
@@ -42,21 +37,23 @@ impl Parse for PatternParser {
 
             let span = Span::new(left.span().start(), right.span().end(), cursor.file_id);
 
-            Ok(Pattern::Or {
-                left: Box::new(left),
-                right: Box::new(right),
-            }
-            .at(span))
+            Some(
+                Pattern::Or {
+                    left: Box::new(left),
+                    right: Box::new(right),
+                }
+                .at(span),
+            )
         } else {
-            Ok(left)
+            Some(left)
         }
     }
 }
 
 impl Parse for PatternExceptOrParser {
-    type Output = Spanned<Pattern>;
+    type Output = Option<Spanned<Pattern>>;
 
-    fn parse_with(self, cursor: &mut Cursor<'_>) -> ParseResult<Self::Output> {
+    fn parse_with(self, cursor: &mut Cursor<'_>) -> Self::Output {
         match cursor.next.unwrap() {
             RawToken::StringLiteral
             | RawToken::CharLiteral
@@ -67,7 +64,7 @@ impl Parse for PatternExceptOrParser {
                 let literal = LiteralParser.parse_with(cursor)?;
                 let span = literal.span();
 
-                Ok(Pattern::Literal(literal).at(span))
+                Some(Pattern::Literal(literal).at(span))
             }
             RawToken::Identifier(..) => {
                 let path = PathParser.parse_with(cursor)?;
@@ -108,47 +105,55 @@ impl Parse for PatternExceptOrParser {
                         cursor.file_id,
                     );
 
-                    Ok(Pattern::Identifier {
-                        identifier,
-                        pattern,
-                    }
-                    .at(span))
+                    Some(
+                        Pattern::Identifier {
+                            identifier,
+                            pattern,
+                        }
+                        .at(span),
+                    )
                 } else {
                     let span = path.span();
-                    Ok(Pattern::Path { path }.at(span))
+                    Some(Pattern::Path { path }.at(span))
                 }
             }
             Token!['['] => ArrayPatternParser.parse_with(cursor),
             Token![..] => {
                 cursor.next_token();
-                Ok(Pattern::Rest.at(cursor.next.span()))
+                Some(Pattern::Rest.at(cursor.next.span()))
             }
             Token!['('] => GroupedPatternParser.parse_with(cursor),
             Token![#] => TuplePatternParser.parse_with(cursor),
-            _ => Err(ParseError::unexpected_token(
-                cursor.next.clone(),
-                expected!(
-                    "integer literal",
-                    "float literal",
-                    "string literal",
-                    "char literal",
-                    "boolean literal",
-                    Token![#],
-                    Token!['['],
-                    "identifier",
-                    Token![if],
-                    Token![while]
-                ),
-                "expression",
-            )),
+            _ => {
+                cursor.diagnostics.push(
+                    ParseDiagnostic::UnexpectedTokenError {
+                        got: cursor.next.clone(),
+                        expected: expected!(
+                            "integer literal",
+                            "float literal",
+                            "string literal",
+                            "char literal",
+                            "boolean literal",
+                            Token![#],
+                            Token!['['],
+                            "identifier",
+                            Token![if],
+                            Token![while]
+                        ),
+                        node: "expression".into(),
+                    }
+                    .build(),
+                );
+                None
+            }
         }
     }
 }
 
 impl Parse for StructPatternParser {
-    type Output = Spanned<Pattern>;
+    type Output = Option<Spanned<Pattern>>;
 
-    fn parse_with(self, cursor: &mut Cursor<'_>) -> ParseResult<Self::Output> {
+    fn parse_with(self, cursor: &mut Cursor<'_>) -> Self::Output {
         cursor.next_token(); // `{`
 
         let fields = parse_list!(cursor, "struct pattern", Token!['}'], || {
@@ -161,7 +166,7 @@ impl Parse for StructPatternParser {
                 None
             };
 
-            Ok::<(Spanned<usize>, Option<Spanned<Pattern>>), ParseError>((member_name, pattern))
+            Some((member_name, pattern))
         });
 
         cursor.next_token();
@@ -172,18 +177,20 @@ impl Parse for StructPatternParser {
             cursor.file_id,
         );
 
-        Ok(Pattern::Struct {
-            r#struct: self.r#struct,
-            fields,
-        }
-        .at(span))
+        Some(
+            Pattern::Struct {
+                r#struct: self.r#struct,
+                fields,
+            }
+            .at(span),
+        )
     }
 }
 
 impl Parse for ArrayPatternParser {
-    type Output = Spanned<Pattern>;
+    type Output = Option<Spanned<Pattern>>;
 
-    fn parse_with(self, cursor: &mut Cursor<'_>) -> ParseResult<Self::Output> {
+    fn parse_with(self, cursor: &mut Cursor<'_>) -> Self::Output {
         cursor.next_token(); // `[`
 
         let start = cursor.current.span().start();
@@ -194,7 +201,7 @@ impl Parse for ArrayPatternParser {
 
         cursor.next_token(); // `]`
 
-        Ok(Pattern::Array { inner_patterns }.at(Span::new(
+        Some(Pattern::Array { inner_patterns }.at(Span::new(
             start,
             cursor.current.span().end(),
             cursor.file_id,
@@ -203,9 +210,9 @@ impl Parse for ArrayPatternParser {
 }
 
 impl Parse for TuplePatternParser {
-    type Output = Spanned<Pattern>;
+    type Output = Option<Spanned<Pattern>>;
 
-    fn parse_with(self, cursor: &mut Cursor<'_>) -> ParseResult<Self::Output> {
+    fn parse_with(self, cursor: &mut Cursor<'_>) -> Self::Output {
         cursor.next_token(); // `#`
         let start = cursor.current.span().start();
 
@@ -217,7 +224,7 @@ impl Parse for TuplePatternParser {
 
         cursor.next_token(); // `)`
 
-        Ok(Pattern::Tuple { inner_patterns }.at(Span::new(
+        Some(Pattern::Tuple { inner_patterns }.at(Span::new(
             start,
             cursor.current.span().end(),
             cursor.file_id,
@@ -226,9 +233,9 @@ impl Parse for TuplePatternParser {
 }
 
 impl Parse for EnumItemTuplePatternParser {
-    type Output = Spanned<Pattern>;
+    type Output = Option<Spanned<Pattern>>;
 
-    fn parse_with(self, cursor: &mut Cursor<'_>) -> ParseResult<Self::Output> {
+    fn parse_with(self, cursor: &mut Cursor<'_>) -> Self::Output {
         cursor.next_token(); // `(`
 
         let inner_patterns = parse_list!(cursor, "enum item tuple pattern", Token![')'], || {
@@ -243,18 +250,20 @@ impl Parse for EnumItemTuplePatternParser {
             cursor.file_id,
         );
 
-        Ok(Pattern::EnumItemTuple {
-            r#enum: self.r#enum,
-            inner_patterns,
-        }
-        .at(span))
+        Some(
+            Pattern::EnumItemTuple {
+                r#enum: self.r#enum,
+                inner_patterns,
+            }
+            .at(span),
+        )
     }
 }
 
 impl Parse for GroupedPatternParser {
-    type Output = Spanned<Pattern>;
+    type Output = Option<Spanned<Pattern>>;
 
-    fn parse_with(self, cursor: &mut Cursor<'_>) -> ParseResult<Self::Output> {
+    fn parse_with(self, cursor: &mut Cursor<'_>) -> Self::Output {
         cursor.next_token(); // `(`
 
         let start = cursor.current.span().start();
@@ -263,7 +272,7 @@ impl Parse for GroupedPatternParser {
 
         cursor.consume(Token![')'], "grouped pattern")?;
 
-        Ok(Pattern::Grouped { inner }.at(Span::new(
+        Some(Pattern::Grouped { inner }.at(Span::new(
             start,
             cursor.current.span().end(),
             cursor.file_id,

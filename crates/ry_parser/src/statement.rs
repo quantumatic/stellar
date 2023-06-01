@@ -1,5 +1,6 @@
-use crate::{expression::ExpressionParser, Cursor, Parse, ParseResult};
-use ry_ast::{Statement, StatementsBlock, Token};
+use crate::{expression::ExpressionParser, Cursor, Parse};
+use ry_ast::{span::Span, token::RawToken, Statement, StatementsBlock, Token};
+use ry_diagnostics::{parser::ParseDiagnostic, Report};
 
 struct StatementParser;
 
@@ -10,11 +11,15 @@ struct DeferStatementParser;
 struct ReturnStatementParser;
 
 impl Parse for StatementParser {
-    type Output = (Statement, bool);
+    type Output = Option<(Statement, bool)>;
 
-    fn parse_with(self, cursor: &mut Cursor<'_>) -> ParseResult<Self::Output> {
+    fn parse_with(self, cursor: &mut Cursor<'_>) -> Self::Output {
         let mut last_statement_in_block = false;
         let mut must_have_semicolon_at_the_end = true;
+
+        let mut no_semicolon_after_expression_error_emitted = false;
+
+        let start = cursor.next.span().start();
 
         let statement = match cursor.next.unwrap() {
             Token![return] => ReturnStatementParser.parse_with(cursor)?,
@@ -26,10 +31,25 @@ impl Parse for StatementParser {
 
                 match cursor.next.unwrap() {
                     Token![;] => {}
-                    _ => {
+                    Token!['}'] => {
                         if must_have_semicolon_at_the_end {
                             last_statement_in_block = true;
                         }
+                    }
+                    _ => {
+                        no_semicolon_after_expression_error_emitted = true;
+
+                        cursor.diagnostics.push(
+                            ParseDiagnostic::NoSemicolonAfterExpressionError {
+                                expression_location: expression.span(),
+                                at: Span::new(
+                                    expression.span().end() - 1,
+                                    expression.span().end(),
+                                    cursor.file_id,
+                                ),
+                            }
+                            .build(),
+                        );
                     }
                 }
 
@@ -47,23 +67,69 @@ impl Parse for StatementParser {
             }
         };
 
+        let end = cursor.current.span().end();
+
         if !last_statement_in_block && must_have_semicolon_at_the_end {
-            cursor.consume(Token![;], "end of the statement")?;
+            if cursor.next.unwrap() != &Token![;] {
+                if !no_semicolon_after_expression_error_emitted {
+                    cursor.diagnostics.push(
+                        ParseDiagnostic::NoSemicolonAfterStatementError {
+                            statement_location: Span::new(start, end - 1, cursor.file_id),
+                            at: Span::new(end, end, cursor.file_id),
+                        }
+                        .build(),
+                    );
+                }
+            } else {
+                cursor.next_token();
+            }
         }
 
-        Ok((statement, last_statement_in_block))
+        Some((statement, last_statement_in_block))
     }
 }
 
 impl Parse for StatementsBlockParser {
-    type Output = StatementsBlock;
+    type Output = Option<StatementsBlock>;
 
-    fn parse_with(self, cursor: &mut Cursor<'_>) -> ParseResult<Self::Output> {
+    fn parse_with(self, cursor: &mut Cursor<'_>) -> Self::Output {
         cursor.consume(Token!['{'], "statements block")?;
+        let start = cursor.current.span().start();
 
         let mut block = vec![];
 
-        while *cursor.next.unwrap() != Token!['}'] {
+        loop {
+            match cursor.next.unwrap() {
+                Token!['}'] => break,
+                RawToken::EndOfFile => {
+                    cursor.diagnostics.push(
+                        ParseDiagnostic::EOFInsteadOfCloseBraceForStatementsBlockError {
+                            statements_block_start_location: Span::new(
+                                start,
+                                start + 1,
+                                cursor.file_id,
+                            ),
+                            at: cursor.current.span(),
+                        }
+                        .build(),
+                    );
+
+                    return None;
+                }
+                Token![;] => {
+                    cursor.diagnostics.push(
+                        ParseDiagnostic::EmptyStatementError {
+                            at: cursor.next.span(),
+                        }
+                        .build(),
+                    );
+
+                    cursor.next_token();
+                    continue;
+                }
+                _ => {}
+            }
+
             let (statement, last) = StatementParser.parse_with(cursor)?;
             block.push(statement);
 
@@ -72,31 +138,31 @@ impl Parse for StatementsBlockParser {
             }
         }
 
-        cursor.consume(Token!['}'], "end of the statements block")?;
+        cursor.next_token();
 
-        Ok(block)
+        Some(block)
     }
 }
 
 impl Parse for DeferStatementParser {
-    type Output = Statement;
+    type Output = Option<Statement>;
 
-    fn parse_with(self, cursor: &mut Cursor<'_>) -> ParseResult<Self::Output> {
+    fn parse_with(self, cursor: &mut Cursor<'_>) -> Self::Output {
         cursor.next_token();
 
-        Ok(Statement::Defer {
+        Some(Statement::Defer {
             call: ExpressionParser::default().parse_with(cursor)?,
         })
     }
 }
 
 impl Parse for ReturnStatementParser {
-    type Output = Statement;
+    type Output = Option<Statement>;
 
-    fn parse_with(self, cursor: &mut Cursor<'_>) -> ParseResult<Self::Output> {
+    fn parse_with(self, cursor: &mut Cursor<'_>) -> Self::Output {
         cursor.next_token();
 
-        Ok(Statement::Return {
+        Some(Statement::Return {
             expression: ExpressionParser::default().parse_with(cursor)?,
         })
     }

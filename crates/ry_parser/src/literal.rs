@@ -1,17 +1,17 @@
+use crate::Parse;
 use ry_ast::{
     span::{At, SpanIndex, Spanned},
     token::RawToken,
     Literal, Token,
 };
-
-use crate::{error::ParseError, Parse};
+use ry_diagnostics::{parser::ParseDiagnostic, Report};
 
 pub(crate) struct LiteralParser;
 
 impl Parse for LiteralParser {
-    type Output = Spanned<Literal>;
+    type Output = Option<Spanned<Literal>>;
 
-    fn parse_with(self, cursor: &mut crate::Cursor<'_>) -> crate::error::ParseResult<Self::Output> {
+    fn parse_with(self, cursor: &mut crate::Cursor<'_>) -> Self::Output {
         match cursor.next.unwrap() {
             RawToken::IntegerLiteral => {
                 cursor.next_token();
@@ -21,8 +21,16 @@ impl Parse for LiteralParser {
                     .replace('_', "")
                     .parse::<u64>()
                 {
-                    Ok(integer) => Ok(Literal::Integer(integer).at(cursor.current.span())),
-                    Err(..) => Err(ParseError::integer_overflow(cursor.current.span())),
+                    Ok(integer) => Some(Literal::Integer(integer).at(cursor.current.span())),
+                    Err(..) => {
+                        cursor.diagnostics.push(
+                            ParseDiagnostic::IntegerOverflowError {
+                                at: cursor.current.span(),
+                            }
+                            .build(),
+                        );
+                        None
+                    }
                 }
             }
             RawToken::FloatLiteral => {
@@ -33,31 +41,39 @@ impl Parse for LiteralParser {
                     .replace('_', "")
                     .parse::<f64>()
                 {
-                    Ok(float) => Ok(Literal::Float(float).at(cursor.current.span())),
-                    Err(..) => Err(ParseError::float_overflow(cursor.current.span())),
+                    Ok(float) => Some(Literal::Float(float).at(cursor.current.span())),
+                    Err(..) => {
+                        cursor.diagnostics.push(
+                            ParseDiagnostic::FloatOverflowError {
+                                at: cursor.current.span(),
+                            }
+                            .build(),
+                        );
+                        None
+                    }
                 }
             }
             RawToken::StringLiteral => {
                 cursor.next_token();
-                Ok(
+                Some(
                     Literal::String(cursor.contents.index(cursor.current.span()).to_owned())
                         .at(cursor.current.span()),
                 )
             }
             RawToken::CharLiteral => {
                 cursor.next_token();
-                Ok(
+                Some(
                     Literal::String(cursor.contents.index(cursor.current.span()).to_owned())
                         .at(cursor.current.span()),
                 )
             }
             Token![true] => {
                 cursor.next_token();
-                Ok(Literal::Boolean(true).at(cursor.current.span()))
+                Some(Literal::Boolean(true).at(cursor.current.span()))
             }
             Token![false] => {
                 cursor.next_token();
-                Ok(Literal::Boolean(false).at(cursor.current.span()))
+                Some(Literal::Boolean(false).at(cursor.current.span()))
             }
             _ => {
                 unreachable!()

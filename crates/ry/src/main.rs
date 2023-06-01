@@ -48,9 +48,9 @@ use crate::prefix::log_with_prefix;
 use clap::{arg, Parser, Subcommand};
 use new_project::create_new_project_folder;
 use prefix::create_unique_file;
+use ry_diagnostics::Reporter;
 use ry_interner::Interner;
 use ry_lexer::Lexer;
-use ry_report::{Report, Reporter};
 use std::{fs, io::Write, process::exit, time::Instant};
 
 mod new_project;
@@ -126,7 +126,10 @@ fn main() {
             match fs::read_to_string(filepath) {
                 Ok(contents) => {
                     let file_id = reporter.add_file(filepath, &contents);
-                    let mut cursor = ry_parser::Cursor::new(file_id, &contents, &mut interner);
+
+                    let mut diagnostics = vec![];
+                    let mut cursor =
+                        ry_parser::Cursor::new(file_id, &contents, &mut interner, &mut diagnostics);
 
                     let now = Instant::now();
 
@@ -134,31 +137,21 @@ fn main() {
 
                     let ast = cursor.parse();
 
-                    match ast {
-                        Ok(program_unit) => {
-                            let ast_string = format!("{:?}", program_unit);
-
-                            let (filename, mut file) = create_unique_file("ast", "txt");
-                            file.write_all(ast_string.as_bytes())
-                                .unwrap_or_else(|_| panic!("Cannot write to file {}", filename));
-
-                            log_with_prefix(
-                                "    Parsed ",
-                                format!("in {}s", now.elapsed().as_secs_f64()),
-                            );
-                            log_with_prefix("   Emitted ", format!("AST in `{}`", filename));
-                        }
-                        Err(e) => {
-                            e.emit_diagnostic(&reporter);
-
-                            log_with_prefix(
-                                "error",
-                                ": cannot emit AST due to the previous errors",
-                            );
-
-                            exit(1);
-                        }
+                    for diagnostic in diagnostics {
+                        reporter.emit_diagnostic(&diagnostic);
                     }
+
+                    let ast_string = format!("{:?}", ast);
+
+                    let (filename, mut file) = create_unique_file("ast", "txt");
+                    file.write_all(ast_string.as_bytes())
+                        .unwrap_or_else(|_| panic!("Cannot write to file {}", filename));
+
+                    log_with_prefix(
+                        "    Parsed ",
+                        format!("in {}s", now.elapsed().as_secs_f64()),
+                    );
+                    log_with_prefix("   Emitted ", format!("AST in `{}`", filename));
                 }
                 Err(_) => {
                     log_with_prefix("error", ": cannot read given file");

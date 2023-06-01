@@ -1,4 +1,4 @@
-use crate::{error::ParseResult, Cursor, Parse};
+use crate::{Cursor, Parse};
 use ry_ast::{
     span::{At, Span},
     Path, Token,
@@ -7,9 +7,9 @@ use ry_ast::{
 pub(crate) struct PathParser;
 
 impl Parse for PathParser {
-    type Output = Path;
+    type Output = Option<Path>;
 
-    fn parse_with(self, cursor: &mut Cursor<'_>) -> ParseResult<Self::Output> {
+    fn parse_with(self, cursor: &mut Cursor<'_>) -> Self::Output {
         let mut path = vec![];
         let first_identifier = cursor.consume_identifier("path")?;
         path.push((*first_identifier.unwrap()).at(cursor.current.span()));
@@ -25,6 +25,6 @@ impl Parse for PathParser {
             end = cursor.current.span().end();
         }
 
-        Ok(path.at(Span::new(start, end, cursor.file_id)))
+        Some(path.at(Span::new(start, end, cursor.file_id)))
     }
 }

@@ -1,15 +1,14 @@
 #[cfg(test)]
 macro_rules! parse_test {
-    ($cursor: expr, $name:ident, $source:literal) => {
+    ($parser: expr, $name:ident, $source:literal) => {
         #[test]
         #[allow(unused_qualifications)]
         fn $name() {
+            let mut diagnostics = vec![];
             let mut string_interner = ry_interner::Interner::default();
-            let mut cursor_state = crate::Cursor::new(0, $source, &mut string_interner);
-            if let Err(e) = crate::Parse::parse_with($cursor, &mut cursor_state) {
-                println!("{:?}", e);
-                assert!(false);
-            }
+            let mut cursor = crate::Cursor::new(0, $source, &mut string_interner, &mut diagnostics);
+            let node = crate::Parse::parse_with($parser, &mut cursor);
+            assert!(node.is_some());
         }
     };
 }

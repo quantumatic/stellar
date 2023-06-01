@@ -1,14 +1,10 @@
-use crate::{
-    error::{expected, ParseError, ParseResult},
-    macros::parse_list,
-    path::PathParser,
-    Cursor, OptionalParser, Parse,
-};
+use crate::{macros::parse_list, path::PathParser, Cursor, OptionalParser, Parse};
 use ry_ast::{
     span::{At, Span, Spanned},
     token::RawToken,
     GenericParameter, Token, Type, WhereClause, WhereClauseItem,
 };
+use ry_diagnostics::{expected, parser::ParseDiagnostic, Report};
 
 pub(crate) struct TypeParser;
 
@@ -27,27 +23,34 @@ pub(crate) struct GenericArgumentsParser;
 pub(crate) struct WhereClauseParser;
 
 impl Parse for TypeParser {
-    type Output = Spanned<Type>;
+    type Output = Option<Spanned<Type>>;
 
-    fn parse_with(self, cursor: &mut Cursor<'_>) -> ParseResult<Self::Output> {
+    fn parse_with(self, cursor: &mut Cursor<'_>) -> Self::Output {
         match cursor.next.unwrap() {
             RawToken::Identifier(..) => PrimaryTypeParser.parse_with(cursor),
             Token!['['] => ArrayTypeParser.parse_with(cursor),
             Token![#] => TupleTypeParser.parse_with(cursor),
             Token!['('] => FunctionTypeParser.parse_with(cursor),
-            _ => Err(ParseError::unexpected_token(
-                cursor.next.clone(),
-                expected!("identifier", Token!['['], Token![#], Token!['(']),
-                "type",
-            )),
+            _ => {
+                cursor.diagnostics.push(
+                    ParseDiagnostic::UnexpectedTokenError {
+                        got: cursor.next.clone(),
+                        expected: expected!("identifier", Token!['['], Token![#], Token!['(']),
+                        node: "type".to_owned(),
+                    }
+                    .build(),
+                );
+
+                None
+            }
         }
     }
 }
 
 impl Parse for ArrayTypeParser {
-    type Output = Spanned<Type>;
+    type Output = Option<Spanned<Type>>;
 
-    fn parse_with(self, cursor: &mut Cursor<'_>) -> ParseResult<Self::Output> {
+    fn parse_with(self, cursor: &mut Cursor<'_>) -> Self::Output {
         cursor.next_token();
         let start = cursor.current.span().start();
 
@@ -55,21 +58,23 @@ impl Parse for ArrayTypeParser {
 
         cursor.consume(Token![']'], "array type")?;
 
-        Ok(Type::Array {
-            element_type: Box::new(element_type),
-        }
-        .at(Span::new(
-            start,
-            cursor.current.span().end(),
-            cursor.file_id,
-        )))
+        Some(
+            Type::Array {
+                element_type: Box::new(element_type),
+            }
+            .at(Span::new(
+                start,
+                cursor.current.span().end(),
+                cursor.file_id,
+            )),
+        )
     }
 }
 
 impl Parse for TupleTypeParser {
-    type Output = Spanned<Type>;
+    type Output = Option<Spanned<Type>>;
 
-    fn parse_with(self, cursor: &mut Cursor<'_>) -> ParseResult<Self::Output> {
+    fn parse_with(self, cursor: &mut Cursor<'_>) -> Self::Output {
         cursor.next_token(); // `#`
         let start = cursor.current.span().start();
 
@@ -81,7 +86,7 @@ impl Parse for TupleTypeParser {
 
         cursor.next_token(); // `)`
 
-        Ok(Type::Tuple { element_types }.at(Span::new(
+        Some(Type::Tuple { element_types }.at(Span::new(
             start,
             cursor.current.span().end(),
             cursor.file_id,
@@ -90,9 +95,9 @@ impl Parse for TupleTypeParser {
 }
 
 impl Parse for FunctionTypeParser {
-    type Output = Spanned<Type>;
+    type Output = Option<Spanned<Type>>;
 
-    fn parse_with(self, cursor: &mut Cursor<'_>) -> ParseResult<Self::Output> {
+    fn parse_with(self, cursor: &mut Cursor<'_>) -> Self::Output {
         cursor.next_token(); // `(`
         let start = cursor.current.span().start();
 
@@ -109,24 +114,26 @@ impl Parse for FunctionTypeParser {
 
         let return_type = Box::new(TypeParser.parse_with(cursor)?);
 
-        Ok(Type::Function {
-            parameter_types,
-            return_type,
-        }
-        .at(Span::new(
-            start,
-            cursor.current.span().end(),
-            cursor.file_id,
-        )))
+        Some(
+            Type::Function {
+                parameter_types,
+                return_type,
+            }
+            .at(Span::new(
+                start,
+                cursor.current.span().end(),
+                cursor.file_id,
+            )),
+        )
     }
 }
 
 impl OptionalParser for GenericParametersParser {
-    type Output = Vec<GenericParameter>;
+    type Output = Option<Vec<GenericParameter>>;
 
-    fn optionally_parse_with(self, cursor: &mut Cursor<'_>) -> ParseResult<Self::Output> {
+    fn optionally_parse_with(self, cursor: &mut Cursor<'_>) -> Self::Output {
         if *cursor.next.unwrap() != Token!['['] {
-            return Ok(vec![]);
+            return Some(vec![]);
         }
 
         cursor.next_token();
@@ -135,7 +142,7 @@ impl OptionalParser for GenericParametersParser {
             cursor,
             "generics",
             Token![']'],
-            || -> ParseResult<GenericParameter> {
+            || -> Option<GenericParameter> {
                 let name = cursor.consume_identifier("generic name")?;
 
                 let constraint = if *cursor.next.unwrap() == Token![:] {
@@ -145,42 +152,44 @@ impl OptionalParser for GenericParametersParser {
                     None
                 };
 
-                Ok(GenericParameter { name, constraint })
+                Some(GenericParameter { name, constraint })
             }
         );
 
         cursor.next_token();
 
-        Ok(result)
+        Some(result)
     }
 }
 
 impl Parse for PrimaryTypeParser {
-    type Output = Spanned<Type>;
+    type Output = Option<Spanned<Type>>;
 
-    fn parse_with(self, cursor: &mut Cursor<'_>) -> ParseResult<Self::Output> {
+    fn parse_with(self, cursor: &mut Cursor<'_>) -> Self::Output {
         let start = cursor.next.span().start();
         let path = PathParser.parse_with(cursor)?;
         let generic_arguments = GenericArgumentsParser.optionally_parse_with(cursor)?;
 
-        Ok(Type::Primary {
-            path,
-            generic_arguments,
-        }
-        .at(Span::new(
-            start,
-            cursor.current.span().end(),
-            cursor.file_id,
-        )))
+        Some(
+            Type::Primary {
+                path,
+                generic_arguments,
+            }
+            .at(Span::new(
+                start,
+                cursor.current.span().end(),
+                cursor.file_id,
+            )),
+        )
     }
 }
 
 impl OptionalParser for GenericArgumentsParser {
-    type Output = Vec<Spanned<Type>>;
+    type Output = Option<Vec<Spanned<Type>>>;
 
-    fn optionally_parse_with(self, cursor: &mut Cursor<'_>) -> ParseResult<Self::Output> {
+    fn optionally_parse_with(self, cursor: &mut Cursor<'_>) -> Self::Output {
         if *cursor.next.unwrap() != Token!['['] {
-            return Ok(vec![]);
+            return Some(vec![]);
         }
 
         self.parse_with(cursor)
@@ -188,9 +197,9 @@ impl OptionalParser for GenericArgumentsParser {
 }
 
 impl Parse for GenericArgumentsParser {
-    type Output = Vec<Spanned<Type>>;
+    type Output = Option<Vec<Spanned<Type>>>;
 
-    fn parse_with(self, cursor: &mut Cursor<'_>) -> ParseResult<Self::Output> {
+    fn parse_with(self, cursor: &mut Cursor<'_>) -> Self::Output {
         cursor.next_token();
 
         let result = parse_list!(cursor, "type annotations", Token![']'], || {
@@ -199,32 +208,32 @@ impl Parse for GenericArgumentsParser {
 
         cursor.next_token();
 
-        Ok(result)
+        Some(result)
     }
 }
 
 impl OptionalParser for WhereClauseParser {
-    type Output = WhereClause;
+    type Output = Option<WhereClause>;
 
-    fn optionally_parse_with(self, cursor: &mut Cursor<'_>) -> ParseResult<Self::Output> {
+    fn optionally_parse_with(self, cursor: &mut Cursor<'_>) -> Self::Output {
         if *cursor.next.unwrap() != Token![where] {
-            return Ok(vec![]);
+            return Some(vec![]);
         }
 
         cursor.next_token();
 
-        Ok(parse_list!(
+        Some(parse_list!(
             cursor,
             "where clause",
             Token!['{'] | Token![;],
-            || -> ParseResult<WhereClauseItem> {
+            || -> Option<WhereClauseItem> {
                 let r#type = TypeParser.parse_with(cursor)?;
 
                 cursor.consume(Token![:], "where clause")?;
 
                 let constraint = TypeParser.parse_with(cursor)?;
 
-                Ok(WhereClauseItem { r#type, constraint })
+                Some(WhereClauseItem { r#type, constraint })
             }
         ))
     }
