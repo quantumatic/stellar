@@ -18,6 +18,8 @@ struct PrimaryTypeParser;
 
 struct TupleTypeParser;
 
+struct FunctionTypeParser;
+
 pub(crate) struct GenericParametersParser;
 
 pub(crate) struct GenericArgumentsParser;
@@ -32,9 +34,10 @@ impl Parse for TypeParser {
             RawToken::Identifier(..) => PrimaryTypeParser.parse_with(cursor),
             Token!['['] => ArrayTypeParser.parse_with(cursor),
             Token![#] => TupleTypeParser.parse_with(cursor),
+            Token!['('] => FunctionTypeParser.parse_with(cursor),
             _ => Err(ParseError::unexpected_token(
                 cursor.next.clone(),
-                expected!("identifier", Token![&], Token!['['], Token![#]),
+                expected!("identifier", Token!['['], Token![#], Token!['(']),
                 "type",
             )),
         }
@@ -79,6 +82,38 @@ impl Parse for TupleTypeParser {
         cursor.next_token(); // `)`
 
         Ok(Type::Tuple { element_types }.at(Span::new(
+            start,
+            cursor.current.span().end(),
+            cursor.file_id,
+        )))
+    }
+}
+
+impl Parse for FunctionTypeParser {
+    type Output = Spanned<Type>;
+
+    fn parse_with(self, cursor: &mut Cursor<'_>) -> ParseResult<Self::Output> {
+        cursor.next_token(); // `(`
+        let start = cursor.current.span().start();
+
+        let parameter_types = parse_list!(
+            cursor,
+            "parameter types in function type",
+            Token![')'],
+            || { TypeParser.parse_with(cursor) }
+        );
+
+        cursor.next_token(); // `)`
+
+        cursor.consume(Token![:], "return type of function in the function type")?;
+
+        let return_type = Box::new(TypeParser.parse_with(cursor)?);
+
+        Ok(Type::Function {
+            parameter_types,
+            return_type,
+        }
+        .at(Span::new(
             start,
             cursor.current.span().end(),
             cursor.file_id,
@@ -204,4 +239,5 @@ mod tests {
     parse_test!(TypeParser, primary, "Result[T, DivisionError]");
     parse_test!(TypeParser, array, "[i32]");
     parse_test!(TypeParser, tuple, "#(i32, string, char)");
+    parse_test!(TypeParser, function_type, "(i32, i32): i32");
 }

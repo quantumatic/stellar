@@ -111,6 +111,10 @@ pub enum Type {
     Tuple {
         element_types: Vec<Spanned<Type>>,
     },
+    Function {
+        parameter_types: Vec<Spanned<Type>>,
+        return_type: Box<Spanned<Type>>,
+    },
 }
 
 #[derive(Debug, PartialEq)]
