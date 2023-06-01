@@ -1,9 +1,0 @@
-[package]
-name = "ry_report"
-version = "0.1.0"
-edition = "2021"
-license = "Apache-2.0"
-authors = ["Adi Salimgereyev <adisalimgereev@gmail.com>"]
-
-[dependencies]
-codespan-reporting = "0.11.1"

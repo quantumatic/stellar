@@ -51,7 +51,6 @@
 )]
 #![allow(clippy::match_single_binding, clippy::inconsistent_struct_constructor)]
 
-pub mod error;
 mod expression;
 mod items;
 mod literal;
@@ -60,13 +59,14 @@ mod pattern;
 mod statement;
 mod r#type;
 
-use error::{expected, ParseError, ParseResult};
+use codespan_reporting::diagnostic::Diagnostic;
 use items::ItemsParser;
 use ry_ast::{
     span::{At, Span, SpanIndex},
     token::{RawToken, Token},
     Docstring, Identifier, ProgramUnit,
 };
+use ry_diagnostics::{expected, parser::ParseDiagnostic, Report};
 use ry_interner::Interner;
 use ry_lexer::Lexer;
 
@@ -81,6 +81,7 @@ pub struct Cursor<'a> {
     lexer: Lexer<'a>,
     current: Token,
     next: Token,
+    diagnostics: &'a mut Vec<Diagnostic<usize>>,
 }
 
 pub(crate) trait Parse
@@ -91,7 +92,7 @@ where
     type Output;
 
     /// Parse AST node of type [`Self::Output`].
-    fn parse_with(self, cursor: &mut Cursor<'_>) -> ParseResult<Self::Output>;
+    fn parse_with(self, cursor: &mut Cursor<'_>) -> Self::Output;
 }
 
 pub(crate) trait OptionalParser
@@ -102,22 +103,28 @@ where
     type Output;
 
     /// Optionally parse AST node of type [`Self::Output`].
-    fn optionally_parse_with(self, cursor: &mut Cursor<'_>) -> ParseResult<Self::Output>;
+    fn optionally_parse_with(self, cursor: &mut Cursor<'_>) -> Self::Output;
 }
 
 impl<'a> Cursor<'a> {
-    /// Creates initial cursor.
+    /// Creates an initial cursor.
     ///
     /// # Usage
     /// ```
     /// use ry_parser::Cursor;
     /// use ry_interner::Interner;
     ///
+    /// let mut diagnostics = vec![];
     /// let mut interner = Interner::default();
-    /// let cursor = Cursor::new(0, "pub fun test() {}", &mut interner);
+    /// let cursor = Cursor::new(0, "pub fun test() {}", &mut interner, &mut diagnostics);
     /// ```
     #[must_use]
-    pub fn new(file_id: usize, contents: &'a str, interner: &'a mut Interner) -> Self {
+    pub fn new(
+        file_id: usize,
+        contents: &'a str,
+        interner: &'a mut Interner,
+        diagnostics: &'a mut Vec<Diagnostic<usize>>,
+    ) -> Self {
         let mut lexer = Lexer::new(file_id, contents, interner);
 
         let current = lexer
@@ -125,12 +132,24 @@ impl<'a> Cursor<'a> {
             .unwrap_or(RawToken::EndOfFile.at(Span::new(0, 1, file_id)));
         let next = current.clone();
 
-        Self {
+        let mut lexer = Self {
             contents,
             file_id,
             lexer,
             current,
             next,
+            diagnostics,
+        };
+        lexer.check_next_token();
+
+        lexer
+    }
+
+    /// Adds diagnostic if the next token has lex error in itself.
+    fn check_next_token(&mut self) {
+        if let RawToken::Error(error) = self.next.unwrap() {
+            self.diagnostics
+                .push(ParseDiagnostic::LexError(error.to_owned().at(self.next.span())).build());
         }
     }
 
@@ -141,8 +160,9 @@ impl<'a> Cursor<'a> {
     /// use ry_interner::Interner;
     /// use ry_ast::Token;
     ///
+    /// let mut diagnostics = vec![];
     /// let mut interner = Interner::default();
-    /// let cursor = Cursor::new(0, "pub fun test() {}", &mut interner);
+    /// let cursor = Cursor::new(0, "pub fun test() {}", &mut interner, &mut diagnostics);
     /// assert_eq!(cursor.current, Token![pub]);
     /// cursor.next_token();
     /// assert_eq!(cursor.current, Token![fun]);
@@ -160,54 +180,61 @@ impl<'a> Cursor<'a> {
     }
 
     /// Checks if the next token is [`expected`].
-    fn expect<N>(&self, expected: RawToken, node: N) -> Result<(), ParseError>
+    fn expect<N>(&mut self, expected: RawToken, node: N) -> Option<()>
     where
         N: Into<String>,
     {
         if *self.next.unwrap() == expected {
-            Ok(())
+            Some(())
         } else {
-            Err(ParseError::unexpected_token(
-                self.next.clone(),
-                expected!(expected),
-                node,
-            ))
+            self.diagnostics.push(
+                ParseDiagnostic::UnexpectedTokenError {
+                    got: self.next.clone(),
+                    expected: expected!(expected),
+                    node: node.into(),
+                }
+                .build(),
+            );
+
+            None
         }
     }
 
-    fn consume<N>(&mut self, expected: RawToken, node: N) -> Result<(), ParseError>
+    fn consume<N>(&mut self, expected: RawToken, node: N) -> Option<()>
     where
         N: Into<String>,
     {
         self.expect(expected, node)?;
         self.next_token();
-        Ok(())
+        Some(())
     }
 
-    fn consume_identifier<N>(&mut self, node: N) -> Result<Identifier, ParseError>
+    fn consume_identifier<N>(&mut self, node: N) -> Option<Identifier>
     where
         N: Into<String>,
     {
         let spanned_symbol = match self.next.unwrap() {
             RawToken::Identifier(symbol) => (*symbol).at(self.next.span()),
             _ => {
-                return Err(ParseError::unexpected_token(
-                    self.next.clone(),
-                    expected!("identifier"),
-                    node,
-                ));
+                self.diagnostics.push(
+                    ParseDiagnostic::UnexpectedTokenError {
+                        got: self.next.clone(),
+                        expected: expected!("identifier"),
+                        node: node.into(),
+                    }
+                    .build(),
+                );
+                return None;
             }
         };
 
         self.next_token();
 
-        Ok(spanned_symbol)
+        Some(spanned_symbol)
     }
 
     /// Consumes the docstrings for the module and the first item in the module, if present.
-    pub(crate) fn consume_module_and_first_item_docstrings(
-        &mut self,
-    ) -> ParseResult<(Docstring, Docstring)> {
+    pub(crate) fn consume_module_and_first_item_docstrings(&mut self) -> (Docstring, Docstring) {
         let (mut module_docstring, mut local_docstring) = (vec![], vec![]);
 
         loop {
@@ -218,7 +245,7 @@ impl<'a> Cursor<'a> {
                 RawToken::LocalDocComment => {
                     local_docstring.push(self.contents.index(self.next.span()).to_owned())
                 }
-                _ => return Ok((module_docstring, local_docstring)),
+                _ => return (module_docstring, local_docstring),
             }
 
             self.next_token();
@@ -228,14 +255,14 @@ impl<'a> Cursor<'a> {
     /// Consumes the docstring for a local item (i.e., anything that is not the module docstring
     /// or the first item in the module (because it will be already consumed in
     /// [`Parser::consume_module_and_first_item_docstrings()`])).
-    pub(crate) fn consume_docstring(&mut self) -> ParseResult<Docstring> {
+    pub(crate) fn consume_docstring(&mut self) -> Docstring {
         let mut result = vec![];
 
         loop {
             if *self.next.unwrap() == RawToken::LocalDocComment {
                 result.push(self.contents.index(self.next.span()).to_owned());
             } else {
-                return Ok(result);
+                return result;
             }
 
             self.next_token();
@@ -248,20 +275,23 @@ impl<'a> Cursor<'a> {
     /// use ry_parser::Cursor;
     /// use ry_interner::Interner;
     ///
+    /// let mut diagnostics = vec![];
     /// let mut interner = Interner::default();
-    /// let mut cursor = Cursor::new(0, "fun test() {}", &mut interner);
-    /// assert!(cursor.parse().is_ok());
+    /// let mut cursor = Cursor::new(0, "fun test() {}", &mut interner, &mut diagnostics);
+    /// let ast = cursor.parse();
+    ///
+    /// assert_eq!(ast.items.len(), 1);
     /// ```
     ///
     /// # Errors
     ///
     /// Will return [`Err`] on any parsing error.
-    pub fn parse(&mut self) -> ParseResult<ProgramUnit> {
-        let (global_docstring, first_docstring) =
-            self.consume_module_and_first_item_docstrings()?;
-        Ok(ProgramUnit {
+    pub fn parse(&mut self) -> ProgramUnit {
+        let (global_docstring, first_docstring) = self.consume_module_and_first_item_docstrings();
+
+        ProgramUnit {
             docstring: global_docstring,
-            items: ItemsParser { first_docstring }.parse_with(self)?,
-        })
+            items: ItemsParser { first_docstring }.parse_with(self),
+        }
     }
 }

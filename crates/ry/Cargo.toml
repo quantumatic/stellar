@@ -8,7 +8,7 @@ authors = ["Adi Salimgereyev <adisalimgereev@gmail.com>"]
 [dependencies]
 ry_parser = {path = "../ry_parser"}
 ry_lexer = {path = "../ry_lexer"}
-ry_report = {path = "../ry_report"}
+ry_diagnostics = {path = "../ry_diagnostics"}
 ry_ast = {path = "../ry_ast"}
 ry_interner = {path = "../ry_interner"}
 codespan-reporting = "0.11.1"
