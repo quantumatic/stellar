@@ -8,6 +8,7 @@ use ry_ast::{
 use crate::{
     error::{expected, ParseError, ParseResult},
     macros::{binop_pattern, parse_list, postfixop_pattern, prefixop_pattern},
+    pattern::PatternParser,
     r#type::{GenericArgumentsParser, TypeParser},
     statement::StatementsBlockParser,
     Cursor, Parse,
@@ -62,6 +63,8 @@ struct StructExpressionParser {
 
 struct StructExpressionUnitParser;
 
+struct LetExpressionParser;
+
 impl Parse for ExpressionParser {
     type Output = Spanned<Expression>;
 
@@ -72,17 +75,11 @@ impl Parse for ExpressionParser {
             left = match cursor.next.unwrap() {
                 binop_pattern!() => BinaryExpressionParser { left }.parse_with(cursor)?,
                 Token!['('] => CallExpressionParser { left }.parse_with(cursor)?,
-                Token![.] => {
-                    cursor.next_token();
-
-                    match cursor.next.unwrap() {
-                        Token!['{'] => StructExpressionParser { left }.parse_with(cursor)?,
-                        _ => PropertyAccessExpressionParser { left }.parse_with(cursor)?,
-                    }
-                }
+                Token![.] => PropertyAccessExpressionParser { left }.parse_with(cursor)?,
                 Token!['['] => GenericArgumentsExpressionParser { left }.parse_with(cursor)?,
                 postfixop_pattern!() => PostfixExpressionParser { left }.parse_with(cursor)?,
                 Token![as] => CastExpressionParser { left }.parse_with(cursor)?,
+                Token!['{'] => StructExpressionParser { left }.parse_with(cursor)?,
                 _ => break,
             };
         }
@@ -99,6 +96,8 @@ impl Parse for WhileExpressionParser {
         let start = cursor.current.span().start();
 
         let condition = ExpressionParser::default().parse_with(cursor)?;
+        cursor.consume(Token![do], "while expression")?;
+
         let body = StatementsBlockParser.parse_with(cursor)?;
 
         Ok(Expression::While {
@@ -176,6 +175,7 @@ impl Parse for PrimaryExpressionParser {
                 cursor.next_token();
                 Ok(Expression::Identifier(identifier).at(cursor.current.span()))
             }
+            Token![let] => LetExpressionParser.parse_with(cursor),
             Token![if] => IfExpressionParser.parse_with(cursor),
             Token![while] => WhileExpressionParser.parse_with(cursor),
             _ => Err(ParseError::unexpected_token(
@@ -224,6 +224,8 @@ impl Parse for PropertyAccessExpressionParser {
     type Output = Spanned<Expression>;
 
     fn parse_with(self, cursor: &mut Cursor<'_>) -> ParseResult<Self::Output> {
+        cursor.next_token(); // `.`
+
         let start = self.left.span().start();
 
         Ok(Expression::Property {
@@ -311,34 +313,34 @@ impl Parse for IfExpressionParser {
     type Output = Spanned<Expression>;
 
     fn parse_with(self, cursor: &mut Cursor<'_>) -> ParseResult<Self::Output> {
-        cursor.next_token();
+        cursor.next_token(); // `if`
 
         let start = cursor.current.span().start();
 
-        let mut if_blocks = vec![(
-            ExpressionParser::default().parse_with(cursor)?,
-            StatementsBlockParser.parse_with(cursor)?,
-        )];
+        let condition = ExpressionParser::default().parse_with(cursor)?;
+        cursor.consume(Token![then], "if expression")?;
+
+        let block = StatementsBlockParser.parse_with(cursor)?;
+
+        let mut if_blocks = vec![(condition, block)];
 
         let mut r#else = None;
 
         while cursor.next.unwrap() == &Token![else] {
             cursor.next_token();
 
-            match cursor.next.unwrap() {
-                Token![if] => {}
-                _ => {
-                    r#else = Some(StatementsBlockParser.parse_with(cursor)?);
-                    break;
-                }
+            if cursor.next.unwrap() != &Token![if] {
+                r#else = Some(StatementsBlockParser.parse_with(cursor)?);
+                break;
             }
 
             cursor.next_token();
 
-            if_blocks.push((
-                ExpressionParser::default().parse_with(cursor)?,
-                StatementsBlockParser.parse_with(cursor)?,
-            ));
+            let condition = ExpressionParser::default().parse_with(cursor)?;
+            cursor.consume(Token![then], "if expression")?;
+
+            let block = StatementsBlockParser.parse_with(cursor)?;
+            if_blocks.push((condition, block));
         }
 
         Ok(Expression::If { if_blocks, r#else }.at(Span::new(
@@ -377,7 +379,7 @@ impl Parse for CallExpressionParser {
     fn parse_with(self, cursor: &mut Cursor<'_>) -> ParseResult<Self::Output> {
         let start = self.left.span().start();
 
-        cursor.next_token();
+        cursor.next_token(); // `(`
 
         let arguments = parse_list!(cursor, "call arguments list", Token![')'], || {
             ExpressionParser {
@@ -515,6 +517,24 @@ impl Parse for StructExpressionUnitParser {
     }
 }
 
+impl Parse for LetExpressionParser {
+    type Output = Spanned<Expression>;
+
+    fn parse_with(self, cursor: &mut Cursor<'_>) -> ParseResult<Self::Output> {
+        cursor.next_token(); // `let`
+
+        let left = PatternParser.parse_with(cursor)?;
+
+        cursor.consume(Token![=], "let expression")?;
+
+        let right = Box::new(ExpressionParser::default().parse_with(cursor)?);
+
+        let span = Span::new(left.span().start(), right.span().end(), cursor.file_id);
+
+        Ok(Expression::Let { left, right }.at(span))
+    }
+}
+
 #[cfg(test)]
 mod expression_tests {
     use super::ExpressionParser;
@@ -540,12 +560,12 @@ mod expression_tests {
     parse_test!(
         ExpressionParser::default(),
         ifelse,
-        "if false { 2.3 } else if false { 5 as f32 } else { 2.0 }"
+        "if false then { 2.3 } else if false then { 5 as f32 } else { 2.0 }"
     );
     parse_test!(
         ExpressionParser::default(),
         r#while,
-        "while true { print(\"hello\"); }"
+        "while true do { print(\"hello\"); }"
     );
     parse_test!(
         ExpressionParser::default(),
@@ -555,6 +575,12 @@ mod expression_tests {
     parse_test!(
         ExpressionParser::default(),
         r#struct,
-        "Person.{ age: 3, name }"
+        "Person { age: 3, name }"
+    );
+    parse_test!(ExpressionParser::default(), let1, "let a = 3;");
+    parse_test!(
+        ExpressionParser::default(),
+        let2,
+        "let Person { name, age } = get_person();"
     );
 }

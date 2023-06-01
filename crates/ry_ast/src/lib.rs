@@ -182,6 +182,10 @@ pub enum Expression {
         left: Box<Spanned<Expression>>,
         fields: Vec<StructExpressionUnit>,
     },
+    Let {
+        left: Spanned<Pattern>,
+        right: Box<Spanned<Expression>>,
+    },
 }
 
 #[derive(Debug, PartialEq)]

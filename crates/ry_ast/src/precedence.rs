@@ -38,6 +38,8 @@ pub enum Precedence {
     Unary,
     // a()
     Call,
+    // `{`
+    Struct,
     // a.b
     Property,
     // a[i32]

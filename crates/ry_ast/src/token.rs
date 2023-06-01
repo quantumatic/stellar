@@ -112,14 +112,16 @@ pub enum Keyword {
     If,
     Impl,
     Import,
+    Then,
     Pub,
     Return,
     Struct,
     Trait,
     Type,
-    Var,
+    Let,
     Where,
     While,
+    Do,
 }
 
 impl AsRef<str> for Keyword {
@@ -141,7 +143,9 @@ impl AsRef<str> for Keyword {
             Self::As => "`as`",
             Self::For => "`for`",
             Self::Where => "`where`",
-            Self::Var => "`var`",
+            Self::Let => "`let`",
+            Self::Then => "`then`",
+            Self::Do => "`do`",
         }
     }
 }
@@ -395,11 +399,13 @@ macro_rules! Token {
     [if] =>                 {$crate::token::RawToken::Keyword($crate::token::Keyword::If)};
     [else] =>               {$crate::token::RawToken::Keyword($crate::token::Keyword::Else)};
     [while] =>              {$crate::token::RawToken::Keyword($crate::token::Keyword::While)};
-    [var] =>                {$crate::token::RawToken::Keyword($crate::token::Keyword::Var)};
+    [let] =>                {$crate::token::RawToken::Keyword($crate::token::Keyword::Let)};
     [as] =>                 {$crate::token::RawToken::Keyword($crate::token::Keyword::As)};
     [type] =>               {$crate::token::RawToken::Keyword($crate::token::Keyword::Type)};
     [for] =>                {$crate::token::RawToken::Keyword($crate::token::Keyword::For)};
     [where] =>              {$crate::token::RawToken::Keyword($crate::token::Keyword::Where)};
+    [then] =>               {$crate::token::RawToken::Keyword($crate::token::Keyword::Then)};
+    [do] =>                 {$crate::token::RawToken::Keyword($crate::token::Keyword::Do)};
 }
 
 /// List of reserved Ry names: keywords, boolean literals & etc..
@@ -418,11 +424,13 @@ pub static RESERVED: phf::Map<&'static str, RawToken> = phf_map! {
     "if" => Token![if],
     "else" => Token![else],
     "while" => Token![while],
-    "var" => Token![var],
+    "let" => Token![let],
     "as" => Token![as],
     "type" => Token![type],
     "for" => Token![for],
-    "where" => Token![where]
+    "where" => Token![where],
+    "then" => Token![then],
+    "do" => Token![do]
 };
 
 impl Punctuator {
@@ -455,6 +463,7 @@ impl Punctuator {
             Self::Not | Self::PlusPlus | Self::MinusMinus | Self::Bang | Self::QuestionMark => {
                 Precedence::Unary
             }
+            Self::OpenBrace => Precedence::Struct,
             _ => Precedence::Lowest,
         }
     }
