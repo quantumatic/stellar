@@ -122,6 +122,8 @@ pub enum Keyword {
     Where,
     While,
     Do,
+    Match,
+    With,
 }
 
 impl AsRef<str> for Keyword {
@@ -146,6 +148,8 @@ impl AsRef<str> for Keyword {
             Self::Let => "`let`",
             Self::Then => "`then`",
             Self::Do => "`do`",
+            Self::Match => "`match`",
+            Self::With => "`with`",
         }
     }
 }
@@ -406,6 +410,8 @@ macro_rules! Token {
     [where] =>              {$crate::token::RawToken::Keyword($crate::token::Keyword::Where)};
     [then] =>               {$crate::token::RawToken::Keyword($crate::token::Keyword::Then)};
     [do] =>                 {$crate::token::RawToken::Keyword($crate::token::Keyword::Do)};
+    [match] =>              {$crate::token::RawToken::Keyword($crate::token::Keyword::Match)};
+    [with] =>               {$crate::token::RawToken::Keyword($crate::token::Keyword::With)};
 }
 
 /// List of reserved Ry names: keywords, boolean literals & etc..
@@ -430,7 +436,9 @@ pub static RESERVED: phf::Map<&'static str, RawToken> = phf_map! {
     "for" => Token![for],
     "where" => Token![where],
     "then" => Token![then],
-    "do" => Token![do]
+    "do" => Token![do],
+    "match" => Token![match],
+    "with" => Token![with]
 };
 
 impl Punctuator {

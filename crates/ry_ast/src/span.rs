@@ -81,6 +81,11 @@ impl<T> Spanned<T> {
     pub const fn unwrap(&self) -> &T {
         &self.inner
     }
+
+    #[inline]
+    pub fn take(self) -> T {
+        self.inner
+    }
 }
 
 impl From<Span> for Range<usize> {

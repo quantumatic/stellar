@@ -13,6 +13,8 @@ use ry_ast::{
 
 pub(crate) struct PatternParser;
 
+struct PatternExceptOrParser;
+
 struct ArrayPatternParser;
 
 struct GroupedPatternParser;
@@ -28,6 +30,30 @@ struct EnumItemTuplePatternParser {
 }
 
 impl Parse for PatternParser {
+    type Output = Spanned<Pattern>;
+
+    fn parse_with(self, cursor: &mut Cursor<'_>) -> ParseResult<Self::Output> {
+        let left = PatternExceptOrParser.parse_with(cursor)?;
+
+        if cursor.next.unwrap() == &Token![|] {
+            cursor.next_token();
+
+            let right = PatternParser.parse_with(cursor)?;
+
+            let span = Span::new(left.span().start(), right.span().end(), cursor.file_id);
+
+            Ok(Pattern::Or {
+                left: Box::new(left),
+                right: Box::new(right),
+            }
+            .at(span))
+        } else {
+            Ok(left)
+        }
+    }
+}
+
+impl Parse for PatternExceptOrParser {
     type Output = Spanned<Pattern>;
 
     fn parse_with(self, cursor: &mut Cursor<'_>) -> ParseResult<Self::Output> {
@@ -258,4 +284,5 @@ mod pattern_tests {
     parse_test!(PatternParser, tuple_pattern, "#(a, 2, ..)");
     parse_test!(PatternParser, enum_item_tuple_pattern, "Some(a)");
     parse_test!(PatternParser, grouped_pattern, "(Some(a))");
+    parse_test!(PatternParser, or_pattern, "Some(a) | None");
 }

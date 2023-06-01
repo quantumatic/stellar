@@ -92,6 +92,10 @@ pub enum Pattern {
     Grouped {
         inner: Box<Spanned<Pattern>>,
     },
+    Or {
+        left: Box<Spanned<Pattern>>,
+        right: Box<Spanned<Pattern>>,
+    },
     Rest, // ..
 }
 
@@ -145,6 +149,7 @@ pub enum Expression {
         operator: Token,
         right: Box<Spanned<Expression>>,
     },
+    StatementsBlock(StatementsBlock),
     Literal(Literal),
     Identifier(Symbol),
     If {
@@ -186,6 +191,16 @@ pub enum Expression {
         left: Spanned<Pattern>,
         right: Box<Spanned<Expression>>,
     },
+    Match {
+        expression: Box<Spanned<Expression>>,
+        block: Vec<MatchExpressionUnit>,
+    },
+}
+
+#[derive(Debug, PartialEq)]
+pub struct MatchExpressionUnit {
+    pub left: Spanned<Pattern>,
+    pub right: Spanned<Expression>,
 }
 
 #[derive(Debug, PartialEq)]

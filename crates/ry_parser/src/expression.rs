@@ -1,12 +1,13 @@
 use ry_ast::{
     precedence::Precedence,
-    span::{At, Span, SpanIndex, Spanned},
+    span::{At, Span, Spanned},
     token::RawToken,
-    Expression, Literal, StructExpressionUnit, Token,
+    Expression, MatchExpressionUnit, StructExpressionUnit, Token,
 };
 
 use crate::{
     error::{expected, ParseError, ParseResult},
+    literal::LiteralParser,
     macros::{binop_pattern, parse_list, postfixop_pattern, prefixop_pattern},
     pattern::PatternParser,
     r#type::{GenericArgumentsParser, TypeParser},
@@ -20,6 +21,12 @@ pub(crate) struct ExpressionParser {
 }
 
 struct WhileExpressionParser;
+
+struct MatchExpressionParser;
+
+struct MatchExpressionBlockParser;
+
+struct MatchExpressionUnitParser;
 
 struct PrimaryExpressionParser;
 
@@ -65,6 +72,8 @@ struct StructExpressionUnitParser;
 
 struct LetExpressionParser;
 
+struct StatementsBlockExpressionParser;
+
 impl Parse for ExpressionParser {
     type Output = Spanned<Expression>;
 
@@ -92,7 +101,7 @@ impl Parse for WhileExpressionParser {
     type Output = Spanned<Expression>;
 
     fn parse_with(self, cursor: &mut Cursor<'_>) -> ParseResult<Self::Output> {
-        cursor.next_token();
+        cursor.next_token(); // `while`
         let start = cursor.current.span().start();
 
         let condition = ExpressionParser::default().parse_with(cursor)?;
@@ -112,71 +121,87 @@ impl Parse for WhileExpressionParser {
     }
 }
 
+impl Parse for MatchExpressionParser {
+    type Output = Spanned<Expression>;
+
+    fn parse_with(self, cursor: &mut Cursor<'_>) -> ParseResult<Self::Output> {
+        cursor.next_token(); // `match`
+
+        let expression = ExpressionParser::default().parse_with(cursor)?;
+        cursor.consume(Token![with], "match expression")?;
+
+        let block = MatchExpressionBlockParser.parse_with(cursor)?;
+
+        let span = Span::new(
+            expression.span().start(),
+            cursor.current.span().end(),
+            cursor.file_id,
+        );
+        Ok(Expression::Match {
+            expression: Box::new(expression),
+            block,
+        }
+        .at(span))
+    }
+}
+
+impl Parse for MatchExpressionBlockParser {
+    type Output = Vec<MatchExpressionUnit>;
+
+    fn parse_with(self, cursor: &mut Cursor<'_>) -> ParseResult<Self::Output> {
+        cursor.consume(Token!['{'], "match expression block")?;
+
+        let units = parse_list!(cursor, "match expression block", Token!['}'], || {
+            MatchExpressionUnitParser.parse_with(cursor)
+        });
+
+        cursor.next_token(); // `}`
+
+        Ok(units)
+    }
+}
+
+impl Parse for MatchExpressionUnitParser {
+    type Output = MatchExpressionUnit;
+
+    fn parse_with(self, cursor: &mut Cursor<'_>) -> ParseResult<Self::Output> {
+        let left = PatternParser.parse_with(cursor)?;
+        cursor.consume(Token![then], "match expression unit")?;
+
+        let right = ExpressionParser::default().parse_with(cursor)?;
+
+        Ok(MatchExpressionUnit { left, right })
+    }
+}
+
 impl Parse for PrimaryExpressionParser {
     type Output = Spanned<Expression>;
 
     fn parse_with(self, cursor: &mut Cursor<'_>) -> ParseResult<Self::Output> {
         match *cursor.next.unwrap() {
-            RawToken::IntegerLiteral => {
-                cursor.next_token();
-                match cursor
-                    .contents
-                    .index(cursor.current.span())
-                    .replace('_', "")
-                    .parse::<u64>()
-                {
-                    Ok(integer) => Ok(
-                        Expression::Literal(Literal::Integer(integer)).at(cursor.current.span())
-                    ),
-                    Err(..) => Err(ParseError::integer_overflow(cursor.current.span())),
-                }
+            RawToken::IntegerLiteral
+            | RawToken::FloatLiteral
+            | RawToken::StringLiteral
+            | RawToken::CharLiteral
+            | Token![true]
+            | Token![false] => {
+                let literal = LiteralParser.parse_with(cursor)?;
+                let span = literal.span();
+
+                Ok(Expression::Literal(literal.take()).at(span))
             }
-            RawToken::FloatLiteral => {
+            RawToken::Identifier(symbol) => {
                 cursor.next_token();
-                match cursor
-                    .contents
-                    .index(cursor.current.span())
-                    .replace('_', "")
-                    .parse::<f64>()
-                {
-                    Ok(float) => {
-                        Ok(Expression::Literal(Literal::Float(float)).at(cursor.current.span()))
-                    }
-                    Err(..) => Err(ParseError::float_overflow(cursor.current.span())),
-                }
-            }
-            RawToken::StringLiteral => {
-                cursor.next_token();
-                Ok(Expression::Literal(Literal::String(
-                    cursor.contents.index(cursor.current.span()).to_owned(),
-                ))
-                .at(cursor.current.span()))
-            }
-            RawToken::CharLiteral => {
-                cursor.next_token();
-                Ok(Expression::Literal(Literal::String(
-                    cursor.contents.index(cursor.current.span()).to_owned(),
-                ))
-                .at(cursor.current.span()))
-            }
-            Token![true] => {
-                cursor.next_token();
-                Ok(Expression::Literal(Literal::Boolean(true)).at(cursor.current.span()))
-            }
-            Token![false] => {
-                cursor.next_token();
-                Ok(Expression::Literal(Literal::Boolean(false)).at(cursor.current.span()))
+                Ok(Expression::Identifier(symbol).at(cursor.current.span()))
             }
             prefixop_pattern!() => PrefixExpressionParser.parse_with(cursor),
             Token!['('] => ParenthesizedExpressionParser.parse_with(cursor),
             Token!['['] => ArrayLiteralExpressionParser.parse_with(cursor),
+            Token!['{'] => StatementsBlockExpressionParser.parse_with(cursor),
             Token![#] => TupleExpressionParser.parse_with(cursor),
-            RawToken::Identifier(identifier) => {
-                cursor.next_token();
-                Ok(Expression::Identifier(identifier).at(cursor.current.span()))
-            }
             Token![let] => LetExpressionParser.parse_with(cursor),
             Token![if] => IfExpressionParser.parse_with(cursor),
+            Token![match] => MatchExpressionParser.parse_with(cursor),
             Token![while] => WhileExpressionParser.parse_with(cursor),
             _ => Err(ParseError::unexpected_token(
                 cursor.next.clone(),
@@ -192,7 +217,8 @@ impl Parse for PrimaryExpressionParser {
                     Token!['['],
                     "identifier",
                     Token![if],
-                    Token![while]
+                    Token![while],
+                    Token![match]
                 ),
                 "expression",
             )),
@@ -535,6 +561,19 @@ impl Parse for LetExpressionParser {
     }
 }
 
+impl Parse for StatementsBlockExpressionParser {
+    type Output = Spanned<Expression>;
+
+    fn parse_with(self, cursor: &mut Cursor<'_>) -> ParseResult<Self::Output> {
+        let start = cursor.next.span().start();
+
+        let block = StatementsBlockParser.parse_with(cursor)?;
+        let end = cursor.current.span().end();
+
+        Ok(Expression::StatementsBlock(block).at(Span::new(start, end, cursor.file_id)))
+    }
+}
+
 #[cfg(test)]
 mod expression_tests {
     use super::ExpressionParser;
@@ -582,5 +621,10 @@ mod expression_tests {
         ExpressionParser::default(),
         let2,
         "let Person { name, age } = get_person();"
+    );
+    parse_test!(
+        ExpressionParser::default(),
+        r#match,
+        "match Some(3) with { Some(a) then println(a), .. then {} }"
     );
 }
