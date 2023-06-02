@@ -301,6 +301,37 @@ pub enum Item {
     TypeAlias(TypeAlias),
 }
 
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+pub enum ItemKind {
+    Enum,
+    Function,
+    Import,
+    Trait,
+    Impl,
+    Struct,
+    TypeAlias,
+}
+
+impl AsRef<str> for ItemKind {
+    fn as_ref(&self) -> &str {
+        match self {
+            Self::Enum => "enum",
+            Self::Function => "function",
+            Self::Import => "import",
+            Self::Trait => "trait",
+            Self::Impl => "impl",
+            Self::Struct => "struct",
+            Self::TypeAlias => "type alias",
+        }
+    }
+}
+
+impl ToString for ItemKind {
+    fn to_string(&self) -> String {
+        self.as_ref().into()
+    }
+}
+
 #[derive(Debug, PartialEq)]
 pub enum EnumItem {
     Identifier(Identifier),

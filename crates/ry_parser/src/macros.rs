@@ -14,22 +14,78 @@ macro_rules! parse_test {
 }
 
 macro_rules! parse_list {
-    ($p:ident, $name:literal, $closing_token:pat, $fn:expr) => {
-        parse_list!($p, $name, $closing_token, $fn, )
-    };
-    ($p:ident, $name:literal, $closing_token:pat, $fn:expr, $($fn_arg:expr)*) => {
+    (
+        $cursor:ident,
+        $node_name:literal,
+        $closing_token:expr,
+        $fn:expr) => {
         {
             let mut result = vec![];
 
-            if !matches!($p.next.unwrap(), $closing_token) {
+            if $cursor.next.unwrap() != &$closing_token {
                 loop {
-                    result.push($fn($($fn_arg)*)?);
+                    result.push($fn()?);
 
                     #[allow(unused_qualifications)]
-                    if !matches!($p.next.unwrap(), $closing_token) {
-                        $p.consume(ry_ast::Token![,], $name)?;
+                    if $cursor.next.unwrap() != &$closing_token {
+                        if $cursor.next.unwrap() != &Token![,] {
+                            $cursor.diagnostics.push(
+                                ParseDiagnostic::UnexpectedTokenError {
+                                    got: $cursor.next.clone(),
+                                    expected: expected!($closing_token, Token![,]),
+                                    node: $node_name.to_owned(),
+                                }
+                                .build(),
+                            );
+                            break;
+                        } else {
+                            $cursor.next_token();
+                        }
 
-                        if matches!($p.next.unwrap(), $closing_token) {
+                        if $cursor.next.unwrap() == &$closing_token {
+                            break;
+                        }
+                    } else {
+                        break;
+                    }
+                }
+            }
+
+            result
+        }
+    };
+    (
+        $cursor:ident,
+        $node_name:literal,
+        ($closing_token1:expr) or ($closing_token2:expr),
+        $fn:expr) => {
+        {
+            let mut result = vec![];
+
+            if $cursor.next.unwrap() != &$closing_token1 &&
+                $cursor.next.unwrap() != &$closing_token2 {
+                loop {
+                    result.push($fn()?);
+
+                    #[allow(unused_qualifications)]
+                    if $cursor.next.unwrap() != &$closing_token1
+                        && $cursor.next.unwrap() != &$closing_token2 {
+                        if $cursor.next.unwrap() != &Token![,] {
+                            $cursor.diagnostics.push(
+                                ParseDiagnostic::UnexpectedTokenError {
+                                    got: $cursor.next.clone(),
+                                    expected: expected!($closing_token1, $closing_token2, Token![,]),
+                                    node: $node_name.to_owned(),
+                                }
+                                .build(),
+                            );
+                            break;
+                        } else {
+                            $cursor.next_token();
+                        }
+
+                        if $cursor.next.unwrap() == &$closing_token1
+                            || $cursor.next.unwrap() == &$closing_token2 {
                             break;
                         }
                     } else {

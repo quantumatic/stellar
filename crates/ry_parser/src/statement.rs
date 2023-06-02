@@ -41,7 +41,7 @@ impl Parse for StatementParser {
 
                         cursor.diagnostics.push(
                             ParseDiagnostic::NoSemicolonAfterExpressionError {
-                                expression_location: expression.span(),
+                                expression_span: expression.span(),
                                 at: Span::new(
                                     expression.span().end() - 1,
                                     expression.span().end(),
@@ -69,18 +69,20 @@ impl Parse for StatementParser {
 
         let end = cursor.current.span().end();
 
-        if !last_statement_in_block && must_have_semicolon_at_the_end {
+        if !last_statement_in_block
+            && must_have_semicolon_at_the_end
+            && !no_semicolon_after_expression_error_emitted
+        {
             if cursor.next.unwrap() != &Token![;] {
-                if !no_semicolon_after_expression_error_emitted {
-                    cursor.diagnostics.push(
-                        ParseDiagnostic::NoSemicolonAfterStatementError {
-                            statement_location: Span::new(start, end - 1, cursor.file_id),
-                            at: Span::new(end, end, cursor.file_id),
-                        }
-                        .build(),
-                    );
-                }
+                cursor.diagnostics.push(
+                    ParseDiagnostic::NoSemicolonAfterStatementError {
+                        statement_span: Span::new(start, end - 1, cursor.file_id),
+                        at: Span::new(end, end, cursor.file_id),
+                    }
+                    .build(),
+                );
             } else {
+                dbg!(cursor.next.unwrap());
                 cursor.next_token();
             }
         }
@@ -104,7 +106,7 @@ impl Parse for StatementsBlockParser {
                 RawToken::EndOfFile => {
                     cursor.diagnostics.push(
                         ParseDiagnostic::EOFInsteadOfCloseBraceForStatementsBlockError {
-                            statements_block_start_location: Span::new(
+                            statements_block_start_span: Span::new(
                                 start,
                                 start + 1,
                                 cursor.file_id,
@@ -118,13 +120,14 @@ impl Parse for StatementsBlockParser {
                 }
                 Token![;] => {
                     cursor.diagnostics.push(
-                        ParseDiagnostic::EmptyStatementError {
+                        ParseDiagnostic::EmptyStatementWarning {
                             at: cursor.next.span(),
                         }
                         .build(),
                     );
 
-                    cursor.next_token();
+                    // Recover
+                    cursor.next_token(); // `;`
                     continue;
                 }
                 _ => {}
