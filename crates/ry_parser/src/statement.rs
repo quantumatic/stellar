@@ -82,7 +82,6 @@ impl Parse for StatementParser {
                     .build(),
                 );
             } else {
-                dbg!(cursor.next.unwrap());
                 cursor.next_token();
             }
         }
