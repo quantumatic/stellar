@@ -7,8 +7,9 @@ use crate::{
     Cursor, OptionalParser, Parse,
 };
 use ry_ast::{
-    token::RawToken, Docstring, Documented, EnumItem, Function, FunctionParameter, Identifier,
-    Item, Items, StructField, Token, TraitItem, TupleField, TypeAlias, Visibility, WithDocComment,
+    span::Span, token::RawToken, Docstring, Documented, EnumItem, Function, FunctionParameter,
+    Identifier, Item, ItemKind, Items, StructField, Token, TraitItem, TupleField, TypeAlias,
+    Visibility, WithDocComment,
 };
 use ry_diagnostics::{expected, parser::ParseDiagnostic, Report};
 
@@ -38,7 +39,10 @@ struct TraitItemParser {
     pub(crate) visibility: Visibility,
 }
 
-struct TraitItemsParser;
+struct TraitItemsParser {
+    pub(crate) name_span: Span,
+    pub(crate) item_kind: ItemKind,
+}
 
 struct ImplItemParser {
     pub(crate) visibility: Visibility,
@@ -241,7 +245,7 @@ impl Parse for FunctionParser {
 }
 
 impl Parse for TraitItemsParser {
-    type Output = Option<Vec<Documented<TraitItem>>>;
+    type Output = Option<(Vec<Documented<TraitItem>>, bool)>;
 
     fn parse_with(self, cursor: &mut Cursor<'_>) -> Self::Output {
         let mut items = vec![];
@@ -267,6 +271,17 @@ impl Parse for TraitItemsParser {
                     TraitItem::TypeAlias(TypeAliasParser { visibility }.parse_with(cursor)?)
                         .with_doc_comment(doc),
                 ),
+                RawToken::EndOfFile => {
+                    cursor.diagnostics.push(
+                        ParseDiagnostic::EOFInsteadOfCloseBraceForItemError {
+                            item_kind: self.item_kind,
+                            item_name_span: self.name_span,
+                            at: cursor.current.span(),
+                        }
+                        .build(),
+                    );
+                    return Some((items, true));
+                }
                 _ => {
                     cursor.diagnostics.push(
                         ParseDiagnostic::UnexpectedTokenError {
@@ -281,7 +296,7 @@ impl Parse for TraitItemsParser {
             }?);
         }
 
-        Some(items)
+        Some((items, false))
     }
 }
 
@@ -327,16 +342,22 @@ impl Parse for TraitItemParser {
 
         cursor.consume(Token!['{'], "trait declaration")?;
 
-        let items = TraitItemsParser.parse_with(cursor)?;
+        let items = TraitItemsParser {
+            name_span: name.span(),
+            item_kind: ItemKind::Trait,
+        }
+        .parse_with(cursor)?;
 
-        cursor.consume(Token!['}'], "trait declaration")?;
+        if !items.1 {
+            cursor.consume(Token!['}'], "trait declaration")?;
+        }
 
         Some(Item::Trait {
             visibility: self.visibility,
             name,
             generic_parameters,
             where_clause,
-            items,
+            items: items.0,
         })
     }
 }
@@ -346,6 +367,7 @@ impl Parse for ImplItemParser {
 
     fn parse_with(self, cursor: &mut Cursor<'_>) -> Self::Output {
         cursor.next_token();
+        let impl_span = cursor.current.span();
 
         let generic_parameters = GenericParametersParser.optionally_parse_with(cursor)?;
 
@@ -363,9 +385,15 @@ impl Parse for ImplItemParser {
 
         cursor.consume(Token!['{'], "type implementation")?;
 
-        let items = TraitItemsParser.parse_with(cursor)?;
+        let items = TraitItemsParser {
+            name_span: impl_span,
+            item_kind: ItemKind::Impl,
+        }
+        .parse_with(cursor)?;
 
-        cursor.consume(Token!['}'], "type implementation")?;
+        if !items.1 {
+            cursor.consume(Token!['}'], "type implementation")?;
+        }
 
         Some(Item::Impl {
             visibility: self.visibility,
@@ -373,7 +401,7 @@ impl Parse for ImplItemParser {
             r#type,
             r#trait,
             where_clause,
-            items,
+            items: items.0,
         })
     }
 }

@@ -56,7 +56,18 @@ impl Parse for ArrayTypeParser {
 
         let element_type = TypeParser.parse_with(cursor)?;
 
-        cursor.consume(Token![']'], "array type")?;
+        if cursor.next.unwrap() == &Token![']'] {
+            cursor.next_token();
+        } else {
+            cursor.diagnostics.push(
+                ParseDiagnostic::UnexpectedTokenError {
+                    got: cursor.next.clone(),
+                    expected: expected!(Token![']']),
+                    node: "array type".to_owned(),
+                }
+                .build(),
+            );
+        }
 
         Some(
             Type::Array {
@@ -225,7 +236,7 @@ impl OptionalParser for WhereClauseParser {
         Some(parse_list!(
             cursor,
             "where clause",
-            Token!['{'] | Token![;],
+            (Token!['{']) or (Token![;]),
             || -> Option<WhereClauseItem> {
                 let r#type = TypeParser.parse_with(cursor)?;
 

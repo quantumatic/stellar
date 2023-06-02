@@ -4,6 +4,7 @@ use codespan_reporting::diagnostic::Diagnostic;
 use ry_ast::{
     span::{Span, Spanned},
     token::{LexError, Token},
+    ItemKind,
 };
 use std::fmt::Display;
 
@@ -58,34 +59,46 @@ pub enum ParseDiagnostic {
     /// Error that suggests adding `;` after expression in statements block.
     NoSemicolonAfterExpressionError {
         /// Location of expression which does not have corresponding `;`.
-        expression_location: Span,
+        expression_span: Span,
 
-        /// Possible location of `;` in the future.
+        /// Possible span of `;` in the future.
         at: Span,
     },
 
     /// Error that suggests adding `;` after any statement in statements block.
     NoSemicolonAfterStatementError {
         /// Location of the statement.
-        statement_location: Span,
+        statement_span: Span,
 
-        /// Possible location of `;` in the future.
+        /// Possible span of `;` in the future.
         at: Span,
     },
 
     /// When got EOF instead of close brace at the end of the statements block.
     EOFInsteadOfCloseBraceForStatementsBlockError {
         /// Location of `{`.
-        statements_block_start_location: Span,
+        statements_block_start_span: Span,
 
-        /// EOF token location.
+        /// EOF token span.
         at: Span,
     },
 
     /// When got two semicolons in a row: `;;` or semicolon immediately after `{`
     /// in the statements block.
-    EmptyStatementError {
-        /// The location of the semicolon
+    EmptyStatementWarning {
+        /// The span of the semicolon.
+        at: Span,
+    },
+
+    /// When got EOF instead of close brace at the of the item.
+    EOFInsteadOfCloseBraceForItemError {
+        /// Type of item in which error occurred.
+        item_kind: ItemKind,
+
+        /// Location of item name.
+        item_name_span: Span,
+
+        /// EOF token span.
         at: Span,
     },
 }
@@ -152,38 +165,46 @@ impl Report for ParseDiagnostic {
                             "note: float literal cannot exceed the maximum value of `f64` (f64.max() == 1.7976931348623157E+308)".to_owned(),
                             "note: you can use exponent to do so, but be careful, especially when working with floats!".to_owned()
                         ]),
-            Self::NoSemicolonAfterExpressionError { expression_location, at } =>
+            Self::NoSemicolonAfterExpressionError { expression_span, at } =>
                 Diagnostic::error().with_message("it seems that you forgot to put `;` after the expression")
                     .with_labels(vec![
                         at.to_secondary_label()
                             .with_message("add `;` here"),
-                        expression_location.to_primary_label()
-                            .with_message("happened after this expression")
+                        expression_span.to_primary_label()
+                            .with_message("happened when parsing this expression")
                     ]),
-            Self::NoSemicolonAfterStatementError { statement_location, at } =>
+            Self::NoSemicolonAfterStatementError { statement_span, at } =>
                 Diagnostic::error().with_message("it seems that you forgot to put `;` after the statement")
                     .with_labels(vec![
                         at.to_secondary_label()
                             .with_message("add `;` here"),
-                        statement_location.to_primary_label()
-                            .with_message("happened after this statement")
+                        statement_span.to_primary_label()
+                            .with_message("happened when parsing this statement")
                     ]),
-            Self::EOFInsteadOfCloseBraceForStatementsBlockError { statements_block_start_location, at } =>
+            Self::EOFInsteadOfCloseBraceForStatementsBlockError { statements_block_start_span, at } =>
                 Diagnostic::error().with_message("unexpected end of file".to_owned())
                     .with_labels(vec![
-                        statements_block_start_location.to_secondary_label()
+                        statements_block_start_span.to_primary_label()
                             .with_message("happened when parsing this statements block"),
-                        at.to_primary_label()
+                        at.to_secondary_label()
                             .with_message("consider adding `}`".to_owned())
                     ]),
-            Self::EmptyStatementError { at } =>
-                Diagnostic::error().with_message("found empty statement".to_owned())
+            Self::EmptyStatementWarning { at } =>
+                Diagnostic::warning().with_message("found empty statement".to_owned())
                     .with_labels(vec![
                         at.to_primary_label()
                             .with_message("consider removing this `;`".to_owned())
                     ])
                     .with_notes(vec![
-                        "note: in Ry empty statements are NOT permitted.".to_owned()
+                        "note: empty statements do not have syntactic meaning.".to_owned()
+                    ]),
+            Self::EOFInsteadOfCloseBraceForItemError { item_kind, item_name_span, at } =>
+                Diagnostic::error().with_message("unexpected end of file".to_owned())
+                    .with_labels(vec![
+                        item_name_span.to_primary_label()
+                            .with_message(format!("happened when parsing this {}", item_kind.to_string())),
+                        at.to_secondary_label()
+                            .with_message("consider adding `}`".to_owned())
                     ])
         }
     }
