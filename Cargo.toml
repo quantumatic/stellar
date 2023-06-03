@@ -5,4 +5,6 @@ members = [
     "crates/ry_lexer",
     "crates/ry_parser",
     "crates/ry_diagnostics",
+    "crates/ry_interner",
+    "crates/ry_workspace"
 ]
