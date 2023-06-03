@@ -157,7 +157,7 @@ impl Backend {
         Self {
             ends: Vec::with_capacity(capacity),
             buffer: String::default(),
-            marker: PhantomData::default(),
+            marker: PhantomData,
         }
     }
 
