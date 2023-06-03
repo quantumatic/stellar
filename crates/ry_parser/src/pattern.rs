@@ -2,7 +2,7 @@ use crate::{literal::LiteralParser, macros::parse_list, path::PathParser, Cursor
 use ry_ast::{
     span::{At, Span, Spanned},
     token::RawToken,
-    Path, Pattern, Token,
+    Path, Pattern, StructFieldPattern, Token,
 };
 use ry_diagnostics::{expected, parser::ParseDiagnostic, Report};
 
@@ -156,17 +156,37 @@ impl Parse for StructPatternParser {
     fn parse_with(self, cursor: &mut Cursor<'_>) -> Self::Output {
         cursor.next_token(); // `{`
 
+        let mut rest_pattern_span = None;
+
         let fields = parse_list!(cursor, "struct pattern", Token!['}'], || {
-            let member_name = cursor.consume_identifier("struct pattern")?;
-            let pattern = if cursor.next.unwrap() == &Token![:] {
+            if cursor.next.unwrap() == &Token![..] {
+                if let Some(previous_rest_pattern_span) = rest_pattern_span {
+                    cursor.diagnostics.push(
+                        ParseDiagnostic::MoreThanTwoRestPatternsInStructPatternMembersError {
+                            struct_name_span: self.r#struct.span(),
+                            previous_rest_pattern_span,
+                            current_rest_pattern_span: cursor.next.span(),
+                        }
+                        .build(),
+                    );
+                    return None;
+                }
+
                 cursor.next_token();
-
-                Some(PatternParser.parse_with(cursor)?)
+                rest_pattern_span = Some(cursor.current.span());
+                Some(StructFieldPattern::Rest(cursor.current.span()))
             } else {
-                None
-            };
+                let member_name = cursor.consume_identifier("struct pattern")?;
+                let pattern = if cursor.next.unwrap() == &Token![:] {
+                    cursor.next_token();
 
-            Some((member_name, pattern))
+                    Some(PatternParser.parse_with(cursor)?)
+                } else {
+                    None
+                };
+
+                Some(StructFieldPattern::NotRest(member_name, pattern))
+            }
         });
 
         cursor.next_token();

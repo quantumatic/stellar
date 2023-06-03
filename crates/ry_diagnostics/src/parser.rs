@@ -101,6 +101,18 @@ pub enum ParseDiagnostic {
         /// EOF token span.
         at: Span,
     },
+
+    /// When got two `..` in struct pattern.
+    MoreThanTwoRestPatternsInStructPatternMembersError {
+        /// Location of struct name.
+        struct_name_span: Span,
+
+        /// Previous `..` struct member pattern location.
+        previous_rest_pattern_span: Span,
+
+        /// Current `..` struct member pattern location.
+        current_rest_pattern_span: Span,
+    },
 }
 
 impl Display for Expected {
@@ -166,7 +178,8 @@ impl Report for ParseDiagnostic {
                             "note: you can use exponent to do so, but be careful, especially when working with floats!".to_owned()
                         ]),
             Self::NoSemicolonAfterExpressionError { expression_span, at } =>
-                Diagnostic::error().with_message("it seems that you forgot to put `;` after the expression")
+                Diagnostic::error()
+                    .with_message("it seems that you forgot to put `;` after the expression")
                     .with_labels(vec![
                         at.to_secondary_label()
                             .with_message("add `;` here"),
@@ -174,7 +187,8 @@ impl Report for ParseDiagnostic {
                             .with_message("happened when parsing this expression")
                     ]),
             Self::NoSemicolonAfterStatementError { statement_span, at } =>
-                Diagnostic::error().with_message("it seems that you forgot to put `;` after the statement")
+                Diagnostic::error()
+                    .with_message("it seems that you forgot to put `;` after the statement")
                     .with_labels(vec![
                         at.to_secondary_label()
                             .with_message("add `;` here"),
@@ -182,7 +196,8 @@ impl Report for ParseDiagnostic {
                             .with_message("happened when parsing this statement")
                     ]),
             Self::EOFInsteadOfCloseBraceForStatementsBlockError { statements_block_start_span, at } =>
-                Diagnostic::error().with_message("unexpected end of file".to_owned())
+                Diagnostic::error()
+                    .with_message("unexpected end of file".to_owned())
                     .with_labels(vec![
                         statements_block_start_span.to_primary_label()
                             .with_message("happened when parsing this statements block"),
@@ -190,7 +205,8 @@ impl Report for ParseDiagnostic {
                             .with_message("consider adding `}`".to_owned())
                     ]),
             Self::EmptyStatementWarning { at } =>
-                Diagnostic::warning().with_message("found empty statement".to_owned())
+                Diagnostic::warning()
+                    .with_message("found empty statement".to_owned())
                     .with_labels(vec![
                         at.to_primary_label()
                             .with_message("consider removing this `;`".to_owned())
@@ -199,12 +215,24 @@ impl Report for ParseDiagnostic {
                         "note: empty statements do not have syntactic meaning.".to_owned()
                     ]),
             Self::EOFInsteadOfCloseBraceForItemError { item_kind, item_name_span, at } =>
-                Diagnostic::error().with_message("unexpected end of file".to_owned())
+                Diagnostic::error()
+                    .with_message("unexpected end of file".to_owned())
                     .with_labels(vec![
                         item_name_span.to_primary_label()
                             .with_message(format!("happened when parsing this {}", item_kind.to_string())),
                         at.to_secondary_label()
                             .with_message("consider adding `}`".to_owned())
+                    ]),
+            Self::MoreThanTwoRestPatternsInStructPatternMembersError { struct_name_span, previous_rest_pattern_span, current_rest_pattern_span } =>
+                Diagnostic::error()
+                    .with_message("multiple appearances of `..` in struct pattern found".to_owned())
+                    .with_labels(vec![
+                        struct_name_span.to_primary_label()
+                            .with_message("happened when processing this struct pattern"),
+                        previous_rest_pattern_span.to_secondary_label()
+                            .with_message("first appearance of `..`"),
+                        current_rest_pattern_span.to_secondary_label()
+                            .with_message("second appearance of `..`")
                     ])
         }
     }

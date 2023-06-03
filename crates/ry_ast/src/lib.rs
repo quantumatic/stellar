@@ -74,7 +74,7 @@ pub enum Pattern {
     },
     Struct {
         r#struct: Path,
-        fields: Vec<(Identifier, Option<Spanned<Pattern>>)>,
+        fields: Vec<StructFieldPattern>,
     },
     EnumItemTuple {
         r#enum: Path,
@@ -97,6 +97,12 @@ pub enum Pattern {
         right: Box<Spanned<Pattern>>,
     },
     Rest, // ..
+}
+
+#[derive(Debug, PartialEq)]
+pub enum StructFieldPattern {
+    NotRest(Identifier, Option<Spanned<Pattern>>),
+    Rest(Span),
 }
 
 #[derive(Debug, PartialEq)]
