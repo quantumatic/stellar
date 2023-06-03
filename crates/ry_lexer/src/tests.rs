@@ -41,4 +41,6 @@ mod tests {
         "`test\n",
         Error(LexError::UnterminatedWrappedIdentifier)
     );
+    lexer_test!(small_u, "'\\u{1E41}'", CharLiteral);
+    lexer_test!(big_u, "\"\\U{0010FFFF}\"", StringLiteral);
 }

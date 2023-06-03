@@ -177,6 +177,7 @@ impl<'a> Cursor<'a> {
                 self.current.span().end() + 1,
                 self.file_id,
             )));
+        self.check_next_token();
     }
 
     /// Checks if the next token is [`expected`].

@@ -132,6 +132,7 @@ impl<'a> Lexer<'a> {
     }
 
     fn eat_escape(&mut self) -> Result<char, Spanned<LexError>> {
+        self.advance();
         let r =
             match self.current {
                 'b' => Ok('\u{0008}'),
@@ -160,6 +161,42 @@ impl<'a> Lexer<'a> {
                     let mut buffer = String::from("");
 
                     for _ in 0..4 {
+                        if !self.current.is_ascii_hexdigit() {
+                            return Err(LexError::ExpectedDigitInUnicodeEscapeSequence
+                                .at(Span::new(self.location, self.location + 1, self.file_id)));
+                        }
+
+                        buffer.push(self.current);
+                        self.advance();
+                    }
+
+                    if self.current != '}' {
+                        return Err(LexError::ExpectedCloseBracketInUnicodeEscapeSequence
+                            .at(Span::new(self.location, self.location + 1, self.file_id)));
+                    }
+
+                    match char::from_u32(u32::from_str_radix(&buffer, 16).unwrap()) {
+                        Some(c) => Ok(c),
+                        None => Err(LexError::InvalidUnicodeEscapeSequence.at(Span::new(
+                            self.location,
+                            self.location + 1,
+                            self.file_id,
+                        ))),
+                    }
+                }
+                'U' => {
+                    self.advance();
+
+                    if self.current != '{' {
+                        return Err(LexError::ExpectedOpenBracketInUnicodeEscapeSequence
+                            .at(Span::new(self.location, self.location + 1, self.file_id)));
+                    }
+
+                    self.advance();
+
+                    let mut buffer = String::from("");
+
+                    for _ in 0..8 {
                         if !self.current.is_ascii_hexdigit() {
                             return Err(LexError::ExpectedDigitInUnicodeEscapeSequence
                                 .at(Span::new(self.location, self.location + 1, self.file_id)));
@@ -242,14 +279,6 @@ impl<'a> Lexer<'a> {
         let mut size = 0;
 
         while self.current != '\'' {
-            if self.current == '\\' {
-                let e = self.eat_escape();
-
-                if let Err(e) = e {
-                    return Some(RawToken::from(*e.unwrap()).at(e.span()));
-                }
-            }
-
             if self.current == '\n' || self.eof() {
                 return Some(Error(LexError::UnterminatedCharLiteral).at(Span::new(
                     start_location,
@@ -258,15 +287,23 @@ impl<'a> Lexer<'a> {
                 )));
             }
 
-            size += 1;
+            if self.current == '\\' {
+                let e = self.eat_escape();
 
-            self.advance();
+                if let Err(e) = e {
+                    return Some(RawToken::from(*e.unwrap()).at(e.span()));
+                }
+            } else {
+                self.advance();
+            }
+
+            size += 1;
         }
 
         self.advance();
 
         match size {
-            2..=i32::MAX => {
+            2..=usize::MAX => {
                 return Some(Error(LexError::MoreThanOneCharInCharLiteral).at(Span::new(
                     start_location,
                     self.location,
@@ -300,8 +337,6 @@ impl<'a> Lexer<'a> {
                 break;
             }
 
-            self.advance();
-
             if c == '\\' {
                 let e = self.eat_escape();
 
@@ -312,6 +347,7 @@ impl<'a> Lexer<'a> {
                 }
             } else {
                 buffer.push(c);
+                self.advance();
             }
         }
 
