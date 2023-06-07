@@ -1,20 +1,18 @@
-use ry_ast::{
-    precedence::Precedence,
-    span::{At, Span, Spanned},
-    token::RawToken,
-    Expression, MatchExpressionUnit, StructExpressionUnit, Token,
-};
-use ry_diagnostics::{expected, parser::ParseDiagnostic, Report};
-
 use crate::{
     items::FunctionParameterParser,
     literal::LiteralParser,
-    macros::{binop_pattern, parse_list, postfixop_pattern, prefixop_pattern},
+    macros::parse_list,
     pattern::PatternParser,
     r#type::{GenericArgumentsParser, TypeParser},
     statement::StatementsBlockParser,
     Cursor, Parse,
 };
+use ry_ast::{
+    precedence::Precedence, token::RawToken, Expression, MatchExpressionUnit, StructExpressionUnit,
+    Token,
+};
+use ry_diagnostics::{expected, parser::ParseDiagnostic, Report};
+use ry_span::{At, Span, Spanned};
 
 #[derive(Default)]
 pub(crate) struct ExpressionParser {
@@ -85,14 +83,20 @@ impl Parse for ExpressionParser {
 
         while self.precedence < cursor.next.unwrap().to_precedence() {
             left = match cursor.next.unwrap() {
-                binop_pattern!() => BinaryExpressionParser { left }.parse_with(cursor)?,
                 Token!['('] => CallExpressionParser { left }.parse_with(cursor)?,
                 Token![.] => PropertyAccessExpressionParser { left }.parse_with(cursor)?,
                 Token!['['] => GenericArgumentsExpressionParser { left }.parse_with(cursor)?,
-                postfixop_pattern!() => PostfixExpressionParser { left }.parse_with(cursor)?,
                 Token![as] => CastExpressionParser { left }.parse_with(cursor)?,
                 Token!['{'] => StructExpressionParser { left }.parse_with(cursor)?,
-                _ => break,
+                _ => {
+                    if cursor.next.unwrap().binary_operator() {
+                        BinaryExpressionParser { left }.parse_with(cursor)?
+                    } else if cursor.next.unwrap().postfix_operator() {
+                        PostfixExpressionParser { left }.parse_with(cursor)?
+                    } else {
+                        break;
+                    }
+                }
             };
         }
 
@@ -173,7 +177,7 @@ impl Parse for MatchExpressionUnitParser {
 
     fn parse_with(self, cursor: &mut Cursor<'_>) -> Self::Output {
         let left = PatternParser.parse_with(cursor)?;
-        cursor.consume(Token![then], "match expression unit")?;
+        cursor.consume(Token![=>], "match expression unit")?;
 
         let right = ExpressionParser::default().parse_with(cursor)?;
 
@@ -201,7 +205,6 @@ impl Parse for PrimaryExpressionParser {
                 cursor.next_token();
                 Some(Expression::Identifier(symbol).at(cursor.current.span()))
             }
-            prefixop_pattern!() => PrefixExpressionParser.parse_with(cursor),
             Token!['('] => ParenthesizedExpressionParser.parse_with(cursor),
             Token!['['] => ArrayLiteralExpressionParser.parse_with(cursor),
             Token!['{'] => StatementsBlockExpressionParser.parse_with(cursor),
@@ -212,6 +215,9 @@ impl Parse for PrimaryExpressionParser {
             Token![match] => MatchExpressionParser.parse_with(cursor),
             Token![while] => WhileExpressionParser.parse_with(cursor),
             _ => {
+                if cursor.next.unwrap().prefix_operator() {
+                    return PrefixExpressionParser.parse_with(cursor);
+                }
                 cursor.diagnostics.push(
                     ParseDiagnostic::UnexpectedTokenError {
                         got: cursor.next.clone(),
@@ -696,7 +702,7 @@ mod expression_tests {
     parse_test!(
         ExpressionParser::default(),
         r#match,
-        "match Some(3) with { Some(a) then println(a), .. then {} }"
+        "match Some(3) with { Some(a) => println(a), .. => {} }"
     );
     parse_test!(
         ExpressionParser::default(),

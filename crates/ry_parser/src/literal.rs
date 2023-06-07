@@ -1,10 +1,7 @@
 use crate::Parse;
-use ry_ast::{
-    span::{At, SpanIndex, Spanned},
-    token::RawToken,
-    Literal, Token,
-};
+use ry_ast::{token::RawToken, Literal, Token};
 use ry_diagnostics::{parser::ParseDiagnostic, Report};
+use ry_span::{At, SpanIndex, Spanned};
 
 pub(crate) struct LiteralParser;
 

@@ -99,49 +99,7 @@ macro_rules! parse_list {
     };
 }
 
-macro_rules! binop_pattern {
-    () => {
-        ry_ast::Token![+=]
-        | ry_ast::Token![+]
-        | ry_ast::Token![-=]
-        | ry_ast::Token![-]
-        | ry_ast::Token![**]
-        | ry_ast::Token![*=]
-        | ry_ast::Token![*]
-        | ry_ast::Token![/=]
-        | ry_ast::Token![/]
-        | ry_ast::Token![!=]
-        | ry_ast::Token![!]
-        | ry_ast::Token![>>]
-        | ry_ast::Token![>=]
-        | ry_ast::Token![>]
-        | ry_ast::Token![<<]
-        | ry_ast::Token![<=]
-        | ry_ast::Token![<]
-        | ry_ast::Token![==]
-        | ry_ast::Token![=]
-        | ry_ast::Token![|=]
-        | ry_ast::Token![||]
-        | ry_ast::Token![|]
-        | ry_ast::Token![&&]
-        | ry_ast::Token![~=]
-        | ry_ast::Token![%]
-    };
-}
-
-macro_rules! postfixop_pattern {
-    () => {
-        ry_ast::Token![?] | ry_ast::Token![++] | ry_ast::Token![--]
-    };
-}
-
-macro_rules! prefixop_pattern {
-    () => {
-        ry_ast::Token![!] | ry_ast::Token![~] | ry_ast::Token![++] | ry_ast::Token![--] | ry_ast::Token![-] | ry_ast::Token![+]
-    };
-}
-
-pub(crate) use {binop_pattern, parse_list, postfixop_pattern, prefixop_pattern};
+pub(crate) use parse_list;
 
 #[cfg(test)]
 pub(crate) use parse_test;

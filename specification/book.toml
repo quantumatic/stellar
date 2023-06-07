@@ -1,6 +1,0 @@
-[book]
-authors = ["Adi Salimgereev"]
-language = "en"
-multilingual = false
-src = "src"
-title = "Ry programming language specification"

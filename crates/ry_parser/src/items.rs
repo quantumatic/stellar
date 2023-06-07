@@ -7,11 +7,12 @@ use crate::{
     Cursor, OptionalParser, Parse,
 };
 use ry_ast::{
-    span::Span, token::RawToken, Docstring, Documented, EnumItem, Function, FunctionParameter,
-    Identifier, Item, ItemKind, Items, StructField, Token, TraitItem, TupleField, TypeAlias,
-    Visibility, WithDocComment,
+    token::RawToken, Docstring, Documented, EnumItem, Function, FunctionParameter, Identifier,
+    Item, ItemKind, Items, StructField, Token, TraitItem, TupleField, TypeAlias, Visibility,
+    WithDocComment,
 };
 use ry_diagnostics::{expected, parser::ParseDiagnostic, Report};
+use ry_span::Span;
 
 struct ImportParser {
     pub(crate) visibility: Visibility,

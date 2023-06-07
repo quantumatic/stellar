@@ -1,10 +1,7 @@
 use crate::{macros::parse_list, path::PathParser, Cursor, OptionalParser, Parse};
-use ry_ast::{
-    span::{At, Span, Spanned},
-    token::RawToken,
-    GenericParameter, Token, Type, WhereClause, WhereClauseItem,
-};
+use ry_ast::{token::RawToken, GenericParameter, Token, Type, WhereClause, WhereClauseItem};
 use ry_diagnostics::{expected, parser::ParseDiagnostic, Report};
+use ry_span::{At, Span, Spanned};
 
 pub(crate) struct TypeParser;
 

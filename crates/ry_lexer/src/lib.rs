@@ -37,11 +37,11 @@
 //! assert_eq!(lexer.next().unwrap().unwrap(), &Error(LexError::UnexpectedChar));
 //! ```
 use ry_ast::{
-    span::*,
     token::{RawToken::*, *},
     Token,
 };
 use ry_interner::Interner;
+use ry_span::{At, Span, Spanned};
 use std::{char::from_u32, str::Chars, string::String};
 
 mod number;
@@ -546,6 +546,7 @@ impl<'c> Iterator for Lexer<'c> {
             ('<', '=') => self.advance_twice_with(Token![<=]),
             ('<', _) => self.advance_with(Token![<]),
             ('=', '=') => self.advance_twice_with(Token![==]),
+            ('=', '>') => self.advance_twice_with(Token![=>]),
             ('=', _) => self.advance_with(Token![=]),
             ('|', '=') => self.advance_twice_with(Token![|=]),
             ('|', '|') => self.advance_twice_with(Token![||]),
@@ -555,7 +556,6 @@ impl<'c> Iterator for Lexer<'c> {
             ('&', _) => self.advance_with(Token![&]),
             ('^', '=') => self.advance_twice_with(Token![^=]),
             ('^', _) => self.advance_with(Token![^]),
-            ('~', '=') => self.advance_twice_with(Token![~=]),
             ('~', _) => self.advance_with(Token![~]),
             ('(', _) => self.advance_with(Token!['(']),
             (')', _) => self.advance_with(Token![')']),
@@ -565,6 +565,7 @@ impl<'c> Iterator for Lexer<'c> {
             ('}', _) => self.advance_with(Token!['}']),
             (',', _) => self.advance_with(Token![,]),
             (';', _) => self.advance_with(Token![;]),
+            ('%', '=') => self.advance_with(Token![%=]),
             ('%', _) => self.advance_with(Token![%]),
 
             ('.', '.') => self.advance_twice_with(Token![..]),

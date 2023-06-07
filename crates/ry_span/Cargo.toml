@@ -1,12 +1,9 @@
 [package]
-name = "ry_ast"
+name = "ry_span"
 version = "0.1.0"
 edition = "2021"
 license = "Apache-2.0"
 authors = ["Adi Salimgereyev <adisalimgereev@gmail.com>"]
 
 [dependencies]
-phf = { version = "0.11.1", features = ["macros"] }
-ry_interner = { path = "../ry_interner" }
-ry_span = { path = "../ry_span" }
 codespan-reporting = "0.11.1"

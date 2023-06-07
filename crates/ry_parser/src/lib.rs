@@ -62,13 +62,13 @@ mod r#type;
 use codespan_reporting::diagnostic::Diagnostic;
 use items::ItemsParser;
 use ry_ast::{
-    span::{At, Span, SpanIndex},
     token::{RawToken, Token},
     Docstring, Identifier, ProgramUnit,
 };
 use ry_diagnostics::{expected, parser::ParseDiagnostic, Report};
 use ry_interner::Interner;
 use ry_lexer::Lexer;
+use ry_span::{At, Span, SpanIndex};
 
 #[macro_use]
 mod macros;
