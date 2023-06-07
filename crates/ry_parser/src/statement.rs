@@ -1,6 +1,7 @@
 use crate::{expression::ExpressionParser, Cursor, Parse};
-use ry_ast::{span::Span, token::RawToken, Statement, StatementsBlock, Token};
+use ry_ast::{token::RawToken, Statement, StatementsBlock, Token};
 use ry_diagnostics::{parser::ParseDiagnostic, Report};
+use ry_span::Span;
 
 struct StatementParser;
 

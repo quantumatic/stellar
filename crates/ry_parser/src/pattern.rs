@@ -1,10 +1,7 @@
 use crate::{literal::LiteralParser, macros::parse_list, path::PathParser, Cursor, Parse};
-use ry_ast::{
-    span::{At, Span, Spanned},
-    token::RawToken,
-    Path, Pattern, StructFieldPattern, Token,
-};
+use ry_ast::{token::RawToken, Path, Pattern, StructFieldPattern, Token};
 use ry_diagnostics::{expected, parser::ParseDiagnostic, Report};
+use ry_span::{At, Span, Spanned};
 
 pub(crate) struct PatternParser;
 

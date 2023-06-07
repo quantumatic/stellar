@@ -1,5 +1,5 @@
-//! `location.rs` - Defines the Span struct for storing source
-//! Locations throughout the compiler. Most notably, these locations
+//! Defines the Span struct for storing source
+//! locations throughout the compiler. Most notably, these locations
 //! are passed around throughout the parser and are stored in each
 //! AST node.
 use codespan_reporting::diagnostic::Label;

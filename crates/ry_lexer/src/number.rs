@@ -1,5 +1,6 @@
 use crate::{is_id_start, IterElem, Lexer};
-use ry_ast::{span::*, token::RawToken::*, token::*};
+use ry_ast::{token::RawToken::*, token::*};
+use ry_span::{At, Span};
 use std::string::String;
 
 /// True if `c` is a valid decimal digit.

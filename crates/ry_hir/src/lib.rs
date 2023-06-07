@@ -44,12 +44,8 @@
 )]
 #![allow(clippy::match_single_binding, clippy::inconsistent_struct_constructor)]
 
-pub mod precedence;
-pub mod token;
-
-use ry_interner::Symbol;
-use ry_span::{Span, Spanned};
-use token::Token;
+use ry_interner::{Span, Symbol};
+use ry_span::Spanned;
 
 #[derive(Debug, PartialEq)]
 pub enum Literal {
@@ -155,7 +151,7 @@ pub enum Expression {
     },
     Binary {
         left: Box<Spanned<Expression>>,
-        operator: Token,
+        operator: BinaryOperator,
         right: Box<Spanned<Expression>>,
     },
     StatementsBlock(StatementsBlock),
@@ -174,7 +170,7 @@ pub enum Expression {
     },
     Unary {
         inner: Box<Spanned<Expression>>,
-        operator: Token,
+        operator: UnaryOperator,
         postfix: bool,
     },
     While {
@@ -210,6 +206,38 @@ pub enum Expression {
         block: StatementsBlock,
     },
 }
+
+#[derive(Debug, PartialEq, Copy, Clone, Eq, Hash)]
+pub enum BinaryOperator {
+    PlusEq,
+    Plus,
+    MinusEq,
+    Minus,
+    StarStar,
+    StarEq,
+    Star,
+    SlashEq,
+    Slash,
+    NotEq,
+    Bang,
+    RightShift,
+    LeftShift,
+    LessEq,
+    Less,
+    GreaterEq,
+    Greater,
+    EqEq,
+    Eq,
+    Or,
+    And,
+    OrOr,
+    AndAnd,
+    OrEq,
+    AndEq,
+}
+
+#[derive(Debug, PartialEq, Copy, Clone, Eq, Hash)]
+pub enum UnaryOperator {}
 
 #[derive(Debug, PartialEq)]
 pub struct MatchExpressionUnit {

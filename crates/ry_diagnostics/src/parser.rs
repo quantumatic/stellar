@@ -2,10 +2,10 @@
 use crate::Report;
 use codespan_reporting::diagnostic::Diagnostic;
 use ry_ast::{
-    span::{Span, Spanned},
     token::{LexError, Token},
     ItemKind,
 };
+use ry_span::{Span, Spanned};
 use std::fmt::Display;
 
 /// Represents list of expected tokens.

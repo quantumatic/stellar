@@ -1,8 +1,9 @@
 //! `token.rs` - defines the token which represents grammatical unit of Ry
 //! source text.
-use crate::{precedence::Precedence, span::Spanned};
+use crate::precedence::Precedence;
 use phf::phf_map;
 use ry_interner::Symbol;
+use ry_span::Spanned;
 use std::fmt::Display;
 
 /// Represents error that lexer can fail with.
@@ -161,9 +162,11 @@ impl Display for Keyword {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Copy)]
+#[derive(Debug, Clone, PartialEq, Copy, Eq, Hash)]
 pub enum Punctuator {
+    Arrow,
     And,
+    AndEq,
     AndAnd,
     Assign,
     Asterisk,
@@ -196,6 +199,7 @@ pub enum Punctuator {
     OrEq,
     OrOr,
     Percent,
+    PercentEq,
     Plus,
     PlusEq,
     PlusPlus,
@@ -224,11 +228,13 @@ impl AsRef<str> for Punctuator {
             Self::LessThanOrEq => "`<=`",
             Self::Assign => "`=`",
             Self::Eq => "`==`",
+            Self::Arrow => "`=>`",
             Self::NotEq => "`!=`",
             Self::RightShift => "`>>`",
             Self::LeftShift => "`<<`",
             Self::Or => "`|`",
             Self::And => "`&`",
+            Self::AndEq => "`&=`",
             Self::Xor => "`^`",
             Self::Not => "`~`",
             Self::OrOr => "`||`",
@@ -254,6 +260,7 @@ impl AsRef<str> for Punctuator {
             Self::MinusMinus => "`--`",
             Self::AsteriskAsterisk => "`**`",
             Self::Percent => "`%`",
+            Self::PercentEq => "`%=`",
             Self::AtSign => "`@`",
             Self::HashTag => "`#`",
         }
@@ -372,10 +379,10 @@ macro_rules! Token {
     [|] =>                  {$crate::token::RawToken::Punctuator($crate::token::Punctuator::Or)};
     [?] =>                  {$crate::token::RawToken::Punctuator($crate::token::Punctuator::QuestionMark)};
     [&&] =>                 {$crate::token::RawToken::Punctuator($crate::token::Punctuator::AndAnd)};
+    [&=] =>                 {$crate::token::RawToken::Punctuator($crate::token::Punctuator::AndEq)};
     [&] =>                  {$crate::token::RawToken::Punctuator($crate::token::Punctuator::And)};
     [^=] =>                 {$crate::token::RawToken::Punctuator($crate::token::Punctuator::XorEq)};
     [^] =>                  {$crate::token::RawToken::Punctuator($crate::token::Punctuator::Xor)};
-    [~=] =>                 {$crate::token::RawToken::Punctuator($crate::token::Punctuator::NotEq)};
     [~] =>                  {$crate::token::RawToken::Punctuator($crate::token::Punctuator::Not)};
     ['('] =>                {$crate::token::RawToken::Punctuator($crate::token::Punctuator::OpenParent)};
     [')'] =>                {$crate::token::RawToken::Punctuator($crate::token::Punctuator::CloseParent)};
@@ -388,7 +395,9 @@ macro_rules! Token {
     [..] =>                 {$crate::token::RawToken::Punctuator($crate::token::Punctuator::DotDot)};
     [;] =>                  {$crate::token::RawToken::Punctuator($crate::token::Punctuator::Semicolon)};
     [%] =>                  {$crate::token::RawToken::Punctuator($crate::token::Punctuator::Percent)};
+    [%=] =>                 {$crate::token::RawToken::Punctuator($crate::token::Punctuator::PercentEq)};
     [#] =>                  {$crate::token::RawToken::Punctuator($crate::token::Punctuator::HashTag)};
+    [=>] =>                 {$crate::token::RawToken::Punctuator($crate::token::Punctuator::Arrow)};
     [true] =>               {$crate::token::RawToken::TrueBoolLiteral};
     [false] =>              {$crate::token::RawToken::FalseBoolLiteral};
     [import] =>             {$crate::token::RawToken::Keyword($crate::token::Keyword::Import)};
@@ -484,6 +493,53 @@ impl RawToken {
             Self::Keyword(Keyword::As) => Precedence::As,
             _ => Precedence::Lowest,
         }
+    }
+
+    #[inline]
+    pub const fn binary_operator(&self) -> bool {
+        matches!(
+            self,
+            Token![+=]
+                | Token![+]
+                | Token![-=]
+                | Token![-]
+                | Token![**]
+                | Token![*=]
+                | Token![*]
+                | Token![/=]
+                | Token![/]
+                | Token![!=]
+                | Token![!]
+                | Token![>>]
+                | Token![>=]
+                | Token![>]
+                | Token![<<]
+                | Token![<=]
+                | Token![<]
+                | Token![==]
+                | Token![=]
+                | Token![|=]
+                | Token![||]
+                | Token![|]
+                | Token![&]
+                | Token![&&]
+                | Token![&=]
+                | Token![%]
+                | Token![%=]
+        )
+    }
+
+    #[inline]
+    pub const fn prefix_operator(&self) -> bool {
+        matches!(
+            self,
+            Token![!] | Token![~] | Token![++] | Token![--] | Token![-] | Token![+]
+        )
+    }
+
+    #[inline]
+    pub const fn postfix_operator(&self) -> bool {
+        matches!(self, Token![?] | Token![++] | Token![--])
     }
 }
 

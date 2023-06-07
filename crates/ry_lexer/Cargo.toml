@@ -6,6 +6,7 @@ license = "Apache-2.0"
 authors = ["Adi Salimgereyev <adisalimgereev@gmail.com>"]
 
 [dependencies]
-ry_ast = {path = "../ry_ast"}
+ry_ast = { path = "../ry_ast" }
 unicode-xid = "0.2.4"
-ry_interner = {path = "../ry_interner"}
+ry_interner = { path = "../ry_interner" }
+ry_span = { path = "../ry_span" }
