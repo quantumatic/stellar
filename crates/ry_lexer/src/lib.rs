@@ -20,9 +20,9 @@
 //! assert_eq!(lexer.next(), None); // ok
 //! ```
 //!
-//! Note: the Ry lexer makes use of the `ry_interner` crate to perform string interning,
-//! a process of deduplicating strings, which can be highly beneficial when dealing with
-//! identifiers.
+//! > Note: the Ry lexer makes use of the `ry_interner` crate to perform string interning,
+//! > a process of deduplicating strings, which can be highly beneficial when dealing with
+//! > identifiers.
 //!
 //! If error appeared in the process, [`Error`] will be returned:
 //!
@@ -40,25 +40,33 @@ use ry_ast::{
     token::{RawToken::*, *},
     Token,
 };
-use ry_interner::Interner;
+use ry_interner::{Interner, Symbol};
 use ry_span::{At, Span, Spanned};
-use std::{char::from_u32, str::Chars, string::String};
+use std::{str::Chars, string::String};
 
 mod number;
 mod tests;
 
+/// Represents a lexer state machine.
 #[derive(Debug)]
 pub struct Lexer<'a> {
+    /// Id of the file being scanned.
     file_id: usize,
+    /// Contents of the file being scanned.
     contents: &'a str,
+    /// Current character.
     current: char,
+    /// Next character.
     next: char,
+    /// Iterator through source text characters.
     chars: Chars<'a>,
+    /// Location of the current character being processed.
     location: usize,
+    /// Identifier interner.
     interner: &'a mut Interner,
+    /// Symbol corresponding to an identifier being processed early on.
+    identifier: Symbol,
 }
-
-type IterElem = Option<Token>;
 
 impl<'a> Lexer<'a> {
     pub fn new(file_id: usize, contents: &'a str, interner: &'a mut Interner) -> Self {
@@ -75,19 +83,28 @@ impl<'a> Lexer<'a> {
             chars,
             interner,
             location: 0,
+            identifier: 0,
         }
     }
 
+    /// Returns a symbol corresponding to an identifier being processed early on.
+    pub fn identifier(&self) -> Symbol {
+        self.identifier
+    }
+
+    /// Returns `true` if current character is EOF (`\0`).
     fn eof(&self) -> bool {
         self.current == '\0'
     }
 
+    /// Skips whitespace characters. See [`Lexer::is_whitespace()`] for more details.
     fn eat_whitespaces(&mut self) {
         while is_whitespace(self.current) {
             self.advance();
         }
     }
 
+    /// Advances the lexer state to the next character.
     fn advance(&mut self) {
         let previous = self.current;
 
@@ -97,29 +114,39 @@ impl<'a> Lexer<'a> {
         self.location += previous.len_utf8();
     }
 
+    /// Advances the lexer state to the next 2 characters
+    /// (calls [`Lexer::advance()`] twice).
     fn advance_twice(&mut self) {
         self.advance();
         self.advance();
     }
 
-    fn advance_with(&mut self, raw: RawToken) -> IterElem {
-        let r = Some(Token::new(
+    /// Advances the lexer state to the next character, and returns the token
+    /// with location being the current character location in the source text.
+    fn advance_with(&mut self, raw: RawToken) -> Token {
+        let r = Token::new(
             raw,
             Span::new(self.location, self.location + 1, self.file_id),
-        ));
+        );
         self.advance();
         r
     }
 
-    fn advance_twice_with(&mut self, raw: RawToken) -> IterElem {
-        let r = Some(Token::new(
+    /// Advances the lexer state to the next 2 characters, and returns the token
+    /// with location being `self.location..self.location + 2`.
+    fn advance_twice_with(&mut self, raw: RawToken) -> Token {
+        let r = Token::new(
             raw,
             Span::new(self.location, self.location + 2, self.file_id),
-        ));
+        );
         self.advance_twice();
         r
     }
 
+    /// Advances the lexer state to the next character while `f` returns `true`,
+    /// where its arguments are the current and next characters.
+    /// Returns the string slice of source text between `start_location`
+    /// and `self.location` when `f` returns `false` OR `self.eof() == true`.
     fn advance_while<F>(&mut self, start_location: usize, mut f: F) -> &'a str
     where
         F: FnMut(char, char) -> bool,
@@ -131,8 +158,9 @@ impl<'a> Lexer<'a> {
         &self.contents[start_location..self.location]
     }
 
+    /// Parses an escape sequence.
     fn eat_escape(&mut self) -> Result<char, Spanned<LexError>> {
-        self.advance();
+        self.advance(); // `\`
         let r =
             match self.current {
                 'b' => Ok('\u{0008}'),
@@ -271,7 +299,8 @@ impl<'a> Lexer<'a> {
         r
     }
 
-    fn eat_char(&mut self) -> IterElem {
+    /// Parses a char literal.
+    fn eat_char(&mut self) -> Token {
         let start_location = self.location;
 
         self.advance();
@@ -280,18 +309,18 @@ impl<'a> Lexer<'a> {
 
         while self.current != '\'' {
             if self.current == '\n' || self.eof() {
-                return Some(Error(LexError::UnterminatedCharLiteral).at(Span::new(
+                return Error(LexError::UnterminatedCharLiteral).at(Span::new(
                     start_location,
                     self.location,
                     self.file_id,
-                )));
+                ));
             }
 
             if self.current == '\\' {
                 let e = self.eat_escape();
 
                 if let Err(e) = e {
-                    return Some(RawToken::from(*e.unwrap()).at(e.span()));
+                    return RawToken::from(*e.unwrap()).at(e.span());
                 }
             } else {
                 self.advance();
@@ -304,26 +333,27 @@ impl<'a> Lexer<'a> {
 
         match size {
             2..=usize::MAX => {
-                return Some(Error(LexError::MoreThanOneCharInCharLiteral).at(Span::new(
+                return Error(LexError::MoreThanOneCharInCharLiteral).at(Span::new(
                     start_location,
                     self.location,
                     self.file_id,
-                )));
+                ));
             }
             0 => {
-                return Some(Error(LexError::EmptyCharLiteral).at(Span::new(
+                return Error(LexError::EmptyCharLiteral).at(Span::new(
                     start_location,
                     self.location,
                     self.file_id,
-                )));
+                ));
             }
             _ => {}
         }
 
-        Some(CharLiteral.at(Span::new(start_location, self.location, self.file_id)))
+        CharLiteral.at(Span::new(start_location, self.location, self.file_id))
     }
 
-    fn eat_string(&mut self) -> IterElem {
+    /// Parses a string literal.
+    fn eat_string(&mut self) -> Token {
         let start_location = self.location;
 
         self.advance();
@@ -341,7 +371,7 @@ impl<'a> Lexer<'a> {
                 let e = self.eat_escape();
 
                 if let Err(e) = e {
-                    return Some(RawToken::from(*e.unwrap()).at(e.span()));
+                    return RawToken::from(*e.unwrap()).at(e.span());
                 } else if let Ok(c) = e {
                     buffer.push(c);
                 }
@@ -352,19 +382,20 @@ impl<'a> Lexer<'a> {
         }
 
         if self.eof() || self.current == '\n' {
-            return Some(Error(LexError::UnterminatedStringLiteral).at(Span::new(
+            return Error(LexError::UnterminatedStringLiteral).at(Span::new(
                 start_location,
                 self.location,
                 self.file_id,
-            )));
+            ));
         }
 
         self.advance();
 
-        Some(StringLiteral.at(Span::new(start_location, self.location, self.file_id)))
+        StringLiteral.at(Span::new(start_location, self.location, self.file_id))
     }
 
-    fn eat_wrapped_id(&mut self) -> IterElem {
+    /// Parses a wrapped identifier.
+    fn eat_wrapped_id(&mut self) -> Token {
         let start_location = self.location;
 
         self.advance();
@@ -374,137 +405,89 @@ impl<'a> Lexer<'a> {
         })[1..];
 
         if self.current != '`' {
-            return Some(Error(LexError::UnterminatedWrappedIdentifier).at(Span::new(
+            return Error(LexError::UnterminatedWrappedIdentifier).at(Span::new(
                 start_location,
                 self.location,
                 self.file_id,
-            )));
+            ));
         }
 
         if name.is_empty() {
-            return Some(Error(LexError::EmptyWrappedIdentifier).at(Span::new(
+            return Error(LexError::EmptyWrappedIdentifier).at(Span::new(
                 start_location,
                 self.location,
                 self.file_id,
-            )));
+            ));
         }
 
         self.advance();
 
-        Some(Identifier(self.interner.get_or_intern(name)).at(Span::new(
-            start_location,
-            self.location,
-            self.file_id,
-        )))
+        self.identifier = self.interner.get_or_intern(name);
+        Identifier.at(Span::new(start_location, self.location, self.file_id))
     }
 
-    fn eat_comment(&mut self) -> IterElem {
+    /// Parses a usual comment (prefix is `//`).
+    fn eat_comment(&mut self) -> Token {
         // first `/` character is already advanced
         let start_location = self.location - 1;
         self.advance();
 
         self.advance_while(start_location + 2, |current, _| (current != '\n'));
 
-        Some(Comment.at(Span::new(start_location, self.location, self.file_id)))
+        Comment.at(Span::new(start_location, self.location, self.file_id))
     }
 
-    /// In this case [`bool`] is true when doc comment is describing
-    /// the whole module (3-rd character is `!`) and not when
-    /// doc comment is corresponding to trait method, enum variant, etc.
+    /// Parses a doc comment.
+    ///
+    /// When [`global`] is true,  doc comment is describing
+    /// the whole module (3-rd character is `!`) and
+    /// when not doc comment is corresponding to trait method, enum variant, etc.
     /// (everything else and the character is `/`).
-    fn eat_doc_comment(&mut self, global: bool) -> IterElem {
-        // first `/` character is already advanced
+    fn eat_doc_comment(&mut self, global: bool) -> Token {
+        // first `/` character is already consumed
         let start_location = self.location - 1;
         self.advance_twice(); // `/` and (`!` or `/`)
 
         self.advance_while(start_location + 3, |current, _| (current != '\n'));
 
-        Some(
-            if global {
-                GlobalDocComment
-            } else {
-                LocalDocComment
-            }
-            .at(Span::new(start_location, self.location, self.file_id)),
-        )
+        if global {
+            GlobalDocComment
+        } else {
+            LocalDocComment
+        }
+        .at(Span::new(start_location, self.location, self.file_id))
     }
 
-    fn eat_name(&mut self) -> IterElem {
+    /// Parses weather an identifier or a keyword.
+    fn eat_name(&mut self) -> Token {
         let start_location = self.location;
         let name = self.advance_while(start_location, |current, _| is_id_continue(current));
 
         match RESERVED.get(name) {
             Some(reserved) => {
-                Some((*reserved).at(Span::new(start_location, self.location, self.file_id)))
+                (*reserved).at(Span::new(start_location, self.location, self.file_id))
             }
-            None => Some(Identifier(self.interner.get_or_intern(name)).at(Span::new(
-                start_location,
-                self.location,
-                self.file_id,
-            ))),
-        }
-    }
-
-    fn eat_digits(
-        &mut self,
-        base: i8,
-        invalid_digit_location: &mut Option<usize>,
-        digit_separator: &mut i32,
-    ) {
-        if base <= 10 {
-            let max = from_u32('0' as u32 + base as u32).unwrap();
-
-            while number::decimal(self.current) || self.current == '_' {
-                let mut ds = 1;
-
-                if self.current == '_' {
-                    ds = 2;
-                } else if self.current >= max && invalid_digit_location.is_none() {
-                    *invalid_digit_location = Some(self.location);
-                }
-
-                *digit_separator |= ds;
-                self.advance();
-            }
-        } else {
-            while number::hexadecimal(self.current) || self.current == '_' {
-                let mut ds = 1;
-
-                if self.current == '_' {
-                    ds = 2;
-                }
-
-                *digit_separator |= ds;
-                self.advance();
+            None => {
+                self.identifier = self.interner.get_or_intern(name);
+                Identifier.at(Span::new(start_location, self.location, self.file_id))
             }
         }
     }
 
-    pub fn next_no_comments(&mut self) -> IterElem {
+    pub fn next_no_comments(&mut self) -> Token {
         loop {
             let t = self.next();
-            match t {
-                Some(ref c) => {
-                    if *c.unwrap() != Comment {
-                        return t;
-                    }
-                }
-                None => {
-                    return t;
-                }
+            if t.unwrap() != &Comment {
+                return t;
             }
         }
     }
-}
 
-impl<'c> Iterator for Lexer<'c> {
-    type Item = Token;
-
-    fn next(&mut self) -> Option<Self::Item> {
+    pub fn next(&mut self) -> Token {
         self.eat_whitespaces();
 
         match (self.current, self.next) {
-            ('\0', _) => None,
+            ('\0', _) => EndOfFile.at(Span::new(self.location, self.location + 1, self.file_id)),
 
             (':', _) => self.advance_with(Token![:]),
             ('@', _) => self.advance_with(Token![@]),

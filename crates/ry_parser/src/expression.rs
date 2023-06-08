@@ -201,7 +201,8 @@ impl Parse for PrimaryExpressionParser {
 
                 Some(Expression::Literal(literal.take()).at(span))
             }
-            RawToken::Identifier(symbol) => {
+            RawToken::Identifier => {
+                let symbol = cursor.lexer.identifier();
                 cursor.next_token();
                 Some(Expression::Identifier(symbol).at(cursor.current.span()))
             }

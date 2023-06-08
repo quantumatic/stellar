@@ -8,13 +8,13 @@ mod tests {
             fn $name() {
                 let mut interner = ry_interner::Interner::default();
                 let mut lexer = crate::Lexer::new(0, $contents.into(), &mut interner);
-                assert!(matches!(lexer.next().unwrap().unwrap(), &$expected));
+                assert!(matches!(lexer.next().unwrap(), &$expected));
             }
         };
     }
 
-    lexer_test!(identifier, "test", Identifier(..));
-    lexer_test!(identifier2, "тест", Identifier(..));
+    lexer_test!(identifier, "test", Identifier);
+    lexer_test!(identifier2, "тест", Identifier);
     lexer_test!(comment, "//test comment", Comment);
     lexer_test!(global_doc_comment, "///test comment", LocalDocComment);
     lexer_test!(local_doc_comment, "//!test comment", GlobalDocComment);
@@ -30,7 +30,7 @@ mod tests {
         "\"test\n",
         Error(LexError::UnterminatedStringLiteral)
     );
-    lexer_test!(wrapped_id, "`test`", Identifier(..));
+    lexer_test!(wrapped_id, "`test`", Identifier);
     lexer_test!(
         wrapped_id2,
         "`test",

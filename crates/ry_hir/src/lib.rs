@@ -44,8 +44,8 @@
 )]
 #![allow(clippy::match_single_binding, clippy::inconsistent_struct_constructor)]
 
-use ry_interner::{Span, Symbol};
-use ry_span::Spanned;
+use ry_interner::Symbol;
+use ry_span::{Span, Spanned};
 
 #[derive(Debug, PartialEq)]
 pub enum Literal {
@@ -105,10 +105,7 @@ pub enum Type {
     Array {
         element_type: Box<Spanned<Type>>,
     },
-    Primary {
-        path: Path,
-        generic_arguments: Vec<Spanned<Type>>,
-    },
+    Primary(PrimaryType),
     Tuple {
         element_types: Vec<Spanned<Type>>,
     },
@@ -116,6 +113,12 @@ pub enum Type {
         parameter_types: Vec<Spanned<Type>>,
         return_type: Box<Spanned<Type>>,
     },
+}
+
+#[derive(Debug, PartialEq)]
+pub struct PrimaryType {
+    path: Path,
+    generic_arguments: Vec<Spanned<Type>>,
 }
 
 #[derive(Debug, PartialEq)]
@@ -151,7 +154,7 @@ pub enum Expression {
     },
     Binary {
         left: Box<Spanned<Expression>>,
-        operator: BinaryOperator,
+        operator: Spanned<BinaryOperator>,
         right: Box<Spanned<Expression>>,
     },
     StatementsBlock(StatementsBlock),
@@ -161,17 +164,17 @@ pub enum Expression {
         if_blocks: Vec<(Spanned<Expression>, StatementsBlock)>,
         r#else: Option<StatementsBlock>,
     },
-    Parenthesized {
-        inner: Box<Spanned<Expression>>,
-    },
     Property {
         left: Box<Spanned<Expression>>,
         right: Identifier,
     },
-    Unary {
+    Prefix {
         inner: Box<Spanned<Expression>>,
-        operator: UnaryOperator,
-        postfix: bool,
+        operator: Spanned<PrefixOperator>,
+    },
+    Postfix {
+        inner: Box<Spanned<Expression>>,
+        operator: Spanned<PostfixOperator>,
     },
     While {
         condition: Box<Spanned<Expression>>,
@@ -237,7 +240,21 @@ pub enum BinaryOperator {
 }
 
 #[derive(Debug, PartialEq, Copy, Clone, Eq, Hash)]
-pub enum UnaryOperator {}
+pub enum PrefixOperator {
+    Bang,
+    Not,
+    PlusPlus,
+    MinusMinus,
+    Plus,
+    Minus,
+}
+
+#[derive(Debug, PartialEq, Copy, Clone, Eq, Hash)]
+pub enum PostfixOperator {
+    QuestionMark,
+    PlusPlus,
+    MinusMinus,
+}
 
 #[derive(Debug, PartialEq)]
 pub struct MatchExpressionUnit {
@@ -318,6 +335,7 @@ pub enum Item {
     },
     Impl {
         visibility: Visibility,
+        polarity: ImplPolarity,
         generic_parameters: Vec<GenericParameter>,
         r#type: Spanned<Type>,
         r#trait: Option<Spanned<Type>>,
@@ -332,6 +350,19 @@ pub enum Item {
         fields: Vec<Documented<StructField>>,
     },
     TypeAlias(TypeAlias),
+}
+
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+pub enum ImplPolarity {
+    /// ```txt
+    /// impl <trait> for <type> { ... }
+    /// ```
+    Positive,
+
+    /// ```txt
+    /// impl Negative[<trait>] for <type> { ... }
+    /// ```
+    Negative,
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
@@ -434,8 +465,8 @@ impl Visibility {
         Self(None)
     }
 
-    pub fn public(span: Span) -> Self {
-        Self(Some(span))
+    pub fn public(at: Span) -> Self {
+        Self(Some(at))
     }
 
     pub fn span_of_pub(&self) -> Option<Span> {

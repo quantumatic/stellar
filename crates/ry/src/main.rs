@@ -47,7 +47,7 @@
 use crate::prefix::log_with_prefix;
 use clap::{arg, Parser, Subcommand};
 use new_project::create_new_project_folder;
-use prefix::create_unique_file;
+use prefix::{create_unique_file, log_with_left_padded_prefix};
 use ry_diagnostics::Reporter;
 use ry_interner::Interner;
 use ry_lexer::Lexer;
@@ -96,7 +96,9 @@ fn main() {
                 loop {
                     let token = lexer.next();
 
-                    if let Some(token) = token {
+                    if token.unwrap().eof() {
+                        break;
+                    } else {
                         if show_locations {
                             println!(
                                 "{:08}: [{}]@{}..{}",
@@ -110,8 +112,6 @@ fn main() {
                         }
 
                         current_token_index += 1;
-                    } else {
-                        break;
                     }
                 }
             }
@@ -133,7 +133,7 @@ fn main() {
 
                     let now = Instant::now();
 
-                    log_with_prefix("   Parsing ", filepath);
+                    log_with_left_padded_prefix("Parsing", filepath);
 
                     let ast = cursor.parse();
 
@@ -147,11 +147,11 @@ fn main() {
                     file.write_all(ast_string.as_bytes())
                         .unwrap_or_else(|_| panic!("Cannot write to file {}", filename));
 
-                    log_with_prefix(
-                        "    Parsed ",
+                    log_with_left_padded_prefix(
+                        "Parsed",
                         format!("in {}s", now.elapsed().as_secs_f64()),
                     );
-                    log_with_prefix("   Emitted ", format!("AST in `{}`", filename));
+                    log_with_left_padded_prefix("Emitted", format!("AST in `{}`", filename));
                 }
                 Err(_) => {
                     log_with_prefix("error", ": cannot read given file");

@@ -1,7 +1,7 @@
-use crate::{is_id_start, IterElem, Lexer};
+use crate::{is_id_start, Lexer};
 use ry_ast::{token::RawToken::*, token::*};
 use ry_span::{At, Span};
-use std::string::String;
+use std::{char::from_u32, string::String};
 
 /// True if `c` is a valid decimal digit.
 #[inline]
@@ -58,7 +58,7 @@ fn invalid_separator(buffer: String) -> i32 {
 }
 
 impl Lexer<'_> {
-    pub(crate) fn eat_number(&mut self) -> IterElem {
+    pub(crate) fn eat_number(&mut self) -> Token {
         let start_location = self.location;
 
         let mut number_kind = NumberKind::Invalid;
@@ -113,35 +113,33 @@ impl Lexer<'_> {
                 self.advance();
 
                 if prefix == 'o' || prefix == 'b' || prefix == 'x' {
-                    return Some(Error(LexError::InvalidRadixPoint).at(Span::new(
+                    return Error(LexError::InvalidRadixPoint).at(Span::new(
                         start_location,
                         self.location,
                         self.file_id,
-                    )));
+                    ));
                 }
 
                 self.eat_digits(base, &mut invalid_digit_location, &mut digit_separator);
             }
 
             if digit_separator & 1 == 0 {
-                return Some(Error(LexError::HasNoDigits).at(Span::new(
+                return Error(LexError::HasNoDigits).at(Span::new(
                     start_location,
                     self.location,
                     self.file_id,
-                )));
+                ));
             }
         }
 
         let l = self.current.to_ascii_lowercase();
         if l == 'e' {
             if prefix != '\0' && prefix != '0' {
-                return Some(
-                    Error(LexError::ExponentRequiresDecimalMantissa).at(Span::new(
-                        start_location,
-                        self.location,
-                        self.file_id,
-                    )),
-                );
+                return Error(LexError::ExponentRequiresDecimalMantissa).at(Span::new(
+                    start_location,
+                    self.location,
+                    self.file_id,
+                ));
             }
 
             self.advance();
@@ -157,11 +155,11 @@ impl Lexer<'_> {
             digit_separator |= ds;
 
             if ds & 1 == 0 {
-                return Some(Error(LexError::ExponentHasNoDigits).at(Span::new(
+                return Error(LexError::ExponentHasNoDigits).at(Span::new(
                     start_location,
                     self.location,
                     self.file_id,
-                )));
+                ));
             }
         }
 
@@ -169,35 +167,68 @@ impl Lexer<'_> {
 
         if let Some(location) = invalid_digit_location {
             if number_kind == NumberKind::Int {
-                return Some(Error(LexError::InvalidDigit).at(Span::new(
+                return Error(LexError::InvalidDigit).at(Span::new(
                     location,
                     location + 1,
                     self.file_id,
-                )));
+                ));
             }
         }
 
         let s = invalid_separator(buffer.to_owned());
 
         if digit_separator & 2 != 0 && s >= 0 {
-            return Some(
-                Error(LexError::UnderscoreMustSeparateSuccessiveDigits).at(Span::new(
-                    s as usize + start_location,
-                    s as usize + start_location + 1,
-                    self.file_id,
-                )),
-            );
+            return Error(LexError::UnderscoreMustSeparateSuccessiveDigits).at(Span::new(
+                s as usize + start_location,
+                s as usize + start_location + 1,
+                self.file_id,
+            ));
         }
 
         match number_kind {
             NumberKind::Int => {
-                Some(IntegerLiteral.at(Span::new(start_location, self.location, self.file_id)))
+                IntegerLiteral.at(Span::new(start_location, self.location, self.file_id))
             }
             NumberKind::Float => {
-                Some(FloatLiteral.at(Span::new(start_location, self.location, self.file_id)))
+                FloatLiteral.at(Span::new(start_location, self.location, self.file_id))
             }
             NumberKind::Invalid => {
                 unreachable!()
+            }
+        }
+    }
+
+    fn eat_digits(
+        &mut self,
+        base: i8,
+        invalid_digit_location: &mut Option<usize>,
+        digit_separator: &mut i32,
+    ) {
+        if base <= 10 {
+            let max = from_u32('0' as u32 + base as u32).unwrap();
+
+            while decimal(self.current) || self.current == '_' {
+                let mut ds = 1;
+
+                if self.current == '_' {
+                    ds = 2;
+                } else if self.current >= max && invalid_digit_location.is_none() {
+                    *invalid_digit_location = Some(self.location);
+                }
+
+                *digit_separator |= ds;
+                self.advance();
+            }
+        } else {
+            while hexadecimal(self.current) || self.current == '_' {
+                let mut ds = 1;
+
+                if self.current == '_' {
+                    ds = 2;
+                }
+
+                *digit_separator |= ds;
+                self.advance();
             }
         }
     }

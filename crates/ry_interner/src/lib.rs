@@ -30,9 +30,10 @@
 //! let symbol0 = interner.get_or_intern("A");
 //! let symbol1 = interner.get_or_intern("B");
 //!
-//! assert_eq!(interner.resolve(0), Some("A"));
-//! assert_eq!(interner.resolve(1), Some("B"));
-//! assert_eq!(interner.resolve(2), None);
+//! assert_eq!(interner.resolve(symbol0), Some("A"));
+//! assert_eq!(interner.resolve(symbol0 + 1), Some("B"));
+//! assert_eq!(interner.resolve(symbol1), Some("B"));
+//! assert_eq!(interner.resolve(symbol1 + 1), None);
 //! ```
 
 #![doc(
@@ -228,6 +229,56 @@ impl Backend {
     }
 }
 
+/// `_` symbol.
+pub const UNDERSCORE: Symbol = 0;
+
+/// `int8` symbol.
+pub const INT8: Symbol = 1;
+
+/// `int16` symbol.
+pub const INT16: Symbol = 2;
+
+/// `int32` symbol.
+pub const INT32: Symbol = 3;
+
+/// `int64` symbol.
+pub const INT64: Symbol = 4;
+
+/// `uint8` symbol.
+pub const UINT8: Symbol = 5;
+
+/// `uint16` symbol.
+pub const UINT16: Symbol = 6;
+
+/// `uint32` symbol.
+pub const UINT32: Symbol = 7;
+
+/// `uint64` symbol.
+pub const UINT64: Symbol = 8;
+
+/// `float32` symbol.
+pub const FLOAT32: Symbol = 9;
+
+/// `float64` symbol.
+pub const FLOAT64: Symbol = 10;
+
+/// `bool` symbol.
+pub const BOOL: Symbol = 11;
+
+/// `string` symbol.
+pub const STRING: Symbol = 12;
+
+/// `char` symbol.
+pub const CHAR: Symbol = 13;
+
+macro_rules! intern_primitive_symbols {
+    ($interner:ident, $($name:ident),*) => {
+        $(
+            $interner.get_or_intern_static(stringify!($name));
+        )*
+    }
+}
+
 impl<H> Interner<H>
 where
     H: BuildHasher + Default,
@@ -236,11 +287,20 @@ where
     #[must_use]
     #[inline]
     pub fn new() -> Self {
-        Self {
+        let mut interner = Self {
             dedup: HashMap::default(),
             hasher: Default::default(),
             backend: Backend::default(),
-        }
+        };
+
+        interner.get_or_intern_static("_");
+
+        intern_primitive_symbols!(
+            interner, int8, int16, int32, int64, uint8, uint16, uint32, uint64, float32, float64,
+            bool, string, char
+        );
+
+        interner
     }
 
     /// Creates a new empty `Interner` with the given hasher.

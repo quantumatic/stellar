@@ -68,7 +68,7 @@ use ry_ast::{
 use ry_diagnostics::{expected, parser::ParseDiagnostic, Report};
 use ry_interner::Interner;
 use ry_lexer::Lexer;
-use ry_span::{At, Span, SpanIndex};
+use ry_span::{At, SpanIndex};
 
 #[macro_use]
 mod macros;
@@ -127,9 +127,7 @@ impl<'a> Cursor<'a> {
     ) -> Self {
         let mut lexer = Lexer::new(file_id, contents, interner);
 
-        let current = lexer
-            .next_no_comments()
-            .unwrap_or(RawToken::EndOfFile.at(Span::new(0, 1, file_id)));
+        let current = lexer.next_no_comments();
         let next = current.clone();
 
         let mut lexer = Self {
@@ -169,14 +167,7 @@ impl<'a> Cursor<'a> {
     /// ```
     fn next_token(&mut self) {
         self.current = self.next.clone();
-        self.next = self
-            .lexer
-            .next_no_comments()
-            .unwrap_or(RawToken::EndOfFile.at(Span::new(
-                self.current.span().end(),
-                self.current.span().end() + 1,
-                self.file_id,
-            )));
+        self.next = self.lexer.next_no_comments();
         self.check_next_token();
     }
 
@@ -215,7 +206,7 @@ impl<'a> Cursor<'a> {
         N: Into<String>,
     {
         let spanned_symbol = match self.next.unwrap() {
-            RawToken::Identifier(symbol) => (*symbol).at(self.next.span()),
+            RawToken::Identifier => self.lexer.identifier().at(self.next.span()),
             _ => {
                 self.diagnostics.push(
                     ParseDiagnostic::UnexpectedTokenError {

@@ -63,7 +63,7 @@ impl Parse for PatternExceptOrParser {
 
                 Some(Pattern::Literal(literal).at(span))
             }
-            RawToken::Identifier(..) => {
+            RawToken::Identifier => {
                 let path = PathParser.parse_with(cursor)?;
 
                 match cursor.next.unwrap() {

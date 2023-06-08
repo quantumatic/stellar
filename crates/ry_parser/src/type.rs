@@ -24,7 +24,7 @@ impl Parse for TypeParser {
 
     fn parse_with(self, cursor: &mut Cursor<'_>) -> Self::Output {
         match cursor.next.unwrap() {
-            RawToken::Identifier(..) => PrimaryTypeParser.parse_with(cursor),
+            RawToken::Identifier => PrimaryTypeParser.parse_with(cursor),
             Token!['['] => ArrayTypeParser.parse_with(cursor),
             Token![#] => TupleTypeParser.parse_with(cursor),
             Token!['('] => FunctionTypeParser.parse_with(cursor),

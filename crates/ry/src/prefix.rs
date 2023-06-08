@@ -1,5 +1,14 @@
+use leftpad_str::leftpad;
 use std::{fs::metadata, fs::File, io::Write};
 use termcolor::{Color, ColorChoice, ColorSpec, StandardStream, WriteColor};
+
+pub(crate) fn log_with_left_padded_prefix<P, M>(prefix: P, message: M)
+where
+    P: AsRef<str>,
+    M: AsRef<str>,
+{
+    log_with_prefix(leftpad(&format!("{} ", prefix.as_ref()), 9, ' '), message);
+}
 
 pub(crate) fn log_with_prefix<P, M>(prefix: P, message: M)
 where

@@ -2,11 +2,10 @@
 //! source text.
 use crate::precedence::Precedence;
 use phf::phf_map;
-use ry_interner::Symbol;
 use ry_span::Spanned;
 use std::fmt::Display;
 
-/// Represents error that lexer can fail with.
+/// Represents error that scanning process can fail with.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum LexError {
     DigitDoesNotCorrespondToBase,
@@ -102,6 +101,8 @@ pub enum NumberKind {
     Float,
 }
 
+/// This enum represents a set of keywords used in the Ry programming language.
+/// Each variant of the enum corresponds to a specific keyword.
 #[derive(Debug, Clone, PartialEq, Copy)]
 pub enum Keyword {
     As,
@@ -162,54 +163,148 @@ impl Display for Keyword {
     }
 }
 
+/// Represents a punctuator.
 #[derive(Debug, Clone, PartialEq, Copy, Eq, Hash)]
 pub enum Punctuator {
+    /// Arrow (->).
     Arrow,
+
+    /// Ampersand (&).
     And,
+
+    /// Ampersand Equal (&=).
     AndEq,
+
+    /// Logical And (&&).
     AndAnd,
+
+    /// Assignment (=).
     Assign,
+
+    /// Asterisk (*).
     Asterisk,
+
+    /// Double Asterisk (**).
     AsteriskAsterisk,
+
+    /// Asterisk Equal (*=).
     AsteriskEq,
+
+    /// At Sign (@).
     AtSign,
+
+    /// Bang (!).
     Bang,
+
+    /// Close Brace (}).
     CloseBrace,
+
+    /// Close Bracket (]).
     CloseBracket,
+
+    /// Close Parenthesis ()).
     CloseParent,
+
+    /// Colon (:).
     Colon,
+
+    /// Comma (,).
     Comma,
+
+    /// Dot (.).
     Dot,
+
+    /// Dot Dot (..).
     DotDot,
+
+    /// Equal (==).
     Eq,
+
+    /// Greater Than (>).
     GreaterThan,
+
+    /// Greater Than or Equal (>=).
     GreaterThanOrEq,
+
+    /// Left Shift (<<).
     LeftShift,
+
+    /// Less Than (<).
     LessThan,
+
+    /// Less Than or Equal (<=).
     LessThanOrEq,
+
+    /// Minus (-).
     Minus,
+
+    /// Minus Equal (-=).
     MinusEq,
+
+    /// Decrement (--).
     MinusMinus,
+
+    /// Not (!).
     Not,
+
+    /// Not Equal (!=).
     NotEq,
+
+    /// Open Brace ({).
     OpenBrace,
+
+    /// Open Bracket ([).
     OpenBracket,
+
+    /// Open Parenthesis (().
     OpenParent,
+
+    /// Bitwise Or (|).
     Or,
+
+    /// Or Equal (|=).
     OrEq,
+
+    /// Logical Or (||).
     OrOr,
+
+    /// Percent (%).
     Percent,
+
+    /// Percent Equal (%=).
     PercentEq,
+
+    /// Plus (+).
     Plus,
+
+    /// Plus Equal (+=).
     PlusEq,
+
+    /// Increment (++).
     PlusPlus,
+
+    /// Question Mark (?).
     QuestionMark,
+
+    /// Right Shift (>>).
     RightShift,
+
+    /// Semicolon (;).
     Semicolon,
+
+    /// Slash (/).
     Slash,
+
+    /// Slash Equal (/=).
     SlashEq,
+
+    /// Exclusive Or (^).
     Xor,
+
+    /// Exclusive Or Equal (^=).
     XorEq,
+
+    /// Hash Tag (#).
     HashTag,
 }
 
@@ -277,28 +372,34 @@ impl Display for Punctuator {
 /// Represents token without a specific location in source text.
 #[derive(Copy, Clone, Debug, PartialEq, Default)]
 pub enum RawToken {
+    /// True boolean literal (`true`).
     TrueBoolLiteral,
+    /// False boolean literal (`false`).
     FalseBoolLiteral,
-
+    /// Character literal.
     CharLiteral,
-
     /// Corresponds to any comment that is not a doc comment.
     Comment,
-
+    /// Module level doc comment.
     GlobalDocComment,
+    /// Item doc comment.
     LocalDocComment,
-
+    /// End of file (`\0`).
     #[default]
     EndOfFile,
-
+    /// Float literal.
     FloatLiteral,
-    Identifier(Symbol),
+    /// Identifier.
+    Identifier,
+    /// Integer literal.
     IntegerLiteral,
-
+    /// Error token.
     Error(LexError),
-
+    /// Keyword.
     Keyword(Keyword),
+    /// Punctuator.
     Punctuator(Punctuator),
+    /// String literal.
     StringLiteral,
 }
 
@@ -311,7 +412,7 @@ impl AsRef<RawToken> for RawToken {
 impl AsRef<str> for RawToken {
     fn as_ref(&self) -> &str {
         match self {
-            Self::Identifier(..) => "identifier",
+            Self::Identifier => "identifier",
             Self::StringLiteral => "string literal",
             Self::IntegerLiteral => "integer literal",
             Self::FloatLiteral => "float literal",
@@ -347,8 +448,33 @@ impl From<RawToken> for String {
     }
 }
 
+impl RawToken {
+    pub fn eof(&self) -> bool {
+        matches!(self, Self::EndOfFile)
+    }
+}
+
+/// Type alias for `Spanned<RawToken>`.
+/// Represents a token with a specified location in source text.
 pub type Token = Spanned<RawToken>;
 
+/// Macro used to easily initialize tokens.
+///
+/// # Example
+/// ```
+/// use ry_ast::{Token, token::{RawToken, Punctuator, Keyword}};
+///
+/// assert_eq!(Token![:], RawToken::Punctuator(Punctuator::Colon));
+/// assert_eq!(Token![@], RawToken::Punctuator(Punctuator::AtSign));
+///
+/// // Same for keywords
+/// assert_eq!(Token![import], RawToken::Keyword(Keyword::Import));
+///
+/// // For parenthesis and brackets use quotes.
+/// assert_eq!(
+///     Token!['('],
+///     RawToken::Punctuator(Punctuator::OpenParent)
+/// );
 #[macro_export]
 macro_rules! Token {
     [:] =>                  {$crate::token::RawToken::Punctuator($crate::token::Punctuator::Colon)};
@@ -541,9 +667,4 @@ impl RawToken {
     pub const fn postfix_operator(&self) -> bool {
         matches!(self, Token![?] | Token![++] | Token![--])
     }
-}
-
-#[test]
-fn raw_token_size() {
-    assert_eq!(std::mem::size_of::<RawToken>(), 16);
 }
