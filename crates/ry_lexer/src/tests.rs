@@ -8,7 +8,7 @@ mod tests {
             fn $name() {
                 let mut interner = ry_interner::Interner::default();
                 let mut lexer = crate::Lexer::new(0, $contents.into(), &mut interner);
-                assert!(matches!(lexer.next().unwrap(), &$expected));
+                assert!(matches!(lexer.next_token().unwrap(), &$expected));
             }
         };
     }

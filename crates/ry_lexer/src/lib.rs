@@ -12,12 +12,12 @@
 //! use ry_lexer::Lexer;
 //! use ry_ast::token::RawToken::EndOfFile;
 //! use ry_interner::Interner;
+//! use ry_span::{Span, At};
 //!
 //! let mut interner = Interner::default();
 //! let mut lexer = Lexer::new(0, "", &mut interner);
 //!
-//! assert_eq!(lexer.next(), None);
-//! assert_eq!(lexer.next(), None); // ok
+//! assert_eq!(lexer.next_token(), EndOfFile.at(Span::new(0, 1, 0)));
 //! ```
 //!
 //! > Note: the Ry lexer makes use of the `ry_interner` crate to perform string interning,
@@ -34,7 +34,7 @@
 //! let mut interner = Interner::default();
 //! let mut lexer = Lexer::new(0, "١", &mut interner);
 //!
-//! assert_eq!(lexer.next().unwrap().unwrap(), &Error(LexError::UnexpectedChar));
+//! assert_eq!(lexer.next_token().unwrap(), &Error(LexError::UnexpectedChar));
 //! ```
 use ry_ast::{
     token::{RawToken::*, *},
