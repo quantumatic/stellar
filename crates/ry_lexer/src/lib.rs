@@ -476,14 +476,14 @@ impl<'a> Lexer<'a> {
 
     pub fn next_no_comments(&mut self) -> Token {
         loop {
-            let t = self.next();
+            let t = self.next_token();
             if t.unwrap() != &Comment {
                 return t;
             }
         }
     }
 
-    pub fn next(&mut self) -> Token {
+    pub fn next_token(&mut self) -> Token {
         self.eat_whitespaces();
 
         match (self.current, self.next) {

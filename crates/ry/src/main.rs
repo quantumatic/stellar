@@ -94,7 +94,7 @@ fn main() {
                 let mut current_token_index = 0;
 
                 loop {
-                    let token = lexer.next();
+                    let token = lexer.next_token();
 
                     if token.unwrap().eof() {
                         break;
