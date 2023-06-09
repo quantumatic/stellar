@@ -1,0 +1,6 @@
+// We've all started our careers with this type of programs.
+import std.io.println;
+
+pub fun main() {
+    println("hello world");
+}
