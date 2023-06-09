@@ -1,4 +1,4 @@
-<p align="center"><img width="70%" height="70%" src="additional/icon/banner.png" alt="rycon"></p>
+<p align="center"><img width="70%" src="additional/icon/banner.png" alt="rycon"></p>
 
 An open source programming language for web development with expressive type system and easy-to-learn syntax that makes it easy to build reliable and efficient software.
 

@@ -5,9 +5,8 @@
 //!
 //! Whitespaces are ignored during scanning process.
 //!
-//! Lexer is fairly standart. It implements [`Iterator<Item = Token>`] on each step,
-//! and stops at eof (always returns [`EndOfFile`] when it's already eof and so iterator
-//! never returns [`None`]).
+//! Lexer is fairly standart. It returns [`type@Token`] and then advances its state on
+//! each iteration and stops at eof (always returns [`EndOfFile`]).
 //! ```
 //! use ry_lexer::Lexer;
 //! use ry_ast::token::RawToken::EndOfFile;
@@ -24,7 +23,7 @@
 //! > a process of deduplicating strings, which can be highly beneficial when dealing with
 //! > identifiers.
 //!
-//! If error appeared in the process, [`Error`] will be returned:
+//! If error appeared in the process, [`Error`] token will be returned:
 //!
 //! ```
 //! use ry_lexer::Lexer;
@@ -45,7 +44,6 @@ use ry_span::{At, Span, Spanned};
 use std::{str::Chars, string::String};
 
 mod number;
-mod tests;
 
 /// Represents a lexer state machine.
 #[derive(Debug)]
