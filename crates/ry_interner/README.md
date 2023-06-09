@@ -70,3 +70,11 @@ let symbol = interner.get_or_intern("foo");
 
 assert_eq!(symbol, CHAR + 1); // symbol == 14
 ```
+
+You can also resolve symbols this way:
+
+```rs
+assert_eq!(interner.resolve(symbol), Some("foo"));
+assert_eq!(interner.resolve(INT8), Some("int8"));
+assert_eq!(interner.resolve(symbol + 1), None); // not yet initialized
+```
