@@ -63,12 +63,12 @@ use codespan_reporting::diagnostic::Diagnostic;
 use items::ItemsParser;
 use ry_ast::{
     token::{RawToken, Token},
-    Docstring, Identifier, ProgramUnit,
+    Docstring, Identifier, ProgramUnit, Type, TypeVariable,
 };
 use ry_diagnostics::{expected, parser::ParseDiagnostic, Report};
 use ry_interner::Interner;
 use ry_lexer::Lexer;
-use ry_span::{At, SpanIndex};
+use ry_span::{At, Span, SpanIndex, Spanned};
 
 #[macro_use]
 mod macros;
@@ -82,6 +82,7 @@ pub struct Cursor<'a> {
     current: Token,
     next: Token,
     diagnostics: &'a mut Vec<Diagnostic<usize>>,
+    next_unification_variable_index: u32,
 }
 
 pub(crate) trait Parse
@@ -137,10 +138,17 @@ impl<'a> Cursor<'a> {
             current,
             next,
             diagnostics,
+            next_unification_variable_index: 0,
         };
         lexer.check_next_token();
 
         lexer
+    }
+
+    fn new_unification_variable(&mut self, at: Span) -> Spanned<Type> {
+        let index = self.next_unification_variable_index;
+        self.next_unification_variable_index += 1;
+        Type::Variable(TypeVariable { index }).at(at)
     }
 
     /// Adds diagnostic if the next token has lex error in itself.

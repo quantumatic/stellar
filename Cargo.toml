@@ -8,6 +8,5 @@ members = [
     "crates/ry_interner",
     "crates/ry_workspace",
     "crates/ry_ast_lowering",
-    "crates/ry_hir",
     "crates/ry_span",
 ]

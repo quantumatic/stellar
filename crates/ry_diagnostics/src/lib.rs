@@ -117,7 +117,7 @@ impl Default for Reporter<'_> {
     fn default() -> Self {
         Self {
             writer: StandardStream::stderr(ColorChoice::Always),
-            config: codespan_reporting::term::Config::default(),
+            config: Config::default(),
             files: SimpleFiles::new(),
         }
     }

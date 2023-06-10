@@ -44,12 +44,12 @@
 )]
 #![allow(clippy::match_single_binding, clippy::inconsistent_struct_constructor)]
 
-pub mod precedence;
-pub mod token;
-
 use ry_interner::Symbol;
 use ry_span::{Span, Spanned};
-use token::Token;
+use token::RawToken;
+
+pub mod precedence;
+pub mod token;
 
 #[derive(Debug, PartialEq)]
 pub enum Literal {
@@ -69,6 +69,7 @@ pub enum Pattern {
     Literal(Spanned<Literal>),
     Identifier {
         identifier: Identifier,
+        ty: Spanned<Type>,
         pattern: Option<Box<Spanned<Pattern>>>,
     },
     Struct {
@@ -100,8 +101,14 @@ pub enum Pattern {
 
 #[derive(Debug, PartialEq)]
 pub enum StructFieldPattern {
-    NotRest(Identifier, Option<Spanned<Pattern>>),
-    Rest(Span),
+    NotRest {
+        field_name: Identifier,
+        field_ty: Spanned<Type>,
+        value_pattern: Option<Spanned<Pattern>>,
+    },
+    Rest {
+        at: Span,
+    },
 }
 
 #[derive(Debug, PartialEq)]
@@ -109,10 +116,8 @@ pub enum Type {
     Array {
         element_type: Box<Spanned<Type>>,
     },
-    Primary {
-        path: Path,
-        generic_arguments: Vec<Spanned<Type>>,
-    },
+    Constructor(TypeConstructor),
+    Variable(TypeVariable),
     Tuple {
         element_types: Vec<Spanned<Type>>,
     },
@@ -120,6 +125,17 @@ pub enum Type {
         parameter_types: Vec<Spanned<Type>>,
         return_type: Box<Spanned<Type>>,
     },
+}
+
+#[derive(Debug, PartialEq, Clone, Copy)]
+pub struct TypeVariable {
+    pub index: u32,
+}
+
+#[derive(Debug, PartialEq)]
+pub struct TypeConstructor {
+    pub path: Path,
+    pub generic_arguments: Vec<Spanned<Type>>,
 }
 
 #[derive(Debug, PartialEq)]
@@ -155,27 +171,28 @@ pub enum Expression {
     },
     Binary {
         left: Box<Spanned<Expression>>,
-        operator: Token,
+        operator: Spanned<BinaryOperator>,
         right: Box<Spanned<Expression>>,
     },
     StatementsBlock(StatementsBlock),
     Literal(Literal),
     Identifier(Symbol),
+    Parenthesized(Box<Spanned<Expression>>),
     If {
         if_blocks: Vec<(Spanned<Expression>, StatementsBlock)>,
         r#else: Option<StatementsBlock>,
-    },
-    Parenthesized {
-        inner: Box<Spanned<Expression>>,
     },
     Property {
         left: Box<Spanned<Expression>>,
         right: Identifier,
     },
-    Unary {
+    Prefix {
         inner: Box<Spanned<Expression>>,
-        operator: Token,
-        postfix: bool,
+        operator: Spanned<PrefixOperator>,
+    },
+    Postfix {
+        inner: Box<Spanned<Expression>>,
+        operator: Spanned<PostfixOperator>,
     },
     While {
         condition: Box<Spanned<Expression>>,
@@ -209,6 +226,110 @@ pub enum Expression {
         return_type: Option<Spanned<Type>>,
         block: StatementsBlock,
     },
+}
+
+#[derive(Debug, PartialEq, Copy, Clone, Eq, Hash)]
+pub enum BinaryOperator {
+    PlusEq,
+    Plus,
+    MinusEq,
+    Minus,
+    StarStar,
+    StarEq,
+    Star,
+    SlashEq,
+    Slash,
+    NotEq,
+    Bang,
+    RightShift,
+    LeftShift,
+    LessEq,
+    Less,
+    GreaterEq,
+    Greater,
+    EqEq,
+    Eq,
+    Or,
+    And,
+    OrOr,
+    AndAnd,
+    OrEq,
+    AndEq,
+}
+
+impl From<&RawToken> for BinaryOperator {
+    fn from(token: &RawToken) -> Self {
+        match token {
+            Token![+=] => Self::PlusEq,
+            Token![+] => Self::Plus,
+            Token![-=] => Self::MinusEq,
+            Token![-] => Self::Minus,
+            Token![*=] => Self::StarEq,
+            Token![**] => Self::StarStar,
+            Token![*] => Self::Star,
+            Token![/=] => Self::SlashEq,
+            Token![/] => Self::Slash,
+            Token![!=] => Self::NotEq,
+            Token![!] => Self::Bang,
+            Token![>>] => Self::RightShift,
+            Token![<<] => Self::LeftShift,
+            Token![<=] => Self::LessEq,
+            Token![<] => Self::Less,
+            Token![>=] => Self::GreaterEq,
+            Token![>] => Self::Greater,
+            Token![==] => Self::EqEq,
+            Token![=] => Self::Eq,
+            Token![|] => Self::Or,
+            Token![&] => Self::And,
+            Token![||] => Self::OrOr,
+            Token![&&] => Self::AndAnd,
+            Token![|=] => Self::OrEq,
+            Token![&=] => Self::AndEq,
+            _ => unreachable!(),
+        }
+    }
+}
+
+#[derive(Debug, PartialEq, Copy, Clone, Eq, Hash)]
+pub enum PrefixOperator {
+    Bang,
+    Not,
+    PlusPlus,
+    MinusMinus,
+    Plus,
+    Minus,
+}
+
+impl From<&RawToken> for PrefixOperator {
+    fn from(token: &RawToken) -> Self {
+        match token {
+            Token![++] => Self::PlusPlus,
+            Token![--] => Self::MinusMinus,
+            Token![+] => Self::Plus,
+            Token![-] => Self::Minus,
+            Token![!] => Self::Bang,
+            Token![~] => Self::Not,
+            _ => unreachable!(),
+        }
+    }
+}
+
+#[derive(Debug, PartialEq, Copy, Clone, Eq, Hash)]
+pub enum PostfixOperator {
+    QuestionMark,
+    PlusPlus,
+    MinusMinus,
+}
+
+impl From<&RawToken> for PostfixOperator {
+    fn from(token: &RawToken) -> Self {
+        match token {
+            Token![?] => Self::QuestionMark,
+            Token![++] => Self::PlusPlus,
+            Token![--] => Self::MinusMinus,
+            _ => unreachable!(),
+        }
+    }
 }
 
 #[derive(Debug, PartialEq)]
@@ -406,8 +527,8 @@ impl Visibility {
         Self(None)
     }
 
-    pub fn public(span: Span) -> Self {
-        Self(Some(span))
+    pub fn public(at: Span) -> Self {
+        Self(Some(at))
     }
 
     pub fn span_of_pub(&self) -> Option<Span> {

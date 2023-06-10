@@ -104,6 +104,8 @@ impl Lexer<'_> {
 
         'processing_float: {
             if self.current == '.' {
+                // 1.to_string() is parsed as:
+                // Int(1) Punct(Dot) Ident Punct(Lparen) ...
                 if is_id_start(self.next) {
                     break 'processing_float;
                 }

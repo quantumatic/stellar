@@ -1,5 +1,7 @@
 use crate::{macros::parse_list, path::PathParser, Cursor, OptionalParser, Parse};
-use ry_ast::{token::RawToken, GenericParameter, Token, Type, WhereClause, WhereClauseItem};
+use ry_ast::{
+    token::RawToken, GenericParameter, Token, Type, TypeConstructor, WhereClause, WhereClauseItem,
+};
 use ry_diagnostics::{expected, parser::ParseDiagnostic, Report};
 use ry_span::{At, Span, Spanned};
 
@@ -7,7 +9,7 @@ pub(crate) struct TypeParser;
 
 struct ArrayTypeParser;
 
-struct PrimaryTypeParser;
+struct TypeConstructorParser;
 
 struct TupleTypeParser;
 
@@ -24,7 +26,7 @@ impl Parse for TypeParser {
 
     fn parse_with(self, cursor: &mut Cursor<'_>) -> Self::Output {
         match cursor.next.unwrap() {
-            RawToken::Identifier => PrimaryTypeParser.parse_with(cursor),
+            RawToken::Identifier => TypeConstructorParser.parse_with(cursor),
             Token!['['] => ArrayTypeParser.parse_with(cursor),
             Token![#] => TupleTypeParser.parse_with(cursor),
             Token!['('] => FunctionTypeParser.parse_with(cursor),
@@ -170,7 +172,7 @@ impl OptionalParser for GenericParametersParser {
     }
 }
 
-impl Parse for PrimaryTypeParser {
+impl Parse for TypeConstructorParser {
     type Output = Option<Spanned<Type>>;
 
     fn parse_with(self, cursor: &mut Cursor<'_>) -> Self::Output {
@@ -179,10 +181,10 @@ impl Parse for PrimaryTypeParser {
         let generic_arguments = GenericArgumentsParser.optionally_parse_with(cursor)?;
 
         Some(
-            Type::Primary {
+            Type::Constructor(TypeConstructor {
                 path,
                 generic_arguments,
-            }
+            })
             .at(Span::new(
                 start,
                 cursor.current.span().end(),

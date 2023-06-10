@@ -244,7 +244,7 @@ pub enum Punctuator {
     /// Decrement (--).
     MinusMinus,
 
-    /// Not (!).
+    /// Bitwise Not (~).
     Not,
 
     /// Not Equal (!=).

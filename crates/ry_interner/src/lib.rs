@@ -97,7 +97,6 @@
 
 use core::{
     hash::{BuildHasher, Hash, Hasher},
-    marker::PhantomData,
     str::from_utf8_unchecked,
 };
 
@@ -110,7 +109,7 @@ use hashbrown::{
 };
 
 /// Represents unique symbol corresponding to some interned string.
-pub type Symbol = usize;
+pub type Symbol = u32;
 
 /// Data structure that allows to resolve/intern strings.
 ///
@@ -122,7 +121,7 @@ pub struct Interner<H = DefaultHashBuilder>
 where
     H: BuildHasher,
 {
-    dedup: HashMap<usize, (), ()>,
+    dedup: HashMap<Symbol, (), ()>,
     hasher: H,
     backend: Backend,
 }
@@ -132,7 +131,6 @@ where
 pub struct Backend {
     ends: Vec<usize>,
     buffer: String,
-    marker: PhantomData<fn() -> usize>,
 }
 
 impl Default for Interner {
@@ -158,31 +156,30 @@ impl Backend {
         Self {
             ends: Vec::with_capacity(capacity),
             buffer: String::default(),
-            marker: PhantomData,
         }
     }
 
     /// Interns the given string and returns corresponding symbol.
     #[inline]
-    fn intern(&mut self, string: &str) -> usize {
+    fn intern(&mut self, string: &str) -> Symbol {
         self.push(string)
     }
 
     /// Interns the given static string and returns corresponding symbol.
     #[inline]
-    fn intern_static(&mut self, string: &'static str) -> usize {
+    fn intern_static(&mut self, string: &'static str) -> Symbol {
         self.intern(string)
     }
 
     /// Resolves the given symbol to its original string.
     #[inline]
-    fn resolve(&self, symbol: usize) -> Option<&str> {
+    fn resolve(&self, symbol: Symbol) -> Option<&str> {
         self.span_of(symbol).map(|span| self.str_at(span))
     }
 
     /// Resolves the given symbol to its original string, but without additional checks.
     #[inline]
-    unsafe fn unchecked_resolve(&self, symbol: usize) -> &str {
+    unsafe fn unchecked_resolve(&self, symbol: Symbol) -> &str {
         unsafe { self.str_at(self.unchecked_span_of(symbol)) }
     }
 
@@ -192,22 +189,30 @@ impl Backend {
         self.buffer.shrink_to_fit();
     }
 
-    fn next_symbol(&self) -> usize {
-        self.ends.len()
+    fn next_symbol(&self) -> Symbol {
+        Symbol::try_from(self.ends.len()).expect("Interner is overflowed")
     }
 
     /// Returns the span for the given symbol if any.
-    fn span_of(&self, symbol: usize) -> Option<Span> {
-        self.ends.get(symbol).copied().map(|end| Span {
-            start: self.ends.get(symbol.wrapping_sub(1)).copied().unwrap_or(0),
+    fn span_of(&self, symbol: Symbol) -> Option<Span> {
+        self.ends.get(symbol as usize).copied().map(|end| Span {
+            start: self
+                .ends
+                .get(symbol.wrapping_sub(1) as usize)
+                .copied()
+                .unwrap_or(0),
             end,
         })
     }
 
     /// Returns the span for the given symbol if any, but without additional checks.
-    unsafe fn unchecked_span_of(&self, symbol: usize) -> Span {
-        let end = unsafe { *self.ends.get_unchecked(symbol) };
-        let start = self.ends.get(symbol.wrapping_sub(1)).copied().unwrap_or(0);
+    unsafe fn unchecked_span_of(&self, symbol: Symbol) -> Span {
+        let end = unsafe { *self.ends.get_unchecked(symbol as usize) };
+        let start = self
+            .ends
+            .get(symbol.wrapping_sub(1) as usize)
+            .copied()
+            .unwrap_or(0);
 
         Span { start, end }
     }
@@ -217,7 +222,7 @@ impl Backend {
     }
 
     /// Pushes the string into the buffer and returns corresponding symbol.
-    fn push(&mut self, string: &str) -> usize {
+    fn push(&mut self, string: &str) -> Symbol {
         self.buffer.push_str(string);
 
         let end = self.buffer.as_bytes().len();
@@ -348,7 +353,7 @@ where
 
     /// Returns the symbol for the given string if any.
     #[inline]
-    pub fn get<T>(&self, string: T) -> Option<usize>
+    pub fn get<T>(&self, string: T) -> Option<Symbol>
     where
         T: AsRef<str>,
     {
@@ -369,8 +374,8 @@ where
     fn get_or_intern_using<T>(
         &mut self,
         string: T,
-        intern_fn: fn(&mut Backend, T) -> usize,
-    ) -> usize
+        intern_fn: fn(&mut Backend, T) -> Symbol,
+    ) -> Symbol
     where
         T: AsRef<str> + Copy + Hash + for<'a> PartialEq<&'a str>,
     {
@@ -398,7 +403,7 @@ where
 
     /// Interns the given string and returns a corresponding symbol.
     #[inline]
-    pub fn get_or_intern<T>(&mut self, string: T) -> usize
+    pub fn get_or_intern<T>(&mut self, string: T) -> Symbol
     where
         T: AsRef<str>,
     {
@@ -406,7 +411,7 @@ where
     }
 
     /// Interns the given `'static` string and returns a corresponding symbol.
-    pub fn get_or_intern_static(&mut self, string: &'static str) -> usize {
+    pub fn get_or_intern_static(&mut self, string: &'static str) -> Symbol {
         self.get_or_intern_using(string.as_ref(), Backend::intern_static)
     }
 
@@ -417,7 +422,7 @@ where
 
     /// Returns the string for the given symbol if any.
     #[inline]
-    pub fn resolve(&self, symbol: usize) -> Option<&str> {
+    pub fn resolve(&self, symbol: Symbol) -> Option<&str> {
         self.backend.resolve(symbol)
     }
 }

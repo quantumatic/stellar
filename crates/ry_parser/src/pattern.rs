@@ -102,9 +102,12 @@ impl Parse for PatternExceptOrParser {
                         cursor.file_id,
                     );
 
+                    let ty = cursor.new_unification_variable(identifier.span());
+
                     Some(
                         Pattern::Identifier {
                             identifier,
+                            ty,
                             pattern,
                         }
                         .at(span),
@@ -171,10 +174,12 @@ impl Parse for StructPatternParser {
 
                 cursor.next_token();
                 rest_pattern_span = Some(cursor.current.span());
-                Some(StructFieldPattern::Rest(cursor.current.span()))
+                Some(StructFieldPattern::Rest {
+                    at: cursor.current.span(),
+                })
             } else {
-                let member_name = cursor.consume_identifier("struct pattern")?;
-                let pattern = if cursor.next.unwrap() == &Token![:] {
+                let field_name = cursor.consume_identifier("struct pattern")?;
+                let value_pattern = if cursor.next.unwrap() == &Token![:] {
                     cursor.next_token();
 
                     Some(PatternParser.parse_with(cursor)?)
@@ -182,7 +187,13 @@ impl Parse for StructPatternParser {
                     None
                 };
 
-                Some(StructFieldPattern::NotRest(member_name, pattern))
+                let field_ty = cursor.new_unification_variable(field_name.span());
+
+                Some(StructFieldPattern::NotRest {
+                    field_name,
+                    field_ty,
+                    value_pattern,
+                })
             }
         });
 

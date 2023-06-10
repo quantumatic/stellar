@@ -35,12 +35,12 @@ Here `get_or_intern` function returns value of type `Symbol`:
 ...
 
 /// Represents unique symbol corresponding to some interned string.
-pub type Symbol = usize;
+pub type Symbol = u32;
 
 ...
 ```
 
-On a 32 bit target, size of `usize` is 4 bytes and on a 64 bit target, this is 8 bytes. But this is ok, because 4 bytes is enough for storing `4294967296` unique identifiers (which is far enough).
+Size of `usize` is 4 bytes. But this is ok, because 4 bytes is enough for storing `4294967296` unique identifiers (which is far enough).
 
 Ry also provides builtin symbols that will already be interned when interner will be initialized:
 

@@ -8,8 +8,8 @@ use crate::{
     Cursor, Parse,
 };
 use ry_ast::{
-    precedence::Precedence, token::RawToken, Expression, MatchExpressionUnit, StructExpressionUnit,
-    Token,
+    precedence::Precedence, token::RawToken, BinaryOperator, Expression, MatchExpressionUnit,
+    PostfixOperator, PrefixOperator, StructExpressionUnit, Token,
 };
 use ry_diagnostics::{expected, parser::ParseDiagnostic, Report};
 use ry_span::{At, Span, Spanned};
@@ -296,7 +296,9 @@ impl Parse for PrefixExpressionParser {
     type Output = Option<Spanned<Expression>>;
 
     fn parse_with(self, cursor: &mut Cursor<'_>) -> Self::Output {
-        let operator = cursor.next.clone();
+        let operator_token = cursor.next.clone();
+        let operator_span = operator_token.span();
+        let operator: PrefixOperator = operator_token.unwrap().into();
         cursor.next_token();
 
         let inner = ExpressionParser {
@@ -304,13 +306,12 @@ impl Parse for PrefixExpressionParser {
         }
         .parse_with(cursor)?;
 
-        let span = Span::new(operator.span().start(), inner.span().end(), cursor.file_id);
+        let span = Span::new(operator_span.start(), inner.span().end(), cursor.file_id);
 
         Some(
-            Expression::Unary {
+            Expression::Prefix {
                 inner: Box::new(inner),
-                operator,
-                postfix: false,
+                operator: operator.at(operator_span),
             }
             .at(span),
         )
@@ -325,17 +326,15 @@ impl Parse for PostfixExpressionParser {
 
         cursor.next_token();
 
+        let span = Span::new(start, cursor.current.span().end(), cursor.file_id);
+        let operator: PostfixOperator = cursor.current.unwrap().into();
+
         Some(
-            Expression::Unary {
+            Expression::Postfix {
                 inner: Box::new(self.left),
-                operator: cursor.current.clone(),
-                postfix: true,
+                operator: operator.at(span),
             }
-            .at(Span::new(
-                start,
-                cursor.current.span().end(),
-                cursor.file_id,
-            )),
+            .at(span),
         )
     }
 }
@@ -354,16 +353,11 @@ impl Parse for ParenthesizedExpressionParser {
 
         cursor.consume(Token![')'], "parenthesized expression")?;
 
-        Some(
-            Expression::Parenthesized {
-                inner: Box::new(inner),
-            }
-            .at(Span::new(
-                start,
-                cursor.current.span().end(),
-                cursor.file_id,
-            )),
-        )
+        Some(Expression::Parenthesized(Box::new(inner)).at(Span::new(
+            start,
+            cursor.current.span().end(),
+            cursor.file_id,
+        )))
     }
 }
 
@@ -470,7 +464,9 @@ impl Parse for BinaryExpressionParser {
     fn parse_with(self, cursor: &mut Cursor<'_>) -> Self::Output {
         let start = self.left.span().start();
 
-        let operator = cursor.next.clone();
+        let operator_token = cursor.next.clone();
+        let operator_span = operator_token.span();
+        let operator: BinaryOperator = operator_token.unwrap().into();
         let precedence = cursor.next.unwrap().to_precedence();
 
         cursor.next_token();
@@ -481,13 +477,9 @@ impl Parse for BinaryExpressionParser {
             Expression::Binary {
                 left: Box::new(self.left),
                 right: Box::new(right),
-                operator,
+                operator: operator.at(operator_span),
             }
-            .at(Span::new(
-                start,
-                cursor.current.span().end(),
-                cursor.file_id,
-            )),
+            .at(Span::new(start, operator_span.end(), cursor.file_id)),
         )
     }
 }
