@@ -17,6 +17,7 @@ use ry_span::{At, Span, Spanned};
 #[derive(Default)]
 pub(crate) struct ExpressionParser {
     pub(crate) precedence: Precedence,
+    pub(crate) ignore_struct: bool,
 }
 
 struct WhileExpressionParser;
@@ -27,7 +28,9 @@ struct MatchExpressionBlockParser;
 
 struct MatchExpressionUnitParser;
 
-struct PrimaryExpressionParser;
+struct PrimaryExpressionParser {
+    pub(crate) ignore_struct: bool,
+}
 
 struct GenericArgumentsExpressionParser {
     pub(crate) left: Spanned<Expression>,
@@ -37,7 +40,9 @@ struct PropertyAccessExpressionParser {
     pub(crate) left: Spanned<Expression>,
 }
 
-struct PrefixExpressionParser;
+struct PrefixExpressionParser {
+    pub(crate) ignore_struct: bool,
+}
 
 struct PostfixExpressionParser {
     pub(crate) left: Spanned<Expression>,
@@ -57,6 +62,7 @@ struct CallExpressionParser {
 
 struct BinaryExpressionParser {
     pub(crate) left: Spanned<Expression>,
+    pub(crate) ignore_struct: bool,
 }
 
 struct ArrayLiteralExpressionParser;
@@ -73,11 +79,19 @@ struct FunctionExpressionParser;
 
 struct StatementsBlockExpressionParser;
 
+impl ExpressionParser {
+    pub fn ignore_struct(&mut self) {
+        self.ignore_struct = true;
+    }
+}
+
 impl Parse for ExpressionParser {
     type Output = Option<Spanned<Expression>>;
 
     fn parse_with(self, cursor: &mut Cursor<'_>) -> Self::Output {
-        let mut left = PrimaryExpressionParser.parse_with(cursor)?;
+        let mut left = PrimaryExpressionParser {
+            ignore_struct: self.ignore_struct
+        }.parse_with(cursor)?;
 
         while self.precedence < cursor.next.unwrap().to_precedence() {
             left = match cursor.next.unwrap() {
@@ -85,10 +99,16 @@ impl Parse for ExpressionParser {
                 Token![.] => PropertyAccessExpressionParser { left }.parse_with(cursor)?,
                 Token!['['] => GenericArgumentsExpressionParser { left }.parse_with(cursor)?,
                 Token![as] => CastExpressionParser { left }.parse_with(cursor)?,
-                Token!['{'] => StructExpressionParser { left }.parse_with(cursor)?,
+                Token!['{'] => {
+                    if self.ignore_struct {
+                        return Some(left);
+                    } else {
+                        StructExpressionParser { left }.parse_with(cursor)?
+                    }
+                },
                 _ => {
                     if cursor.next.unwrap().binary_operator() {
-                        BinaryExpressionParser { left }.parse_with(cursor)?
+                        BinaryExpressionParser { left, ignore_struct: self.ignore_struct }.parse_with(cursor)?
                     } else if cursor.next.unwrap().postfix_operator() {
                         PostfixExpressionParser { left }.parse_with(cursor)?
                     } else {
@@ -109,8 +129,9 @@ impl Parse for WhileExpressionParser {
         cursor.next_token(); // `while`
         let start = cursor.current.span().start();
 
-        let condition = ExpressionParser::default().parse_with(cursor)?;
-        cursor.consume(Token![do], "while expression")?;
+        let mut condition_parser = ExpressionParser::default();
+        condition_parser.ignore_struct();
+        let condition = condition_parser.parse_with(cursor)?;
 
         let body = StatementsBlockParser.parse_with(cursor)?;
 
@@ -134,8 +155,9 @@ impl Parse for MatchExpressionParser {
     fn parse_with(self, cursor: &mut Cursor<'_>) -> Self::Output {
         cursor.next_token(); // `match`
 
-        let expression = ExpressionParser::default().parse_with(cursor)?;
-        cursor.consume(Token![with], "match expression")?;
+        let mut expression_parser = ExpressionParser::default();
+        expression_parser.ignore_struct();
+        let expression = expression_parser.parse_with(cursor)?;
 
         let block = MatchExpressionBlockParser.parse_with(cursor)?;
 
@@ -214,7 +236,7 @@ impl Parse for PrimaryExpressionParser {
             Token![while] => WhileExpressionParser.parse_with(cursor),
             _ => {
                 if cursor.next.unwrap().prefix_operator() {
-                    return PrefixExpressionParser.parse_with(cursor);
+                    return PrefixExpressionParser { ignore_struct: self.ignore_struct }.parse_with(cursor);
                 }
                 cursor.diagnostics.push(
                     ParseDiagnostic::UnexpectedTokenError {
@@ -300,6 +322,7 @@ impl Parse for PrefixExpressionParser {
 
         let inner = ExpressionParser {
             precedence: Precedence::Unary,
+            ignore_struct: self.ignore_struct,
         }
         .parse_with(cursor)?;
 
@@ -345,6 +368,7 @@ impl Parse for ParenthesizedExpressionParser {
 
         let inner = ExpressionParser {
             precedence: Precedence::Lowest,
+            ignore_struct: false,
         }
         .parse_with(cursor)?;
 
@@ -366,9 +390,10 @@ impl Parse for IfExpressionParser {
 
         let start = cursor.current.span().start();
 
-        let condition = ExpressionParser::default().parse_with(cursor)?;
-        cursor.consume(Token![then], "if expression")?;
+        let mut condition_parser = ExpressionParser::default();
+        condition_parser.ignore_struct();
 
+        let condition = condition_parser.parse_with(cursor)?;
         let block = StatementsBlockParser.parse_with(cursor)?;
 
         let mut if_blocks = vec![(condition, block)];
@@ -385,10 +410,12 @@ impl Parse for IfExpressionParser {
 
             cursor.next_token();
 
-            let condition = ExpressionParser::default().parse_with(cursor)?;
-            cursor.consume(Token![then], "if expression")?;
+            let mut condition_parser = ExpressionParser::default();
+            condition_parser.ignore_struct();
 
+            let condition = condition_parser.parse_with(cursor)?;
             let block = StatementsBlockParser.parse_with(cursor)?;
+
             if_blocks.push((condition, block));
         }
 
@@ -433,10 +460,7 @@ impl Parse for CallExpressionParser {
         cursor.next_token(); // `(`
 
         let arguments = parse_list!(cursor, "call arguments list", Token![')'], || {
-            ExpressionParser {
-                precedence: Precedence::Lowest,
-            }
-            .parse_with(cursor)
+            ExpressionParser::default().parse_with(cursor)
         });
 
         cursor.next_token();
@@ -468,7 +492,10 @@ impl Parse for BinaryExpressionParser {
 
         cursor.next_token();
 
-        let right = ExpressionParser { precedence }.parse_with(cursor)?;
+        let right = ExpressionParser {
+            precedence,
+            ignore_struct: self.ignore_struct
+        }.parse_with(cursor)?;
 
         Some(
             Expression::Binary {

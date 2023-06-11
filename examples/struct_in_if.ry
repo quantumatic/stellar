@@ -1,0 +1,5 @@
+pub fun main() {
+    if (A {a: 3}).test() {
+        println("hello");
+    }
+}

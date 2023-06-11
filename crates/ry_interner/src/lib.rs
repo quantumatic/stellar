@@ -267,14 +267,20 @@ pub const FLOAT32: Symbol = 9;
 /// `float64` symbol.
 pub const FLOAT64: Symbol = 10;
 
+/// `isize` symbol.
+pub const ISIZE: Symbol = 11;
+
+/// `usize` symbol.
+pub const USIZE: Symbol = 12;
+
 /// `bool` symbol.
-pub const BOOL: Symbol = 11;
+pub const BOOL: Symbol = 13;
 
 /// `string` symbol.
-pub const STRING: Symbol = 12;
+pub const STRING: Symbol = 14;
 
 /// `char` symbol.
-pub const CHAR: Symbol = 13;
+pub const CHAR: Symbol = 15;
 
 macro_rules! intern_primitive_symbols {
     ($interner:ident, $($name:ident),*) => {
