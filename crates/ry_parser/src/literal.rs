@@ -78,15 +78,3 @@ impl Parse for LiteralParser {
         }
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::LiteralParser;
-    use crate::macros::parse_test;
-
-    parse_test!(LiteralParser, integer, "12345");
-    parse_test!(LiteralParser, float, "12.5e+3");
-    parse_test!(LiteralParser, string, "\"hello world!\"");
-    parse_test!(LiteralParser, char, "'a'");
-    parse_test!(LiteralParser, bool, "true");
-}

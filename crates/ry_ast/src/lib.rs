@@ -69,7 +69,7 @@ pub enum Pattern {
     Literal(Spanned<Literal>),
     Identifier {
         identifier: Identifier,
-        ty: Spanned<Type>,
+        ty: Option<Spanned<Type>>, // variable can already be initialized before
         pattern: Option<Box<Spanned<Pattern>>>,
     },
     Struct {
@@ -212,10 +212,6 @@ pub enum Expression {
     Struct {
         left: Box<Spanned<Expression>>,
         fields: Vec<StructExpressionUnit>,
-    },
-    Let {
-        left: Spanned<Pattern>,
-        right: Box<Spanned<Expression>>,
     },
     Match {
         expression: Box<Spanned<Expression>>,
@@ -361,6 +357,11 @@ pub enum Statement {
     },
     Return {
         expression: Spanned<Expression>,
+    },
+    Let {
+        pattern: Spanned<Pattern>,
+        value: Box<Spanned<Expression>>,
+        ty: Option<Spanned<Type>>,
     },
 }
 

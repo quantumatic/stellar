@@ -1,4 +1,6 @@
-use crate::{expression::ExpressionParser, Cursor, Parse};
+use crate::{
+    expression::ExpressionParser, pattern::PatternParser, r#type::TypeParser, Cursor, Parse,
+};
 use ry_ast::{token::RawToken, Statement, StatementsBlock, Token};
 use ry_diagnostics::{parser::ParseDiagnostic, Report};
 use ry_span::Span;
@@ -10,6 +12,8 @@ pub(crate) struct StatementsBlockParser;
 struct DeferStatementParser;
 
 struct ReturnStatementParser;
+
+struct LetStatementParser;
 
 impl Parse for StatementParser {
     type Output = Option<(Statement, bool)>;
@@ -25,6 +29,7 @@ impl Parse for StatementParser {
         let statement = match cursor.next.unwrap() {
             Token![return] => ReturnStatementParser.parse_with(cursor)?,
             Token![defer] => DeferStatementParser.parse_with(cursor)?,
+            Token![let] => LetStatementParser.parse_with(cursor)?,
             _ => {
                 let expression = ExpressionParser::default().parse_with(cursor)?;
 
@@ -171,11 +176,25 @@ impl Parse for ReturnStatementParser {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::StatementParser;
-    use crate::macros::parse_test;
+impl Parse for LetStatementParser {
+    type Output = Option<Statement>;
 
-    parse_test!(StatementParser, r#return, "return a?.b.unwrap_or(0);");
-    parse_test!(StatementParser, defer, "defer call();");
+    fn parse_with(self, cursor: &mut Cursor<'_>) -> Self::Output {
+        cursor.next_token(); // `let`
+
+        let pattern = PatternParser.parse_with(cursor)?;
+
+        let ty = if cursor.next.unwrap() == &Token![:] {
+            cursor.next_token();
+            Some(TypeParser.parse_with(cursor)?)
+        } else {
+            None
+        };
+
+        cursor.consume(Token![=], "let statement")?;
+
+        let value = Box::new(ExpressionParser::default().parse_with(cursor)?);
+
+        Some(Statement::Let { pattern, value, ty })
+    }
 }

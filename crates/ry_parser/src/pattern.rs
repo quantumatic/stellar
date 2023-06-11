@@ -102,12 +102,10 @@ impl Parse for PatternExceptOrParser {
                         cursor.file_id,
                     );
 
-                    let ty = cursor.new_unification_variable(identifier.span());
-
                     Some(
                         Pattern::Identifier {
                             identifier,
-                            ty,
+                            ty: None,
                             pattern,
                         }
                         .at(span),

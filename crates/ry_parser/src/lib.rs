@@ -159,6 +159,11 @@ impl<'a> Cursor<'a> {
         }
     }
 
+    /// Returns diagnostics emitted during parsing.
+    pub fn diagnostics(&self) -> &Vec<Diagnostic<usize>> {
+        self.diagnostics
+    }
+
     /// Advances the cursor to the next token (skips comment tokens).
     /// # Example:
     /// ```rust,ignore

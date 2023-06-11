@@ -69,8 +69,6 @@ struct StructExpressionParser {
 
 struct StructExpressionUnitParser;
 
-struct LetExpressionParser;
-
 struct FunctionExpressionParser;
 
 struct StatementsBlockExpressionParser;
@@ -211,7 +209,6 @@ impl Parse for PrimaryExpressionParser {
             Token!['{'] => StatementsBlockExpressionParser.parse_with(cursor),
             Token![|] => FunctionExpressionParser.parse_with(cursor),
             Token![#] => TupleExpressionParser.parse_with(cursor),
-            Token![let] => LetExpressionParser.parse_with(cursor),
             Token![if] => IfExpressionParser.parse_with(cursor),
             Token![match] => MatchExpressionParser.parse_with(cursor),
             Token![while] => WhileExpressionParser.parse_with(cursor),
@@ -575,24 +572,6 @@ impl Parse for StructExpressionUnitParser {
     }
 }
 
-impl Parse for LetExpressionParser {
-    type Output = Option<Spanned<Expression>>;
-
-    fn parse_with(self, cursor: &mut Cursor<'_>) -> Self::Output {
-        cursor.next_token(); // `let`
-
-        let left = PatternParser.parse_with(cursor)?;
-
-        cursor.consume(Token![=], "let expression")?;
-
-        let right = Box::new(ExpressionParser::default().parse_with(cursor)?);
-
-        let span = Span::new(left.span().start(), right.span().end(), cursor.file_id);
-
-        Some(Expression::Let { left, right }.at(span))
-    }
-}
-
 impl Parse for StatementsBlockExpressionParser {
     type Output = Option<Spanned<Expression>>;
 
@@ -642,64 +621,4 @@ impl Parse for FunctionExpressionParser {
             )),
         )
     }
-}
-
-#[cfg(test)]
-mod expression_tests {
-    use super::ExpressionParser;
-    use crate::macros::parse_test;
-
-    parse_test!(ExpressionParser::default(), literal1, "3");
-    parse_test!(ExpressionParser::default(), literal2, "\"hello\"");
-    parse_test!(ExpressionParser::default(), literal3, "true");
-    parse_test!(ExpressionParser::default(), array, "[1, 2, \"3\".into()]");
-    parse_test!(ExpressionParser::default(), tuple, "#(1, 3.2, \"hello\")");
-    parse_test!(
-        ExpressionParser::default(),
-        binary,
-        "!(1 + 2) + 3 / (3 + a.unwrap_or(0) * 4)"
-    );
-    parse_test!(ExpressionParser::default(), cast, "1 as f32");
-    parse_test!(ExpressionParser::default(), call, "l(2 * b() + 2).a()");
-    parse_test!(
-        ExpressionParser::default(),
-        call_with_generics,
-        "sizeof[i32]()"
-    );
-    parse_test!(
-        ExpressionParser::default(),
-        ifelse,
-        "if false then { 2.3 } else if false then { 5 as f32 } else { 2.0 }"
-    );
-    parse_test!(
-        ExpressionParser::default(),
-        r#while,
-        "while true do { print(\"hello\"); }"
-    );
-    parse_test!(
-        ExpressionParser::default(),
-        postfix,
-        "Some(a().unwrap_or(0) + b()?)"
-    );
-    parse_test!(
-        ExpressionParser::default(),
-        r#struct,
-        "Person { age: 3, name }"
-    );
-    parse_test!(ExpressionParser::default(), let1, "let a = 3;");
-    parse_test!(
-        ExpressionParser::default(),
-        let2,
-        "let Person { name, age } = get_person();"
-    );
-    parse_test!(
-        ExpressionParser::default(),
-        r#match,
-        "match Some(3) with { Some(a) => println(a), .. => {} }"
-    );
-    parse_test!(
-        ExpressionParser::default(),
-        function,
-        "let sum = |a: i32, b: i32|: i32 { a + b };"
-    );
 }

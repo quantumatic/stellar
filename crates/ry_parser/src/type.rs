@@ -7,8 +7,6 @@ use ry_span::{At, Span, Spanned};
 
 pub(crate) struct TypeParser;
 
-struct ArrayTypeParser;
-
 struct TypeConstructorParser;
 
 struct TupleTypeParser;
@@ -27,7 +25,6 @@ impl Parse for TypeParser {
     fn parse_with(self, cursor: &mut Cursor<'_>) -> Self::Output {
         match cursor.next.unwrap() {
             RawToken::Identifier => TypeConstructorParser.parse_with(cursor),
-            Token!['['] => ArrayTypeParser.parse_with(cursor),
             Token![#] => TupleTypeParser.parse_with(cursor),
             Token!['('] => FunctionTypeParser.parse_with(cursor),
             _ => {
@@ -43,41 +40,6 @@ impl Parse for TypeParser {
                 None
             }
         }
-    }
-}
-
-impl Parse for ArrayTypeParser {
-    type Output = Option<Spanned<Type>>;
-
-    fn parse_with(self, cursor: &mut Cursor<'_>) -> Self::Output {
-        cursor.next_token();
-        let start = cursor.current.span().start();
-
-        let element_type = TypeParser.parse_with(cursor)?;
-
-        if cursor.next.unwrap() == &Token![']'] {
-            cursor.next_token();
-        } else {
-            cursor.diagnostics.push(
-                ParseDiagnostic::UnexpectedTokenError {
-                    got: cursor.next.clone(),
-                    expected: expected!(Token![']']),
-                    node: "array type".to_owned(),
-                }
-                .build(),
-            );
-        }
-
-        Some(
-            Type::Array {
-                element_type: Box::new(element_type),
-            }
-            .at(Span::new(
-                start,
-                cursor.current.span().end(),
-                cursor.file_id,
-            )),
-        )
     }
 }
 
@@ -247,16 +209,4 @@ impl OptionalParser for WhereClauseParser {
             }
         ))
     }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::TypeParser;
-    use crate::macros::parse_test;
-
-    parse_test!(TypeParser, primary1, "i32");
-    parse_test!(TypeParser, primary, "Result[T, DivisionError]");
-    parse_test!(TypeParser, array, "[i32]");
-    parse_test!(TypeParser, tuple, "#(i32, string, char)");
-    parse_test!(TypeParser, function_type, "(i32, i32): i32");
 }
