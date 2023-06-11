@@ -90,8 +90,9 @@ impl Parse for ExpressionParser {
 
     fn parse_with(self, cursor: &mut Cursor<'_>) -> Self::Output {
         let mut left = PrimaryExpressionParser {
-            ignore_struct: self.ignore_struct
-        }.parse_with(cursor)?;
+            ignore_struct: self.ignore_struct,
+        }
+        .parse_with(cursor)?;
 
         while self.precedence < cursor.next.unwrap().to_precedence() {
             left = match cursor.next.unwrap() {
@@ -105,10 +106,14 @@ impl Parse for ExpressionParser {
                     } else {
                         StructExpressionParser { left }.parse_with(cursor)?
                     }
-                },
+                }
                 _ => {
                     if cursor.next.unwrap().binary_operator() {
-                        BinaryExpressionParser { left, ignore_struct: self.ignore_struct }.parse_with(cursor)?
+                        BinaryExpressionParser {
+                            left,
+                            ignore_struct: self.ignore_struct,
+                        }
+                        .parse_with(cursor)?
                     } else if cursor.next.unwrap().postfix_operator() {
                         PostfixExpressionParser { left }.parse_with(cursor)?
                     } else {
@@ -236,7 +241,10 @@ impl Parse for PrimaryExpressionParser {
             Token![while] => WhileExpressionParser.parse_with(cursor),
             _ => {
                 if cursor.next.unwrap().prefix_operator() {
-                    return PrefixExpressionParser { ignore_struct: self.ignore_struct }.parse_with(cursor);
+                    return PrefixExpressionParser {
+                        ignore_struct: self.ignore_struct,
+                    }
+                    .parse_with(cursor);
                 }
                 cursor.diagnostics.push(
                     ParseDiagnostic::UnexpectedTokenError {
@@ -494,8 +502,9 @@ impl Parse for BinaryExpressionParser {
 
         let right = ExpressionParser {
             precedence,
-            ignore_struct: self.ignore_struct
-        }.parse_with(cursor)?;
+            ignore_struct: self.ignore_struct,
+        }
+        .parse_with(cursor)?;
 
         Some(
             Expression::Binary {
