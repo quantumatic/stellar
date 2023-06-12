@@ -1,11 +1,11 @@
 use crate::{is_id_start, Lexer};
-use ry_ast::{token::RawToken::*, token::*};
+use ry_ast::token::{LexError, NumberKind, RawToken, Token};
 use ry_source_file::span::{At, Span};
-use std::{char::from_u32, string::String};
+use std::char::from_u32;
 
 /// True if `c` is a valid decimal digit.
 #[inline]
-pub(crate) fn decimal(c: char) -> bool {
+pub(crate) const fn decimal(c: char) -> bool {
     c.is_ascii_digit()
 }
 
@@ -15,14 +15,14 @@ pub(crate) fn hexadecimal(c: char) -> bool {
     c.is_ascii_digit() || ('a'..='f').contains(&c.to_ascii_lowercase())
 }
 
-fn invalid_separator(buffer: String) -> i32 {
+fn invalid_separator(string: &str) -> i32 {
     let mut base = ' ';
     let mut d = '.';
     let mut i = 0;
 
-    let bytes = buffer.as_bytes();
+    let bytes = string.as_bytes();
 
-    if buffer.len() >= 2 && bytes[0] as char == '0' {
+    if string.len() >= 2 && bytes[0] as char == '0' {
         base = bytes[1] as char;
         if base == 'x' || base == 'o' || base == 'b' {
             d = '0';
@@ -30,18 +30,19 @@ fn invalid_separator(buffer: String) -> i32 {
         }
     }
 
-    while i < buffer.len() {
+    while i < string.len() {
         let p = d;
         d = bytes[i] as char;
         if d == '_' {
             if p != '0' {
-                return i as i32;
+                return TryInto::<i32>::try_into(i).expect("Overflow in Lexer::invalid_separator");
             }
         } else if decimal(d) || base == 'x' && hexadecimal(d) {
             d = '0';
         } else {
             if p == '_' {
-                return i as i32 - 1;
+                return TryInto::<i32>::try_into(i).expect("Overflow in Lexer::invalid_separator")
+                    - 1;
             }
 
             d = '.';
@@ -51,7 +52,9 @@ fn invalid_separator(buffer: String) -> i32 {
     }
 
     if d == '_' {
-        return bytes.len() as i32 - 1;
+        return TryInto::<i32>::try_into(bytes.len())
+            .expect("Overflow in Lexer::invalid_separator")
+            - 1;
     }
 
     -1
@@ -115,7 +118,7 @@ impl Lexer<'_> {
                 self.advance();
 
                 if prefix == 'o' || prefix == 'b' || prefix == 'x' {
-                    return Error(LexError::InvalidRadixPoint).at(Span::new(
+                    return RawToken::Error(LexError::InvalidRadixPoint).at(Span::new(
                         start_location,
                         self.location,
                         self.file_id,
@@ -126,7 +129,7 @@ impl Lexer<'_> {
             }
 
             if digit_separator & 1 == 0 {
-                return Error(LexError::HasNoDigits).at(Span::new(
+                return RawToken::Error(LexError::HasNoDigits).at(Span::new(
                     start_location,
                     self.location,
                     self.file_id,
@@ -137,7 +140,7 @@ impl Lexer<'_> {
         let l = self.current.to_ascii_lowercase();
         if l == 'e' {
             if prefix != '\0' && prefix != '0' {
-                return Error(LexError::ExponentRequiresDecimalMantissa).at(Span::new(
+                return RawToken::Error(LexError::ExponentRequiresDecimalMantissa).at(Span::new(
                     start_location,
                     self.location,
                     self.file_id,
@@ -157,7 +160,7 @@ impl Lexer<'_> {
             digit_separator |= ds;
 
             if ds & 1 == 0 {
-                return Error(LexError::ExponentHasNoDigits).at(Span::new(
+                return RawToken::Error(LexError::ExponentHasNoDigits).at(Span::new(
                     start_location,
                     self.location,
                     self.file_id,
@@ -165,11 +168,11 @@ impl Lexer<'_> {
             }
         }
 
-        let buffer = &self.source[start_location..self.location];
+        let string = &self.source[start_location..self.location];
 
         if let Some(location) = invalid_digit_location {
             if number_kind == NumberKind::Int {
-                return Error(LexError::InvalidDigit).at(Span::new(
+                return RawToken::Error(LexError::InvalidDigit).at(Span::new(
                     location,
                     location + 1,
                     self.file_id,
@@ -177,22 +180,22 @@ impl Lexer<'_> {
             }
         }
 
-        let s = invalid_separator(buffer.to_owned());
+        let s = invalid_separator(string);
 
         if digit_separator & 2 != 0 && s >= 0 {
-            return Error(LexError::UnderscoreMustSeparateSuccessiveDigits).at(Span::new(
-                s as usize + start_location,
-                s as usize + start_location + 1,
-                self.file_id,
-            ));
+            let separator_location =
+                TryInto::<usize>::try_into(s).expect("Invalid separator in Lexer::eat_number");
+            return RawToken::Error(LexError::UnderscoreMustSeparateSuccessiveDigits).at(
+                Span::new(separator_location, separator_location + 1, self.file_id),
+            );
         }
 
         match number_kind {
             NumberKind::Int => {
-                IntegerLiteral.at(Span::new(start_location, self.location, self.file_id))
+                RawToken::IntegerLiteral.at(Span::new(start_location, self.location, self.file_id))
             }
             NumberKind::Float => {
-                FloatLiteral.at(Span::new(start_location, self.location, self.file_id))
+                RawToken::FloatLiteral.at(Span::new(start_location, self.location, self.file_id))
             }
             NumberKind::Invalid => {
                 unreachable!()
@@ -207,7 +210,11 @@ impl Lexer<'_> {
         digit_separator: &mut i32,
     ) {
         if base <= 10 {
-            let max = from_u32('0' as u32 + base as u32).unwrap();
+            let max = from_u32(
+                '0' as u32
+                    + TryInto::<u32>::try_into(base).expect("Invalid base in Lexer::eat_digits()"),
+            )
+            .expect("Invalid max character in Lexer::eat_digits()");
 
             while decimal(self.current) || self.current == '_' {
                 let mut ds = 1;
@@ -223,11 +230,7 @@ impl Lexer<'_> {
             }
         } else {
             while hexadecimal(self.current) || self.current == '_' {
-                let mut ds = 1;
-
-                if self.current == '_' {
-                    ds = 2;
-                }
+                let ds = if self.current == '_' { 2 } else { 1 };
 
                 *digit_separator |= ds;
                 self.advance();

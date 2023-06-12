@@ -35,8 +35,70 @@
 //!
 //! assert_eq!(lexer.next_token().unwrap(), &Error(LexError::UnexpectedChar));
 //! ```
+
+#![doc(
+    html_logo_url = "https://raw.githubusercontent.com/abs0luty/Ry/main/additional/icon/ry.png",
+    html_favicon_url = "https://raw.githubusercontent.com/abs0luty/Ry/main/additional/icon/ry.png"
+)]
+#![cfg_attr(not(test), forbid(clippy::unwrap_used))]
+#![warn(missing_docs, clippy::dbg_macro)]
+#![deny(
+    // rustc lint groups https://doc.rust-lang.org/rustc/lints/groups.html
+    warnings,
+    future_incompatible,
+    let_underscore,
+    nonstandard_style,
+    rust_2018_compatibility,
+    rust_2018_idioms,
+    rust_2021_compatibility,
+    unused,
+    // rustc allowed-by-default lints https://doc.rust-lang.org/rustc/lints/listing/allowed-by-default.html
+    macro_use_extern_crate,
+    meta_variable_misuse,
+    missing_abi,
+    missing_copy_implementations,
+    missing_debug_implementations,
+    non_ascii_idents,
+    noop_method_call,
+    single_use_lifetimes,
+    trivial_casts,
+    trivial_numeric_casts,
+    unreachable_pub,
+    unsafe_op_in_unsafe_fn,
+    unused_crate_dependencies,
+    unused_import_braces,
+    unused_lifetimes,
+    unused_qualifications,
+    unused_tuple_struct_fields,
+    variant_size_differences,
+    // rustdoc lints https://doc.rust-lang.org/rustdoc/lints.html
+    rustdoc::broken_intra_doc_links,
+    rustdoc::private_intra_doc_links,
+    rustdoc::missing_crate_level_docs,
+    rustdoc::private_doc_tests,
+    rustdoc::invalid_codeblock_attributes,
+    rustdoc::invalid_rust_codeblocks,
+    rustdoc::bare_urls,
+    // clippy categories https://doc.rust-lang.org/clippy/
+    clippy::all,
+    clippy::correctness,
+    clippy::suspicious,
+    clippy::style,
+    clippy::complexity,
+    clippy::perf,
+    clippy::pedantic,
+    clippy::nursery,
+)]
+#![allow(
+    clippy::module_name_repetitions,
+    clippy::too_many_lines,
+    clippy::option_if_let_else,
+    clippy::redundant_pub_crate,
+    clippy::unnested_or_patterns
+)]
+
 use ry_ast::{
-    token::{RawToken::*, *},
+    token::{LexError, RawToken, Token, RESERVED},
     Token,
 };
 use ry_interner::{Interner, Symbol};
@@ -67,6 +129,8 @@ pub struct Lexer<'a> {
 }
 
 impl<'a> Lexer<'a> {
+    /// Creates a new [`Lexer`].
+    #[must_use]
     pub fn new(file_id: usize, source: &'a str, interner: &'a mut Interner) -> Self {
         let mut chars = source.chars();
 
@@ -86,12 +150,15 @@ impl<'a> Lexer<'a> {
     }
 
     /// Returns a symbol corresponding to an identifier being processed early on.
-    pub fn identifier(&self) -> Symbol {
+    #[must_use]
+    #[inline]
+    pub const fn identifier(&self) -> Symbol {
         self.identifier
     }
 
     /// Returns `true` if current character is EOF (`\0`).
-    fn eof(&self) -> bool {
+    #[inline]
+    const fn eof(&self) -> bool {
         self.current == '\0'
     }
 
@@ -184,7 +251,7 @@ impl<'a> Lexer<'a> {
 
                     self.advance();
 
-                    let mut buffer = String::from("");
+                    let mut buffer = String::new();
 
                     for _ in 0..4 {
                         if !self.current.is_ascii_hexdigit() {
@@ -201,7 +268,7 @@ impl<'a> Lexer<'a> {
                             .at(Span::new(self.location, self.location + 1, self.file_id)));
                     }
 
-                    match char::from_u32(u32::from_str_radix(&buffer, 16).unwrap()) {
+                    match char::from_u32(u32::from_str_radix(&buffer, 16).expect("Invalid hex")) {
                         Some(c) => Ok(c),
                         None => Err(LexError::InvalidUnicodeEscapeSequence.at(Span::new(
                             self.location,
@@ -220,7 +287,7 @@ impl<'a> Lexer<'a> {
 
                     self.advance();
 
-                    let mut buffer = String::from("");
+                    let mut buffer = String::new();
 
                     for _ in 0..8 {
                         if !self.current.is_ascii_hexdigit() {
@@ -237,7 +304,7 @@ impl<'a> Lexer<'a> {
                             .at(Span::new(self.location, self.location + 1, self.file_id)));
                     }
 
-                    match char::from_u32(u32::from_str_radix(&buffer, 16).unwrap()) {
+                    match char::from_u32(u32::from_str_radix(&buffer, 16).expect("Invalid hex")) {
                         Some(c) => Ok(c),
                         None => Err(LexError::InvalidUnicodeEscapeSequence.at(Span::new(
                             self.location,
@@ -256,7 +323,7 @@ impl<'a> Lexer<'a> {
 
                     self.advance();
 
-                    let mut buffer = String::from("");
+                    let mut buffer = String::new();
 
                     for _ in 0..2 {
                         if !self.current.is_ascii_hexdigit() {
@@ -276,7 +343,7 @@ impl<'a> Lexer<'a> {
                             .at(Span::new(self.location, self.location + 1, self.file_id)));
                     }
 
-                    match char::from_u32(u32::from_str_radix(&buffer, 16).unwrap()) {
+                    match char::from_u32(u32::from_str_radix(&buffer, 16).expect("Invalid hex")) {
                         Some(c) => Ok(c),
                         None => Err(LexError::InvalidByteEscapeSequence.at(Span::new(
                             self.location - 4,
@@ -307,7 +374,7 @@ impl<'a> Lexer<'a> {
 
         while self.current != '\'' {
             if self.current == '\n' || self.eof() {
-                return Error(LexError::UnterminatedCharLiteral).at(Span::new(
+                return RawToken::Error(LexError::UnterminatedCharLiteral).at(Span::new(
                     start_location,
                     self.location,
                     self.file_id,
@@ -331,14 +398,14 @@ impl<'a> Lexer<'a> {
 
         match size {
             2..=usize::MAX => {
-                return Error(LexError::MoreThanOneCharInCharLiteral).at(Span::new(
+                return RawToken::Error(LexError::MoreThanOneCharInCharLiteral).at(Span::new(
                     start_location,
                     self.location,
                     self.file_id,
                 ));
             }
             0 => {
-                return Error(LexError::EmptyCharLiteral).at(Span::new(
+                return RawToken::Error(LexError::EmptyCharLiteral).at(Span::new(
                     start_location,
                     self.location,
                     self.file_id,
@@ -347,7 +414,7 @@ impl<'a> Lexer<'a> {
             _ => {}
         }
 
-        CharLiteral.at(Span::new(start_location, self.location, self.file_id))
+        RawToken::CharLiteral.at(Span::new(start_location, self.location, self.file_id))
     }
 
     /// Parses a string literal.
@@ -356,7 +423,7 @@ impl<'a> Lexer<'a> {
 
         self.advance();
 
-        let mut buffer = String::from("");
+        let mut buffer = String::new();
 
         while !self.eof() && self.current != '\n' {
             let c = self.current;
@@ -380,7 +447,7 @@ impl<'a> Lexer<'a> {
         }
 
         if self.eof() || self.current == '\n' {
-            return Error(LexError::UnterminatedStringLiteral).at(Span::new(
+            return RawToken::Error(LexError::UnterminatedStringLiteral).at(Span::new(
                 start_location,
                 self.location,
                 self.file_id,
@@ -389,7 +456,7 @@ impl<'a> Lexer<'a> {
 
         self.advance();
 
-        StringLiteral.at(Span::new(start_location, self.location, self.file_id))
+        RawToken::StringLiteral.at(Span::new(start_location, self.location, self.file_id))
     }
 
     /// Parses a wrapped identifier.
@@ -403,7 +470,7 @@ impl<'a> Lexer<'a> {
         })[1..];
 
         if self.current != '`' {
-            return Error(LexError::UnterminatedWrappedIdentifier).at(Span::new(
+            return RawToken::Error(LexError::UnterminatedWrappedIdentifier).at(Span::new(
                 start_location,
                 self.location,
                 self.file_id,
@@ -411,7 +478,7 @@ impl<'a> Lexer<'a> {
         }
 
         if name.is_empty() {
-            return Error(LexError::EmptyWrappedIdentifier).at(Span::new(
+            return RawToken::Error(LexError::EmptyWrappedIdentifier).at(Span::new(
                 start_location,
                 self.location,
                 self.file_id,
@@ -421,7 +488,7 @@ impl<'a> Lexer<'a> {
         self.advance();
 
         self.identifier = self.interner.get_or_intern(name);
-        Identifier.at(Span::new(start_location, self.location, self.file_id))
+        RawToken::Identifier.at(Span::new(start_location, self.location, self.file_id))
     }
 
     /// Parses a usual comment (prefix is `//`).
@@ -432,7 +499,7 @@ impl<'a> Lexer<'a> {
 
         self.advance_while(start_location + 2, |current, _| (current != '\n'));
 
-        Comment.at(Span::new(start_location, self.location, self.file_id))
+        RawToken::Comment.at(Span::new(start_location, self.location, self.file_id))
     }
 
     /// Parses a doc comment.
@@ -449,9 +516,9 @@ impl<'a> Lexer<'a> {
         self.advance_while(start_location + 3, |current, _| (current != '\n'));
 
         if global {
-            GlobalDocComment
+            RawToken::GlobalDocComment
         } else {
-            LocalDocComment
+            RawToken::LocalDocComment
         }
         .at(Span::new(start_location, self.location, self.file_id))
     }
@@ -461,31 +528,32 @@ impl<'a> Lexer<'a> {
         let start_location = self.location;
         let name = self.advance_while(start_location, |current, _| is_id_continue(current));
 
-        match RESERVED.get(name) {
-            Some(reserved) => {
-                (*reserved).at(Span::new(start_location, self.location, self.file_id))
-            }
-            None => {
-                self.identifier = self.interner.get_or_intern(name);
-                Identifier.at(Span::new(start_location, self.location, self.file_id))
-            }
+        if let Some(reserved) = RESERVED.get(name) {
+            (*reserved).at(Span::new(start_location, self.location, self.file_id))
+        } else {
+            self.identifier = self.interner.get_or_intern(name);
+            RawToken::Identifier.at(Span::new(start_location, self.location, self.file_id))
         }
     }
 
+    /// Works the same as [`Lexer::next_token`], but skips comments ([`RawToken::Comment`]).
     pub fn next_no_comments(&mut self) -> Token {
         loop {
             let t = self.next_token();
-            if t.unwrap() != &Comment {
+            if t.unwrap() != &RawToken::Comment {
                 return t;
             }
         }
     }
 
+    /// Proceeds to the next token and returns it (see [top level documentation](../index.html) for more details).
     pub fn next_token(&mut self) -> Token {
         self.eat_whitespaces();
 
         match (self.current, self.next) {
-            ('\0', _) => EndOfFile.at(Span::new(self.location, self.location + 1, self.file_id)),
+            ('\0', _) => {
+                RawToken::EndOfFile.at(Span::new(self.location, self.location + 1, self.file_id))
+            }
 
             (':', _) => self.advance_with(Token![:]),
             ('@', _) => self.advance_with(Token![@]),
@@ -560,14 +628,14 @@ impl<'a> Lexer<'a> {
                     return self.advance_with(Token![.]);
                 }
 
-                self.advance_with(Error(LexError::UnexpectedChar))
+                self.advance_with(RawToken::Error(LexError::UnexpectedChar))
             }
         }
     }
 }
 
 /// True if `c` is a whitespace.
-fn is_whitespace(c: char) -> bool {
+const fn is_whitespace(c: char) -> bool {
     // Note that it is ok to hard-code the values, because
     // the set is stable and doesn't change with different
     // Unicode versions.
