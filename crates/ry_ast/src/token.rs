@@ -151,7 +151,7 @@ impl AsRef<str> for Keyword {
             Self::Do => "`do`",
             Self::Match => "`match`",
             Self::With => "`with`",
-            Self::Use => "`use`"
+            Self::Use => "`use`",
         }
     }
 }
