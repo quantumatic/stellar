@@ -14,7 +14,7 @@ use ry_ast::{
 use ry_diagnostics::{expected, parser::ParseDiagnostic, Report};
 use ry_span::Span;
 
-struct ImportParser {
+struct UseItemParser {
     pub(crate) visibility: Visibility,
 }
 
@@ -69,7 +69,7 @@ pub(crate) struct ItemsParser {
 
 pub(crate) struct ItemParser;
 
-impl Parse for ImportParser {
+impl Parse for UseItemParser {
     type Output = Option<Item>;
 
     fn parse_with(self, cursor: &mut Cursor<'_>) -> Self::Output {
@@ -527,7 +527,7 @@ impl ItemParser {
         loop {
             match cursor.next.unwrap() {
                 Token![enum]
-                | Token![import]
+                | Token![use]
                 | Token![struct]
                 | Token![trait]
                 | Token![fun]
@@ -566,8 +566,8 @@ impl Parse for ItemParser {
             Token![enum] => {
                 go_to_next_valid_item!(cursor, EnumParser { visibility }.parse_with(cursor))
             }
-            Token![import] => {
-                go_to_next_valid_item!(cursor, ImportParser { visibility }.parse_with(cursor))
+            Token![use] => {
+                go_to_next_valid_item!(cursor, UseItemParser { visibility }.parse_with(cursor))
             }
             Token![struct] => {
                 go_to_next_valid_item!(cursor, StructItemParser { visibility }.parse_with(cursor))
@@ -591,7 +591,7 @@ impl Parse for ItemParser {
                     ParseDiagnostic::UnexpectedTokenError {
                         got: cursor.next.clone(),
                         expected: expected!(
-                            Token![import],
+                            Token![use],
                             Token![fun],
                             Token![trait],
                             Token![enum],
@@ -608,7 +608,7 @@ impl Parse for ItemParser {
                 loop {
                     match cursor.next.unwrap() {
                         Token![enum]
-                        | Token![import]
+                        | Token![use]
                         | Token![struct]
                         | Token![trait]
                         | Token![fun]

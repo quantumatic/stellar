@@ -113,7 +113,6 @@ pub enum Keyword {
     Fun,
     If,
     Impl,
-    Import,
     Then,
     Pub,
     Return,
@@ -126,12 +125,12 @@ pub enum Keyword {
     Do,
     Match,
     With,
+    Use,
 }
 
 impl AsRef<str> for Keyword {
     fn as_ref(&self) -> &str {
         match self {
-            Self::Import => "`import`",
             Self::Pub => "`pub`",
             Self::Fun => "`fun`",
             Self::Struct => "`struct`",
@@ -152,6 +151,7 @@ impl AsRef<str> for Keyword {
             Self::Do => "`do`",
             Self::Match => "`match`",
             Self::With => "`with`",
+            Self::Use => "`use`"
         }
     }
 }
@@ -468,7 +468,7 @@ pub type Token = Spanned<RawToken>;
 /// assert_eq!(Token![@], RawToken::Punctuator(Punctuator::AtSign));
 ///
 /// // Same for keywords
-/// assert_eq!(Token![import], RawToken::Keyword(Keyword::Import));
+/// assert_eq!(Token![use], RawToken::Keyword(Keyword::Use));
 ///
 /// // For parenthesis and brackets use quotes.
 /// assert_eq!(
@@ -526,7 +526,7 @@ macro_rules! Token {
     [=>] =>                 {$crate::token::RawToken::Punctuator($crate::token::Punctuator::Arrow)};
     [true] =>               {$crate::token::RawToken::TrueBoolLiteral};
     [false] =>              {$crate::token::RawToken::FalseBoolLiteral};
-    [import] =>             {$crate::token::RawToken::Keyword($crate::token::Keyword::Import)};
+    [use] =>                {$crate::token::RawToken::Keyword($crate::token::Keyword::Use)};
     [pub] =>                {$crate::token::RawToken::Keyword($crate::token::Keyword::Pub)};
     [fun] =>                {$crate::token::RawToken::Keyword($crate::token::Keyword::Fun)};
     [struct] =>             {$crate::token::RawToken::Keyword($crate::token::Keyword::Struct)};
@@ -553,7 +553,7 @@ macro_rules! Token {
 pub static RESERVED: phf::Map<&'static str, RawToken> = phf_map! {
     "true" => RawToken::TrueBoolLiteral,
     "false" => RawToken::FalseBoolLiteral,
-    "import" => Token![import],
+    "use" => Token![use],
     "pub" => Token![pub],
     "fun" => Token![fun],
     "struct" => Token![struct],

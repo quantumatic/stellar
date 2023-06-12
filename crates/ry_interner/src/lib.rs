@@ -6,7 +6,7 @@
 //!
 //! ### Examples:
 //!
-//! Internings:
+//! Interning:
 //! ```
 //! use ry_interner::Interner;
 //!
