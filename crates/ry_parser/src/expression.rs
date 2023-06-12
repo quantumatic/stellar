@@ -12,7 +12,7 @@ use ry_ast::{
     PostfixOperator, PrefixOperator, StructExpressionUnit, Token,
 };
 use ry_diagnostics::{expected, parser::ParseDiagnostic, Report};
-use ry_span::{At, Span, Spanned};
+use ry_source_file::span::{At, Span, Spanned};
 
 #[derive(Default)]
 pub(crate) struct ExpressionParser {
@@ -80,7 +80,7 @@ struct FunctionExpressionParser;
 struct StatementsBlockExpressionParser;
 
 impl ExpressionParser {
-    pub fn ignore_struct(&mut self) {
+    fn ignore_struct(&mut self) {
         self.ignore_struct = true;
     }
 }
@@ -103,9 +103,9 @@ impl Parse for ExpressionParser {
                 Token!['{'] => {
                     if self.ignore_struct {
                         return Some(left);
-                    } else {
-                        StructExpressionParser { left }.parse_with(cursor)?
                     }
+
+                    StructExpressionParser { left }.parse_with(cursor)?
                 }
                 _ => {
                     if cursor.next.unwrap().binary_operator() {

@@ -8,5 +8,5 @@ authors = ["Adi Salimgereyev <adisalimgereev@gmail.com>"]
 [dependencies]
 phf = { version = "0.11.1", features = ["macros"] }
 ry_interner = { path = "../ry_interner" }
-ry_span = { path = "../ry_span" }
+ry_source_file = { path = "../ry_source_file" }
 codespan-reporting = "0.11.1"

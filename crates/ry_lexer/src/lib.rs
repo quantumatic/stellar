@@ -11,7 +11,7 @@
 //! use ry_lexer::Lexer;
 //! use ry_ast::token::RawToken::EndOfFile;
 //! use ry_interner::Interner;
-//! use ry_span::{Span, At};
+//! use ry_source_file::span::{Span, At};
 //!
 //! let mut interner = Interner::default();
 //! let mut lexer = Lexer::new(0, "", &mut interner);
@@ -40,7 +40,7 @@ use ry_ast::{
     Token,
 };
 use ry_interner::{Interner, Symbol};
-use ry_span::{At, Span, Spanned};
+use ry_source_file::span::{At, Span, Spanned};
 use std::{str::Chars, string::String};
 
 mod number;

@@ -48,10 +48,11 @@ use crate::prefix::log_with_prefix;
 use clap::{arg, Parser, Subcommand};
 use new_project::create_new_project_folder;
 use prefix::{create_unique_file, log_with_left_padded_prefix};
-use ry_diagnostics::Reporter;
+use ry_diagnostics::DiagnosticsEmitterBuilder;
 use ry_interner::Interner;
 use ry_lexer::Lexer;
-use std::{fs, io::Write, process::exit, time::Instant};
+use ry_source_file::{source_file::SourceFile, source_file_manager::SourceFileManager};
+use std::{fs, io::Write, path::Path, process::exit, time::Instant};
 
 mod new_project;
 mod prefix;
@@ -80,7 +81,8 @@ enum Commands {
 }
 
 fn main() {
-    let mut reporter = Reporter::default();
+    let mut file_manager = SourceFileManager::new();
+    let mut diagnostics_emitter = DiagnosticsEmitterBuilder::new(&mut file_manager).build();
 
     let mut interner = Interner::default();
 
@@ -125,7 +127,8 @@ fn main() {
 
             match fs::read_to_string(filepath) {
                 Ok(source) => {
-                    let file_id = reporter.add_file(filepath, &source);
+                    let file_id =
+                        diagnostics_emitter.add_file(SourceFile::new(Path::new(filepath), &source));
 
                     let mut diagnostics = vec![];
                     let mut cursor =
@@ -137,9 +140,7 @@ fn main() {
 
                     let ast = cursor.parse();
 
-                    for diagnostic in diagnostics {
-                        reporter.emit_diagnostic(&diagnostic);
-                    }
+                    diagnostics_emitter.emit_diagnostics(diagnostics.as_slice());
 
                     let ast_string = format!("{:?}", ast);
 

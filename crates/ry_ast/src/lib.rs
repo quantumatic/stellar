@@ -45,7 +45,7 @@
 #![allow(clippy::match_single_binding, clippy::inconsistent_struct_constructor)]
 
 use ry_interner::Symbol;
-use ry_span::{Span, Spanned};
+use ry_source_file::span::{Span, Spanned};
 use token::RawToken;
 
 pub mod precedence;
@@ -54,7 +54,7 @@ pub mod token;
 #[derive(Debug, PartialEq)]
 pub enum Literal {
     Boolean(bool),
-    Character(char),
+    Character(String),
     String(String),
     Integer(u64),
     Float(f64),

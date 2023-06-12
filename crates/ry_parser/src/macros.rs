@@ -1,18 +1,3 @@
-#[cfg(test)]
-macro_rules! parse_test {
-    ($parser: expr, $name:ident, $source:literal) => {
-        #[test]
-        #[allow(unused_qualifications)]
-        fn $name() {
-            let mut diagnostics = vec![];
-            let mut string_interner = ry_interner::Interner::default();
-            let mut cursor = crate::Cursor::new(0, $source, &mut string_interner, &mut diagnostics);
-            let node = crate::Parse::parse_with($parser, &mut cursor);
-            assert!(node.is_some());
-        }
-    };
-}
-
 macro_rules! parse_list {
     (
         $cursor:ident,
@@ -38,9 +23,9 @@ macro_rules! parse_list {
                                 .build(),
                             );
                             break;
-                        } else {
-                            $cursor.next_token();
                         }
+
+                        $cursor.next_token();
 
                         if $cursor.next.unwrap() == &$closing_token {
                             break;
@@ -80,9 +65,9 @@ macro_rules! parse_list {
                                 .build(),
                             );
                             break;
-                        } else {
-                            $cursor.next_token();
                         }
+
+                        $cursor.next_token();
 
                         if $cursor.next.unwrap() == &$closing_token1
                             || $cursor.next.unwrap() == &$closing_token2 {
@@ -100,6 +85,3 @@ macro_rules! parse_list {
 }
 
 pub(crate) use parse_list;
-
-#[cfg(test)]
-pub(crate) use parse_test;

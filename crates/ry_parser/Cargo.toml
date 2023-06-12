@@ -11,4 +11,4 @@ ry_lexer = { path = "../ry_lexer" }
 ry_diagnostics = { path = "../ry_diagnostics" }
 codespan-reporting = "0.11.1"
 ry_interner = { path = "../ry_interner" }
-ry_span = { path = "../ry_span" }
+ry_source_file = { path = "../ry_source_file" }

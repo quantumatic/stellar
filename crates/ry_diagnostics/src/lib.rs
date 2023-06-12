@@ -61,36 +61,36 @@
 
 use codespan_reporting::{
     diagnostic::Diagnostic,
-    files::SimpleFiles,
     term::{
         self,
         termcolor::{ColorChoice, StandardStream},
         Config,
     },
 };
+use ry_source_file::{source_file::SourceFile, source_file_manager::SourceFileManager};
 
 pub mod parser;
 
 /// Stores basic `codespan_reporting` structs for reporting diagnostics.
 #[derive(Debug)]
-pub struct Reporter<'f> {
+pub struct DiagnosticsEmitter<'a> {
     /// The stream in which diagnostics is reported into.
     pub writer: StandardStream,
 
     /// The config for diagnostics reporting.
     pub config: Config,
 
-    /// The list of files used in diagnostics.
-    files: SimpleFiles<&'f str, &'f str>,
+    /// The source file manager.
+    pub file_manager: &'a mut SourceFileManager<'a>,
 }
 
-impl<'f> Reporter<'f> {
+impl<'a> DiagnosticsEmitter<'a> {
     /// Emit the error not related to a conrete file.
     pub fn emit_global_error(&self, msg: &str) {
         term::emit(
             &mut self.writer.lock(),
             &self.config,
-            &self.files,
+            self.file_manager,
             &Diagnostic::error().with_message(msg),
         )
         .expect("emit_global_diagnostic() failed");
@@ -101,24 +101,77 @@ impl<'f> Reporter<'f> {
         term::emit(
             &mut self.writer.lock(),
             &self.config,
-            &self.files,
+            self.file_manager,
             diagnostic,
         )
         .expect("emit_diagnostic() failed");
     }
 
-    /// Add file into the reporter, to properly report diagnostics inside the file.
-    pub fn add_file(&mut self, filename: &'f str, source: &'f str) -> usize {
-        self.files.add(filename, source)
+    /// Emit a list of diagnostic.
+    pub fn emit_diagnostics(&self, diagnostics: &[Diagnostic<usize>]) {
+        for diagnostic in diagnostics {
+            self.emit_diagnostic(diagnostic);
+        }
+    }
+
+    /// Add a file to the source file manager.
+    pub fn add_file(&mut self, file: SourceFile<'a>) -> usize {
+        self.file_manager.add_file(file)
     }
 }
 
-impl Default for Reporter<'_> {
-    fn default() -> Self {
+/// Builder for [`Reporter`].
+///
+/// See [`ReporterBuilder::with_diagnostics_writer`] and [`ReporterBuilder::with_diagnostics_config`]
+/// for more details.
+#[derive(Debug)]
+pub struct DiagnosticsEmitterBuilder<'a> {
+    /// The stream in which diagnostics is reported into.
+    diagnostics_writer: Option<StandardStream>,
+
+    /// The config for diagnostics reporting.
+    diagnostics_config: Option<Config>,
+
+    /// The source file manager.
+    file_manager: &'a mut SourceFileManager<'a>,
+}
+
+impl<'a> DiagnosticsEmitterBuilder<'a> {
+    /// Create a new [`ReporterBuilder`].
+    #[must_use]
+    #[inline]
+    pub fn new(file_manager: &'a mut SourceFileManager<'a>) -> Self {
         Self {
-            writer: StandardStream::stderr(ColorChoice::Always),
-            config: Config::default(),
-            files: SimpleFiles::new(),
+            diagnostics_writer: None,
+            diagnostics_config: None,
+            file_manager,
+        }
+    }
+
+    /// Set the stream in which diagnostics is reported into.
+    #[must_use]
+    #[allow(clippy::missing_const_for_fn)] // clippy issue
+    pub fn with_diagnostics_writer(mut self, writer: StandardStream) -> Self {
+        self.diagnostics_writer = Some(writer);
+        self
+    }
+
+    /// Set the config for diagnostics reporting.
+    #[must_use]
+    #[allow(clippy::missing_const_for_fn)] // clippy issue
+    pub fn with_diagnostics_config(mut self, config: Config) -> Self {
+        self.diagnostics_config = Some(config);
+        self
+    }
+
+    /// Build new [`Reporter`] object.
+    pub fn build(self) -> DiagnosticsEmitter<'a> {
+        DiagnosticsEmitter {
+            writer: self
+                .diagnostics_writer
+                .unwrap_or_else(|| StandardStream::stderr(ColorChoice::Always)),
+            config: self.diagnostics_config.unwrap_or_default(),
+            file_manager: self.file_manager,
         }
     }
 }

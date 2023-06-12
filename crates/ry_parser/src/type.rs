@@ -3,7 +3,7 @@ use ry_ast::{
     token::RawToken, GenericParameter, Token, Type, TypeConstructor, WhereClause, WhereClauseItem,
 };
 use ry_diagnostics::{expected, parser::ParseDiagnostic, Report};
-use ry_span::{At, Span, Spanned};
+use ry_source_file::span::{At, Span, Spanned};
 
 pub(crate) struct TypeParser;
 

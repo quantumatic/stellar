@@ -1,7 +1,7 @@
 use crate::{literal::LiteralParser, macros::parse_list, path::PathParser, Cursor, Parse};
 use ry_ast::{token::RawToken, Path, Pattern, StructFieldPattern, Token};
 use ry_diagnostics::{expected, parser::ParseDiagnostic, Report};
-use ry_span::{At, Span, Spanned};
+use ry_source_file::span::{At, Span, Spanned};
 
 pub(crate) struct PatternParser;
 
@@ -30,7 +30,7 @@ impl Parse for PatternParser {
         if cursor.next.unwrap() == &Token![|] {
             cursor.next_token();
 
-            let right = PatternParser.parse_with(cursor)?;
+            let right = Self.parse_with(cursor)?;
 
             let span = Span::new(left.span().start(), right.span().end(), cursor.file_id);
 
@@ -84,7 +84,7 @@ impl Parse for PatternExceptOrParser {
                         .expect(
                             "Cannot get first identifier in path when parsing identifier pattern",
                         )
-                        .to_owned();
+                        .clone();
 
                     let pattern = if cursor.next.unwrap() == &Token![@] {
                         cursor.next_token();
@@ -304,20 +304,4 @@ impl Parse for GroupedPatternParser {
             cursor.file_id,
         )))
     }
-}
-
-#[cfg(test)]
-mod pattern_tests {
-    use crate::{macros::parse_test, pattern::PatternParser};
-
-    parse_test!(PatternParser, rest_pattern, "..");
-    parse_test!(PatternParser, identifier_pattern, "test");
-    parse_test!(PatternParser, path_pattern, "a.b.c");
-    parse_test!(PatternParser, identifier_pattern2, "test @ 1");
-    parse_test!(PatternParser, identifier_pattern3, "test @ [1, ..]");
-    parse_test!(PatternParser, struct_pattern, "test { a: 2, b, c: d }");
-    parse_test!(PatternParser, tuple_pattern, "#(a, 2, ..)");
-    parse_test!(PatternParser, enum_item_tuple_pattern, "Some(a)");
-    parse_test!(PatternParser, grouped_pattern, "(Some(a))");
-    parse_test!(PatternParser, or_pattern, "Some(a) | None");
 }

@@ -12,7 +12,7 @@ use ry_ast::{
     WithDocComment,
 };
 use ry_diagnostics::{expected, parser::ParseDiagnostic, Report};
-use ry_span::Span;
+use ry_source_file::span::Span;
 
 struct UseItemParser {
     pub(crate) visibility: Visibility,
@@ -89,12 +89,12 @@ impl Parse for StructFieldParser {
     type Output = Option<StructField>;
 
     fn parse_with(self, cursor: &mut Cursor<'_>) -> Self::Output {
-        let mut visibility = Visibility::private();
-
-        if *cursor.next.unwrap() == Token![pub] {
+        let visibility = if cursor.next.unwrap() == &Token![pub] {
             cursor.next_token();
-            visibility = Visibility::public(cursor.current.span());
-        }
+            Visibility::public(cursor.current.span())
+        } else {
+            Visibility::private()
+        };
 
         let name = cursor.consume_identifier("struct field")?;
 
@@ -170,12 +170,12 @@ impl Parse for FunctionParameterParser {
 
         let r#type = TypeParser.parse_with(cursor)?;
 
-        let mut default_value = None;
-
-        if *cursor.next.unwrap() == Token![=] {
+        let default_value = if cursor.next.unwrap() == &Token![=] {
             cursor.next_token();
-            default_value = Some(ExpressionParser::default().parse_with(cursor)?);
-        }
+            Some(ExpressionParser::default().parse_with(cursor)?)
+        } else {
+            None
+        };
 
         Some(FunctionParameter {
             name,
@@ -203,12 +203,12 @@ impl Parse for FunctionParser {
 
         cursor.next_token();
 
-        let mut return_type = None;
-
-        if *cursor.next.unwrap() == Token![:] {
+        let return_type = if cursor.next.unwrap() == &Token![:] {
             cursor.next_token();
-            return_type = Some(TypeParser.parse_with(cursor)?);
-        }
+            Some(TypeParser.parse_with(cursor)?)
+        } else {
+            None
+        };
 
         let where_clause = WhereClauseParser.optionally_parse_with(cursor)?;
 

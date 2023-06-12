@@ -2,7 +2,7 @@
 //! source text.
 use crate::precedence::Precedence;
 use phf::phf_map;
-use ry_span::Spanned;
+use ry_source_file::span::Spanned;
 use std::fmt::Display;
 
 /// Represents error that scanning process can fail with.

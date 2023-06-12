@@ -3,7 +3,7 @@ use crate::{
 };
 use ry_ast::{token::RawToken, Statement, StatementsBlock, Token};
 use ry_diagnostics::{parser::ParseDiagnostic, Report};
-use ry_span::Span;
+use ry_source_file::span::Span;
 
 struct StatementParser;
 
@@ -79,7 +79,9 @@ impl Parse for StatementParser {
             && must_have_semicolon_at_the_end
             && !no_semicolon_after_expression_error_emitted
         {
-            if cursor.next.unwrap() != &Token![;] {
+            if cursor.next.unwrap() == &Token![;] {
+                cursor.next_token();
+            } else {
                 cursor.diagnostics.push(
                     ParseDiagnostic::NoSemicolonAfterStatementError {
                         statement_span: Span::new(start, end - 1, cursor.file_id),
@@ -87,8 +89,6 @@ impl Parse for StatementParser {
                     }
                     .build(),
                 );
-            } else {
-                cursor.next_token();
             }
         }
 

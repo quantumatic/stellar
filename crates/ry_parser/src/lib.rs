@@ -2,54 +2,67 @@
 //!
 //! It uses the lexer from the ry_lexer crate to tokenize the input source
 //! code and produces an Abstract Syntax Tree (AST) that represents the parsed code.
+
 #![doc(
     html_logo_url = "https://raw.githubusercontent.com/abs0luty/Ry/main/additional/icon/ry.png",
     html_favicon_url = "https://raw.githubusercontent.com/abs0luty/Ry/main/additional/icon/ry.png"
 )]
-#![warn(
-    clippy::all,
-    clippy::doc_markdown,
-    clippy::dbg_macro,
-    clippy::todo,
-    clippy::mem_forget,
-    clippy::filter_map_next,
-    clippy::needless_continue,
-    clippy::needless_borrow,
-    clippy::match_wildcard_for_single_variants,
-    clippy::mismatched_target_os,
-    clippy::match_on_vec_items,
-    clippy::imprecise_flops,
-    clippy::suboptimal_flops,
-    clippy::lossy_float_literal,
-    clippy::rest_pat_in_fully_bound_structs,
-    clippy::fn_params_excessive_bools,
-    clippy::inefficient_to_string,
-    clippy::linkedlist,
-    clippy::macro_use_imports,
-    clippy::option_option,
-    clippy::verbose_file_reads,
+#![cfg_attr(not(test), forbid(clippy::unwrap_used))]
+#![warn(missing_docs, clippy::dbg_macro)]
+#![deny(
+    // rustc lint groups https://doc.rust-lang.org/rustc/lints/groups.html
+    warnings,
+    future_incompatible,
+    let_underscore,
+    nonstandard_style,
+    rust_2018_compatibility,
     rust_2018_idioms,
-    missing_debug_implementations,
+    rust_2021_compatibility,
+    unused,
+    // rustc allowed-by-default lints https://doc.rust-lang.org/rustc/lints/listing/allowed-by-default.html
+    macro_use_extern_crate,
+    meta_variable_misuse,
+    missing_abi,
     missing_copy_implementations,
+    missing_debug_implementations,
+    non_ascii_idents,
+    noop_method_call,
+    single_use_lifetimes,
     trivial_casts,
     trivial_numeric_casts,
-    nonstandard_style,
+    unreachable_pub,
+    unsafe_op_in_unsafe_fn,
+    unused_crate_dependencies,
     unused_import_braces,
-    unused_qualifications
+    unused_lifetimes,
+    unused_qualifications,
+    unused_tuple_struct_fields,
+    variant_size_differences,
+    // rustdoc lints https://doc.rust-lang.org/rustdoc/lints.html
+    rustdoc::broken_intra_doc_links,
+    rustdoc::private_intra_doc_links,
+    rustdoc::missing_crate_level_docs,
+    rustdoc::private_doc_tests,
+    rustdoc::invalid_codeblock_attributes,
+    rustdoc::invalid_rust_codeblocks,
+    rustdoc::bare_urls,
+    // clippy categories https://doc.rust-lang.org/clippy/
+    clippy::all,
+    clippy::correctness,
+    clippy::suspicious,
+    clippy::style,
+    clippy::complexity,
+    clippy::perf,
+    clippy::pedantic,
+    clippy::nursery,
 )]
-#![deny(
-    clippy::await_holding_lock,
-    clippy::if_let_mutex,
-    clippy::indexing_slicing,
-    clippy::mem_forget,
-    clippy::ok_expect,
-    clippy::unimplemented,
-    clippy::unwrap_used,
-    unsafe_code,
-    unstable_features,
-    unused_results
+#![allow(
+    clippy::module_name_repetitions,
+    clippy::too_many_lines,
+    clippy::option_if_let_else,
+    clippy::redundant_pub_crate,
+    clippy::unnested_or_patterns
 )]
-#![allow(clippy::match_single_binding, clippy::inconsistent_struct_constructor)]
 
 mod expression;
 mod items;
@@ -68,7 +81,7 @@ use ry_ast::{
 use ry_diagnostics::{expected, parser::ParseDiagnostic, Report};
 use ry_interner::Interner;
 use ry_lexer::Lexer;
-use ry_span::{At, Span, SpanIndex, Spanned};
+use ry_source_file::span::{At, Span, SpanIndex, Spanned};
 
 #[macro_use]
 mod macros;
@@ -155,11 +168,12 @@ impl<'a> Cursor<'a> {
     fn check_next_token(&mut self) {
         if let RawToken::Error(error) = self.next.unwrap() {
             self.diagnostics
-                .push(ParseDiagnostic::LexError(error.to_owned().at(self.next.span())).build());
+                .push(ParseDiagnostic::LexError((*error).at(self.next.span())).build());
         }
     }
 
     /// Returns diagnostics emitted during parsing.
+    #[must_use]
     pub fn diagnostics(&self) -> &Vec<Diagnostic<usize>> {
         self.diagnostics
     }
@@ -220,19 +234,18 @@ impl<'a> Cursor<'a> {
     where
         N: Into<String>,
     {
-        let spanned_symbol = match self.next.unwrap() {
-            RawToken::Identifier => self.lexer.identifier().at(self.next.span()),
-            _ => {
-                self.diagnostics.push(
-                    ParseDiagnostic::UnexpectedTokenError {
-                        got: self.next.clone(),
-                        expected: expected!("identifier"),
-                        node: node.into(),
-                    }
-                    .build(),
-                );
-                return None;
-            }
+        let spanned_symbol = if self.next.unwrap() == &RawToken::Identifier {
+            self.lexer.identifier().at(self.next.span())
+        } else {
+            self.diagnostics.push(
+                ParseDiagnostic::UnexpectedTokenError {
+                    got: self.next.clone(),
+                    expected: expected!("identifier"),
+                    node: node.into(),
+                }
+                .build(),
+            );
+            return None;
         };
 
         self.next_token();
@@ -247,10 +260,10 @@ impl<'a> Cursor<'a> {
         loop {
             match self.next.unwrap() {
                 RawToken::GlobalDocComment => {
-                    module_docstring.push(self.source.index(self.next.span()).to_owned())
+                    module_docstring.push(self.source.index(self.next.span()).to_owned());
                 }
                 RawToken::LocalDocComment => {
-                    local_docstring.push(self.source.index(self.next.span()).to_owned())
+                    local_docstring.push(self.source.index(self.next.span()).to_owned());
                 }
                 _ => return (module_docstring, local_docstring),
             }

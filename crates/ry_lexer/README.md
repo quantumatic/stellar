@@ -18,7 +18,7 @@ on each iteration and stops at eof (always returns `EndOfFile`).
 use ry_lexer::Lexer;
 use ry_ast::token::RawToken::EndOfFile;
 use ry_interner::Interner;
-use ry_span::{Span, At};
+use ry_source_file::{Span, At};
 
 let mut interner = Interner::default();
 let mut lexer = Lexer::new(0, "", &mut interner);
