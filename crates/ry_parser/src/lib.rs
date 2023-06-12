@@ -125,8 +125,7 @@ impl<'a> Cursor<'a> {
         source: &'a str,
         interner: &'a mut Interner,
         diagnostics: &'a mut Vec<Diagnostic<usize>>,
-    ) -> Self
-    {
+    ) -> Self {
         let mut lexer = Lexer::new(file_id, source, interner);
 
         let current = lexer.next_no_comments();
