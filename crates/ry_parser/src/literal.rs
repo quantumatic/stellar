@@ -13,7 +13,7 @@ impl Parse for LiteralParser {
             RawToken::IntegerLiteral => {
                 cursor.next_token();
                 match cursor
-                    .contents
+                    .source
                     .index(cursor.current.span())
                     .replace('_', "")
                     .parse::<u64>()
@@ -33,7 +33,7 @@ impl Parse for LiteralParser {
             RawToken::FloatLiteral => {
                 cursor.next_token();
                 match cursor
-                    .contents
+                    .source
                     .index(cursor.current.span())
                     .replace('_', "")
                     .parse::<f64>()
@@ -53,14 +53,14 @@ impl Parse for LiteralParser {
             RawToken::StringLiteral => {
                 cursor.next_token();
                 Some(
-                    Literal::String(cursor.contents.index(cursor.current.span()).to_owned())
+                    Literal::String(cursor.source.index(cursor.current.span()).to_owned())
                         .at(cursor.current.span()),
                 )
             }
             RawToken::CharLiteral => {
                 cursor.next_token();
                 Some(
-                    Literal::String(cursor.contents.index(cursor.current.span()).to_owned())
+                    Literal::String(cursor.source.index(cursor.current.span()).to_owned())
                         .at(cursor.current.span()),
                 )
             }

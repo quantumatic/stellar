@@ -165,7 +165,7 @@ impl Lexer<'_> {
             }
         }
 
-        let buffer = &self.contents[start_location..self.location];
+        let buffer = &self.source[start_location..self.location];
 
         if let Some(location) = invalid_digit_location {
             if number_kind == NumberKind::Int {

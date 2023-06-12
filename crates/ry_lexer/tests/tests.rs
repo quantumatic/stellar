@@ -3,11 +3,11 @@ mod tests {
     use ry_ast::token::{LexError, RawToken::*};
 
     macro_rules! lexer_test {
-        ($name:ident, $contents:expr, $expected:pat) => {
+        ($name:ident, $source:expr, $expected:pat) => {
             #[test]
             fn $name() {
                 let mut interner = ry_interner::Interner::default();
-                let mut lexer = ry_lexer::Lexer::new(0, $contents.into(), &mut interner);
+                let mut lexer = ry_lexer::Lexer::new(0, $source, &mut interner);
                 assert!(matches!(lexer.next_token().unwrap(), &$expected));
             }
         };

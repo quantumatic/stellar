@@ -50,8 +50,8 @@ mod number;
 pub struct Lexer<'a> {
     /// Id of the file being scanned.
     file_id: usize,
-    /// Contents of the file being scanned.
-    contents: &'a str,
+    /// Content of the file being scanned.
+    source: &'a str,
     /// Current character.
     current: char,
     /// Next character.
@@ -67,15 +67,20 @@ pub struct Lexer<'a> {
 }
 
 impl<'a> Lexer<'a> {
-    pub fn new(file_id: usize, contents: &'a str, interner: &'a mut Interner) -> Self {
-        let mut chars = contents.chars();
+    pub fn new<S>(file_id: usize, source: S, interner: &'a mut Interner) -> Self
+    where
+        S: Into<&'a str>,
+    {
+        let source = source.into();
+
+        let mut chars = source.chars();
 
         let current = chars.next().unwrap_or('\0');
         let next = chars.next().unwrap_or('\0');
 
         Self {
             file_id,
-            contents,
+            source,
             current,
             next,
             chars,
@@ -153,7 +158,7 @@ impl<'a> Lexer<'a> {
             self.advance();
         }
 
-        &self.contents[start_location..self.location]
+        &self.source[start_location..self.location]
     }
 
     /// Parses an escape sequence.

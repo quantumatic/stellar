@@ -76,7 +76,7 @@ mod macros;
 /// Represents token iterator.
 #[derive(Debug)]
 pub struct Cursor<'a> {
-    contents: &'a str,
+    source: &'a str,
     file_id: usize,
     lexer: Lexer<'a>,
     current: Token,
@@ -120,19 +120,24 @@ impl<'a> Cursor<'a> {
     /// let cursor = Cursor::new(0, "pub fun test() {}", &mut interner, &mut diagnostics);
     /// ```
     #[must_use]
-    pub fn new(
+    pub fn new<S>(
         file_id: usize,
-        contents: &'a str,
+        source: S,
         interner: &'a mut Interner,
         diagnostics: &'a mut Vec<Diagnostic<usize>>,
-    ) -> Self {
-        let mut lexer = Lexer::new(file_id, contents, interner);
+    ) -> Self
+    where
+        S: Into<&str>,
+    {
+        let source = source.into();
+
+        let mut lexer = Lexer::new(file_id, source, interner);
 
         let current = lexer.next_no_comments();
         let next = current.clone();
 
         let mut lexer = Self {
-            contents,
+            source,
             file_id,
             lexer,
             current,
@@ -165,8 +170,10 @@ impl<'a> Cursor<'a> {
     }
 
     /// Advances the cursor to the next token (skips comment tokens).
+    ///
     /// # Example:
-    /// ```rust,ignore
+    ///
+    /// ```ignore
     /// use ry_cursor::Cursor;
     /// use ry_interner::Interner;
     /// use ry_ast::Token;
@@ -245,10 +252,10 @@ impl<'a> Cursor<'a> {
         loop {
             match self.next.unwrap() {
                 RawToken::GlobalDocComment => {
-                    module_docstring.push(self.contents.index(self.next.span()).to_owned())
+                    module_docstring.push(self.source.index(self.next.span()).to_owned())
                 }
                 RawToken::LocalDocComment => {
-                    local_docstring.push(self.contents.index(self.next.span()).to_owned())
+                    local_docstring.push(self.source.index(self.next.span()).to_owned())
                 }
                 _ => return (module_docstring, local_docstring),
             }
@@ -265,7 +272,7 @@ impl<'a> Cursor<'a> {
 
         loop {
             if *self.next.unwrap() == RawToken::LocalDocComment {
-                result.push(self.contents.index(self.next.span()).to_owned());
+                result.push(self.source.index(self.next.span()).to_owned());
             } else {
                 return result;
             }

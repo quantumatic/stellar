@@ -113,7 +113,6 @@ pub enum Keyword {
     Fun,
     If,
     Impl,
-    Then,
     Pub,
     Return,
     Struct,
@@ -122,9 +121,7 @@ pub enum Keyword {
     Let,
     Where,
     While,
-    Do,
     Match,
-    With,
     Use,
 }
 
@@ -147,10 +144,7 @@ impl AsRef<str> for Keyword {
             Self::For => "`for`",
             Self::Where => "`where`",
             Self::Let => "`let`",
-            Self::Then => "`then`",
-            Self::Do => "`do`",
             Self::Match => "`match`",
-            Self::With => "`with`",
             Self::Use => "`use`",
         }
     }
@@ -543,10 +537,7 @@ macro_rules! Token {
     [type] =>               {$crate::token::RawToken::Keyword($crate::token::Keyword::Type)};
     [for] =>                {$crate::token::RawToken::Keyword($crate::token::Keyword::For)};
     [where] =>              {$crate::token::RawToken::Keyword($crate::token::Keyword::Where)};
-    [then] =>               {$crate::token::RawToken::Keyword($crate::token::Keyword::Then)};
-    [do] =>                 {$crate::token::RawToken::Keyword($crate::token::Keyword::Do)};
     [match] =>              {$crate::token::RawToken::Keyword($crate::token::Keyword::Match)};
-    [with] =>               {$crate::token::RawToken::Keyword($crate::token::Keyword::With)};
 }
 
 /// List of reserved Ry names: keywords, boolean literals & etc..
@@ -570,10 +561,7 @@ pub static RESERVED: phf::Map<&'static str, RawToken> = phf_map! {
     "type" => Token![type],
     "for" => Token![for],
     "where" => Token![where],
-    "then" => Token![then],
-    "do" => Token![do],
     "match" => Token![match],
-    "with" => Token![with]
 };
 
 impl Punctuator {
