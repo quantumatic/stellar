@@ -127,7 +127,7 @@ impl<'a> Cursor<'a> {
         diagnostics: &'a mut Vec<Diagnostic<usize>>,
     ) -> Self
     where
-        S: Into<&str>,
+        S: Into<&'a str>,
     {
         let source = source.into();
 
