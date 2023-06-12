@@ -423,8 +423,6 @@ impl<'a> Lexer<'a> {
 
         self.advance();
 
-        let mut buffer = String::new();
-
         while !self.eof() && self.current != '\n' {
             let c = self.current;
 
@@ -437,11 +435,8 @@ impl<'a> Lexer<'a> {
 
                 if let Err(e) = e {
                     return RawToken::from(*e.unwrap()).at(e.span());
-                } else if let Ok(c) = e {
-                    buffer.push(c);
                 }
             } else {
-                buffer.push(c);
                 self.advance();
             }
         }
