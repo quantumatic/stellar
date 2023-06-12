@@ -67,12 +67,8 @@ pub struct Lexer<'a> {
 }
 
 impl<'a> Lexer<'a> {
-    pub fn new<S>(file_id: usize, source: S, interner: &'a mut Interner) -> Self
-    where
-        S: Into<&'a str>,
+    pub fn new(file_id: usize, source: &'a str, interner: &'a mut Interner) -> Self
     {
-        let source = source.into();
-
         let mut chars = source.chars();
 
         let current = chars.next().unwrap_or('\0');

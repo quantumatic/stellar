@@ -120,17 +120,13 @@ impl<'a> Cursor<'a> {
     /// let cursor = Cursor::new(0, "pub fun test() {}", &mut interner, &mut diagnostics);
     /// ```
     #[must_use]
-    pub fn new<S>(
+    pub fn new(
         file_id: usize,
-        source: S,
+        source: &'a str,
         interner: &'a mut Interner,
         diagnostics: &'a mut Vec<Diagnostic<usize>>,
     ) -> Self
-    where
-        S: Into<&'a str>,
     {
-        let source = source.into();
-
         let mut lexer = Lexer::new(file_id, source, interner);
 
         let current = lexer.next_no_comments();

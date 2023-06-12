@@ -90,7 +90,7 @@ fn main() {
             show_locations,
         } => match fs::read_to_string(filepath) {
             Ok(source) => {
-                let mut lexer = Lexer::new(0, source, &mut interner);
+                let mut lexer = Lexer::new(0, &source, &mut interner);
                 let mut current_token_index = 0;
 
                 loop {
@@ -129,7 +129,7 @@ fn main() {
 
                     let mut diagnostics = vec![];
                     let mut cursor =
-                        ry_parser::Cursor::new(file_id, source, &mut interner, &mut diagnostics);
+                        ry_parser::Cursor::new(file_id, &source, &mut interner, &mut diagnostics);
 
                     let now = Instant::now();
 
