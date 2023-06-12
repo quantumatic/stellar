@@ -165,6 +165,7 @@ impl<'a> DiagnosticsEmitterBuilder<'a> {
     }
 
     /// Build new [`Reporter`] object.
+    #[must_use]
     pub fn build(self) -> DiagnosticsEmitter<'a> {
         DiagnosticsEmitter {
             writer: self
