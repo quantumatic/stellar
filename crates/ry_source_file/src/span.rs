@@ -85,8 +85,8 @@ pub trait SpanIndex {
     /// assert_eq!("test".index(span), "tes");
     /// ```
     ///
-    /// **Note**: use [`Span::get_corresponding_contents()`] and
-    /// [`Span::optionally_get_corresponding_contents()`] instead.
+    /// **Note**: use [`SourceFileManager::resolve_span()`] and
+    /// [`SourceFileManager::optionally_resolve_span()`] instead.
     fn index(&self, span: Span) -> &Self::Output;
 }
 
@@ -103,7 +103,7 @@ where
     }
 }
 
-/// Represents some value that has associated span ([`Span`]).
+/// Represents some value that has associated span ([`Span`]) with it.
 #[derive(Debug, PartialEq, Clone, Default, Eq, Hash)]
 pub struct Spanned<T> {
     /// Inner content.
