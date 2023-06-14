@@ -1,7 +1,7 @@
 macro_rules! parse_list {
     (
         $cursor:ident,
-        $node_name:literal,
+        $node_name:expr,
         $closing_token:expr,
         $fn:expr) => {
         {
@@ -41,7 +41,7 @@ macro_rules! parse_list {
     };
     (
         $cursor:ident,
-        $node_name:literal,
+        $node_name:expr,
         ($closing_token1:expr) or ($closing_token2:expr),
         $fn:expr) => {
         {

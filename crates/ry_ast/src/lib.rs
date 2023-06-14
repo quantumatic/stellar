@@ -76,7 +76,7 @@ pub enum Pattern {
         r#struct: Path,
         fields: Vec<StructFieldPattern>,
     },
-    EnumItemTuple {
+    TupleLike {
         r#enum: Path,
         inner_patterns: Vec<Spanned<Pattern>>,
     },
@@ -424,6 +424,13 @@ pub enum Item {
         generic_parameters: Vec<GenericParameter>,
         where_clause: WhereClause,
         fields: Vec<Documented<StructField>>,
+    },
+    TupleLikeStruct {
+        visibility: Visibility,
+        name: Identifier,
+        generic_parameters: Vec<GenericParameter>,
+        where_clause: WhereClause,
+        fields: Vec<TupleField>,
     },
     TypeAlias(TypeAlias),
 }

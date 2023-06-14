@@ -277,7 +277,7 @@ impl Parse for EnumItemTuplePatternParser {
         );
 
         Some(
-            Pattern::EnumItemTuple {
+            Pattern::TupleLike {
                 r#enum: self.r#enum,
                 inner_patterns,
             }

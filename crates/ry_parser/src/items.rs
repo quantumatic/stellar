@@ -55,8 +55,8 @@ struct EnumParser {
 
 struct EnumItemParser;
 
-struct EnumItemTupleParser {
-    pub(crate) name: Identifier,
+struct ItemTupleParser {
+    pub(crate) context: ItemKind,
 }
 
 struct EnumItemStructParser {
@@ -148,15 +148,53 @@ impl Parse for StructItemParser {
 
         let where_clause = WhereClauseParser.optionally_parse_with(cursor)?;
 
-        let fields = StructFieldsParser.parse_with(cursor)?;
+        if cursor.next.unwrap() == &Token!['{'] {
+            let fields = StructFieldsParser.parse_with(cursor)?;
+            Some(Item::Struct {
+                visibility: self.visibility,
+                name,
+                generic_parameters,
+                where_clause,
+                fields,
+            })
+        } else if cursor.next.unwrap() == &Token!['('] {
+            let fields = ItemTupleParser {
+                context: ItemKind::Struct,
+            }
+            .parse_with(cursor)?;
 
-        Some(Item::Struct {
-            visibility: self.visibility,
-            name,
-            generic_parameters,
-            where_clause,
-            fields,
-        })
+            if cursor.next.unwrap() == &Token![;] {
+                cursor.next_token();
+            } else {
+                cursor.diagnostics.push(
+                    ParseDiagnostic::UnexpectedTokenError {
+                        got: cursor.current.clone(),
+                        expected: expected!(Token![;]),
+                        node: "struct item".to_owned(),
+                    }
+                    .build(),
+                );
+            }
+
+            Some(Item::TupleLikeStruct {
+                visibility: self.visibility,
+                name,
+                generic_parameters,
+                where_clause,
+                fields,
+            })
+        } else {
+            cursor.diagnostics.push(
+                ParseDiagnostic::UnexpectedTokenError {
+                    got: cursor.current.clone(),
+                    expected: expected!(Token![;], Token!['(']),
+                    node: "item".to_owned(),
+                }
+                .build(),
+            );
+
+            None
+        }
     }
 }
 
@@ -233,7 +271,7 @@ impl Parse for FunctionParser {
                         ParseDiagnostic::UnexpectedTokenError {
                             got: cursor.current.clone(),
                             expected: expected!(Token![;], Token!['(']),
-                            node: "end of function".to_owned(),
+                            node: "function".to_owned(),
                         }
                         .build(),
                     );
@@ -451,7 +489,13 @@ impl Parse for EnumItemParser {
 
         match cursor.next.unwrap() {
             Token!['{'] => EnumItemStructParser { name }.parse_with(cursor),
-            Token!['('] => EnumItemTupleParser { name }.parse_with(cursor),
+            Token!['('] => Some(EnumItem::Tuple {
+                name,
+                fields: ItemTupleParser {
+                    context: ItemKind::Enum,
+                }
+                .parse_with(cursor)?,
+            }),
             _ => Some(EnumItem::Identifier(name)),
         }
     }
@@ -470,15 +514,15 @@ impl Parse for EnumItemStructParser {
     }
 }
 
-impl Parse for EnumItemTupleParser {
-    type Output = Option<EnumItem>;
+impl Parse for ItemTupleParser {
+    type Output = Option<Vec<TupleField>>;
 
     fn parse_with(self, cursor: &mut Cursor<'_>) -> Self::Output {
         cursor.next_token(); // `(`
 
         let fields = parse_list!(
             cursor,
-            "enum item tuple",
+            format!("item tuple in {}", self.context.to_string()),
             Token![')'],
             || -> Option<TupleField> {
                 let visibility = if cursor.next.unwrap() == &Token![pub] {
@@ -496,10 +540,7 @@ impl Parse for EnumItemTupleParser {
 
         cursor.next_token(); // `)`
 
-        Some(EnumItem::Tuple {
-            name: self.name,
-            fields,
-        })
+        Some(fields)
     }
 }
 

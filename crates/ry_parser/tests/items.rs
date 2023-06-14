@@ -10,6 +10,7 @@ test!(use2: "use test; use test2.test;");
 test!(empty_struct: "struct test {}");
 test!(struct1: "struct Point[T: Numeric] { pub x: T, pub y: T }");
 test!(struct2: "struct Lexer[S] where S: Iterator[char] { contents: S }");
+test!(struct3: "struct StringWrapper(String);");
 test!(empty_trait: "trait test {}");
 test!(trait1: "trait test { fun f(); }");
 test!(trait2: "trait Into[T] { fun into(self: Self): T; }");
