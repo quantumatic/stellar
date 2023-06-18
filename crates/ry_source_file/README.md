@@ -54,10 +54,10 @@ use ry_source_file::{span::Span, SourceFileManager};
 let file_manager = SourceFileManager::new();
 
 let file_id = file_manager.add_file(SourceFile::new(Path::new("test.ry"), "pub fun main() {}"));
-let fun = file_manager.optionally_resolve_span(Span::new(4, 7, file_id)).unwrap();
-let main = file_manager.optionally_resolve_span(Span::new(8, 12, file_id)).unwrap();
+let fun = file_manager.resolve_span(Span::new(4, 7, file_id));
+let main = file_manager.resolve_span_or_panic(Span::new(8, 12, file_id)); // doesn't return option type
 
-assert_eq!(fun, "fun");
+assert_eq!(fun, Some("fun"));
 assert_eq!(main, "main");
 ```
 
