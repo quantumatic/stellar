@@ -37,6 +37,16 @@ impl<'a> SourceFileManager<'a> {
         self.files.get(file_id)
     }
 
+    /// Returns the file with the given ID, without doing bounds checking.
+    ///
+    /// # Safety
+    /// Calling this method with an out-of-bounds index is undefined behavior even if the resulting reference is not used.
+    #[inline]
+    #[must_use]
+    pub unsafe fn get_file_by_id_unchecked(&self, file_id: usize) -> &SourceFile<'a> {
+        unsafe { self.files.get_unchecked(file_id) }
+    }
+
     /// Returns the content of the part of the source code situated
     /// at the given span if it is valid.
     ///
@@ -55,15 +65,13 @@ impl<'a> SourceFileManager<'a> {
     ///     SourceFile::new(Path::new("test.ry"), "fun main() { println(\"Hello, world!\"); }")
     /// );
     /// let span = Span::new(21, 36, file_id);
-    /// assert_eq!(file_manager.resolve_span(span), "\"Hello, world!\"");
+    /// assert_eq!(file_manager.resolve_span_or_panic(span), "\"Hello, world!\"");
     /// ```
     #[must_use]
-    pub fn resolve_span(&self, span: Span) -> &'a str {
-        let file = self
-            .get_file_by_id(span.file_id())
-            .expect("File does not exist");
-        let source = file.source();
-        source
+    pub fn resolve_span_or_panic(&self, span: Span) -> &'a str {
+        self.get_file_by_id(span.file_id())
+            .expect("File does not exist")
+            .source()
             .get(span.start()..span.end())
             .expect("Span is out of bounds")
     }
@@ -71,9 +79,8 @@ impl<'a> SourceFileManager<'a> {
     /// Returns the content of the part of the source code situated
     /// at the given span.
     ///
-    /// Instead of panicking in the situation when [`SourceFileManager::resolve_span()`] does,
-    /// the function returns [`None`]. In all other cases
-    /// `Some(Span::resolve_span(...))`.
+    /// Instead of panicking in the situation when [`SourceFileManager::resolve_span_or_panic()`] does,
+    /// the function returns [`None`].
     ///
     /// # Examples
     ///
@@ -86,29 +93,26 @@ impl<'a> SourceFileManager<'a> {
     ///     SourceFile::new(Path::new("test.ry"), "fun main() { println(\"Hello, world!\"); }")
     /// );
     /// assert_eq!(
-    ///     file_manager.optionally_resolve_span(
+    ///     file_manager.resolve_span(
     ///         Span::new(21, 36, file_id)
     ///     ),
     ///     Some("\"Hello, world!\"")
     /// );
     /// assert_eq!(
     ///     // file does not exist
-    ///     file_manager.optionally_resolve_span(Span::new(0, 0, file_id + 1)),
+    ///     file_manager.resolve_span(Span::new(0, 0, file_id + 1)),
     ///     None
     /// );
     /// assert_eq!(
     ///     // out of bounds
-    ///     file_manager.optionally_resolve_span(Span::new(99, 100, file_id)),
+    ///     file_manager.resolve_span(Span::new(99, 100, file_id)),
     ///     None
     /// );
     #[must_use]
-    pub fn optionally_resolve_span(&self, span: Span) -> Option<&'a str> {
-        let Some(file) = self.get_file_by_id(span.file_id()) else {
-            return None;
-        };
-
-        let source = file.source();
-        source.get(span.start()..span.end())
+    pub fn resolve_span(&self, span: Span) -> Option<&'a str> {
+        self.get_file_by_id(span.file_id())?
+            .source()
+            .get(span.start()..span.end())
     }
 }
 

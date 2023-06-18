@@ -65,7 +65,7 @@ struct BinaryExpressionParser {
     pub(crate) ignore_struct: bool,
 }
 
-struct ArrayLiteralExpressionParser;
+struct ListExpressionParser;
 
 struct TupleExpressionParser;
 
@@ -232,7 +232,7 @@ impl Parse for PrimaryExpressionParser {
                 Some(Expression::Identifier(symbol).at(cursor.current.span()))
             }
             Token!['('] => ParenthesizedExpressionParser.parse_with(cursor),
-            Token!['['] => ArrayLiteralExpressionParser.parse_with(cursor),
+            Token!['['] => ListExpressionParser.parse_with(cursor),
             Token!['{'] => StatementsBlockExpressionParser.parse_with(cursor),
             Token![|] => FunctionExpressionParser.parse_with(cursor),
             Token![#] => TupleExpressionParser.parse_with(cursor),
@@ -517,7 +517,7 @@ impl Parse for BinaryExpressionParser {
     }
 }
 
-impl Parse for ArrayLiteralExpressionParser {
+impl Parse for ListExpressionParser {
     type Output = Option<Spanned<Expression>>;
 
     fn parse_with(self, cursor: &mut Cursor<'_>) -> Self::Output {
@@ -525,13 +525,13 @@ impl Parse for ArrayLiteralExpressionParser {
 
         let start = cursor.next.span().start();
 
-        let elements = parse_list!(cursor, "array literal", Token![']'], || {
+        let elements = parse_list!(cursor, "list expression", Token![']'], || {
             ExpressionParser::default().parse_with(cursor)
         });
 
         cursor.next_token();
 
-        Some(Expression::Array { elements }.at(Span::new(
+        Some(Expression::List { elements }.at(Span::new(
             start,
             cursor.current.span().end(),
             cursor.file_id,

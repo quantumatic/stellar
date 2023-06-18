@@ -53,7 +53,7 @@ impl Parse for TupleTypeParser {
         cursor.consume(Token!['('], "tuple type")?;
 
         let element_types = parse_list!(cursor, "tuple type", Token![')'], || {
-            TypeParser.parse_with(cursor)
+            TypeParser.parse_with(cursor).map(Spanned::take)
         });
 
         cursor.next_token(); // `)`
@@ -77,14 +77,14 @@ impl Parse for FunctionTypeParser {
             cursor,
             "parameter types in function type",
             Token![')'],
-            || { TypeParser.parse_with(cursor) }
+            || { TypeParser.parse_with(cursor).map(Spanned::take) }
         );
 
         cursor.next_token(); // `)`
 
         cursor.consume(Token![:], "return type of function in the function type")?;
 
-        let return_type = Box::new(TypeParser.parse_with(cursor)?);
+        let return_type = Box::new(TypeParser.parse_with(cursor)?.take());
 
         Some(
             Type::Function {
@@ -139,7 +139,7 @@ impl Parse for TypeConstructorParser {
 
     fn parse_with(self, cursor: &mut Cursor<'_>) -> Self::Output {
         let start = cursor.next.span().start();
-        let path = PathParser.parse_with(cursor)?;
+        let path = PathParser.parse_with(cursor)?.take();
         let generic_arguments = GenericArgumentsParser.optionally_parse_with(cursor)?;
 
         Some(

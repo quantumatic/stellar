@@ -78,13 +78,9 @@ impl Parse for PatternExceptOrParser {
 
                 // If it is only 1 identifier
                 if path.unwrap().len() == 1 {
-                    let identifier = path
-                        .unwrap()
-                        .get(0)
-                        .expect(
-                            "Cannot get first identifier in path when parsing identifier pattern",
-                        )
-                        .clone();
+                    let identifier = *path.unwrap().first().expect(
+                        "Cannot get first identifier in path when parsing identifier pattern",
+                    );
 
                     let pattern = if cursor.next.unwrap() == &Token![@] {
                         cursor.next_token();
@@ -94,17 +90,17 @@ impl Parse for PatternExceptOrParser {
                     };
 
                     let span = Span::new(
-                        identifier.span().start(),
+                        path.span().start(),
                         match pattern {
                             Some(ref pattern) => pattern.span().end(),
-                            None => identifier.span().end(),
+                            None => path.span().end(),
                         },
                         cursor.file_id,
                     );
 
                     Some(
                         Pattern::Identifier {
-                            identifier,
+                            identifier: identifier.at(path.span()),
                             ty: None,
                             pattern,
                         }

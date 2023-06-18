@@ -276,11 +276,14 @@ pub const USIZE: Symbol = 12;
 /// `bool` symbol.
 pub const BOOL: Symbol = 13;
 
-/// `string` symbol.
+/// `String` symbol.
 pub const STRING: Symbol = 14;
 
+/// `List` symbol.
+pub const LIST: Symbol = 15;
+
 /// `char` symbol.
-pub const CHAR: Symbol = 15;
+pub const CHAR: Symbol = 16;
 
 macro_rules! intern_primitive_symbols {
     ($interner:ident, $($name:ident),*) => {
@@ -308,7 +311,7 @@ where
 
         intern_primitive_symbols!(
             interner, int8, int16, int32, int64, uint8, uint16, uint32, uint64, float32, float64,
-            bool, string, char
+            bool, String, List, char
         );
 
         interner

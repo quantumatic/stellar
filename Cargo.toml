@@ -8,4 +8,5 @@ members = [
     "crates/ry_interner",
     "crates/ry_workspace",
     "crates/ry_source_file",
+    "crates/ry_semantic_analysis"
 ]

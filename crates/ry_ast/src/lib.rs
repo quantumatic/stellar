@@ -62,7 +62,7 @@ pub enum Literal {
 
 pub type Identifier = Spanned<Symbol>;
 
-pub type Path = Spanned<Vec<Identifier>>;
+pub type Path = Spanned<Vec<Symbol>>;
 
 #[derive(Debug, PartialEq)]
 pub enum Pattern {
@@ -111,19 +111,19 @@ pub enum StructFieldPattern {
     },
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum Type {
-    Array {
-        element_type: Box<Spanned<Type>>,
+    List {
+        element_type: Box<Type>,
     },
     Constructor(TypeConstructor),
     Variable(TypeVariable),
     Tuple {
-        element_types: Vec<Spanned<Type>>,
+        element_types: Vec<Type>,
     },
     Function {
-        parameter_types: Vec<Spanned<Type>>,
-        return_type: Box<Spanned<Type>>,
+        parameter_types: Vec<Type>,
+        return_type: Box<Type>,
     },
 }
 
@@ -132,9 +132,9 @@ pub struct TypeVariable {
     pub index: u32,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct TypeConstructor {
-    pub path: Path,
+    pub path: Vec<Symbol>,
     pub generic_arguments: Vec<Spanned<Type>>,
 }
 
@@ -162,7 +162,7 @@ pub struct WhereClauseItem {
 
 #[derive(Debug, PartialEq)]
 pub enum Expression {
-    Array {
+    List {
         elements: Vec<Spanned<Expression>>,
     },
     As {

@@ -1,0 +1,13 @@
+[package]
+name = "ry_semantic_analysis"
+version = "0.1.0"
+edition = "2021"
+license = "Apache-2.0"
+authors = ["Adi Salimgereyev <adisalimgereev@gmail.com>"]
+
+[dependencies]
+ry_ast = { path = "../ry_ast" }
+ry_diagnostics = { path = "../ry_diagnostics" }
+codespan-reporting = "0.11.1"
+ry_interner = { path = "../ry_interner" }
+ry_source_file = { path = "../ry_source_file" }

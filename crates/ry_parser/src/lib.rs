@@ -160,7 +160,7 @@ impl<'a> Cursor<'a> {
 
     fn new_unification_variable(&mut self, at: Span) -> Spanned<Type> {
         let index = self.next_unification_variable_index;
-        self.next_unification_variable_index += 1;
+        self.next_unification_variable_index += 2;
         Type::Variable(TypeVariable { index }).at(at)
     }
 
