@@ -45,187 +45,284 @@
 #![allow(clippy::match_single_binding, clippy::inconsistent_struct_constructor)]
 
 use ry_interner::Symbol;
-use ry_source_file::span::{Span, Spanned};
+use ry_source_file::span::Span;
+use std::path;
 use token::RawToken;
 
 pub mod precedence;
 pub mod token;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum Literal {
-    Boolean(bool),
-    Character(String),
-    String(String),
-    Integer(u64),
-    Float(f64),
+    Boolean { value: bool, span: Span },
+    Character { value: char, span: Span },
+    String { value: String, span: Span },
+    Integer { value: u64, span: Span },
+    Float { value: f64, span: Span },
 }
 
-pub type Identifier = Spanned<Symbol>;
+#[derive(Debug, PartialEq, Clone, Copy)]
+pub struct IdentifierAst {
+    pub span: Span,
+    pub symbol: Symbol,
+}
 
-pub type Path = Spanned<Vec<Symbol>>;
+#[derive(Debug, PartialEq, Clone)]
+pub struct Path {
+    pub span: Span,
+    pub symbols: Vec<IdentifierAst>,
+}
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum Pattern {
-    Literal(Spanned<Literal>),
+    Literal(Literal),
     Identifier {
-        identifier: Identifier,
-        ty: Option<Spanned<Type>>, // variable can already be initialized before
-        pattern: Option<Box<Spanned<Pattern>>>,
+        span: Span,
+        identifier: IdentifierAst,
+        ty: Option<TypeAst>, // variable can already be initialized before
+        pattern: Option<Box<Self>>,
     },
     Struct {
+        span: Span,
         r#struct: Path,
         fields: Vec<StructFieldPattern>,
     },
     TupleLike {
+        span: Span,
         r#enum: Path,
-        inner_patterns: Vec<Spanned<Pattern>>,
+        inner_patterns: Vec<Self>,
     },
     Tuple {
-        inner_patterns: Vec<Spanned<Pattern>>,
+        span: Span,
+        inner_patterns: Vec<Self>,
     },
     Path {
+        span: Span,
         path: Path,
     },
-    Array {
-        inner_patterns: Vec<Spanned<Pattern>>,
+    List {
+        span: Span,
+        inner_patterns: Vec<Self>,
     },
     Grouped {
-        inner: Box<Spanned<Pattern>>,
+        span: Span,
+        inner: Box<Self>,
     },
     Or {
-        left: Box<Spanned<Pattern>>,
-        right: Box<Spanned<Pattern>>,
-    },
-    Rest, // ..
-}
-
-#[derive(Debug, PartialEq)]
-pub enum StructFieldPattern {
-    NotRest {
-        field_name: Identifier,
-        field_ty: Spanned<Type>,
-        value_pattern: Option<Spanned<Pattern>>,
+        span: Span,
+        left: Box<Self>,
+        right: Box<Self>,
     },
     Rest {
-        at: Span,
+        span: Span,
+    }, // ..
+}
+
+impl Pattern {
+    pub fn span(&self) -> Span {
+        match self {
+            Self::Literal(
+                Literal::Boolean { span, .. }
+                | Literal::Character { span, .. }
+                | Literal::String { span, .. }
+                | Literal::Integer { span, .. }
+                | Literal::Float { span, .. },
+            )
+            | Self::Grouped { span, .. }
+            | Self::Identifier { span, .. }
+            | Self::List { span, .. }
+            | Self::Or { span, .. }
+            | Self::Rest { span }
+            | Self::Struct { span, .. }
+            | Self::Tuple { span, .. }
+            | Self::TupleLike { span, .. }
+            | Self::Path { span, .. } => *span,
+        }
+    }
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub enum StructFieldPattern {
+    NotRest {
+        span: Span,
+        field_name: IdentifierAst,
+        value_pattern: Option<Pattern>,
+    },
+    Rest {
+        span: Span,
     },
 }
 
 #[derive(Debug, PartialEq, Clone)]
-pub enum Type {
-    List {
-        element_type: Box<Type>,
+pub enum TypeAst {
+    Constructor(TypeConstructorAst),
+    Variable {
+        span: Span,
+        index: usize,
     },
-    Constructor(TypeConstructor),
-    Variable(TypeVariable),
     Tuple {
-        element_types: Vec<Type>,
+        span: Span,
+        element_types: Vec<Self>,
     },
     Function {
-        parameter_types: Vec<Type>,
-        return_type: Box<Type>,
+        span: Span,
+        parameter_types: Vec<Self>,
+        return_type: Box<Self>,
     },
 }
 
-#[derive(Debug, PartialEq, Clone, Copy)]
-pub struct TypeVariable {
-    pub index: u32,
+#[derive(Debug, PartialEq, Clone)]
+pub struct TypeConstructorAst {
+    pub span: Span,
+    pub path: Path,
+    pub generic_arguments: Vec<TypeAst>,
 }
 
 #[derive(Debug, PartialEq, Clone)]
-pub struct TypeConstructor {
-    pub path: Vec<Symbol>,
-    pub generic_arguments: Vec<Spanned<Type>>,
-}
-
-#[derive(Debug, PartialEq)]
 pub struct GenericParameter {
-    pub name: Identifier,
-    pub constraint: Option<Spanned<Type>>,
+    pub name: IdentifierAst,
+    pub constraint: Option<TypeAst>,
 }
 
 pub type WhereClause = Vec<WhereClauseItem>;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct TypeAlias {
     pub visibility: Visibility,
-    pub name: Identifier,
+    pub name: IdentifierAst,
     pub generic_parameters: Vec<GenericParameter>,
-    pub value: Option<Spanned<Type>>,
+    pub value: Option<TypeAst>,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct WhereClauseItem {
-    pub r#type: Spanned<Type>,
-    pub constraint: Spanned<Type>,
+    pub r#type: TypeAst,
+    pub constraint: TypeAst,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum Expression {
     List {
-        elements: Vec<Spanned<Expression>>,
+        span: Span,
+        elements: Vec<Self>,
     },
     As {
-        left: Box<Spanned<Expression>>,
-        right: Spanned<Type>,
+        span: Span,
+        left: Box<Self>,
+        right: TypeAst,
     },
     Binary {
-        left: Box<Spanned<Expression>>,
-        operator: Spanned<BinaryOperator>,
-        right: Box<Spanned<Expression>>,
+        span: Span,
+        left: Box<Self>,
+        operator: BinaryOperator,
+        right: Box<Self>,
     },
-    StatementsBlock(StatementsBlock),
+    StatementsBlock {
+        span: Span,
+        block: Vec<Statement>,
+    },
     Literal(Literal),
-    Identifier(Symbol),
-    Parenthesized(Box<Spanned<Expression>>),
+    Identifier(IdentifierAst),
+    Parenthesized {
+        span: Span,
+        inner: Box<Self>,
+    },
     If {
-        if_blocks: Vec<(Spanned<Expression>, StatementsBlock)>,
-        r#else: Option<StatementsBlock>,
+        span: Span,
+        if_blocks: Vec<(Self, Vec<Statement>)>,
+        r#else: Option<Vec<Statement>>,
     },
     Property {
-        left: Box<Spanned<Expression>>,
-        right: Identifier,
+        span: Span,
+        left: Box<Self>,
+        right: IdentifierAst,
     },
     Prefix {
-        inner: Box<Spanned<Expression>>,
-        operator: Spanned<PrefixOperator>,
+        span: Span,
+        inner: Box<Self>,
+        operator: PrefixOperator,
     },
     Postfix {
-        inner: Box<Spanned<Expression>>,
-        operator: Spanned<PostfixOperator>,
+        span: Span,
+        inner: Box<Self>,
+        operator: PostfixOperator,
     },
     While {
-        condition: Box<Spanned<Expression>>,
-        body: StatementsBlock,
+        span: Span,
+        condition: Box<Self>,
+        body: Vec<Statement>,
     },
     Call {
-        left: Box<Spanned<Expression>>,
-        arguments: Vec<Spanned<Expression>>,
+        span: Span,
+        left: Box<Self>,
+        arguments: Vec<Self>,
     },
     GenericArguments {
-        left: Box<Spanned<Expression>>,
-        arguments: Vec<Spanned<Type>>,
+        span: Span,
+        left: Box<Self>,
+        arguments: Vec<TypeAst>,
     },
     Tuple {
-        elements: Vec<Spanned<Expression>>,
+        span: Span,
+        elements: Vec<Self>,
     },
     Struct {
-        left: Box<Spanned<Expression>>,
+        span: Span,
+        left: Box<Self>,
         fields: Vec<StructExpressionUnit>,
     },
     Match {
-        expression: Box<Spanned<Expression>>,
+        span: Span,
+        expression: Box<Self>,
         block: Vec<MatchExpressionUnit>,
     },
     Function {
+        span: Span,
         parameters: Vec<FunctionParameter>,
-        return_type: Option<Spanned<Type>>,
-        block: StatementsBlock,
+        return_type: Option<TypeAst>,
+        block: Vec<Statement>,
     },
 }
 
+impl Expression {
+    pub fn span(&self) -> Span {
+        match self {
+            Self::List { span, .. }
+            | Self::As { span, .. }
+            | Self::Binary { span, .. }
+            | Self::StatementsBlock { span, .. }
+            | Self::Literal(
+                Literal::Integer { span, .. }
+                | Literal::Float { span, .. }
+                | Literal::Character { span, .. }
+                | Literal::String { span, .. }
+                | Literal::Boolean { span, .. },
+            )
+            | Self::Identifier(IdentifierAst { span, .. })
+            | Self::Parenthesized { span, .. }
+            | Self::If { span, .. }
+            | Self::Property { span, .. }
+            | Self::Prefix { span, .. }
+            | Self::Postfix { span, .. }
+            | Self::While { span, .. }
+            | Self::Call { span, .. }
+            | Self::GenericArguments { span, .. }
+            | Self::Tuple { span, .. }
+            | Self::Struct { span, .. }
+            | Self::Match { span, .. }
+            | Self::Function { span, .. } => *span,
+        }
+    }
+}
+
 #[derive(Debug, PartialEq, Copy, Clone, Eq, Hash)]
-pub enum BinaryOperator {
+pub struct BinaryOperator {
+    pub span: Span,
+    pub raw: RawBinaryOperator,
+}
+
+#[derive(Debug, PartialEq, Copy, Clone, Eq, Hash)]
+pub enum RawBinaryOperator {
     PlusEq,
     Plus,
     MinusEq,
@@ -253,8 +350,8 @@ pub enum BinaryOperator {
     AndEq,
 }
 
-impl From<&RawToken> for BinaryOperator {
-    fn from(token: &RawToken) -> Self {
+impl From<RawToken> for RawBinaryOperator {
+    fn from(token: RawToken) -> Self {
         match token {
             Token![+=] => Self::PlusEq,
             Token![+] => Self::Plus,
@@ -287,7 +384,13 @@ impl From<&RawToken> for BinaryOperator {
 }
 
 #[derive(Debug, PartialEq, Copy, Clone, Eq, Hash)]
-pub enum PrefixOperator {
+pub struct PrefixOperator {
+    pub span: Span,
+    pub raw: RawPrefixOperator,
+}
+
+#[derive(Debug, PartialEq, Copy, Clone, Eq, Hash)]
+pub enum RawPrefixOperator {
     Bang,
     Not,
     PlusPlus,
@@ -296,8 +399,8 @@ pub enum PrefixOperator {
     Minus,
 }
 
-impl From<&RawToken> for PrefixOperator {
-    fn from(token: &RawToken) -> Self {
+impl From<RawToken> for RawPrefixOperator {
+    fn from(token: RawToken) -> Self {
         match token {
             Token![++] => Self::PlusPlus,
             Token![--] => Self::MinusMinus,
@@ -311,14 +414,20 @@ impl From<&RawToken> for PrefixOperator {
 }
 
 #[derive(Debug, PartialEq, Copy, Clone, Eq, Hash)]
-pub enum PostfixOperator {
+pub struct PostfixOperator {
+    pub span: Span,
+    pub raw: RawPostfixOperator,
+}
+
+#[derive(Debug, PartialEq, Copy, Clone, Eq, Hash)]
+pub enum RawPostfixOperator {
     QuestionMark,
     PlusPlus,
     MinusMinus,
 }
 
-impl From<&RawToken> for PostfixOperator {
-    fn from(token: &RawToken) -> Self {
+impl From<RawToken> for RawPostfixOperator {
+    fn from(token: RawToken) -> Self {
         match token {
             Token![?] => Self::QuestionMark,
             Token![++] => Self::PlusPlus,
@@ -328,16 +437,16 @@ impl From<&RawToken> for PostfixOperator {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct MatchExpressionUnit {
-    pub left: Spanned<Pattern>,
-    pub right: Spanned<Expression>,
+    pub left: Pattern,
+    pub right: Expression,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct StructExpressionUnit {
-    pub name: Identifier,
-    pub value: Option<Spanned<Expression>>,
+    pub name: IdentifierAst,
+    pub value: Option<Expression>,
 }
 
 impl Expression {
@@ -346,22 +455,22 @@ impl Expression {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum Statement {
     Defer {
-        call: Spanned<Expression>,
+        call: Expression,
     },
     Expression {
-        expression: Spanned<Expression>,
+        expression: Expression,
         has_semicolon: bool,
     },
     Return {
-        expression: Spanned<Expression>,
+        expression: Expression,
     },
     Let {
-        pattern: Spanned<Pattern>,
-        value: Box<Spanned<Expression>>,
-        ty: Option<Spanned<Type>>,
+        pattern: Pattern,
+        value: Box<Expression>,
+        ty: Option<TypeAst>,
     },
 }
 
@@ -369,7 +478,7 @@ pub type StatementsBlock = Vec<Statement>;
 
 pub type Docstring = Vec<String>;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct Documented<T> {
     value: T,
     docstring: Docstring,
@@ -389,11 +498,11 @@ pub trait WithDocComment {
 
 impl<T: Sized> WithDocComment for T {}
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum Item {
     Enum {
         visibility: Visibility,
-        name: Identifier,
+        name: IdentifierAst,
         generic_parameters: Vec<GenericParameter>,
         where_clause: WhereClause,
         items: Vec<Documented<EnumItem>>,
@@ -405,7 +514,7 @@ pub enum Item {
     },
     Trait {
         visibility: Visibility,
-        name: Identifier,
+        name: IdentifierAst,
         generic_parameters: Vec<GenericParameter>,
         where_clause: WhereClause,
         items: Vec<Documented<TraitItem>>,
@@ -413,21 +522,21 @@ pub enum Item {
     Impl {
         visibility: Visibility,
         generic_parameters: Vec<GenericParameter>,
-        r#type: Spanned<Type>,
-        r#trait: Option<Spanned<Type>>,
+        r#type: TypeAst,
+        r#trait: Option<TypeAst>,
         where_clause: WhereClause,
         items: Vec<Documented<TraitItem>>,
     },
     Struct {
         visibility: Visibility,
-        name: Identifier,
+        name: IdentifierAst,
         generic_parameters: Vec<GenericParameter>,
         where_clause: WhereClause,
         fields: Vec<Documented<StructField>>,
     },
     TupleLikeStruct {
         visibility: Visibility,
-        name: Identifier,
+        name: IdentifierAst,
         generic_parameters: Vec<GenericParameter>,
         where_clause: WhereClause,
         fields: Vec<TupleField>,
@@ -466,61 +575,62 @@ impl ToString for ItemKind {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum EnumItem {
-    Identifier(Identifier),
+    Just(IdentifierAst),
     Tuple {
-        name: Identifier,
+        name: IdentifierAst,
         fields: Vec<TupleField>,
     },
     Struct {
-        name: Identifier,
+        name: IdentifierAst,
         fields: Vec<Documented<StructField>>,
     },
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct TupleField {
     pub visibility: Visibility,
-    pub r#type: Spanned<Type>,
+    pub r#type: TypeAst,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct StructField {
     pub visibility: Visibility,
-    pub name: Identifier,
-    pub r#type: Spanned<Type>,
+    pub name: IdentifierAst,
+    pub r#type: TypeAst,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum TraitItem {
     TypeAlias(TypeAlias),
     AssociatedFunction(AssociatedFunction),
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct Function {
     pub visibility: Visibility,
-    pub name: Identifier,
+    pub name: IdentifierAst,
     pub generic_parameters: Vec<GenericParameter>,
     pub parameters: Vec<FunctionParameter>,
-    pub return_type: Option<Spanned<Type>>,
+    pub return_type: Option<TypeAst>,
     pub where_clause: WhereClause,
     pub body: Option<StatementsBlock>,
 }
 
 pub type AssociatedFunction = Function;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct FunctionParameter {
-    pub name: Identifier,
-    pub r#type: Spanned<Type>,
-    pub default_value: Option<Spanned<Expression>>,
+    pub name: IdentifierAst,
+    pub r#type: TypeAst,
+    pub default_value: Option<Expression>,
 }
 
 /// Represents Ry source file.
-#[derive(Debug, PartialEq)]
-pub struct ProgramUnit {
+#[derive(Debug, PartialEq, Clone)]
+pub struct Module<'a> {
+    pub filepath: &'a path::Path,
     pub docstring: Docstring,
     pub items: Items,
 }
@@ -535,8 +645,8 @@ impl Visibility {
         Self(None)
     }
 
-    pub fn public(at: Span) -> Self {
-        Self(Some(at))
+    pub fn public(span: Span) -> Self {
+        Self(Some(span))
     }
 
     pub fn span_of_pub(&self) -> Option<Span> {

@@ -1,5 +1,6 @@
 //! Defines a [`SourceFile`] to represent a Ry source file and provides some utilities.
 
+use crate::span::{Span, SpanIndex};
 use codespan_reporting::files::{Error, Files};
 use std::cmp::Ordering;
 use std::ops::Range;
@@ -58,6 +59,13 @@ impl<'a> SourceFile<'a> {
     #[must_use]
     pub const fn line_starts(&self) -> &Vec<usize> {
         &self.line_starts
+    }
+
+    /// Returns the string slice corresponding to the given location.
+    #[inline]
+    #[must_use]
+    pub fn resolve_span(&self, span: Span) -> &str {
+        self.source.index(span)
     }
 
     /// Returns the line starting byte index of the given line index.

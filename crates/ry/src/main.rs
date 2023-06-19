@@ -98,19 +98,19 @@ fn main() {
                 loop {
                     let token = lexer.next_token();
 
-                    if token.unwrap().eof() {
+                    if token.raw.eof() {
                         break;
                     } else {
                         if show_locations {
                             println!(
                                 "{:08}: [{}]@{}..{}",
                                 current_token_index,
-                                token.unwrap(),
-                                token.span().start(),
-                                token.span().end()
+                                token.raw,
+                                token.span.start(),
+                                token.span.end()
                             );
                         } else {
-                            println!("{:08}: [{}]", current_token_index, token.unwrap());
+                            println!("{:08}: [{}]", current_token_index, token.raw);
                         }
 
                         current_token_index += 1;
@@ -127,22 +127,25 @@ fn main() {
 
             match fs::read_to_string(filepath) {
                 Ok(source) => {
-                    let file_id =
-                        diagnostics_emitter.add_file(SourceFile::new(Path::new(filepath), &source));
+                    let source_file = SourceFile::new(Path::new(filepath), &source);
+                    let file_id = diagnostics_emitter.add_file(&source_file);
 
                     let mut diagnostics = vec![];
-                    let mut cursor =
-                        ry_parser::Cursor::new(file_id, &source, &mut interner, &mut diagnostics);
+                    let mut cursor = ry_parser::Cursor::new(
+                        file_id,
+                        &source_file,
+                        &mut interner,
+                        &mut diagnostics,
+                    );
 
                     let now = Instant::now();
 
                     log_with_left_padded_prefix("Parsing", filepath);
 
                     let ast = cursor.parse();
+                    let ast_string = format!("{:?}", ast);
 
                     diagnostics_emitter.emit_diagnostics(diagnostics.as_slice());
-
-                    let ast_string = format!("{:?}", ast);
 
                     let (filename, mut file) = create_unique_file("ast", "txt");
                     file.write_all(ast_string.as_bytes())

@@ -70,6 +70,12 @@ impl Span {
     }
 }
 
+impl From<Span> for Range<usize> {
+    fn from(span: Span) -> Self {
+        span.start..span.end
+    }
+}
+
 /// For internal usage only! Used to index a string using a given span.
 pub trait SpanIndex {
     /// Output of the indexing operation.
@@ -86,7 +92,7 @@ pub trait SpanIndex {
     /// ```
     ///
     /// **Note**: use [`SourceFileManager::resolve_span()`] and
-    /// [`SourceFileManager::optionally_resolve_span()`] instead.
+    /// [`SourceFileManager::resolve_span_or_panic()`] instead.
     fn index(&self, span: Span) -> &Self::Output;
 }
 
@@ -102,86 +108,3 @@ where
         &self.as_ref()[span.start..span.end]
     }
 }
-
-/// Represents some value that has associated span ([`Span`]) with it.
-#[derive(Debug, PartialEq, Clone, Default, Eq, Hash)]
-pub struct Spanned<T> {
-    /// Inner content.
-    inner: T,
-    /// Span.
-    span: Span,
-}
-
-impl<T> Spanned<T> {
-    /// Constructs a new [`Spanned`] object with a given content
-    /// and span.
-    ///
-    /// > It is recommended to use [`At::at`] instead.
-    #[inline]
-    #[must_use]
-    pub const fn new(inner: T, span: Span) -> Self {
-        Self { inner, span }
-    }
-
-    /// Returns the span of this [`Spanned`] object.
-    #[inline]
-    pub const fn span(&self) -> Span {
-        self.span
-    }
-
-    /// Returns the immutable reference to inner content of this [`Spanned`] object.
-    #[inline]
-    pub const fn unwrap(&self) -> &T {
-        &self.inner
-    }
-
-    /// Returns the owned inner content of this [`Spanned`] object.
-    #[inline]
-    #[allow(clippy::missing_const_for_fn)] // clippy issue
-    pub fn take(self) -> T {
-        self.inner
-    }
-}
-
-impl From<Span> for Range<usize> {
-    fn from(value: Span) -> Self {
-        value.start..value.end
-    }
-}
-
-/// Used to construct `Spanned` object.
-///
-/// See the documentation for [`At::at()`] for more informatiohn.
-pub trait At {
-    /// Used to construct `Spanned` object.
-    ///
-    /// # Example:
-    /// ```
-    /// use ry_source_file::span::{At, Span};
-    ///
-    /// let my_file_id = 0;
-    ///
-    /// let first_three = 3_i32.at(Span::new(0, 1, my_file_id));
-    /// let second_three = 3_i32.at(Span::new(1, 2, my_file_id));
-    ///
-    /// assert_eq!(first_three.unwrap(), &3);
-    /// assert_eq!(second_three.unwrap(), &3);
-    /// assert_eq!(
-    ///     first_three.span(),
-    ///     Span::new(0, 1, my_file_id)
-    /// );
-    /// assert_eq!(
-    ///     second_three.span(),
-    ///     Span::new(1, 2, my_file_id),
-    /// );
-    /// ```
-    #[inline]
-    fn at(self, span: Span) -> Spanned<Self>
-    where
-        Self: Sized,
-    {
-        Spanned::new(self, span)
-    }
-}
-
-impl<T: Sized> At for T {}

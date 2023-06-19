@@ -7,7 +7,7 @@ use std::ops::Range;
 /// A source file manager.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct SourceFileManager<'a> {
-    files: Vec<SourceFile<'a>>,
+    files: Vec<&'a SourceFile<'a>>,
 }
 
 impl Default for SourceFileManager<'_> {
@@ -25,7 +25,7 @@ impl<'a> SourceFileManager<'a> {
     }
 
     /// Adds a new file to the [`SourceFileManager`] and returns its ID.
-    pub fn add_file(&mut self, file: SourceFile<'a>) -> usize {
+    pub fn add_file(&mut self, file: &'a SourceFile<'a>) -> usize {
         self.files.push(file);
         self.files.len() - 1
     }
@@ -33,8 +33,8 @@ impl<'a> SourceFileManager<'a> {
     /// Returns the file with the given ID.
     #[inline]
     #[must_use]
-    pub fn get_file_by_id(&self, file_id: usize) -> Option<&SourceFile<'a>> {
-        self.files.get(file_id)
+    pub fn get_file_by_id(&self, file_id: usize) -> Option<&'a SourceFile<'a>> {
+        self.files.get(file_id).copied()
     }
 
     /// Returns the file with the given ID, without doing bounds checking.
@@ -61,10 +61,14 @@ impl<'a> SourceFileManager<'a> {
     /// use ry_source_file::{source_file_manager::SourceFileManager, source_file::SourceFile, span::Span};
     ///
     /// let mut file_manager = SourceFileManager::new();
-    /// let file_id = file_manager.add_file(
-    ///     SourceFile::new(Path::new("test.ry"), "fun main() { println(\"Hello, world!\"); }")
+    /// let source_file = SourceFile::new(
+    ///     Path::new("test.ry"),
+    ///     "fun main() { println(\"Hello, world!\"); }"
     /// );
+    ///
+    /// let file_id = file_manager.add_file(&source_file);
     /// let span = Span::new(21, 36, file_id);
+    ///
     /// assert_eq!(file_manager.resolve_span_or_panic(span), "\"Hello, world!\"");
     /// ```
     #[must_use]
@@ -89,9 +93,12 @@ impl<'a> SourceFileManager<'a> {
     /// use ry_source_file::{source_file_manager::SourceFileManager, span::Span, source_file::SourceFile};
     ///
     /// let mut file_manager = SourceFileManager::new();
-    /// let file_id = file_manager.add_file(
-    ///     SourceFile::new(Path::new("test.ry"), "fun main() { println(\"Hello, world!\"); }")
+    /// let source_file = SourceFile::new(
+    ///     Path::new("test.ry"),
+    ///     "fun main() { println(\"Hello, world!\"); }"
     /// );
+    /// let file_id = file_manager.add_file(&source_file);
+    ///
     /// assert_eq!(
     ///     file_manager.resolve_span(
     ///         Span::new(21, 36, file_id)

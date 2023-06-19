@@ -1,7 +1,7 @@
 use crate::{literal::LiteralParser, macros::parse_list, path::PathParser, Cursor, Parse};
 use ry_ast::{token::RawToken, Path, Pattern, StructFieldPattern, Token};
 use ry_diagnostics::{expected, parser::ParseDiagnostic, Report};
-use ry_source_file::span::{At, Span, Spanned};
+use ry_source_file::span::Span;
 
 pub(crate) struct PatternParser;
 
@@ -17,30 +17,26 @@ struct StructPatternParser {
     pub(crate) r#struct: Path,
 }
 
-struct EnumItemTuplePatternParser {
+struct TupleLikePatternParser {
     pub(crate) r#enum: Path,
 }
 
 impl Parse for PatternParser {
-    type Output = Option<Spanned<Pattern>>;
+    type Output = Option<Pattern>;
 
     fn parse_with(self, cursor: &mut Cursor<'_>) -> Self::Output {
         let left = PatternExceptOrParser.parse_with(cursor)?;
 
-        if cursor.next.unwrap() == &Token![|] {
+        if cursor.next.raw == Token![|] {
             cursor.next_token();
 
             let right = Self.parse_with(cursor)?;
 
-            let span = Span::new(left.span().start(), right.span().end(), cursor.file_id);
-
-            Some(
-                Pattern::Or {
-                    left: Box::new(left),
-                    right: Box::new(right),
-                }
-                .at(span),
-            )
+            Some(Pattern::Or {
+                span: Span::new(left.span().start(), right.span().end(), cursor.file_id),
+                left: Box::new(left),
+                right: Box::new(right),
+            })
         } else {
             Some(left)
         }
@@ -48,80 +44,77 @@ impl Parse for PatternParser {
 }
 
 impl Parse for PatternExceptOrParser {
-    type Output = Option<Spanned<Pattern>>;
+    type Output = Option<Pattern>;
 
     fn parse_with(self, cursor: &mut Cursor<'_>) -> Self::Output {
-        match cursor.next.unwrap() {
+        match cursor.next.raw {
             RawToken::StringLiteral
             | RawToken::CharLiteral
             | RawToken::IntegerLiteral
             | RawToken::FloatLiteral
             | RawToken::TrueBoolLiteral
             | RawToken::FalseBoolLiteral => {
-                let literal = LiteralParser.parse_with(cursor)?;
-                let span = literal.span();
-
-                Some(Pattern::Literal(literal).at(span))
+                Some(Pattern::Literal(LiteralParser.parse_with(cursor)?))
             }
             RawToken::Identifier => {
                 let path = PathParser.parse_with(cursor)?;
 
-                match cursor.next.unwrap() {
+                match cursor.next.raw {
                     Token!['{'] => {
                         return StructPatternParser { r#struct: path }.parse_with(cursor);
                     }
                     Token!['('] => {
-                        return EnumItemTuplePatternParser { r#enum: path }.parse_with(cursor);
+                        return TupleLikePatternParser { r#enum: path }.parse_with(cursor);
                     }
                     _ => {}
                 };
 
                 // If it is only 1 identifier
-                if path.unwrap().len() == 1 {
-                    let identifier = *path.unwrap().first().expect(
+                if path.symbols.len() == 1 {
+                    let identifier = path.symbols.first().expect(
                         "Cannot get first identifier in path when parsing identifier pattern",
                     );
 
-                    let pattern = if cursor.next.unwrap() == &Token![@] {
+                    let pattern = if cursor.next.raw == Token![@] {
                         cursor.next_token();
                         Some(Box::new(PatternParser.parse_with(cursor)?))
                     } else {
                         None
                     };
 
-                    let span = Span::new(
-                        path.span().start(),
-                        match pattern {
-                            Some(ref pattern) => pattern.span().end(),
-                            None => path.span().end(),
-                        },
-                        cursor.file_id,
-                    );
-
-                    Some(
-                        Pattern::Identifier {
-                            identifier: identifier.at(path.span()),
-                            ty: None,
-                            pattern,
-                        }
-                        .at(span),
-                    )
+                    Some(Pattern::Identifier {
+                        span: Span::new(
+                            path.span.start(),
+                            match pattern {
+                                Some(ref pattern) => pattern.span().end(),
+                                None => path.span.end(),
+                            },
+                            cursor.file_id,
+                        ),
+                        identifier: *identifier,
+                        ty: None,
+                        pattern,
+                    })
                 } else {
-                    let span = path.span();
-                    Some(Pattern::Path { path }.at(span))
+                    Some(Pattern::Path {
+                        span: path.span,
+                        path,
+                    })
                 }
             }
             Token!['['] => ArrayPatternParser.parse_with(cursor),
             Token![..] => {
                 cursor.next_token();
-                Some(Pattern::Rest.at(cursor.next.span()))
+                Some(Pattern::Rest {
+                    span: cursor.next.span,
+                })
             }
             Token!['('] => GroupedPatternParser.parse_with(cursor),
             Token![#] => TuplePatternParser.parse_with(cursor),
             _ => {
                 cursor.diagnostics.push(
                     ParseDiagnostic::UnexpectedTokenError {
-                        got: cursor.next.clone(),
+                        got: cursor.next,
                         expected: expected!(
                             "integer literal",
                             "float literal",
@@ -145,35 +138,21 @@ impl Parse for PatternExceptOrParser {
 }
 
 impl Parse for StructPatternParser {
-    type Output = Option<Spanned<Pattern>>;
+    type Output = Option<Pattern>;
 
     fn parse_with(self, cursor: &mut Cursor<'_>) -> Self::Output {
         cursor.next_token(); // `{`
 
-        let mut rest_pattern_span = None;
-
         let fields = parse_list!(cursor, "struct pattern", Token!['}'], || {
-            if cursor.next.unwrap() == &Token![..] {
-                if let Some(previous_rest_pattern_span) = rest_pattern_span {
-                    cursor.diagnostics.push(
-                        ParseDiagnostic::MoreThanTwoRestPatternsInStructPatternMembersError {
-                            struct_name_span: self.r#struct.span(),
-                            previous_rest_pattern_span,
-                            current_rest_pattern_span: cursor.next.span(),
-                        }
-                        .build(),
-                    );
-                    return None;
-                }
-
+            if cursor.next.raw == Token![..] {
                 cursor.next_token();
-                rest_pattern_span = Some(cursor.current.span());
+
                 Some(StructFieldPattern::Rest {
-                    at: cursor.current.span(),
+                    span: cursor.current.span,
                 })
             } else {
                 let field_name = cursor.consume_identifier("struct pattern")?;
-                let value_pattern = if cursor.next.unwrap() == &Token![:] {
+                let value_pattern = if cursor.next.raw == Token![:] {
                     cursor.next_token();
 
                     Some(PatternParser.parse_with(cursor)?)
@@ -181,11 +160,13 @@ impl Parse for StructPatternParser {
                     None
                 };
 
-                let field_ty = cursor.new_unification_variable(field_name.span());
-
                 Some(StructFieldPattern::NotRest {
+                    span: Span::new(
+                        field_name.span.start(),
+                        cursor.current.span.end(),
+                        cursor.file_id,
+                    ),
                     field_name,
-                    field_ty,
                     value_pattern,
                 })
             }
@@ -193,29 +174,24 @@ impl Parse for StructPatternParser {
 
         cursor.next_token();
 
-        let span = Span::new(
-            self.r#struct.span().start(),
-            cursor.current.span().end(),
-            cursor.file_id,
-        );
-
-        Some(
-            Pattern::Struct {
-                r#struct: self.r#struct,
-                fields,
-            }
-            .at(span),
-        )
+        Some(Pattern::Struct {
+            span: Span::new(
+                self.r#struct.span.start(),
+                cursor.current.span.end(),
+                cursor.file_id,
+            ),
+            r#struct: self.r#struct,
+            fields,
+        })
     }
 }
 
 impl Parse for ArrayPatternParser {
-    type Output = Option<Spanned<Pattern>>;
+    type Output = Option<Pattern>;
 
     fn parse_with(self, cursor: &mut Cursor<'_>) -> Self::Output {
+        let start = cursor.next.span.start();
         cursor.next_token(); // `[`
-
-        let start = cursor.current.span().start();
 
         let inner_patterns = parse_list!(cursor, "array pattern", Token![']'], || {
             PatternParser.parse_with(cursor)
@@ -223,20 +199,19 @@ impl Parse for ArrayPatternParser {
 
         cursor.next_token(); // `]`
 
-        Some(Pattern::Array { inner_patterns }.at(Span::new(
-            start,
-            cursor.current.span().end(),
-            cursor.file_id,
-        )))
+        Some(Pattern::List {
+            span: Span::new(start, cursor.current.span.end(), cursor.file_id),
+            inner_patterns,
+        })
     }
 }
 
 impl Parse for TuplePatternParser {
-    type Output = Option<Spanned<Pattern>>;
+    type Output = Option<Pattern>;
 
     fn parse_with(self, cursor: &mut Cursor<'_>) -> Self::Output {
+        let start = cursor.next.span.start();
         cursor.next_token(); // `#`
-        let start = cursor.current.span().start();
 
         cursor.consume(Token!['('], "tuple pattern")?;
 
@@ -246,16 +221,15 @@ impl Parse for TuplePatternParser {
 
         cursor.next_token(); // `)`
 
-        Some(Pattern::Tuple { inner_patterns }.at(Span::new(
-            start,
-            cursor.current.span().end(),
-            cursor.file_id,
-        )))
+        Some(Pattern::Tuple {
+            span: Span::new(start, cursor.current.span.end(), cursor.file_id),
+            inner_patterns,
+        })
     }
 }
 
-impl Parse for EnumItemTuplePatternParser {
-    type Output = Option<Spanned<Pattern>>;
+impl Parse for TupleLikePatternParser {
+    type Output = Option<Pattern>;
 
     fn parse_with(self, cursor: &mut Cursor<'_>) -> Self::Output {
         cursor.next_token(); // `(`
@@ -266,38 +240,32 @@ impl Parse for EnumItemTuplePatternParser {
 
         cursor.next_token(); // `)`
 
-        let span = Span::new(
-            self.r#enum.span().start(),
-            cursor.current.span().end(),
-            cursor.file_id,
-        );
-
-        Some(
-            Pattern::TupleLike {
-                r#enum: self.r#enum,
-                inner_patterns,
-            }
-            .at(span),
-        )
+        Some(Pattern::TupleLike {
+            span: Span::new(
+                self.r#enum.span.start(),
+                cursor.current.span.end(),
+                cursor.file_id,
+            ),
+            r#enum: self.r#enum,
+            inner_patterns,
+        })
     }
 }
 
 impl Parse for GroupedPatternParser {
-    type Output = Option<Spanned<Pattern>>;
+    type Output = Option<Pattern>;
 
     fn parse_with(self, cursor: &mut Cursor<'_>) -> Self::Output {
+        let start = cursor.next.span.start();
         cursor.next_token(); // `(`
-
-        let start = cursor.current.span().start();
 
         let inner = Box::new(PatternParser.parse_with(cursor)?);
 
         cursor.consume(Token![')'], "grouped pattern")?;
 
-        Some(Pattern::Grouped { inner }.at(Span::new(
-            start,
-            cursor.current.span().end(),
-            cursor.file_id,
-        )))
+        Some(Pattern::Grouped {
+            span: Span::new(start, cursor.current.span.end(), cursor.file_id),
+            inner,
+        })
     }
 }

@@ -7,13 +7,13 @@ macro_rules! parse_list {
         {
             let mut result = vec![];
 
-            if $cursor.next.unwrap() != &$closing_token {
+            if $cursor.next.raw != $closing_token {
                 loop {
                     result.push($fn()?);
 
                     #[allow(unused_qualifications)]
-                    if $cursor.next.unwrap() != &$closing_token {
-                        if $cursor.next.unwrap() != &Token![,] {
+                    if $cursor.next.raw != $closing_token {
+                        if $cursor.next.raw != Token![,] {
                             $cursor.diagnostics.push(
                                 ParseDiagnostic::UnexpectedTokenError {
                                     got: $cursor.next.clone(),
@@ -27,7 +27,7 @@ macro_rules! parse_list {
 
                         $cursor.next_token();
 
-                        if $cursor.next.unwrap() == &$closing_token {
+                        if $cursor.next.raw == $closing_token {
                             break;
                         }
                     } else {
@@ -47,15 +47,15 @@ macro_rules! parse_list {
         {
             let mut result = vec![];
 
-            if $cursor.next.unwrap() != &$closing_token1 &&
-                $cursor.next.unwrap() != &$closing_token2 {
+            if $cursor.next.raw != $closing_token1 &&
+                $cursor.next.raw != $closing_token2 {
                 loop {
                     result.push($fn()?);
 
                     #[allow(unused_qualifications)]
-                    if $cursor.next.unwrap() != &$closing_token1
-                        && $cursor.next.unwrap() != &$closing_token2 {
-                        if $cursor.next.unwrap() != &Token![,] {
+                    if $cursor.next.raw != $closing_token1
+                        && $cursor.next.raw != $closing_token2 {
+                        if $cursor.next.raw != Token![,] {
                             $cursor.diagnostics.push(
                                 ParseDiagnostic::UnexpectedTokenError {
                                     got: $cursor.next.clone(),
@@ -69,8 +69,8 @@ macro_rules! parse_list {
 
                         $cursor.next_token();
 
-                        if $cursor.next.unwrap() == &$closing_token1
-                            || $cursor.next.unwrap() == &$closing_token2 {
+                        if $cursor.next.raw == $closing_token1
+                            || $cursor.next.raw == $closing_token2 {
                             break;
                         }
                     } else {

@@ -1,4 +1,4 @@
-use ry_ast::{Type, TypeConstructor, TypeVariable};
+use ry_ast::{Type, TypeConstructor};
 use ry_interner::Symbol;
 
 pub mod expression;
@@ -7,7 +7,7 @@ pub mod unification;
 
 /// Struct that implements type inferece
 pub struct InferenceContext {
-    current_unification_variable_index: u32,
+    current_unification_variable_index: usize,
 }
 
 impl Default for InferenceContext {
@@ -29,9 +29,8 @@ impl InferenceContext {
     #[must_use]
     pub fn new_unification_variable(&mut self) -> Type {
         self.current_unification_variable_index += 2;
-        Type::Variable(TypeVariable {
-            index: self.current_unification_variable_index,
-        })
+
+        Type::Variable(self.current_unification_variable_index)
     }
 
     #[inline]

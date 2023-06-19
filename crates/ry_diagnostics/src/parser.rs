@@ -5,7 +5,7 @@ use ry_ast::{
     token::{LexError, Token},
     ItemKind,
 };
-use ry_source_file::span::{Span, Spanned};
+use ry_source_file::span::Span;
 use std::fmt::Display;
 
 /// Represents list of expected tokens.
@@ -30,7 +30,7 @@ macro_rules! expected {
 #[derive(Debug)]
 pub enum ParseDiagnostic {
     /// A lexing error.
-    LexError(Spanned<LexError>),
+    LexError(LexError),
 
     /// When a token is unexpected.
     UnexpectedTokenError {
@@ -47,13 +47,13 @@ pub enum ParseDiagnostic {
     /// Integer overflow.
     IntegerOverflowError {
         /// Location of number when parsing which, overflow happened.
-        at: Span,
+        span: Span,
     },
 
     /// Float overflow.
     FloatOverflowError {
         /// Location of number when parsing which, overflow happened.
-        at: Span,
+        span: Span,
     },
 
     /// Error that suggests adding `;` after expression in statements block.
@@ -62,7 +62,7 @@ pub enum ParseDiagnostic {
         expression_span: Span,
 
         /// Possible span of `;` in the future.
-        at: Span,
+        span: Span,
     },
 
     /// Error that suggests adding `;` after any statement in statements block.
@@ -71,7 +71,7 @@ pub enum ParseDiagnostic {
         statement_span: Span,
 
         /// Possible span of `;` in the future.
-        at: Span,
+        span: Span,
     },
 
     /// When got EOF instead of close brace at the end of the statements block.
@@ -80,14 +80,14 @@ pub enum ParseDiagnostic {
         statements_block_start_span: Span,
 
         /// EOF token span.
-        at: Span,
+        span: Span,
     },
 
     /// When got two semicolons in a row: `;;` or semicolon immediately after `{`
     /// in the statements block.
     EmptyStatementWarning {
         /// The span of the semicolon.
-        at: Span,
+        span: Span,
     },
 
     /// When got EOF instead of close brace at the of the item.
@@ -99,7 +99,7 @@ pub enum ParseDiagnostic {
         item_name_span: Span,
 
         /// EOF token span.
-        at: Span,
+        span: Span,
     },
 
     /// When got two `..` in struct pattern.
@@ -146,81 +146,81 @@ impl Report for ParseDiagnostic {
         match self {
             Self::LexError(error) =>
                 Diagnostic::error()
-                    .with_message(error.unwrap().to_string())
+                    .with_message(error.raw.to_string())
                     .with_code("E000")
-                    .with_labels(vec![error.span().to_primary_label()]),
+                    .with_labels(vec![error.span.to_primary_label()]),
             Self::UnexpectedTokenError {
                 got,
                 expected,
                 node,
             } =>
                 Diagnostic::error()
-                    .with_message(format!("unexpected {}", got.unwrap()))
+                    .with_message(format!("unexpected {}", got.raw))
                     .with_code("E001")
-                    .with_labels(vec![got.span().to_primary_label()
+                    .with_labels(vec![got.span.to_primary_label()
                         .with_message(format!("expected {expected} for {node}"))]),
-            Self::IntegerOverflowError { at } =>
+            Self::IntegerOverflowError { span } =>
                 Diagnostic::error()
                     .with_message("unexpected integer overflow".to_owned())
-                    .with_labels(vec![at.to_primary_label()
+                    .with_labels(vec![span.to_primary_label()
                         .with_message("error appeared when parsing this integer")])
                     .with_notes(vec![
                         "note: integer cannot exceed the maximum value of `u64` (u64.max() == 18_446_744_073_709_551_615)".to_owned(),
                         "note: you can use exponent to do so, but be careful!".to_owned()
                     ]),
-            Self::FloatOverflowError { at } =>
+            Self::FloatOverflowError { span } =>
                 Diagnostic::error()
                     .with_message("unexpected float overflow".to_owned())
-                    .with_labels(vec![at.to_primary_label()
+                    .with_labels(vec![span.to_primary_label()
                         .with_message("error appeared when parsing this float literal")])
                         .with_notes(vec![
                             "note: float literal cannot exceed the maximum value of `f64` (f64.max() == 1.7976931348623157E+308)".to_owned(),
                             "note: you can use exponent to do so, but be careful, especially when working with floats!".to_owned()
                         ]),
-            Self::NoSemicolonAfterExpressionError { expression_span, at } =>
+            Self::NoSemicolonAfterExpressionError { expression_span, span } =>
                 Diagnostic::error()
                     .with_message("it seems that you forgot to put `;` after the expression")
                     .with_labels(vec![
-                        at.to_secondary_label()
+                        span.to_secondary_label()
                             .with_message("add `;` here"),
                         expression_span.to_primary_label()
                             .with_message("happened when parsing this expression")
                     ]),
-            Self::NoSemicolonAfterStatementError { statement_span, at } =>
+            Self::NoSemicolonAfterStatementError { statement_span, span } =>
                 Diagnostic::error()
                     .with_message("it seems that you forgot to put `;` after the statement")
                     .with_labels(vec![
-                        at.to_secondary_label()
+                        span.to_secondary_label()
                             .with_message("add `;` here"),
                         statement_span.to_primary_label()
                             .with_message("happened when parsing this statement")
                     ]),
-            Self::EOFInsteadOfCloseBraceForStatementsBlockError { statements_block_start_span, at } =>
+            Self::EOFInsteadOfCloseBraceForStatementsBlockError { statements_block_start_span, span } =>
                 Diagnostic::error()
                     .with_message("unexpected end of file".to_owned())
                     .with_labels(vec![
                         statements_block_start_span.to_primary_label()
                             .with_message("happened when parsing this statements block"),
-                        at.to_secondary_label()
+                        span.to_secondary_label()
                             .with_message("consider adding `}`".to_owned())
                     ]),
-            Self::EmptyStatementWarning { at } =>
+            Self::EmptyStatementWarning { span } =>
                 Diagnostic::warning()
                     .with_message("found empty statement".to_owned())
                     .with_labels(vec![
-                        at.to_primary_label()
+                        span.to_primary_label()
                             .with_message("consider removing this `;`".to_owned())
                     ])
                     .with_notes(vec![
                         "note: empty statements do not have syntactic meaning.".to_owned()
                     ]),
-            Self::EOFInsteadOfCloseBraceForItemError { item_kind, item_name_span, at } =>
+            Self::EOFInsteadOfCloseBraceForItemError { item_kind, item_name_span, span } =>
                 Diagnostic::error()
                     .with_message("unexpected end of file".to_owned())
                     .with_labels(vec![
                         item_name_span.to_primary_label()
                             .with_message(format!("happened when parsing this {}", item_kind.to_string())),
-                        at.to_secondary_label()
+                        span.to_secondary_label()
                             .with_message("consider adding `}`".to_owned())
                     ]),
             Self::MoreThanTwoRestPatternsInStructPatternMembersError { struct_name_span, previous_rest_pattern_span, current_rest_pattern_span } =>

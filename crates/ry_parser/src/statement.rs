@@ -24,18 +24,18 @@ impl Parse for StatementParser {
 
         let mut no_semicolon_after_expression_error_emitted = false;
 
-        let start = cursor.next.span().start();
+        let start = cursor.next.span.start();
 
-        let statement = match cursor.next.unwrap() {
+        let statement = match cursor.next.raw {
             Token![return] => ReturnStatementParser.parse_with(cursor)?,
             Token![defer] => DeferStatementParser.parse_with(cursor)?,
             Token![let] => LetStatementParser.parse_with(cursor)?,
             _ => {
                 let expression = ExpressionParser::default().parse_with(cursor)?;
 
-                must_have_semicolon_at_the_end = !expression.unwrap().with_block();
+                must_have_semicolon_at_the_end = !expression.with_block();
 
-                match cursor.next.unwrap() {
+                match cursor.next.raw {
                     Token![;] => {}
                     Token!['}'] => {
                         if must_have_semicolon_at_the_end {
@@ -48,7 +48,7 @@ impl Parse for StatementParser {
                         cursor.diagnostics.push(
                             ParseDiagnostic::NoSemicolonAfterExpressionError {
                                 expression_span: expression.span(),
-                                at: Span::new(
+                                span: Span::new(
                                     expression.span().end() - 1,
                                     expression.span().end(),
                                     cursor.file_id,
@@ -73,19 +73,19 @@ impl Parse for StatementParser {
             }
         };
 
-        let end = cursor.current.span().end();
+        let end = cursor.current.span.end();
 
         if !last_statement_in_block
             && must_have_semicolon_at_the_end
             && !no_semicolon_after_expression_error_emitted
         {
-            if cursor.next.unwrap() == &Token![;] {
+            if cursor.next.raw == Token![;] {
                 cursor.next_token();
             } else {
                 cursor.diagnostics.push(
                     ParseDiagnostic::NoSemicolonAfterStatementError {
                         statement_span: Span::new(start, end - 1, cursor.file_id),
-                        at: Span::new(end, end, cursor.file_id),
+                        span: Span::new(end, end, cursor.file_id),
                     }
                     .build(),
                 );
@@ -101,12 +101,12 @@ impl Parse for StatementsBlockParser {
 
     fn parse_with(self, cursor: &mut Cursor<'_>) -> Self::Output {
         cursor.consume(Token!['{'], "statements block")?;
-        let start = cursor.current.span().start();
+        let start = cursor.current.span.start();
 
         let mut block = vec![];
 
         loop {
-            match cursor.next.unwrap() {
+            match cursor.next.raw {
                 Token!['}'] => break,
                 RawToken::EndOfFile => {
                     cursor.diagnostics.push(
@@ -116,7 +116,7 @@ impl Parse for StatementsBlockParser {
                                 start + 1,
                                 cursor.file_id,
                             ),
-                            at: cursor.current.span(),
+                            span: cursor.current.span,
                         }
                         .build(),
                     );
@@ -126,7 +126,7 @@ impl Parse for StatementsBlockParser {
                 Token![;] => {
                     cursor.diagnostics.push(
                         ParseDiagnostic::EmptyStatementWarning {
-                            at: cursor.next.span(),
+                            span: cursor.next.span,
                         }
                         .build(),
                     );
@@ -184,7 +184,7 @@ impl Parse for LetStatementParser {
 
         let pattern = PatternParser.parse_with(cursor)?;
 
-        let ty = if cursor.next.unwrap() == &Token![:] {
+        let ty = if cursor.next.raw == Token![:] {
             cursor.next_token();
             Some(TypeParser.parse_with(cursor)?)
         } else {

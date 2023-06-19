@@ -115,7 +115,7 @@ impl<'a> DiagnosticsEmitter<'a> {
     }
 
     /// Add a file to the source file manager.
-    pub fn add_file(&mut self, file: SourceFile<'a>) -> usize {
+    pub fn add_file(&mut self, file: &'a SourceFile<'a>) -> usize {
         self.file_manager.add_file(file)
     }
 }

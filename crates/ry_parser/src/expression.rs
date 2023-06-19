@@ -8,11 +8,12 @@ use crate::{
     Cursor, Parse,
 };
 use ry_ast::{
-    precedence::Precedence, token::RawToken, BinaryOperator, Expression, MatchExpressionUnit,
-    PostfixOperator, PrefixOperator, StructExpressionUnit, Token,
+    precedence::Precedence, token::RawToken, BinaryOperator, Expression, IdentifierAst,
+    MatchExpressionUnit, PostfixOperator, PrefixOperator, RawBinaryOperator, RawPostfixOperator,
+    RawPrefixOperator, StructExpressionUnit, Token,
 };
 use ry_diagnostics::{expected, parser::ParseDiagnostic, Report};
-use ry_source_file::span::{At, Span, Spanned};
+use ry_source_file::span::Span;
 
 #[derive(Default)]
 pub(crate) struct ExpressionParser {
@@ -33,11 +34,13 @@ struct PrimaryExpressionParser {
 }
 
 struct GenericArgumentsExpressionParser {
-    pub(crate) left: Spanned<Expression>,
+    pub(crate) start: usize,
+    pub(crate) left: Expression,
 }
 
 struct PropertyAccessExpressionParser {
-    pub(crate) left: Spanned<Expression>,
+    pub(crate) start: usize,
+    pub(crate) left: Expression,
 }
 
 struct PrefixExpressionParser {
@@ -45,11 +48,13 @@ struct PrefixExpressionParser {
 }
 
 struct PostfixExpressionParser {
-    pub(crate) left: Spanned<Expression>,
+    pub(crate) start: usize,
+    pub(crate) left: Expression,
 }
 
 struct CastExpressionParser {
-    pub(crate) left: Spanned<Expression>,
+    pub(crate) start: usize,
+    pub(crate) left: Expression,
 }
 
 struct IfExpressionParser;
@@ -57,11 +62,13 @@ struct IfExpressionParser;
 struct ParenthesizedExpressionParser;
 
 struct CallExpressionParser {
-    pub(crate) left: Spanned<Expression>,
+    pub(crate) start: usize,
+    pub(crate) left: Expression,
 }
 
 struct BinaryExpressionParser {
-    pub(crate) left: Spanned<Expression>,
+    pub(crate) start: usize,
+    pub(crate) left: Expression,
     pub(crate) ignore_struct: bool,
 }
 
@@ -70,7 +77,8 @@ struct ListExpressionParser;
 struct TupleExpressionParser;
 
 struct StructExpressionParser {
-    pub(crate) left: Spanned<Expression>,
+    pub(crate) start: usize,
+    pub(crate) left: Expression,
 }
 
 struct StructExpressionUnitParser;
@@ -79,43 +87,41 @@ struct FunctionExpressionParser;
 
 struct StatementsBlockExpressionParser;
 
-impl ExpressionParser {
-    fn ignore_struct(&mut self) {
-        self.ignore_struct = true;
-    }
-}
-
 impl Parse for ExpressionParser {
-    type Output = Option<Spanned<Expression>>;
+    type Output = Option<Expression>;
 
     fn parse_with(self, cursor: &mut Cursor<'_>) -> Self::Output {
+        let start = cursor.next.span.start();
         let mut left = PrimaryExpressionParser {
             ignore_struct: self.ignore_struct,
         }
         .parse_with(cursor)?;
 
-        while self.precedence < cursor.next.unwrap().to_precedence() {
-            left = match cursor.next.unwrap() {
-                Token!['('] => CallExpressionParser { left }.parse_with(cursor)?,
-                Token![.] => PropertyAccessExpressionParser { left }.parse_with(cursor)?,
-                Token!['['] => GenericArgumentsExpressionParser { left }.parse_with(cursor)?,
-                Token![as] => CastExpressionParser { left }.parse_with(cursor)?,
+        while self.precedence < cursor.next.raw.to_precedence() {
+            left = match cursor.next.raw {
+                Token!['('] => CallExpressionParser { start, left }.parse_with(cursor)?,
+                Token![.] => PropertyAccessExpressionParser { start, left }.parse_with(cursor)?,
+                Token!['['] => {
+                    GenericArgumentsExpressionParser { start, left }.parse_with(cursor)?
+                }
+                Token![as] => CastExpressionParser { start, left }.parse_with(cursor)?,
                 Token!['{'] => {
                     if self.ignore_struct {
                         return Some(left);
                     }
 
-                    StructExpressionParser { left }.parse_with(cursor)?
+                    StructExpressionParser { start, left }.parse_with(cursor)?
                 }
                 _ => {
-                    if cursor.next.unwrap().binary_operator() {
+                    if cursor.next.raw.binary_operator() {
                         BinaryExpressionParser {
+                            start,
                             left,
                             ignore_struct: self.ignore_struct,
                         }
                         .parse_with(cursor)?
-                    } else if cursor.next.unwrap().postfix_operator() {
-                        PostfixExpressionParser { left }.parse_with(cursor)?
+                    } else if cursor.next.raw.postfix_operator() {
+                        PostfixExpressionParser { start, left }.parse_with(cursor)?
                     } else {
                         break;
                     }
@@ -128,56 +134,48 @@ impl Parse for ExpressionParser {
 }
 
 impl Parse for WhileExpressionParser {
-    type Output = Option<Spanned<Expression>>;
+    type Output = Option<Expression>;
 
     fn parse_with(self, cursor: &mut Cursor<'_>) -> Self::Output {
+        let start = cursor.next.span.start();
         cursor.next_token(); // `while`
-        let start = cursor.current.span().start();
 
-        let mut condition_parser = ExpressionParser::default();
-        condition_parser.ignore_struct();
-        let condition = condition_parser.parse_with(cursor)?;
+        let condition = ExpressionParser {
+            precedence: Precedence::Lowest,
+            ignore_struct: true,
+        }
+        .parse_with(cursor)?;
 
         let body = StatementsBlockParser.parse_with(cursor)?;
 
-        Some(
-            Expression::While {
-                condition: Box::new(condition),
-                body,
-            }
-            .at(Span::new(
-                start,
-                cursor.current.span().end(),
-                cursor.file_id,
-            )),
-        )
+        Some(Expression::While {
+            span: Span::new(start, cursor.current.span.end(), cursor.file_id),
+            condition: Box::new(condition),
+            body,
+        })
     }
 }
 
 impl Parse for MatchExpressionParser {
-    type Output = Option<Spanned<Expression>>;
+    type Output = Option<Expression>;
 
     fn parse_with(self, cursor: &mut Cursor<'_>) -> Self::Output {
+        let start = cursor.next.span.start();
         cursor.next_token(); // `match`
 
-        let mut expression_parser = ExpressionParser::default();
-        expression_parser.ignore_struct();
-        let expression = expression_parser.parse_with(cursor)?;
+        let expression = ExpressionParser {
+            precedence: Precedence::Lowest,
+            ignore_struct: true,
+        }
+        .parse_with(cursor)?;
 
         let block = MatchExpressionBlockParser.parse_with(cursor)?;
 
-        let span = Span::new(
-            expression.span().start(),
-            cursor.current.span().end(),
-            cursor.file_id,
-        );
-        Some(
-            Expression::Match {
-                expression: Box::new(expression),
-                block,
-            }
-            .at(span),
-        )
+        Some(Expression::Match {
+            span: Span::new(start, cursor.current.span.end(), cursor.file_id),
+            expression: Box::new(expression),
+            block,
+        })
     }
 }
 
@@ -211,25 +209,24 @@ impl Parse for MatchExpressionUnitParser {
 }
 
 impl Parse for PrimaryExpressionParser {
-    type Output = Option<Spanned<Expression>>;
+    type Output = Option<Expression>;
 
     fn parse_with(self, cursor: &mut Cursor<'_>) -> Self::Output {
-        match *cursor.next.unwrap() {
+        match cursor.next.raw {
             RawToken::IntegerLiteral
             | RawToken::FloatLiteral
             | RawToken::StringLiteral
             | RawToken::CharLiteral
             | Token![true]
-            | Token![false] => {
-                let literal = LiteralParser.parse_with(cursor)?;
-                let span = literal.span();
-
-                Some(Expression::Literal(literal.take()).at(span))
-            }
+            | Token![false] => Some(Expression::Literal(LiteralParser.parse_with(cursor)?)),
             RawToken::Identifier => {
                 let symbol = cursor.lexer.identifier();
                 cursor.next_token();
-                Some(Expression::Identifier(symbol).at(cursor.current.span()))
+
+                Some(Expression::Identifier(IdentifierAst {
+                    span: cursor.current.span,
+                    symbol,
+                }))
             }
             Token!['('] => ParenthesizedExpressionParser.parse_with(cursor),
             Token!['['] => ListExpressionParser.parse_with(cursor),
@@ -240,7 +237,7 @@ impl Parse for PrimaryExpressionParser {
             Token![match] => MatchExpressionParser.parse_with(cursor),
             Token![while] => WhileExpressionParser.parse_with(cursor),
             _ => {
-                if cursor.next.unwrap().prefix_operator() {
+                if cursor.next.raw.prefix_operator() {
                     return PrefixExpressionParser {
                         ignore_struct: self.ignore_struct,
                     }
@@ -248,7 +245,7 @@ impl Parse for PrimaryExpressionParser {
                 }
                 cursor.diagnostics.push(
                     ParseDiagnostic::UnexpectedTokenError {
-                        got: cursor.next.clone(),
+                        got: cursor.next,
                         expected: expected!(
                             "integer literal",
                             "float literal",
@@ -276,56 +273,42 @@ impl Parse for PrimaryExpressionParser {
 }
 
 impl Parse for GenericArgumentsExpressionParser {
-    type Output = Option<Spanned<Expression>>;
+    type Output = Option<Expression>;
 
     fn parse_with(self, cursor: &mut Cursor<'_>) -> Self::Output {
         let arguments = GenericArgumentsParser.parse_with(cursor)?;
 
-        let span = Span::new(
-            self.left.span().start(),
-            cursor.current.span().end(),
-            cursor.file_id,
-        );
-
-        Some(
-            Expression::GenericArguments {
-                left: Box::new(self.left),
-                arguments,
-            }
-            .at(span),
-        )
+        Some(Expression::GenericArguments {
+            span: Span::new(self.start, cursor.current.span.end(), cursor.file_id),
+            left: Box::new(self.left),
+            arguments,
+        })
     }
 }
 
 impl Parse for PropertyAccessExpressionParser {
-    type Output = Option<Spanned<Expression>>;
+    type Output = Option<Expression>;
 
     fn parse_with(self, cursor: &mut Cursor<'_>) -> Self::Output {
         cursor.next_token(); // `.`
 
-        let start = self.left.span().start();
-
-        Some(
-            Expression::Property {
-                left: Box::new(self.left),
-                right: cursor.consume_identifier("property")?,
-            }
-            .at(Span::new(
-                start,
-                cursor.current.span().end(),
-                cursor.file_id,
-            )),
-        )
+        Some(Expression::Property {
+            span: Span::new(self.start, cursor.current.span.end(), cursor.file_id),
+            left: Box::new(self.left),
+            right: cursor.consume_identifier("property")?,
+        })
     }
 }
 
 impl Parse for PrefixExpressionParser {
-    type Output = Option<Spanned<Expression>>;
+    type Output = Option<Expression>;
 
     fn parse_with(self, cursor: &mut Cursor<'_>) -> Self::Output {
-        let operator_token = cursor.next.clone();
-        let operator_span = operator_token.span();
-        let operator: PrefixOperator = operator_token.unwrap().into();
+        let operator_token = cursor.next;
+        let operator: PrefixOperator = PrefixOperator {
+            span: operator_token.span,
+            raw: RawPrefixOperator::from(operator_token.raw),
+        };
         cursor.next_token();
 
         let inner = ExpressionParser {
@@ -334,45 +317,43 @@ impl Parse for PrefixExpressionParser {
         }
         .parse_with(cursor)?;
 
-        let span = Span::new(operator_span.start(), inner.span().end(), cursor.file_id);
-
-        Some(
-            Expression::Prefix {
-                inner: Box::new(inner),
-                operator: operator.at(operator_span),
-            }
-            .at(span),
-        )
+        Some(Expression::Prefix {
+            span: Span::new(
+                operator_token.span.start(),
+                inner.span().end(),
+                cursor.file_id,
+            ),
+            inner: Box::new(inner),
+            operator,
+        })
     }
 }
 
 impl Parse for PostfixExpressionParser {
-    type Output = Option<Spanned<Expression>>;
+    type Output = Option<Expression>;
 
     fn parse_with(self, cursor: &mut Cursor<'_>) -> Self::Output {
-        let start = self.left.span().start();
-
         cursor.next_token();
 
-        let span = Span::new(start, cursor.current.span().end(), cursor.file_id);
-        let operator: PostfixOperator = cursor.current.unwrap().into();
+        let operator: PostfixOperator = PostfixOperator {
+            span: cursor.current.span,
+            raw: RawPostfixOperator::from(cursor.current.raw),
+        };
 
-        Some(
-            Expression::Postfix {
-                inner: Box::new(self.left),
-                operator: operator.at(span),
-            }
-            .at(span),
-        )
+        Some(Expression::Postfix {
+            span: Span::new(self.start, cursor.current.span.end(), cursor.file_id),
+            inner: Box::new(self.left),
+            operator,
+        })
     }
 }
 
 impl Parse for ParenthesizedExpressionParser {
-    type Output = Option<Spanned<Expression>>;
+    type Output = Option<Expression>;
 
     fn parse_with(self, cursor: &mut Cursor<'_>) -> Self::Output {
+        let start = cursor.next.span.start();
         cursor.next_token();
-        let start = cursor.current.span().start();
 
         let inner = ExpressionParser {
             precedence: Precedence::Lowest,
@@ -382,89 +363,80 @@ impl Parse for ParenthesizedExpressionParser {
 
         cursor.consume(Token![')'], "parenthesized expression")?;
 
-        Some(Expression::Parenthesized(Box::new(inner)).at(Span::new(
-            start,
-            cursor.current.span().end(),
-            cursor.file_id,
-        )))
+        Some(Expression::Parenthesized {
+            span: Span::new(start, inner.span().end(), cursor.file_id),
+            inner: Box::new(inner),
+        })
     }
 }
 
 impl Parse for IfExpressionParser {
-    type Output = Option<Spanned<Expression>>;
+    type Output = Option<Expression>;
 
     fn parse_with(self, cursor: &mut Cursor<'_>) -> Self::Output {
+        let start = cursor.next.span.start();
         cursor.next_token(); // `if`
 
-        let start = cursor.current.span().start();
+        let condition = ExpressionParser {
+            precedence: Precedence::Lowest,
+            ignore_struct: true,
+        }
+        .parse_with(cursor)?;
 
-        let mut condition_parser = ExpressionParser::default();
-        condition_parser.ignore_struct();
-
-        let condition = condition_parser.parse_with(cursor)?;
         let block = StatementsBlockParser.parse_with(cursor)?;
 
         let mut if_blocks = vec![(condition, block)];
 
         let mut r#else = None;
 
-        while cursor.next.unwrap() == &Token![else] {
+        while cursor.next.raw == Token![else] {
             cursor.next_token();
 
-            if cursor.next.unwrap() != &Token![if] {
+            if cursor.next.raw != Token![if] {
                 r#else = Some(StatementsBlockParser.parse_with(cursor)?);
                 break;
             }
 
             cursor.next_token();
 
-            let mut condition_parser = ExpressionParser::default();
-            condition_parser.ignore_struct();
-
-            let condition = condition_parser.parse_with(cursor)?;
+            let condition = ExpressionParser {
+                precedence: Precedence::Lowest,
+                ignore_struct: true,
+            }
+            .parse_with(cursor)?;
             let block = StatementsBlockParser.parse_with(cursor)?;
 
             if_blocks.push((condition, block));
         }
 
-        Some(Expression::If { if_blocks, r#else }.at(Span::new(
-            start,
-            cursor.current.span().end(),
-            cursor.file_id,
-        )))
+        Some(Expression::If {
+            span: Span::new(start, cursor.current.span.end(), cursor.file_id),
+            if_blocks,
+            r#else,
+        })
     }
 }
 
 impl Parse for CastExpressionParser {
-    type Output = Option<Spanned<Expression>>;
+    type Output = Option<Expression>;
 
     fn parse_with(self, cursor: &mut Cursor<'_>) -> Self::Output {
-        let start = self.left.span().start();
-
         cursor.next_token();
 
         let right = TypeParser.parse_with(cursor)?;
 
-        Some(
-            Expression::As {
-                left: Box::new(self.left),
-                right,
-            }
-            .at(Span::new(
-                start,
-                cursor.current.span().end(),
-                cursor.file_id,
-            )),
-        )
+        Some(Expression::As {
+            span: Span::new(self.start, cursor.current.span.end(), cursor.file_id),
+            left: Box::new(self.left),
+            right,
+        })
     }
 }
 
 impl Parse for CallExpressionParser {
-    type Output = Option<Spanned<Expression>>;
+    type Output = Option<Expression>;
 
     fn parse_with(self, cursor: &mut Cursor<'_>) -> Self::Output {
-        let start = self.left.span().start();
-
         cursor.next_token(); // `(`
 
         let arguments = parse_list!(cursor, "call arguments list", Token![')'], || {
@@ -473,30 +445,24 @@ impl Parse for CallExpressionParser {
 
         cursor.next_token();
 
-        Some(
-            Expression::Call {
-                left: Box::new(self.left),
-                arguments,
-            }
-            .at(Span::new(
-                start,
-                cursor.current.span().end(),
-                cursor.file_id,
-            )),
-        )
+        Some(Expression::Call {
+            span: Span::new(self.start, cursor.current.span.end(), cursor.file_id),
+            left: Box::new(self.left),
+            arguments,
+        })
     }
 }
 
 impl Parse for BinaryExpressionParser {
-    type Output = Option<Spanned<Expression>>;
+    type Output = Option<Expression>;
 
     fn parse_with(self, cursor: &mut Cursor<'_>) -> Self::Output {
-        let start = self.left.span().start();
-
-        let operator_token = cursor.next.clone();
-        let operator_span = operator_token.span();
-        let operator: BinaryOperator = operator_token.unwrap().into();
-        let precedence = cursor.next.unwrap().to_precedence();
+        let operator_token = cursor.next;
+        let operator: BinaryOperator = BinaryOperator {
+            span: operator_token.span,
+            raw: RawBinaryOperator::from(operator_token.raw),
+        };
+        let precedence = cursor.next.raw.to_precedence();
 
         cursor.next_token();
 
@@ -506,24 +472,22 @@ impl Parse for BinaryExpressionParser {
         }
         .parse_with(cursor)?;
 
-        Some(
-            Expression::Binary {
-                left: Box::new(self.left),
-                right: Box::new(right),
-                operator: operator.at(operator_span),
-            }
-            .at(Span::new(start, operator_span.end(), cursor.file_id)),
-        )
+        Some(Expression::Binary {
+            span: Span::new(self.start, cursor.current.span.end(), cursor.file_id),
+            left: Box::new(self.left),
+            right: Box::new(right),
+            operator,
+        })
     }
 }
 
 impl Parse for ListExpressionParser {
-    type Output = Option<Spanned<Expression>>;
+    type Output = Option<Expression>;
 
     fn parse_with(self, cursor: &mut Cursor<'_>) -> Self::Output {
         cursor.next_token();
 
-        let start = cursor.next.span().start();
+        let start = cursor.next.span.start();
 
         let elements = parse_list!(cursor, "list expression", Token![']'], || {
             ExpressionParser::default().parse_with(cursor)
@@ -531,21 +495,19 @@ impl Parse for ListExpressionParser {
 
         cursor.next_token();
 
-        Some(Expression::List { elements }.at(Span::new(
-            start,
-            cursor.current.span().end(),
-            cursor.file_id,
-        )))
+        Some(Expression::List {
+            span: Span::new(start, cursor.current.span.end(), cursor.file_id),
+            elements,
+        })
     }
 }
 
 impl Parse for TupleExpressionParser {
-    type Output = Option<Spanned<Expression>>;
+    type Output = Option<Expression>;
 
     fn parse_with(self, cursor: &mut Cursor<'_>) -> Self::Output {
+        let start = cursor.next.span.start();
         cursor.next_token(); // `#`
-
-        let start = cursor.current.span().start();
 
         cursor.consume(Token!['('], "tuple expression")?;
 
@@ -555,16 +517,15 @@ impl Parse for TupleExpressionParser {
 
         cursor.next_token(); // `)`
 
-        Some(Expression::Tuple { elements }.at(Span::new(
-            start,
-            cursor.current.span().end(),
-            cursor.file_id,
-        )))
+        Some(Expression::Tuple {
+            span: Span::new(start, cursor.current.span.end(), cursor.file_id),
+            elements,
+        })
     }
 }
 
 impl Parse for StructExpressionParser {
-    type Output = Option<Spanned<Expression>>;
+    type Output = Option<Expression>;
 
     fn parse_with(self, cursor: &mut Cursor<'_>) -> Self::Output {
         cursor.next_token(); // `{`
@@ -575,19 +536,11 @@ impl Parse for StructExpressionParser {
 
         cursor.next_token(); // `}`
 
-        let span = Span::new(
-            self.left.span().start(),
-            cursor.current.span().end(),
-            cursor.file_id,
-        );
-
-        Some(
-            Expression::Struct {
-                left: Box::new(self.left),
-                fields,
-            }
-            .at(span),
-        )
+        Some(Expression::Struct {
+            span: Span::new(self.start, cursor.current.span.end(), cursor.file_id),
+            left: Box::new(self.left),
+            fields,
+        })
     }
 }
 
@@ -597,7 +550,7 @@ impl Parse for StructExpressionUnitParser {
     fn parse_with(self, cursor: &mut Cursor<'_>) -> Self::Output {
         let name = cursor.consume_identifier("struct field")?;
 
-        let value = if cursor.next.unwrap() == &Token![:] {
+        let value = if cursor.next.raw == Token![:] {
             cursor.next_token();
             Some(ExpressionParser::default().parse_with(cursor)?)
         } else {
@@ -609,24 +562,25 @@ impl Parse for StructExpressionUnitParser {
 }
 
 impl Parse for StatementsBlockExpressionParser {
-    type Output = Option<Spanned<Expression>>;
+    type Output = Option<Expression>;
 
     fn parse_with(self, cursor: &mut Cursor<'_>) -> Self::Output {
-        let start = cursor.next.span().start();
-
+        let start = cursor.next.span.start();
         let block = StatementsBlockParser.parse_with(cursor)?;
-        let end = cursor.current.span().end();
 
-        Some(Expression::StatementsBlock(block).at(Span::new(start, end, cursor.file_id)))
+        Some(Expression::StatementsBlock {
+            span: Span::new(start, cursor.current.span.end(), cursor.file_id),
+            block,
+        })
     }
 }
 
 impl Parse for FunctionExpressionParser {
-    type Output = Option<Spanned<Expression>>;
+    type Output = Option<Expression>;
 
     fn parse_with(self, cursor: &mut Cursor<'_>) -> Self::Output {
+        let start = cursor.next.span.start();
         cursor.next_token(); // `|`
-        let start = cursor.current.span().start();
 
         let parameters = parse_list!(cursor, "function expression parameters", Token![|], || {
             FunctionParameterParser.parse_with(cursor)
@@ -634,7 +588,7 @@ impl Parse for FunctionExpressionParser {
 
         cursor.next_token();
 
-        let return_type = if cursor.next.unwrap() == &Token![:] {
+        let return_type = if cursor.next.raw == Token![:] {
             cursor.next_token();
 
             Some(TypeParser.parse_with(cursor)?)
@@ -644,17 +598,11 @@ impl Parse for FunctionExpressionParser {
 
         let block = StatementsBlockParser.parse_with(cursor)?;
 
-        Some(
-            Expression::Function {
-                parameters,
-                return_type,
-                block,
-            }
-            .at(Span::new(
-                start,
-                cursor.current.span().end(),
-                cursor.file_id,
-            )),
-        )
+        Some(Expression::Function {
+            span: Span::new(start, cursor.current.span.end(), cursor.file_id),
+            parameters,
+            return_type,
+            block,
+        })
     }
 }

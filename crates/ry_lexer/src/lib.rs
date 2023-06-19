@@ -9,14 +9,21 @@
 //! each iteration and stops at eof (always returns [`EndOfFile`]).
 //! ```
 //! use ry_lexer::Lexer;
-//! use ry_ast::token::RawToken::EndOfFile;
+//! use ry_ast::token::{Token, RawToken::EndOfFile};
 //! use ry_interner::Interner;
-//! use ry_source_file::span::{Span, At};
+//! use ry_source_file::span::Span;
 //!
 //! let mut interner = Interner::default();
 //! let mut lexer = Lexer::new(0, "", &mut interner);
 //!
-//! assert_eq!(lexer.next_token(), EndOfFile.at(Span::new(0, 1, 0)));
+//! assert_eq!(
+//!     lexer.next_token(),
+//!     Token
+//!     {
+//!         raw: EndOfFile,
+//!         span: Span::new(0, 1, 0)
+//!     }
+//! );
 //! ```
 //!
 //! > Note: the Ry lexer makes use of the `ry_interner` crate to perform string interning,
@@ -27,13 +34,13 @@
 //!
 //! ```
 //! use ry_lexer::Lexer;
-//! use ry_ast::token::{LexError, RawToken::Error};
+//! use ry_ast::token::{RawLexError, RawToken::Error};
 //! use ry_interner::Interner;
 //!
 //! let mut interner = Interner::default();
 //! let mut lexer = Lexer::new(0, "١", &mut interner);
 //!
-//! assert_eq!(lexer.next_token().unwrap(), &Error(LexError::UnexpectedChar));
+//! assert_eq!(lexer.next_token().raw, Error(RawLexError::UnexpectedChar));
 //! ```
 
 #![doc(
@@ -98,12 +105,12 @@
 )]
 
 use ry_ast::{
-    token::{LexError, RawToken, Token, RESERVED},
+    token::{LexError, RawLexError, RawToken, Token, RESERVED},
     Token,
 };
 use ry_interner::{Interner, Symbol};
-use ry_source_file::span::{At, Span, Spanned};
-use std::{str::Chars, string::String};
+use ry_source_file::span::Span;
+use std::{mem, str::Chars, string::String};
 
 mod number;
 
@@ -126,6 +133,10 @@ pub struct Lexer<'a> {
     interner: &'a mut Interner,
     /// Symbol corresponding to an identifier being processed early on.
     identifier: Symbol,
+    /// Buffer for storing scanned characters (after processing escape sequences).
+    char_buffer: char,
+    /// Buffer for storing scanned strings (after processing escape sequences).
+    string_buffer: String,
 }
 
 impl<'a> Lexer<'a> {
@@ -146,6 +157,8 @@ impl<'a> Lexer<'a> {
             interner,
             location: 0,
             identifier: 0,
+            char_buffer: '\0',
+            string_buffer: String::new(),
         }
     }
 
@@ -154,6 +167,28 @@ impl<'a> Lexer<'a> {
     #[inline]
     pub const fn identifier(&self) -> Symbol {
         self.identifier
+    }
+
+    /// Returns a character being scanned early on (after processing escape sequences).
+    #[must_use]
+    #[inline]
+    pub const fn scanned_char(&self) -> char {
+        self.char_buffer
+    }
+
+    /// Returns a string being scanned early on (after processing escape sequences) and
+    /// cleans internal lexer string buffer. So it must be used only once!
+    #[must_use]
+    #[inline]
+    pub fn scanned_string(&mut self) -> String {
+        mem::take(&mut self.string_buffer)
+    }
+
+    /// Returns a string being scanned early on (after processing escape sequences).
+    #[must_use]
+    #[inline]
+    pub fn scanned_string_slice(&self) -> &str {
+        &self.string_buffer
     }
 
     /// Returns `true` if current character is EOF (`\0`).
@@ -189,23 +224,25 @@ impl<'a> Lexer<'a> {
     /// Advances the lexer state to the next character, and returns the token
     /// with location being the current character location in the source text.
     fn advance_with(&mut self, raw: RawToken) -> Token {
-        let r = Token::new(
+        let token = Token {
             raw,
-            Span::new(self.location, self.location + 1, self.file_id),
-        );
+            span: Span::new(self.location, self.location + 1, self.file_id),
+        };
+
         self.advance();
-        r
+        token
     }
 
     /// Advances the lexer state to the next 2 characters, and returns the token
     /// with location being `self.location..self.location + 2`.
     fn advance_twice_with(&mut self, raw: RawToken) -> Token {
-        let r = Token::new(
+        let token = Token {
             raw,
-            Span::new(self.location, self.location + 2, self.file_id),
-        );
+            span: Span::new(self.location, self.location + 2, self.file_id),
+        };
+
         self.advance_twice();
-        r
+        token
     }
 
     /// Advances the lexer state to the next character while `f` returns `true`,
@@ -224,140 +261,149 @@ impl<'a> Lexer<'a> {
     }
 
     /// Parses an escape sequence.
-    fn eat_escape(&mut self) -> Result<char, Spanned<LexError>> {
+    fn eat_escape(&mut self) -> Result<char, LexError> {
         self.advance(); // `\`
-        let r =
-            match self.current {
-                'b' => Ok('\u{0008}'),
-                'f' => Ok('\u{000C}'),
-                'n' => Ok('\n'),
-                'r' => Ok('\r'),
-                't' => Ok('\t'),
-                '\'' => Ok('\''),
-                '"' => Ok('"'),
-                '\\' => Ok('\\'),
-                '\0' => Err(LexError::EmptyEscapeSequence.at(Span::new(
-                    self.location,
-                    self.location + 1,
-                    self.file_id,
-                ))),
-                'u' => {
-                    self.advance();
+        let r = match self.current {
+            'b' => Ok('\u{0008}'),
+            'f' => Ok('\u{000C}'),
+            'n' => Ok('\n'),
+            'r' => Ok('\r'),
+            't' => Ok('\t'),
+            '\'' => Ok('\''),
+            '"' => Ok('"'),
+            '\\' => Ok('\\'),
+            '\0' => Err(LexError {
+                raw: RawLexError::EmptyEscapeSequence,
+                span: Span::new(self.location, self.location + 1, self.file_id),
+            }),
+            'u' => {
+                self.advance();
 
-                    if self.current != '{' {
-                        return Err(LexError::ExpectedOpenBracketInUnicodeEscapeSequence
-                            .at(Span::new(self.location, self.location + 1, self.file_id)));
-                    }
-
-                    self.advance();
-
-                    let mut buffer = String::new();
-
-                    for _ in 0..4 {
-                        if !self.current.is_ascii_hexdigit() {
-                            return Err(LexError::ExpectedDigitInUnicodeEscapeSequence
-                                .at(Span::new(self.location, self.location + 1, self.file_id)));
-                        }
-
-                        buffer.push(self.current);
-                        self.advance();
-                    }
-
-                    if self.current != '}' {
-                        return Err(LexError::ExpectedCloseBracketInUnicodeEscapeSequence
-                            .at(Span::new(self.location, self.location + 1, self.file_id)));
-                    }
-
-                    match char::from_u32(u32::from_str_radix(&buffer, 16).expect("Invalid hex")) {
-                        Some(c) => Ok(c),
-                        None => Err(LexError::InvalidUnicodeEscapeSequence.at(Span::new(
-                            self.location,
-                            self.location + 1,
-                            self.file_id,
-                        ))),
-                    }
+                if self.current != '{' {
+                    return Err(LexError {
+                        raw: RawLexError::ExpectedOpenBracketInUnicodeEscapeSequence,
+                        span: Span::new(self.location, self.location + 1, self.file_id),
+                    });
                 }
-                'U' => {
+
+                self.advance();
+
+                let mut buffer = String::new();
+
+                for _ in 0..4 {
+                    if !self.current.is_ascii_hexdigit() {
+                        return Err(LexError {
+                            raw: RawLexError::ExpectedDigitInUnicodeEscapeSequence,
+                            span: Span::new(self.location, self.location + 1, self.file_id),
+                        });
+                    }
+
+                    buffer.push(self.current);
                     self.advance();
-
-                    if self.current != '{' {
-                        return Err(LexError::ExpectedOpenBracketInUnicodeEscapeSequence
-                            .at(Span::new(self.location, self.location + 1, self.file_id)));
-                    }
-
-                    self.advance();
-
-                    let mut buffer = String::new();
-
-                    for _ in 0..8 {
-                        if !self.current.is_ascii_hexdigit() {
-                            return Err(LexError::ExpectedDigitInUnicodeEscapeSequence
-                                .at(Span::new(self.location, self.location + 1, self.file_id)));
-                        }
-
-                        buffer.push(self.current);
-                        self.advance();
-                    }
-
-                    if self.current != '}' {
-                        return Err(LexError::ExpectedCloseBracketInUnicodeEscapeSequence
-                            .at(Span::new(self.location, self.location + 1, self.file_id)));
-                    }
-
-                    match char::from_u32(u32::from_str_radix(&buffer, 16).expect("Invalid hex")) {
-                        Some(c) => Ok(c),
-                        None => Err(LexError::InvalidUnicodeEscapeSequence.at(Span::new(
-                            self.location,
-                            self.location + 1,
-                            self.file_id,
-                        ))),
-                    }
                 }
-                'x' => {
-                    self.advance();
 
-                    if self.current != '{' {
-                        return Err(LexError::ExpectedOpenBracketInByteEscapeSequence
-                            .at(Span::new(self.location, self.location + 1, self.file_id)));
-                    }
-
-                    self.advance();
-
-                    let mut buffer = String::new();
-
-                    for _ in 0..2 {
-                        if !self.current.is_ascii_hexdigit() {
-                            return Err(LexError::ExpectedDigitInByteEscapeSequence.at(Span::new(
-                                self.location,
-                                self.location + 1,
-                                self.file_id,
-                            )));
-                        }
-
-                        buffer.push(self.current);
-                        self.advance();
-                    }
-
-                    if self.current != '}' {
-                        return Err(LexError::ExpectedCloseBracketInByteEscapeSequence
-                            .at(Span::new(self.location, self.location + 1, self.file_id)));
-                    }
-
-                    match char::from_u32(u32::from_str_radix(&buffer, 16).expect("Invalid hex")) {
-                        Some(c) => Ok(c),
-                        None => Err(LexError::InvalidByteEscapeSequence.at(Span::new(
-                            self.location - 4,
-                            self.location,
-                            self.file_id,
-                        ))),
-                    }
+                if self.current != '}' {
+                    return Err(LexError {
+                        raw: RawLexError::ExpectedCloseBracketInUnicodeEscapeSequence,
+                        span: Span::new(self.location, self.location + 1, self.file_id),
+                    });
                 }
-                _ => Err(LexError::UnknownEscapeSequence.at(Span::new(
-                    self.location,
-                    self.location + 1,
-                    self.file_id,
-                ))),
-            };
+
+                match char::from_u32(u32::from_str_radix(&buffer, 16).expect("Invalid hex")) {
+                    Some(c) => Ok(c),
+                    None => Err(LexError {
+                        raw: RawLexError::InvalidUnicodeEscapeSequence,
+                        span: Span::new(self.location, self.location + 1, self.file_id),
+                    }),
+                }
+            }
+            'U' => {
+                self.advance();
+
+                if self.current != '{' {
+                    return Err(LexError {
+                        raw: RawLexError::ExpectedOpenBracketInUnicodeEscapeSequence,
+                        span: Span::new(self.location, self.location + 1, self.file_id),
+                    });
+                }
+
+                self.advance();
+
+                let mut buffer = String::new();
+
+                for _ in 0..8 {
+                    if !self.current.is_ascii_hexdigit() {
+                        return Err(LexError {
+                            raw: RawLexError::ExpectedDigitInUnicodeEscapeSequence,
+                            span: Span::new(self.location, self.location + 1, self.file_id),
+                        });
+                    }
+
+                    buffer.push(self.current);
+                    self.advance();
+                }
+
+                if self.current != '}' {
+                    return Err(LexError {
+                        raw: RawLexError::ExpectedCloseBracketInUnicodeEscapeSequence,
+                        span: Span::new(self.location, self.location + 1, self.file_id),
+                    });
+                }
+
+                match char::from_u32(u32::from_str_radix(&buffer, 16).expect("Invalid hex")) {
+                    Some(c) => Ok(c),
+                    None => Err(LexError {
+                        raw: RawLexError::InvalidUnicodeEscapeSequence,
+                        span: Span::new(self.location, self.location + 1, self.file_id),
+                    }),
+                }
+            }
+            'x' => {
+                self.advance();
+
+                if self.current != '{' {
+                    return Err(LexError {
+                        raw: RawLexError::ExpectedOpenBracketInByteEscapeSequence,
+                        span: Span::new(self.location, self.location + 1, self.file_id),
+                    });
+                }
+
+                self.advance();
+
+                let mut buffer = String::new();
+
+                for _ in 0..2 {
+                    if !self.current.is_ascii_hexdigit() {
+                        return Err(LexError {
+                            raw: RawLexError::ExpectedDigitInByteEscapeSequence,
+                            span: Span::new(self.location, self.location + 1, self.file_id),
+                        });
+                    }
+
+                    buffer.push(self.current);
+                    self.advance();
+                }
+
+                if self.current != '}' {
+                    return Err(LexError {
+                        raw: RawLexError::ExpectedCloseBracketInByteEscapeSequence,
+                        span: Span::new(self.location, self.location + 1, self.file_id),
+                    });
+                }
+
+                match char::from_u32(u32::from_str_radix(&buffer, 16).expect("Invalid hex")) {
+                    Some(c) => Ok(c),
+                    None => Err(LexError {
+                        raw: RawLexError::InvalidByteEscapeSequence,
+                        span: Span::new(self.location - 4, self.location, self.file_id),
+                    }),
+                }
+            }
+            _ => Err(LexError {
+                raw: RawLexError::UnknownEscapeSequence,
+                span: Span::new(self.location, self.location + 1, self.file_id),
+            }),
+        };
 
         self.advance();
 
@@ -374,20 +420,28 @@ impl<'a> Lexer<'a> {
 
         while self.current != '\'' {
             if self.current == '\n' || self.eof() {
-                return RawToken::Error(LexError::UnterminatedCharLiteral).at(Span::new(
-                    start_location,
-                    self.location,
-                    self.file_id,
-                ));
+                return Token {
+                    raw: RawToken::Error(RawLexError::UnterminatedCharLiteral),
+                    span: Span::new(start_location, self.location, self.file_id),
+                };
             }
 
             if self.current == '\\' {
                 let e = self.eat_escape();
 
-                if let Err(e) = e {
-                    return RawToken::from(*e.unwrap()).at(e.span());
+                match e {
+                    Ok(c) => {
+                        self.char_buffer = c;
+                    }
+                    Err(e) => {
+                        return Token {
+                            span: e.span,
+                            raw: RawToken::from(e.raw),
+                        }
+                    }
                 }
             } else {
+                self.char_buffer = self.current;
                 self.advance();
             }
 
@@ -398,27 +452,29 @@ impl<'a> Lexer<'a> {
 
         match size {
             2..=usize::MAX => {
-                return RawToken::Error(LexError::MoreThanOneCharInCharLiteral).at(Span::new(
-                    start_location,
-                    self.location,
-                    self.file_id,
-                ));
+                return Token {
+                    raw: RawToken::Error(RawLexError::MoreThanOneCharInCharLiteral),
+                    span: Span::new(start_location, self.location, self.file_id),
+                };
             }
             0 => {
-                return RawToken::Error(LexError::EmptyCharLiteral).at(Span::new(
-                    start_location,
-                    self.location,
-                    self.file_id,
-                ));
+                return Token {
+                    raw: RawToken::Error(RawLexError::EmptyCharLiteral),
+                    span: Span::new(start_location, self.location, self.file_id),
+                };
             }
             _ => {}
         }
 
-        RawToken::CharLiteral.at(Span::new(start_location, self.location, self.file_id))
+        Token {
+            raw: RawToken::CharLiteral,
+            span: Span::new(start_location, self.location, self.file_id),
+        }
     }
 
     /// Parses a string literal.
     fn eat_string(&mut self) -> Token {
+        self.string_buffer.clear();
         let start_location = self.location;
 
         self.advance();
@@ -433,25 +489,36 @@ impl<'a> Lexer<'a> {
             if c == '\\' {
                 let e = self.eat_escape();
 
-                if let Err(e) = e {
-                    return RawToken::from(*e.unwrap()).at(e.span());
+                match e {
+                    Ok(c) => {
+                        self.string_buffer.push(c);
+                    }
+                    Err(e) => {
+                        return Token {
+                            span: e.span,
+                            raw: RawToken::from(e.raw),
+                        }
+                    }
                 }
             } else {
+                self.string_buffer.push(c);
                 self.advance();
             }
         }
 
         if self.eof() || self.current == '\n' {
-            return RawToken::Error(LexError::UnterminatedStringLiteral).at(Span::new(
-                start_location,
-                self.location,
-                self.file_id,
-            ));
+            return Token {
+                raw: RawToken::Error(RawLexError::UnterminatedStringLiteral),
+                span: Span::new(start_location, self.location, self.file_id),
+            };
         }
 
         self.advance();
 
-        RawToken::StringLiteral.at(Span::new(start_location, self.location, self.file_id))
+        Token {
+            raw: RawToken::StringLiteral,
+            span: Span::new(start_location, self.location, self.file_id),
+        }
     }
 
     /// Parses a wrapped identifier.
@@ -465,25 +532,27 @@ impl<'a> Lexer<'a> {
         })[1..];
 
         if self.current != '`' {
-            return RawToken::Error(LexError::UnterminatedWrappedIdentifier).at(Span::new(
-                start_location,
-                self.location,
-                self.file_id,
-            ));
+            return Token {
+                raw: RawToken::Error(RawLexError::UnterminatedWrappedIdentifier),
+                span: Span::new(start_location, self.location, self.file_id),
+            };
         }
 
         if name.is_empty() {
-            return RawToken::Error(LexError::EmptyWrappedIdentifier).at(Span::new(
-                start_location,
-                self.location,
-                self.file_id,
-            ));
+            return Token {
+                raw: RawToken::Error(RawLexError::EmptyWrappedIdentifier),
+                span: Span::new(start_location, self.location, self.file_id),
+            };
         }
 
         self.advance();
 
         self.identifier = self.interner.get_or_intern(name);
-        RawToken::Identifier.at(Span::new(start_location, self.location, self.file_id))
+
+        Token {
+            raw: RawToken::Identifier,
+            span: Span::new(start_location, self.location, self.file_id),
+        }
     }
 
     /// Parses a usual comment (prefix is `//`).
@@ -494,7 +563,10 @@ impl<'a> Lexer<'a> {
 
         self.advance_while(start_location + 2, |current, _| (current != '\n'));
 
-        RawToken::Comment.at(Span::new(start_location, self.location, self.file_id))
+        Token {
+            raw: RawToken::Comment,
+            span: Span::new(start_location, self.location, self.file_id),
+        }
     }
 
     /// Parses a doc comment.
@@ -510,12 +582,14 @@ impl<'a> Lexer<'a> {
 
         self.advance_while(start_location + 3, |current, _| (current != '\n'));
 
-        if global {
-            RawToken::GlobalDocComment
-        } else {
-            RawToken::LocalDocComment
+        Token {
+            span: Span::new(start_location, self.location, self.file_id),
+            raw: if global {
+                RawToken::GlobalDocComment
+            } else {
+                RawToken::LocalDocComment
+            },
         }
-        .at(Span::new(start_location, self.location, self.file_id))
     }
 
     /// Parses weather an identifier or a keyword.
@@ -524,10 +598,16 @@ impl<'a> Lexer<'a> {
         let name = self.advance_while(start_location, |current, _| is_id_continue(current));
 
         if let Some(reserved) = RESERVED.get(name) {
-            (*reserved).at(Span::new(start_location, self.location, self.file_id))
+            Token {
+                raw: *reserved,
+                span: Span::new(start_location, self.location, self.file_id),
+            }
         } else {
             self.identifier = self.interner.get_or_intern(name);
-            RawToken::Identifier.at(Span::new(start_location, self.location, self.file_id))
+            Token {
+                raw: RawToken::Identifier,
+                span: Span::new(start_location, self.location, self.file_id),
+            }
         }
     }
 
@@ -535,7 +615,7 @@ impl<'a> Lexer<'a> {
     pub fn next_no_comments(&mut self) -> Token {
         loop {
             let t = self.next_token();
-            if t.unwrap() != &RawToken::Comment {
+            if t.raw != RawToken::Comment {
                 return t;
             }
         }
@@ -546,9 +626,10 @@ impl<'a> Lexer<'a> {
         self.eat_whitespaces();
 
         match (self.current, self.next) {
-            ('\0', _) => {
-                RawToken::EndOfFile.at(Span::new(self.location, self.location + 1, self.file_id))
-            }
+            ('\0', _) => Token {
+                raw: RawToken::EndOfFile,
+                span: Span::new(self.location, self.location + 1, self.file_id),
+            },
 
             (':', _) => self.advance_with(Token![:]),
             ('@', _) => self.advance_with(Token![@]),
@@ -623,7 +704,7 @@ impl<'a> Lexer<'a> {
                     return self.advance_with(Token![.]);
                 }
 
-                self.advance_with(RawToken::Error(LexError::UnexpectedChar))
+                self.advance_with(RawToken::Error(RawLexError::UnexpectedChar))
             }
         }
     }

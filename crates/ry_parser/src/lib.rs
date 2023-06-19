@@ -75,13 +75,14 @@ mod r#type;
 use codespan_reporting::diagnostic::Diagnostic;
 use items::ItemsParser;
 use ry_ast::{
-    token::{RawToken, Token},
-    Docstring, Identifier, ProgramUnit, Type, TypeVariable,
+    token::{LexError, RawToken, Token},
+    Docstring, IdentifierAst, Module,
 };
 use ry_diagnostics::{expected, parser::ParseDiagnostic, Report};
 use ry_interner::Interner;
 use ry_lexer::Lexer;
-use ry_source_file::span::{At, Span, SpanIndex, Spanned};
+use ry_source_file::source_file::SourceFile;
+use ry_source_file::span::{Span, SpanIndex};
 
 #[macro_use]
 mod macros;
@@ -89,13 +90,12 @@ mod macros;
 /// Represents token iterator.
 #[derive(Debug)]
 pub struct Cursor<'a> {
-    source: &'a str,
+    source_file: &'a SourceFile<'a>,
     file_id: usize,
     lexer: Lexer<'a>,
     current: Token,
     next: Token,
     diagnostics: &'a mut Vec<Diagnostic<usize>>,
-    next_unification_variable_index: u32,
 }
 
 pub(crate) trait Parse
@@ -125,51 +125,75 @@ impl<'a> Cursor<'a> {
     ///
     /// # Usage
     /// ```
+    /// use std::path::Path;
     /// use ry_parser::Cursor;
     /// use ry_interner::Interner;
+    /// use ry_source_file::source_file::SourceFile;
     ///
     /// let mut diagnostics = vec![];
     /// let mut interner = Interner::default();
-    /// let cursor = Cursor::new(0, "pub fun test() {}", &mut interner, &mut diagnostics);
+    /// let source_file = SourceFile::new(
+    ///     Path::new("test.ry"),
+    ///     "pub fun test() {}",
+    /// );
+    ///
+    /// let cursor = Cursor::new(
+    ///     0,
+    ///     &source_file,
+    ///     &mut interner,
+    ///     &mut diagnostics
+    /// );
     /// ```
     #[must_use]
     pub fn new(
         file_id: usize,
-        source: &'a str,
+        source_file: &'a SourceFile<'a>,
         interner: &'a mut Interner,
         diagnostics: &'a mut Vec<Diagnostic<usize>>,
     ) -> Self {
-        let mut lexer = Lexer::new(file_id, source, interner);
+        let mut lexer = Lexer::new(file_id, source_file.source(), interner);
 
         let current = lexer.next_no_comments();
-        let next = current.clone();
+        let next = current;
 
         let mut lexer = Self {
-            source,
+            source_file,
             file_id,
             lexer,
             current,
             next,
             diagnostics,
-            next_unification_variable_index: 0,
         };
         lexer.check_next_token();
 
         lexer
     }
 
-    fn new_unification_variable(&mut self, at: Span) -> Spanned<Type> {
-        let index = self.next_unification_variable_index;
-        self.next_unification_variable_index += 2;
-        Type::Variable(TypeVariable { index }).at(at)
-    }
-
     /// Adds diagnostic if the next token has lex error in itself.
     fn check_next_token(&mut self) {
-        if let RawToken::Error(error) = self.next.unwrap() {
-            self.diagnostics
-                .push(ParseDiagnostic::LexError((*error).at(self.next.span())).build());
+        if let RawToken::Error(error) = self.next.raw {
+            self.diagnostics.push(
+                ParseDiagnostic::LexError(LexError {
+                    span: self.next.span,
+                    raw: error,
+                })
+                .build(),
+            );
         }
+    }
+
+    /// Returns string slice corresponding to the given location.
+    #[inline]
+    #[must_use]
+    fn resolve_span(&self, span: Span) -> &str {
+        self.source_file.resolve_span(span)
+    }
+
+    /// Returns string slice corresponding to the current token's location.
+    #[inline]
+    #[must_use]
+    fn resolve_current(&self) -> &str {
+        self.resolve_span(self.current.span)
     }
 
     /// Returns diagnostics emitted during parsing.
@@ -179,23 +203,8 @@ impl<'a> Cursor<'a> {
     }
 
     /// Advances the cursor to the next token (skips comment tokens).
-    ///
-    /// # Example:
-    ///
-    /// ```ignore
-    /// use ry_cursor::Cursor;
-    /// use ry_interner::Interner;
-    /// use ry_ast::Token;
-    ///
-    /// let mut diagnostics = vec![];
-    /// let mut interner = Interner::default();
-    /// let cursor = Cursor::new(0, "pub fun test() {}", &mut interner, &mut diagnostics);
-    /// assert_eq!(cursor.current, Token![pub]);
-    /// cursor.next_token();
-    /// assert_eq!(cursor.current, Token![fun]);
-    /// ```
     fn next_token(&mut self) {
-        self.current = self.next.clone();
+        self.current = self.next;
         self.next = self.lexer.next_no_comments();
         self.check_next_token();
     }
@@ -205,12 +214,12 @@ impl<'a> Cursor<'a> {
     where
         N: Into<String>,
     {
-        if *self.next.unwrap() == expected {
+        if self.next.raw == expected {
             Some(())
         } else {
             self.diagnostics.push(
                 ParseDiagnostic::UnexpectedTokenError {
-                    got: self.next.clone(),
+                    got: self.next,
                     expected: expected!(expected),
                     node: node.into(),
                 }
@@ -230,16 +239,19 @@ impl<'a> Cursor<'a> {
         Some(())
     }
 
-    fn consume_identifier<N>(&mut self, node: N) -> Option<Identifier>
+    fn consume_identifier<N>(&mut self, node: N) -> Option<IdentifierAst>
     where
         N: Into<String>,
     {
-        let spanned_symbol = if self.next.unwrap() == &RawToken::Identifier {
-            self.lexer.identifier().at(self.next.span())
+        let spanned_symbol = if self.next.raw == RawToken::Identifier {
+            IdentifierAst {
+                span: self.next.span,
+                symbol: self.lexer.identifier(),
+            }
         } else {
             self.diagnostics.push(
                 ParseDiagnostic::UnexpectedTokenError {
-                    got: self.next.clone(),
+                    got: self.next,
                     expected: expected!("identifier"),
                     node: node.into(),
                 }
@@ -258,12 +270,14 @@ impl<'a> Cursor<'a> {
         let (mut module_docstring, mut local_docstring) = (vec![], vec![]);
 
         loop {
-            match self.next.unwrap() {
+            match self.next.raw {
                 RawToken::GlobalDocComment => {
-                    module_docstring.push(self.source.index(self.next.span()).to_owned());
+                    module_docstring
+                        .push(self.source_file.source().index(self.next.span).to_owned());
                 }
                 RawToken::LocalDocComment => {
-                    local_docstring.push(self.source.index(self.next.span()).to_owned());
+                    local_docstring
+                        .push(self.source_file.source().index(self.next.span).to_owned());
                 }
                 _ => return (module_docstring, local_docstring),
             }
@@ -279,8 +293,8 @@ impl<'a> Cursor<'a> {
         let mut result = vec![];
 
         loop {
-            if *self.next.unwrap() == RawToken::LocalDocComment {
-                result.push(self.source.index(self.next.span()).to_owned());
+            if self.next.raw == RawToken::LocalDocComment {
+                result.push(self.source_file.source().index(self.next.span).to_owned());
             } else {
                 return result;
             }
@@ -292,12 +306,25 @@ impl<'a> Cursor<'a> {
     /// Returns [`ParseResult<ProgramUnit>`] where [`ProgramUnit`] represents
     /// AST for a Ry module.
     /// ```
+    /// use std::path::Path;
     /// use ry_parser::Cursor;
     /// use ry_interner::Interner;
+    /// use ry_source_file::source_file::SourceFile;
     ///
     /// let mut diagnostics = vec![];
     /// let mut interner = Interner::default();
-    /// let mut cursor = Cursor::new(0, "fun test() {}", &mut interner, &mut diagnostics);
+    ///
+    /// let source_file = SourceFile::new(
+    ///     Path::new("test.ry"),
+    ///     "fun test() {}",
+    /// );
+    ///
+    /// let mut cursor = Cursor::new(
+    ///     0,
+    ///     &source_file,
+    ///     &mut interner,
+    ///     &mut diagnostics
+    /// );
     /// let ast = cursor.parse();
     ///
     /// assert_eq!(ast.items.len(), 1);
@@ -306,10 +333,11 @@ impl<'a> Cursor<'a> {
     /// # Errors
     ///
     /// Will return [`Err`] on any parsing error.
-    pub fn parse(&mut self) -> ProgramUnit {
+    pub fn parse(&mut self) -> Module<'a> {
         let (global_docstring, first_docstring) = self.consume_module_and_first_item_docstrings();
 
-        ProgramUnit {
+        Module {
+            filepath: self.source_file.path(),
             docstring: global_docstring,
             items: ItemsParser { first_docstring }.parse_with(self),
         }

@@ -2,12 +2,12 @@
 //! source text.
 use crate::precedence::Precedence;
 use phf::phf_map;
-use ry_source_file::span::Spanned;
+use ry_source_file::span::Span;
 use std::fmt::Display;
 
 /// Represents error that scanning process can fail with.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub enum LexError {
+pub enum RawLexError {
     DigitDoesNotCorrespondToBase,
     EmptyCharLiteral,
     EmptyEscapeSequence,
@@ -35,7 +35,7 @@ pub enum LexError {
     UnterminatedWrappedIdentifier,
 }
 
-impl AsRef<str> for LexError {
+impl AsRef<str> for RawLexError {
     fn as_ref(&self) -> &str {
         match self {
             Self::EmptyCharLiteral => "empty character literal",
@@ -77,20 +77,26 @@ impl AsRef<str> for LexError {
     }
 }
 
-impl Display for LexError {
+impl Display for RawLexError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str(self.as_ref())?;
         Ok(())
     }
 }
 
-impl From<RawToken> for LexError {
+impl From<RawToken> for RawLexError {
     fn from(value: RawToken) -> Self {
         match value {
             RawToken::Error(e) => e,
             _ => unreachable!(),
         }
     }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Copy)]
+pub struct LexError {
+    pub span: Span,
+    pub raw: RawLexError,
 }
 
 /// Either the number is integer, float or imaginary literal.
@@ -388,7 +394,7 @@ pub enum RawToken {
     /// Integer literal.
     IntegerLiteral,
     /// Error token.
-    Error(LexError),
+    Error(RawLexError),
     /// Keyword.
     Keyword(Keyword),
     /// Punctuator.
@@ -430,8 +436,8 @@ impl Display for RawToken {
     }
 }
 
-impl From<LexError> for RawToken {
-    fn from(value: LexError) -> Self {
+impl From<RawLexError> for RawToken {
+    fn from(value: RawLexError) -> Self {
         Self::Error(value)
     }
 }
@@ -448,9 +454,12 @@ impl RawToken {
     }
 }
 
-/// Type alias for `Spanned<RawToken>`.
 /// Represents a token with a specified location in source text.
-pub type Token = Spanned<RawToken>;
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub struct Token {
+    pub span: Span,
+    pub raw: RawToken,
+}
 
 /// Macro used to easily initialize tokens.
 ///

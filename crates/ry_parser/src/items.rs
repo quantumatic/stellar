@@ -7,7 +7,7 @@ use crate::{
     Cursor, OptionalParser, Parse,
 };
 use ry_ast::{
-    token::RawToken, Docstring, Documented, EnumItem, Function, FunctionParameter, Identifier,
+    token::RawToken, Docstring, Documented, EnumItem, Function, FunctionParameter, IdentifierAst,
     Item, ItemKind, Items, StructField, Token, TraitItem, TupleField, TypeAlias, Visibility,
     WithDocComment,
 };
@@ -60,7 +60,7 @@ struct ItemTupleParser {
 }
 
 struct EnumItemStructParser {
-    pub(crate) name: Identifier,
+    pub(crate) name: IdentifierAst,
 }
 
 pub(crate) struct ItemsParser {
@@ -89,9 +89,9 @@ impl Parse for StructFieldParser {
     type Output = Option<StructField>;
 
     fn parse_with(self, cursor: &mut Cursor<'_>) -> Self::Output {
-        let visibility = if cursor.next.unwrap() == &Token![pub] {
+        let visibility = if cursor.next.raw == Token![pub] {
             cursor.next_token();
-            Visibility::public(cursor.current.span())
+            Visibility::public(cursor.current.span)
         } else {
             Visibility::private()
         };
@@ -148,7 +148,7 @@ impl Parse for StructItemParser {
 
         let where_clause = WhereClauseParser.optionally_parse_with(cursor)?;
 
-        if cursor.next.unwrap() == &Token!['{'] {
+        if cursor.next.raw == Token!['{'] {
             let fields = StructFieldsParser.parse_with(cursor)?;
             Some(Item::Struct {
                 visibility: self.visibility,
@@ -157,18 +157,18 @@ impl Parse for StructItemParser {
                 where_clause,
                 fields,
             })
-        } else if cursor.next.unwrap() == &Token!['('] {
+        } else if cursor.next.raw == Token!['('] {
             let fields = ItemTupleParser {
                 context: ItemKind::Struct,
             }
             .parse_with(cursor)?;
 
-            if cursor.next.unwrap() == &Token![;] {
+            if cursor.next.raw == Token![;] {
                 cursor.next_token();
             } else {
                 cursor.diagnostics.push(
                     ParseDiagnostic::UnexpectedTokenError {
-                        got: cursor.current.clone(),
+                        got: cursor.current,
                         expected: expected!(Token![;]),
                         node: "struct item".to_owned(),
                     }
@@ -186,7 +186,7 @@ impl Parse for StructItemParser {
         } else {
             cursor.diagnostics.push(
                 ParseDiagnostic::UnexpectedTokenError {
-                    got: cursor.current.clone(),
+                    got: cursor.current,
                     expected: expected!(Token![;], Token!['(']),
                     node: "item".to_owned(),
                 }
@@ -208,7 +208,7 @@ impl Parse for FunctionParameterParser {
 
         let r#type = TypeParser.parse_with(cursor)?;
 
-        let default_value = if cursor.next.unwrap() == &Token![=] {
+        let default_value = if cursor.next.raw == Token![=] {
             cursor.next_token();
             Some(ExpressionParser::default().parse_with(cursor)?)
         } else {
@@ -241,7 +241,7 @@ impl Parse for FunctionParser {
 
         cursor.next_token();
 
-        let return_type = if cursor.next.unwrap() == &Token![:] {
+        let return_type = if cursor.next.raw == Token![:] {
             cursor.next_token();
             Some(TypeParser.parse_with(cursor)?)
         } else {
@@ -257,7 +257,7 @@ impl Parse for FunctionParser {
             parameters,
             return_type,
             where_clause,
-            body: match cursor.next.unwrap() {
+            body: match cursor.next.raw {
                 Token![;] => {
                     cursor.next_token();
 
@@ -269,7 +269,7 @@ impl Parse for FunctionParser {
 
                     cursor.diagnostics.push(
                         ParseDiagnostic::UnexpectedTokenError {
-                            got: cursor.current.clone(),
+                            got: cursor.current,
                             expected: expected!(Token![;], Token!['(']),
                             node: "function".to_owned(),
                         }
@@ -289,17 +289,17 @@ impl Parse for TraitItemsParser {
     fn parse_with(self, cursor: &mut Cursor<'_>) -> Self::Output {
         let mut items = vec![];
 
-        while *cursor.next.unwrap() != Token!['}'] {
+        while cursor.next.raw != Token!['}'] {
             let doc = cursor.consume_docstring();
 
-            let visibility = if *cursor.next.unwrap() == Token![pub] {
+            let visibility = if cursor.next.raw == Token![pub] {
                 cursor.next_token();
-                Visibility::public(cursor.current.span())
+                Visibility::public(cursor.current.span)
             } else {
                 Visibility::private()
             };
 
-            items.push(match cursor.next.unwrap() {
+            items.push(match cursor.next.raw {
                 Token![fun] => Some(
                     TraitItem::AssociatedFunction(
                         FunctionParser { visibility }.parse_with(cursor)?,
@@ -315,7 +315,7 @@ impl Parse for TraitItemsParser {
                         ParseDiagnostic::EOFInsteadOfCloseBraceForItemError {
                             item_kind: self.item_kind,
                             item_name_span: self.name_span,
-                            at: cursor.current.span(),
+                            span: cursor.current.span,
                         }
                         .build(),
                     );
@@ -324,7 +324,7 @@ impl Parse for TraitItemsParser {
                 _ => {
                     cursor.diagnostics.push(
                         ParseDiagnostic::UnexpectedTokenError {
-                            got: cursor.next.clone(),
+                            got: cursor.next,
                             expected: expected!(Token![fun], Token![type]),
                             node: "trait item".to_owned(),
                         }
@@ -348,7 +348,7 @@ impl Parse for TypeAliasParser {
         let name = cursor.consume_identifier("type alias")?;
         let generic_parameters = GenericParametersParser.optionally_parse_with(cursor)?;
 
-        let value = if *cursor.next.unwrap() == Token![=] {
+        let value = if cursor.next.raw == Token![=] {
             cursor.next_token();
 
             Some(TypeParser.parse_with(cursor)?)
@@ -382,7 +382,7 @@ impl Parse for TraitItemParser {
         cursor.consume(Token!['{'], "trait declaration")?;
 
         let items = TraitItemsParser {
-            name_span: name.span(),
+            name_span: name.span,
             item_kind: ItemKind::Trait,
         }
         .parse_with(cursor)?;
@@ -406,14 +406,14 @@ impl Parse for ImplItemParser {
 
     fn parse_with(self, cursor: &mut Cursor<'_>) -> Self::Output {
         cursor.next_token();
-        let impl_span = cursor.current.span();
+        let impl_span = cursor.current.span;
 
         let generic_parameters = GenericParametersParser.optionally_parse_with(cursor)?;
 
         let mut r#type = TypeParser.parse_with(cursor)?;
         let mut r#trait = None;
 
-        if *cursor.next.unwrap() == Token![for] {
+        if cursor.next.raw == Token![for] {
             cursor.next_token();
 
             r#trait = Some(r#type);
@@ -487,7 +487,7 @@ impl Parse for EnumItemParser {
     fn parse_with(self, cursor: &mut Cursor<'_>) -> Self::Output {
         let name = cursor.consume_identifier("enum item")?;
 
-        match cursor.next.unwrap() {
+        match cursor.next.raw {
             Token!['{'] => EnumItemStructParser { name }.parse_with(cursor),
             Token!['('] => Some(EnumItem::Tuple {
                 name,
@@ -496,7 +496,7 @@ impl Parse for EnumItemParser {
                 }
                 .parse_with(cursor)?,
             }),
-            _ => Some(EnumItem::Identifier(name)),
+            _ => Some(EnumItem::Just(name)),
         }
     }
 }
@@ -525,9 +525,9 @@ impl Parse for ItemTupleParser {
             format!("item tuple in {}", self.context.to_string()),
             Token![')'],
             || -> Option<TupleField> {
-                let visibility = if cursor.next.unwrap() == &Token![pub] {
+                let visibility = if cursor.next.raw == Token![pub] {
                     cursor.next_token();
-                    Visibility::public(cursor.current.span())
+                    Visibility::public(cursor.current.span)
                 } else {
                     Visibility::private()
                 };
@@ -551,7 +551,7 @@ impl Parse for ItemsParser {
         let mut items = vec![];
         let mut docstring = self.first_docstring;
 
-        while *cursor.next.unwrap() != RawToken::EndOfFile {
+        while cursor.next.raw != RawToken::EndOfFile {
             if let Some(item) = ItemParser.parse_with(cursor) {
                 items.push(item.with_doc_comment(docstring));
             }
@@ -566,7 +566,7 @@ impl Parse for ItemsParser {
 impl ItemParser {
     fn go_to_next_item(cursor: &mut Cursor<'_>) {
         loop {
-            match cursor.next.unwrap() {
+            match cursor.next.raw {
                 Token![enum]
                 | Token![use]
                 | Token![struct]
@@ -598,12 +598,12 @@ impl Parse for ItemParser {
     fn parse_with(self, cursor: &mut Cursor<'_>) -> Self::Output {
         let mut visibility = Visibility::private();
 
-        if *cursor.next.unwrap() == Token![pub] {
-            visibility = Visibility::public(cursor.next.span());
+        if cursor.next.raw == Token![pub] {
+            visibility = Visibility::public(cursor.next.span);
             cursor.next_token();
         }
 
-        Some(match cursor.next.unwrap() {
+        Some(match cursor.next.raw {
             Token![enum] => {
                 go_to_next_valid_item!(cursor, EnumParser { visibility }.parse_with(cursor))
             }
@@ -630,7 +630,7 @@ impl Parse for ItemParser {
             _ => {
                 cursor.diagnostics.push(
                     ParseDiagnostic::UnexpectedTokenError {
-                        got: cursor.next.clone(),
+                        got: cursor.next,
                         expected: expected!(
                             Token![use],
                             Token![fun],
@@ -647,7 +647,7 @@ impl Parse for ItemParser {
                 );
 
                 loop {
-                    match cursor.next.unwrap() {
+                    match cursor.next.raw {
                         Token![enum]
                         | Token![use]
                         | Token![struct]
