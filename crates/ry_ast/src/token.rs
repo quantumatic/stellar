@@ -478,6 +478,7 @@ pub struct Token {
 ///     Token!['('],
 ///     RawToken::Punctuator(Punctuator::OpenParent)
 /// );
+/// ```
 #[macro_export]
 macro_rules! Token {
     [:] =>                  {$crate::token::RawToken::Punctuator($crate::token::Punctuator::Colon)};
