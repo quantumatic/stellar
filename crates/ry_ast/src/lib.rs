@@ -605,7 +605,7 @@ pub enum UntypedExpression {
     ///
     /// ```txt
     /// let a = |x: uint32|: uint32 { x + 1 };
-    ///         ^^^^^^^^^^^^^^^^^ function expression
+    ///         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ function expression
     /// ```
     Function {
         span: Span,
@@ -921,7 +921,7 @@ pub enum Item {
     ///
     /// ```txt
     /// fun foo() {
-    ///     println!("Hello")
+    ///     println("Hello")
     /// }
     /// ```
     Function(Function),
