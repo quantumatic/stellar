@@ -51,6 +51,7 @@ use token::RawToken;
 
 pub mod precedence;
 pub mod token;
+pub mod typed;
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Literal {
@@ -61,64 +62,219 @@ pub enum Literal {
     Float { value: f64, span: Span },
 }
 
+/// Symbol with a specified span.
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub struct IdentifierAst {
     pub span: Span,
     pub symbol: Symbol,
 }
 
+/// AST Node corresponding to a sequence of identifiers separated by `.`.
+///
+/// # Example
+/// Here is an example of it is used in the use item:
+///
+/// ```txt
+/// use std.io;
+///     ^^^^^^
+/// ```
 #[derive(Debug, PartialEq, Clone)]
 pub struct Path {
     pub span: Span,
     pub symbols: Vec<IdentifierAst>,
 }
 
+/// AST Node for a pattern.
+///
+/// # Example
+/// Here is an example of it is used in the match expression:
+/// ```txt
+/// match x {
+///     Some(a) => { println(a); }
+///     ^^^^^^^ pattern
+///     None => { panic("something went wrong"); }
+///     ^^^^ pattern
+/// }
+/// ```
 #[derive(Debug, PartialEq, Clone)]
 pub enum Pattern {
+    /// A literal pattern.
+    ///
+    /// # Example
+    /// ```txt
+    /// match x {
+    ///     3 => { println("x is 3!"); }
+    ///     ^ literal pattern
+    ///     .. => { println("x is not 3!"); }
+    /// }
+    /// ```
     Literal(Literal),
+
+    /// An identifier pattern.
+    ///
+    /// Used to store a value corresponding to some pattern.
+    ///
+    /// # Example
+    /// ```txt
+    /// match x {
+    ///     [.., b @ [3, ..]] => { println(b); }
+    ///          ^^^^^^^^^^^ identifier pattern
+    ///     .. => { println(":("); }
+    /// }
+    /// ```
+    /// In the example, `b` is now having a value corresponding to the pattern `[3, ..]`.
     Identifier {
         span: Span,
         identifier: IdentifierAst,
         ty: Option<TypeAst>, // variable can already be initialized before
         pattern: Option<Box<Self>>,
     },
+
+    /// A struct pattern.
+    ///
+    /// # Example
+    /// ```txt
+    /// match person {
+    ///     Person { citizenship: "USA" } => { println("Welcome to your homeland, comrade!"); }
+    ///     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ struct pattern
+    ///
+    ///     .. => { println("Welcome to the USA!"); }
+    /// }
+    /// ```
     Struct {
         span: Span,
         r#struct: Path,
         fields: Vec<StructFieldPattern>,
     },
+
+    /// A tuple-like pattern.
+    /// Used to match a tuple-like structs and enum tuple-like items.
+    ///
+    /// # Example
+    /// ```txt
+    /// match x {
+    ///     Some(x) => { println(x); }
+    ///     ^^^^^^^ tuple-like pattern
+    ///
+    ///     None => { panic("something went wrong"); }
+    ///     ^^^^ path pattern
+    /// }
+    /// ```
     TupleLike {
         span: Span,
         r#enum: Path,
         inner_patterns: Vec<Self>,
     },
+
+    /// A tuple pattern. Used to match tuple expressions.
+    ///
+    /// # Example
+    /// ```txt
+    /// match x {
+    ///     #(a, "hello", c @ [3, ..]) => { println(a); }
+    ///     ^^^^^^^^^^^^^^^^^^^^^^^^^^ tuple pattern
+    ///
+    ///     .. => { println(":("); }
+    /// }
+    /// ```
     Tuple {
         span: Span,
         inner_patterns: Vec<Self>,
     },
-    Path {
-        span: Span,
-        path: Path,
-    },
+
+    /// A path pattern.
+    ///
+    /// # Examples
+    /// Path pattern with single identifier in it (do not mess it with
+    /// tuple-like or struct patterns):
+    /// ```txt
+    /// match x {
+    ///     Some(a) => { println(a); }
+    ///     ^^^^^^^ tuple-like pattern
+    ///     None => { println("none"); }
+    ///     ^^^^ path pattern
+    /// }
+    /// ```
+    ///
+    /// Path pattern with multiple identifiers in it:
+    /// ```txt
+    /// match x {
+    ///     module.x => { println("x == module.x"); }
+    ///     ^^^^^^^^ path pattern
+    ///
+    ///     .. => { println("x != module.x"); }
+    /// }
+    /// ```
+    Path { span: Span, path: Path },
+
+    /// A list pattern.
+    ///
+    /// # Example
+    /// ```txt
+    ///
+    /// match x {
+    ///     [.., b @ [3, ..]] => { println(b); }
+    ///              ^^^^^^^ list pattern
+    ///
+    ///     .. => { println(":("); }
+    /// }
+    /// ```
     List {
         span: Span,
         inner_patterns: Vec<Self>,
     },
-    Grouped {
-        span: Span,
-        inner: Box<Self>,
-    },
+
+    /// A grouped pattern. (just a pattern surrounded by parentheses)
+    ///
+    /// # Example
+    /// ```txt
+    ///
+    /// match x {
+    ///     (Some(..)) => { println("some"); }
+    ///     ^^^^^^^^^^ grouped pattern
+    ///
+    ///     ((None)) => { println("none"); }
+    ///     ^^^^^^^^ grouped pattern
+    ///      ^^^^^^ grouped pattern inside of the grouped pattern
+    /// }
+    /// ```
+    Grouped { span: Span, inner: Box<Self> },
+
+    /// An or pattern.
+    ///
+    /// # Example
+    /// ```txt
+    ///
+    /// match x {
+    ///     // always matches
+    ///     Some(..) | None => { println("ok"); }
+    ///     ^^^^^^^^^^^^^^^ or pattern
+    ///
+    ///     _ => { unreachable(); }
+    /// }
+    /// ```
     Or {
         span: Span,
         left: Box<Self>,
         right: Box<Self>,
     },
-    Rest {
-        span: Span,
-    }, // ..
+
+    /// A rest pattern.
+    ///
+    /// # Example
+    /// ```txt
+    /// match x {
+    ///     // always matches
+    ///     .. => { println("ok"); }
+    ///     ^^ rest pattern
+    ///
+    ///     _ => { unreachable(); }
+    /// }
+    Rest { span: Span },
 }
 
 impl Pattern {
+    /// Returns the span of the pattern.
     pub fn span(&self) -> Span {
         match self {
             Self::Literal(
@@ -141,6 +297,21 @@ impl Pattern {
     }
 }
 
+/// A pattern used inside a struct pattern.
+///
+/// # Example
+/// ```txt
+/// match person {
+///     Person { citizenship: "USA", name, .. } => {
+///              ------------------  ---- not rest struct field patterns
+///                                        -- rest struct field pattern
+///
+///        println("Welcome to your homeland " + name + "!");
+///     }
+///
+///     .. => { println("Welcome to the USA!"); }
+/// }
+/// ```
 #[derive(Debug, PartialEq, Clone)]
 pub enum StructFieldPattern {
     NotRest {
@@ -153,17 +324,33 @@ pub enum StructFieldPattern {
     },
 }
 
+/// An AST node used to represent types in an untyped AST.
+///
+/// # Example
+/// ```txt
+/// let a: #(List[uint32], String, uint32) = #(a, "hello", 3);
+///        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type node
+/// ```
 #[derive(Debug, PartialEq, Clone)]
 pub enum TypeAst {
+    /// A type constructor.
     Constructor(TypeConstructorAst),
-    Variable {
-        span: Span,
-        index: usize,
-    },
+
+    /// A tuple type.
+    ///
+    /// ```txt
+    /// #(String, uint32)
+    /// ```
     Tuple {
         span: Span,
         element_types: Vec<Self>,
     },
+
+    /// A function type (return type is required for consistency).
+    ///
+    /// ```txt
+    /// (uint32) -> Unit
+    /// ```
     Function {
         span: Span,
         parameter_types: Vec<Self>,
@@ -171,6 +358,13 @@ pub enum TypeAst {
     },
 }
 
+/// A type constructor in an untyped AST.
+///
+/// ```txt
+/// String
+/// uint32
+/// List[uint32]
+/// ```
 #[derive(Debug, PartialEq, Clone)]
 pub struct TypeConstructorAst {
     pub span: Span,
@@ -178,14 +372,32 @@ pub struct TypeConstructorAst {
     pub generic_arguments: Vec<TypeAst>,
 }
 
+/// A generic parameter.
+///
+/// # Example
+///
+/// ```txt
+/// fun into[T](a: T) { ... }
+///          ^ generic parameter
+/// ```
 #[derive(Debug, PartialEq, Clone)]
 pub struct GenericParameter {
     pub name: IdentifierAst,
-    pub constraint: Option<TypeAst>,
+    pub constraint: Option<TypeAst>, // constraints can be outside of the where clause
 }
 
+/// A where clause.
+///
+/// ```txt
+/// impl[T] ToString for T where T: Into[String] { ... }
+///                        ^^^^^^^^^^^^^^^^^^^^^ where clause
+/// ```
 pub type WhereClause = Vec<WhereClauseItem>;
 
+/// A type alias.
+///
+/// ```txt
+/// type StringRes[E] = Result[String, E];
 #[derive(Debug, PartialEq, Clone)]
 pub struct TypeAlias {
     pub visibility: Visibility,
@@ -194,88 +406,207 @@ pub struct TypeAlias {
     pub value: Option<TypeAst>,
 }
 
+/// A where clause item.
+///
+/// ```txt
+/// impl[T, M] ToString for #(T, M) where T: Into[String], M: Into[String] { ... }
+///                                       ^^^^^^^^^^^^^^^ where clause item #1
+///                                                        ^^^^^^^^^^^^^^^ where clause item #2
+/// ```
 #[derive(Debug, PartialEq, Clone)]
 pub struct WhereClauseItem {
     pub r#type: TypeAst,
     pub constraint: TypeAst,
 }
 
+/// Represents an expression in an untyped AST.
 #[derive(Debug, PartialEq, Clone)]
-pub enum Expression {
-    List {
-        span: Span,
-        elements: Vec<Self>,
-    },
+pub enum UntypedExpression {
+    /// List expression.
+    ///
+    /// ```txt
+    /// [1, 2, 3]
+    /// ```
+    List { span: Span, elements: Vec<Self> },
+
+    /// As expression.
+    ///
+    /// ```txt
+    /// 3 as float32
+    /// ```
     As {
         span: Span,
         left: Box<Self>,
         right: TypeAst,
     },
+
+    /// Binary expression.
+    ///
+    /// ```txt
+    /// 1 + 2
+    /// ```
     Binary {
         span: Span,
         left: Box<Self>,
         operator: BinaryOperator,
         right: Box<Self>,
     },
-    StatementsBlock {
-        span: Span,
-        block: Vec<Statement>,
-    },
+
+    /// Block expression.
+    ///
+    /// ```txt
+    /// {
+    ///     let b = 1;
+    ///     b + 2
+    /// };
+    /// ```
+    StatementsBlock { span: Span, block: Vec<Statement> },
+
+    /// Literal expression.
+    ///
+    /// ```txt
+    /// "hello"
+    /// ```
     Literal(Literal),
+
+    /// Identifier expression.
+    ///
+    /// ```txt
+    /// x
+    /// ```
     Identifier(IdentifierAst),
-    Parenthesized {
-        span: Span,
-        inner: Box<Self>,
-    },
+
+    /// Parenthesized expression.
+    ///
+    /// ```txt
+    /// (1 + 2)
+    /// ```
+    Parenthesized { span: Span, inner: Box<Self> },
+
+    /// If expression.
+    ///
+    /// ```txt
+    /// if x < 2 {
+    ///     1
+    /// } else {
+    ///     factorial(x - 1) * x
+    /// }
+    /// ```
     If {
         span: Span,
         if_blocks: Vec<(Self, Vec<Statement>)>,
         r#else: Option<Vec<Statement>>,
     },
+
+    /// Property expression.
+    ///
+    /// ```txt
+    /// x.y
+    /// ```
     Property {
         span: Span,
         left: Box<Self>,
         right: IdentifierAst,
     },
+
+    /// Prefix expression.
+    ///
+    /// ```txt
+    /// !x
+    /// ```
     Prefix {
         span: Span,
         inner: Box<Self>,
         operator: PrefixOperator,
     },
+
+    /// Postfix expression.
+    ///
+    /// ```txt
+    /// returns_option()?
+    /// ```
     Postfix {
         span: Span,
         inner: Box<Self>,
         operator: PostfixOperator,
     },
+
+    /// While expression (always returns `Unit` type).
+    ///
+    /// ```txt
+    /// while x < 2 {
+    ///     break;
+    /// }
+    /// ```
     While {
         span: Span,
         condition: Box<Self>,
         body: Vec<Statement>,
     },
+
+    /// Call expression.
+    ///
+    /// ```txt
+    /// s.to_string()
+    /// ```
     Call {
         span: Span,
         left: Box<Self>,
         arguments: Vec<Self>,
     },
+
+    /// Generic arguments expression.
+    ///
+    /// ```txt
+    /// into[uint32](3);
+    /// ^^^^^^^^^^^^ generic arguments expression
+    ///             ^^^ call
+    /// ```
     GenericArguments {
         span: Span,
         left: Box<Self>,
         arguments: Vec<TypeAst>,
     },
-    Tuple {
-        span: Span,
-        elements: Vec<Self>,
-    },
+
+    /// Tuple expression.
+    ///
+    /// ```txt
+    /// #(a, "hello", 3)
+    /// ```
+    Tuple { span: Span, elements: Vec<Self> },
+
+    /// Struct expression.
+    ///
+    /// ```txt
+    /// let person = Person { name: "John", age: 30 };
+    ///              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ struct expression
+    /// ```
     Struct {
         span: Span,
         left: Box<Self>,
-        fields: Vec<StructExpressionUnit>,
+        fields: Vec<StructExpressionItem>,
     },
+
+    /// Match expression.
+    ///
+    /// ```txt
+    /// match fs.read_file("foo.txt") {
+    ///     Ok(data) => { println(data); },
+    ///     Err(e) => { println("something went wrong"); }
+    /// }
+    /// ```
     Match {
         span: Span,
         expression: Box<Self>,
-        block: Vec<MatchExpressionUnit>,
+        block: Vec<MatchExpressionItem>,
     },
+
+    /// Function expression.
+    ///
+    /// ```txt
+    /// let a = |x: uint32|: uint32 { x + 1 };
+    ///         ^^^^^^^^^^^^^^^^^ function expression
+    /// ```
     Function {
         span: Span,
         parameters: Vec<FunctionParameter>,
@@ -284,7 +615,8 @@ pub enum Expression {
     },
 }
 
-impl Expression {
+impl UntypedExpression {
+    /// Returns the span of the expression.
     pub fn span(&self) -> Span {
         match self {
             Self::List { span, .. }
@@ -315,12 +647,14 @@ impl Expression {
     }
 }
 
+/// Represents a binary operator with a specific span.
 #[derive(Debug, PartialEq, Copy, Clone, Eq, Hash)]
 pub struct BinaryOperator {
     pub span: Span,
     pub raw: RawBinaryOperator,
 }
 
+/// Represents a binary operator.
 #[derive(Debug, PartialEq, Copy, Clone, Eq, Hash)]
 pub enum RawBinaryOperator {
     PlusEq,
@@ -383,12 +717,14 @@ impl From<RawToken> for RawBinaryOperator {
     }
 }
 
+/// Represents a prefix operator with a specific span.
 #[derive(Debug, PartialEq, Copy, Clone, Eq, Hash)]
 pub struct PrefixOperator {
     pub span: Span,
     pub raw: RawPrefixOperator,
 }
 
+/// Represents a prefix operator.
 #[derive(Debug, PartialEq, Copy, Clone, Eq, Hash)]
 pub enum RawPrefixOperator {
     Bang,
@@ -413,12 +749,14 @@ impl From<RawToken> for RawPrefixOperator {
     }
 }
 
+/// Represents a postfix operator with a specific span.
 #[derive(Debug, PartialEq, Copy, Clone, Eq, Hash)]
 pub struct PostfixOperator {
     pub span: Span,
     pub raw: RawPostfixOperator,
 }
 
+/// Represents a postfix operator.
 #[derive(Debug, PartialEq, Copy, Clone, Eq, Hash)]
 pub enum RawPostfixOperator {
     QuestionMark,
@@ -437,45 +775,102 @@ impl From<RawToken> for RawPostfixOperator {
     }
 }
 
+/// Represents a match expression item (`pattern` `=>` `expression`).
+///
+/// ```txt
+/// match 1.safe_div(0) {
+///    Some(x) => x,
+///    ^^^^^^^^^^^^ match expression item
+///
+///    None => { panic("you can't divide by zero") },
+///    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ match expression item
+/// }
 #[derive(Debug, PartialEq, Clone)]
-pub struct MatchExpressionUnit {
+pub struct MatchExpressionItem {
     pub left: Pattern,
-    pub right: Expression,
+    pub right: UntypedExpression,
 }
 
+/// Represents a field initialization in a struct expression (`identifier` and optionally `:` `expression`).
+///
+/// ```txt
+/// let age = 30;
+///
+/// let person = Person {
+///     name: "John",
+///     ^^^^^^^^^^^^ struct expression item
+///     age,
+///     ^^^ struct expression item
+/// }
+/// ```
 #[derive(Debug, PartialEq, Clone)]
-pub struct StructExpressionUnit {
+pub struct StructExpressionItem {
     pub name: IdentifierAst,
-    pub value: Option<Expression>,
+    pub value: Option<UntypedExpression>,
 }
 
-impl Expression {
+impl UntypedExpression {
+    /// Returns `true` if this expression has a block in it (except function expressions).
+    /// Used to determine if this expression has to have semicolon at the end.
+    /// Function expression do have blocks in them, but they must have a semicolon at the end.
     pub fn with_block(&self) -> bool {
         matches!(self, Self::If { .. } | Self::While { .. })
     }
 }
 
+/// Represents a statement.
 #[derive(Debug, PartialEq, Clone)]
 pub enum Statement {
-    Defer {
-        call: Expression,
-    },
+    /// Defer statement
+    ///
+    /// ```txt
+    /// defer file.close();
+    /// ```
+    Defer { call: UntypedExpression },
+
+    /// Expression statement
+    ///
+    /// ```txt
+    /// if x {
+    ///     return Some("hello");
+    /// }
+    /// ```
     Expression {
-        expression: Expression,
+        expression: UntypedExpression,
         has_semicolon: bool,
     },
-    Return {
-        expression: Expression,
-    },
+
+    /// Return statement
+    ///
+    /// ```txt
+    /// /// Answer to the Ultimate Question of Life, the Universe, and Everything
+    /// fun the_answer(): uint32 {
+    ///     return 42;
+    /// }
+    /// ```
+    Return { expression: UntypedExpression },
+
+    /// Let statement
+    ///
+    /// ```txt
+    /// let x = 1;
+    /// ```
     Let {
         pattern: Pattern,
-        value: Box<Expression>,
+        value: Box<UntypedExpression>,
         ty: Option<TypeAst>,
     },
 }
 
+/// Represents a block of statements.
+///
+/// ```txt
+/// fun main() { println!("Hello"); }
+///            ^^^^^^^^^^^^^^^^^^^^^^ statements block
+/// ```
 pub type StatementsBlock = Vec<Statement>;
 
+/// Represents a docstring.
 pub type Docstring = Vec<String>;
 
 #[derive(Debug, PartialEq, Clone)]
@@ -498,8 +893,22 @@ pub trait WithDocComment {
 
 impl<T: Sized> WithDocComment for T {}
 
+/// Represents an item.
 #[derive(Debug, PartialEq, Clone)]
 pub enum Item {
+    /// Enum item.
+    ///
+    /// ```txt
+    /// enum UserCredentials {
+    ///     None,
+    ///     EmailOnly(String)
+    ///     PhoneNumberOnly(String)
+    ///     PhoneAndEmail {
+    ///         phone: String,
+    ///         email: String
+    ///     }
+    /// }
+    /// ```
     Enum {
         visibility: Visibility,
         name: IdentifierAst,
@@ -507,11 +916,30 @@ pub enum Item {
         where_clause: WhereClause,
         items: Vec<Documented<EnumItem>>,
     },
+
+    /// Function item.
+    ///
+    /// ```txt
+    /// fun foo() {
+    ///     println!("Hello")
+    /// }
+    /// ```
     Function(Function),
-    Import {
-        visibility: Visibility,
-        path: Path,
-    },
+
+    /// Use item.
+    ///
+    /// ```txt
+    /// use std.io;
+    /// ```
+    Use { visibility: Visibility, path: Path },
+
+    /// Trait item.
+    ///
+    /// ```txt
+    /// trait Into[T] {
+    ///     fun into(self: Self) -> T;
+    /// }
+    /// ```
     Trait {
         visibility: Visibility,
         name: IdentifierAst,
@@ -519,6 +947,18 @@ pub enum Item {
         where_clause: WhereClause,
         items: Vec<Documented<TraitItem>>,
     },
+
+    /// Impl item.
+    ///
+    /// ```txt
+    /// impl Person {
+    ///     pub fun new(name: String) -> Self {
+    ///         Self {
+    ///             name
+    ///         }
+    ///     }
+    /// }
+    /// ```
     Impl {
         visibility: Visibility,
         generic_parameters: Vec<GenericParameter>,
@@ -527,6 +967,16 @@ pub enum Item {
         where_clause: WhereClause,
         items: Vec<Documented<TraitItem>>,
     },
+
+    /// Struct item.
+    ///
+    /// ```txt
+    /// struct Person {
+    ///     name: String,
+    ///     age: uint32,
+    ///     citizenship: String
+    /// }
+    /// ```
     Struct {
         visibility: Visibility,
         name: IdentifierAst,
@@ -534,6 +984,12 @@ pub enum Item {
         where_clause: WhereClause,
         fields: Vec<Documented<StructField>>,
     },
+
+    /// Tuple-like struct item.
+    ///
+    /// ```txt
+    /// struct MyStringWrapper(String);
+    /// ```
     TupleLikeStruct {
         visibility: Visibility,
         name: IdentifierAst,
@@ -541,6 +997,8 @@ pub enum Item {
         where_clause: WhereClause,
         fields: Vec<TupleField>,
     },
+
+    /// Type alias item.
     TypeAlias(TypeAlias),
 }
 
@@ -575,6 +1033,20 @@ impl ToString for ItemKind {
     }
 }
 
+/// Represents an enum item.
+///
+/// ```txt
+/// enum UserCredentials {
+///     None,
+///     ^^^^ enum item
+///     EmailOnly(String),
+///     ^^^^^^^^^^^^^^^^^ enum item
+///     PhoneNumberOnly(String),
+///     ^^^^^^^^^^^^^^^^^^^^^^^ enum item
+///
+///     ...
+/// }
+/// ```
 #[derive(Debug, PartialEq, Clone)]
 pub enum EnumItem {
     Just(IdentifierAst),
@@ -588,12 +1060,27 @@ pub enum EnumItem {
     },
 }
 
+/// Represents a tuple field.
+///
+/// ```txt
+/// struct Test(pub String);
+/// ```
 #[derive(Debug, PartialEq, Clone)]
 pub struct TupleField {
     pub visibility: Visibility,
     pub r#type: TypeAst,
 }
 
+/// Represents a struct field.
+///
+/// ```txt
+/// struct Person {
+///     name: String,
+///     ^^^^^^^^^^^^ struct field
+///     age: uint32
+///     ^^^^^^^^^^^ struct field
+/// }
+/// ```
 #[derive(Debug, PartialEq, Clone)]
 pub struct StructField {
     pub visibility: Visibility,
@@ -601,12 +1088,18 @@ pub struct StructField {
     pub r#type: TypeAst,
 }
 
+/// Represents a trait item.
 #[derive(Debug, PartialEq, Clone)]
 pub enum TraitItem {
     TypeAlias(TypeAlias),
     AssociatedFunction(AssociatedFunction),
 }
 
+/// Represents a function.
+///
+/// ```txt
+/// fun sum[T](a: T, b: T) -> T where T: Add[T, T] { a + b }
+/// ```
 #[derive(Debug, PartialEq, Clone)]
 pub struct Function {
     pub visibility: Visibility,
@@ -618,13 +1111,21 @@ pub struct Function {
     pub body: Option<StatementsBlock>,
 }
 
+/// Represents an associated function.
 pub type AssociatedFunction = Function;
 
+/// Represents a function parameter.
+///
+/// ```txt
+/// pub fun sum[T](a: T, b: T) -> T where T: Add[T, T] {
+///     a + b
+/// }
+/// ```
 #[derive(Debug, PartialEq, Clone)]
 pub struct FunctionParameter {
     pub name: IdentifierAst,
     pub r#type: TypeAst,
-    pub default_value: Option<Expression>,
+    pub default_value: Option<UntypedExpression>,
 }
 
 /// Represents Ry source file.

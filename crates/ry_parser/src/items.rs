@@ -78,7 +78,7 @@ impl Parse for UseItemParser {
         let path = PathParser.parse_with(cursor)?;
         cursor.consume(Token![;], "import")?;
 
-        Some(Item::Import {
+        Some(Item::Use {
             visibility: self.visibility,
             path,
         })
