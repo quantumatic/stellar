@@ -109,16 +109,23 @@ impl OptionalParser for GenericParametersParser {
             "generic parameters",
             Token![']'],
             || -> Option<GenericParameter> {
-                let name = cursor.consume_identifier("generic parameter name")?;
+                Some(GenericParameter {
+                    name: cursor.consume_identifier("generic parameter name")?,
+                    constraint: if cursor.next.raw == Token![:] {
+                        cursor.next_token();
 
-                let constraint = if cursor.next.raw == Token![:] {
-                    cursor.next_token();
-                    Some(TypeParser.parse_with(cursor)?)
-                } else {
-                    None
-                };
+                        Some(TypeParser.parse_with(cursor)?)
+                    } else {
+                        None
+                    },
+                    default_value: if cursor.next.raw == Token![=] {
+                        cursor.next_token();
 
-                Some(GenericParameter { name, constraint })
+                        Some(TypeParser.parse_with(cursor)?)
+                    } else {
+                        None
+                    },
+                })
             }
         );
 

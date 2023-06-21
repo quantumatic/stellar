@@ -384,6 +384,7 @@ pub struct TypeConstructorAst {
 pub struct GenericParameter {
     pub name: IdentifierAst,
     pub constraint: Option<TypeAst>, // constraints can be outside of the where clause
+    pub default_value: Option<TypeAst>,
 }
 
 /// A where clause.
