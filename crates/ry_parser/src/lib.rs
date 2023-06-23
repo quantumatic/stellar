@@ -95,8 +95,8 @@ struct TokenIterator<'a> {
     source_file: &'a SourceFile<'a>,
     file_id: usize,
     lexer: Lexer<'a>,
-    current: Token,
-    next: Token,
+    current_token: Token,
+    next_token: Token,
     diagnostics: &'a mut Vec<Diagnostic<usize>>,
 }
 
@@ -114,8 +114,9 @@ where
 
 /// Represents AST node that can optionally be parsed. Optionally
 /// in this context means that if some condition is satisfied,
-/// the AST node is parsed as usually (`Some(Parse::parse_with(...))`),
-/// but if not, it is skipped and token iterator is not advanced.
+/// the AST node is parsed as usually (`Parse::parse_with(...)`),
+/// but if not, it is skipped, token iterator is not advanced and the
+/// default value is returned.
 ///
 /// A great example of this is the where clause, which is found optional
 /// in the syntax definition of every item in the Ry programming language.
@@ -155,8 +156,8 @@ impl<'a> TokenIterator<'a> {
             source_file,
             file_id,
             lexer,
-            current,
-            next,
+            current_token: current,
+            next_token: next,
             diagnostics,
         };
         lexer.check_next_token();
@@ -166,10 +167,10 @@ impl<'a> TokenIterator<'a> {
 
     /// Adds diagnostic if the next token has lex error in itself.
     fn check_next_token(&mut self) {
-        if let RawToken::Error(error) = self.next.raw {
+        if let RawToken::Error(error) = self.next_token.raw {
             self.diagnostics.push(
                 ParseDiagnostic::LexError(LexError {
-                    span: self.next.span,
+                    span: self.next_token.span,
                     raw: error,
                 })
                 .build(),
@@ -188,13 +189,13 @@ impl<'a> TokenIterator<'a> {
     #[inline]
     #[must_use]
     fn resolve_current(&self) -> &str {
-        self.resolve_span(self.current.span)
+        self.resolve_span(self.current_token.span)
     }
 
     /// Advances the iter to the next token (skips comment tokens).
-    fn next_token(&mut self) {
-        self.current = self.next;
-        self.next = self.lexer.next_no_comments();
+    fn advance(&mut self) {
+        self.current_token = self.next_token;
+        self.next_token = self.lexer.next_no_comments();
         self.check_next_token();
     }
 
@@ -203,12 +204,12 @@ impl<'a> TokenIterator<'a> {
     where
         N: Into<String>,
     {
-        if self.next.raw == expected {
+        if self.next_token.raw == expected {
             Some(())
         } else {
             self.diagnostics.push(
                 ParseDiagnostic::UnexpectedTokenError {
-                    got: self.next,
+                    got: self.next_token,
                     expected: expected!(expected),
                     node: node.into(),
                 }
@@ -224,7 +225,7 @@ impl<'a> TokenIterator<'a> {
         N: Into<String>,
     {
         self.expect(expected, node)?;
-        self.next_token();
+        self.advance();
         Some(())
     }
 
@@ -232,15 +233,15 @@ impl<'a> TokenIterator<'a> {
     where
         N: Into<String>,
     {
-        let spanned_symbol = if self.next.raw == RawToken::Identifier {
+        let spanned_symbol = if self.next_token.raw == RawToken::Identifier {
             IdentifierAst {
-                span: self.next.span,
+                span: self.next_token.span,
                 symbol: self.lexer.identifier(),
             }
         } else {
             self.diagnostics.push(
                 ParseDiagnostic::UnexpectedTokenError {
-                    got: self.next,
+                    got: self.next_token,
                     expected: expected!("identifier"),
                     node: node.into(),
                 }
@@ -249,7 +250,7 @@ impl<'a> TokenIterator<'a> {
             return None;
         };
 
-        self.next_token();
+        self.advance();
 
         Some(spanned_symbol)
     }
@@ -259,19 +260,27 @@ impl<'a> TokenIterator<'a> {
         let (mut module_docstring, mut local_docstring) = (vec![], vec![]);
 
         loop {
-            match self.next.raw {
+            match self.next_token.raw {
                 RawToken::GlobalDocComment => {
-                    module_docstring
-                        .push(self.source_file.source().index(self.next.span).to_owned());
+                    module_docstring.push(
+                        self.source_file
+                            .source()
+                            .index(self.next_token.span)
+                            .to_owned(),
+                    );
                 }
                 RawToken::LocalDocComment => {
-                    local_docstring
-                        .push(self.source_file.source().index(self.next.span).to_owned());
+                    local_docstring.push(
+                        self.source_file
+                            .source()
+                            .index(self.next_token.span)
+                            .to_owned(),
+                    );
                 }
                 _ => return (module_docstring, local_docstring),
             }
 
-            self.next_token();
+            self.advance();
         }
     }
 
@@ -282,13 +291,18 @@ impl<'a> TokenIterator<'a> {
         let mut result = vec![];
 
         loop {
-            if self.next.raw == RawToken::LocalDocComment {
-                result.push(self.source_file.source().index(self.next.span).to_owned());
+            if self.next_token.raw == RawToken::LocalDocComment {
+                result.push(
+                    self.source_file
+                        .source()
+                        .index(self.next_token.span)
+                        .to_owned(),
+                );
             } else {
                 return result;
             }
 
-            self.next_token();
+            self.advance();
         }
     }
 }

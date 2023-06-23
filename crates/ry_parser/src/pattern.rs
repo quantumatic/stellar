@@ -27,8 +27,8 @@ impl Parse for PatternParser {
     fn parse_using(self, iterator: &mut TokenIterator<'_>) -> Self::Output {
         let left = PatternExceptOrParser.parse_using(iterator)?;
 
-        if iterator.next.raw == Token![|] {
-            iterator.next_token();
+        if iterator.next_token.raw == Token![|] {
+            iterator.advance();
 
             let right = Self.parse_using(iterator)?;
 
@@ -47,7 +47,7 @@ impl Parse for PatternExceptOrParser {
     type Output = Option<Pattern>;
 
     fn parse_using(self, iterator: &mut TokenIterator<'_>) -> Self::Output {
-        match iterator.next.raw {
+        match iterator.next_token.raw {
             RawToken::StringLiteral
             | RawToken::CharLiteral
             | RawToken::IntegerLiteral
@@ -59,7 +59,7 @@ impl Parse for PatternExceptOrParser {
             RawToken::Identifier => {
                 let path = PathParser.parse_using(iterator)?;
 
-                match iterator.next.raw {
+                match iterator.next_token.raw {
                     Token!['{'] => {
                         return StructPatternParser { r#struct: path }.parse_using(iterator);
                     }
@@ -75,8 +75,8 @@ impl Parse for PatternExceptOrParser {
                         "Cannot get first identifier in path when parsing identifier pattern",
                     );
 
-                    let pattern = if iterator.next.raw == Token![@] {
-                        iterator.next_token();
+                    let pattern = if iterator.next_token.raw == Token![@] {
+                        iterator.advance();
                         Some(Box::new(PatternParser.parse_using(iterator)?))
                     } else {
                         None
@@ -104,9 +104,9 @@ impl Parse for PatternExceptOrParser {
             }
             Token!['['] => ArrayPatternParser.parse_using(iterator),
             Token![..] => {
-                iterator.next_token();
+                iterator.advance();
                 Some(Pattern::Rest {
-                    span: iterator.next.span,
+                    span: iterator.next_token.span,
                 })
             }
             Token!['('] => GroupedPatternParser.parse_using(iterator),
@@ -114,7 +114,7 @@ impl Parse for PatternExceptOrParser {
             _ => {
                 iterator.diagnostics.push(
                     ParseDiagnostic::UnexpectedTokenError {
-                        got: iterator.next,
+                        got: iterator.next_token,
                         expected: expected!(
                             "integer literal",
                             "float literal",
@@ -141,19 +141,19 @@ impl Parse for StructPatternParser {
     type Output = Option<Pattern>;
 
     fn parse_using(self, iterator: &mut TokenIterator<'_>) -> Self::Output {
-        iterator.next_token(); // `{`
+        iterator.advance(); // `{`
 
-        let fields = parse_list!(iterator, "struct pattern", Token!['}'], || {
-            if iterator.next.raw == Token![..] {
-                iterator.next_token();
+        let fields = parse_list!(iterator, "struct pattern", Token!['}'], {
+            if iterator.next_token.raw == Token![..] {
+                iterator.advance();
 
                 Some(StructFieldPattern::Rest {
-                    span: iterator.current.span,
+                    span: iterator.current_token.span,
                 })
             } else {
                 let field_name = iterator.consume_identifier("struct pattern")?;
-                let value_pattern = if iterator.next.raw == Token![:] {
-                    iterator.next_token();
+                let value_pattern = if iterator.next_token.raw == Token![:] {
+                    iterator.advance();
 
                     Some(PatternParser.parse_using(iterator)?)
                 } else {
@@ -163,7 +163,7 @@ impl Parse for StructPatternParser {
                 Some(StructFieldPattern::NotRest {
                     span: Span::new(
                         field_name.span.start(),
-                        iterator.current.span.end(),
+                        iterator.current_token.span.end(),
                         iterator.file_id,
                     ),
                     field_name,
@@ -172,12 +172,12 @@ impl Parse for StructPatternParser {
             }
         });
 
-        iterator.next_token();
+        iterator.advance();
 
         Some(Pattern::Struct {
             span: Span::new(
                 self.r#struct.span.start(),
-                iterator.current.span.end(),
+                iterator.current_token.span.end(),
                 iterator.file_id,
             ),
             r#struct: self.r#struct,
@@ -190,17 +190,17 @@ impl Parse for ArrayPatternParser {
     type Output = Option<Pattern>;
 
     fn parse_using(self, iterator: &mut TokenIterator<'_>) -> Self::Output {
-        let start = iterator.next.span.start();
-        iterator.next_token(); // `[`
+        let start = iterator.next_token.span.start();
+        iterator.advance(); // `[`
 
-        let inner_patterns = parse_list!(iterator, "array pattern", Token![']'], || {
+        let inner_patterns = parse_list!(iterator, "array pattern", Token![']'], {
             PatternParser.parse_using(iterator)
         });
 
-        iterator.next_token(); // `]`
+        iterator.advance(); // `]`
 
         Some(Pattern::List {
-            span: Span::new(start, iterator.current.span.end(), iterator.file_id),
+            span: Span::new(start, iterator.current_token.span.end(), iterator.file_id),
             inner_patterns,
         })
     }
@@ -210,19 +210,19 @@ impl Parse for TuplePatternParser {
     type Output = Option<Pattern>;
 
     fn parse_using(self, iterator: &mut TokenIterator<'_>) -> Self::Output {
-        let start = iterator.next.span.start();
-        iterator.next_token(); // `#`
+        let start = iterator.next_token.span.start();
+        iterator.advance(); // `#`
 
         iterator.consume(Token!['('], "tuple pattern")?;
 
-        let inner_patterns = parse_list!(iterator, "tuple pattern", Token![')'], || {
+        let inner_patterns = parse_list!(iterator, "tuple pattern", Token![')'], {
             PatternParser.parse_using(iterator)
         });
 
-        iterator.next_token(); // `)`
+        iterator.advance(); // `)`
 
         Some(Pattern::Tuple {
-            span: Span::new(start, iterator.current.span.end(), iterator.file_id),
+            span: Span::new(start, iterator.current_token.span.end(), iterator.file_id),
             inner_patterns,
         })
     }
@@ -232,18 +232,18 @@ impl Parse for TupleLikePatternParser {
     type Output = Option<Pattern>;
 
     fn parse_using(self, iterator: &mut TokenIterator<'_>) -> Self::Output {
-        iterator.next_token(); // `(`
+        iterator.advance(); // `(`
 
-        let inner_patterns = parse_list!(iterator, "enum item tuple pattern", Token![')'], || {
+        let inner_patterns = parse_list!(iterator, "enum item tuple pattern", Token![')'], {
             PatternParser.parse_using(iterator)
         });
 
-        iterator.next_token(); // `)`
+        iterator.advance(); // `)`
 
         Some(Pattern::TupleLike {
             span: Span::new(
                 self.r#enum.span.start(),
-                iterator.current.span.end(),
+                iterator.current_token.span.end(),
                 iterator.file_id,
             ),
             r#enum: self.r#enum,
@@ -256,15 +256,15 @@ impl Parse for GroupedPatternParser {
     type Output = Option<Pattern>;
 
     fn parse_using(self, iterator: &mut TokenIterator<'_>) -> Self::Output {
-        let start = iterator.next.span.start();
-        iterator.next_token(); // `(`
+        let start = iterator.next_token.span.start();
+        iterator.advance(); // `(`
 
         let inner = Box::new(PatternParser.parse_using(iterator)?);
 
         iterator.consume(Token![')'], "grouped pattern")?;
 
         Some(Pattern::Grouped {
-            span: Span::new(start, iterator.current.span.end(), iterator.file_id),
+            span: Span::new(start, iterator.current_token.span.end(), iterator.file_id),
             inner,
         })
     }

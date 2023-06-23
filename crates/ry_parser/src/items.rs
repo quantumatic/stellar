@@ -73,7 +73,7 @@ impl Parse for UseItemParser {
     type Output = Option<Item>;
 
     fn parse_using(self, iterator: &mut TokenIterator<'_>) -> Self::Output {
-        iterator.next_token();
+        iterator.advance();
 
         let path = PathParser.parse_using(iterator)?;
         iterator.consume(Token![;], "import")?;
@@ -89,9 +89,9 @@ impl Parse for StructFieldParser {
     type Output = Option<StructField>;
 
     fn parse_using(self, iterator: &mut TokenIterator<'_>) -> Self::Output {
-        let visibility = if iterator.next.raw == Token![pub] {
-            iterator.next_token();
-            Visibility::public(iterator.current.span)
+        let visibility = if iterator.next_token.raw == Token![pub] {
+            iterator.advance();
+            Visibility::public(iterator.current_token.span)
         } else {
             Visibility::private()
         };
@@ -116,21 +116,16 @@ impl Parse for StructFieldsParser {
     fn parse_using(self, iterator: &mut TokenIterator<'_>) -> Self::Output {
         iterator.consume(Token!['{'], "struct fields")?;
 
-        let fields = parse_list!(
-            iterator,
-            "struct fields",
-            Token!['}'],
-            || -> Option<Documented<StructField>> {
-                let docstring = iterator.consume_docstring();
-                Some(
-                    StructFieldParser
-                        .parse_using(iterator)?
-                        .with_doc_comment(docstring),
-                )
-            }
-        );
+        let fields = parse_list!(iterator, "struct fields", Token!['}'], {
+            let docstring = iterator.consume_docstring();
+            Some(
+                StructFieldParser
+                    .parse_using(iterator)?
+                    .with_doc_comment(docstring),
+            )
+        });
 
-        iterator.next_token(); // `}`
+        iterator.advance(); // `}`
 
         Some(fields)
     }
@@ -140,7 +135,7 @@ impl Parse for StructItemParser {
     type Output = Option<Item>;
 
     fn parse_using(self, iterator: &mut TokenIterator<'_>) -> Self::Output {
-        iterator.next_token();
+        iterator.advance();
 
         let name = iterator.consume_identifier("struct name")?;
 
@@ -148,7 +143,7 @@ impl Parse for StructItemParser {
 
         let where_clause = WhereClauseParser.optionally_parse_using(iterator)?;
 
-        if iterator.next.raw == Token!['{'] {
+        if iterator.next_token.raw == Token!['{'] {
             let fields = StructFieldsParser.parse_using(iterator)?;
             Some(Item::Struct {
                 visibility: self.visibility,
@@ -157,18 +152,18 @@ impl Parse for StructItemParser {
                 where_clause,
                 fields,
             })
-        } else if iterator.next.raw == Token!['('] {
+        } else if iterator.next_token.raw == Token!['('] {
             let fields = ItemTupleParser {
                 context: ItemKind::Struct,
             }
             .parse_using(iterator)?;
 
-            if iterator.next.raw == Token![;] {
-                iterator.next_token();
+            if iterator.next_token.raw == Token![;] {
+                iterator.advance();
             } else {
                 iterator.diagnostics.push(
                     ParseDiagnostic::UnexpectedTokenError {
-                        got: iterator.current,
+                        got: iterator.current_token,
                         expected: expected!(Token![;]),
                         node: "struct item".to_owned(),
                     }
@@ -186,7 +181,7 @@ impl Parse for StructItemParser {
         } else {
             iterator.diagnostics.push(
                 ParseDiagnostic::UnexpectedTokenError {
-                    got: iterator.current,
+                    got: iterator.current_token,
                     expected: expected!(Token![;], Token!['(']),
                     node: "item".to_owned(),
                 }
@@ -208,8 +203,8 @@ impl Parse for FunctionParameterParser {
 
         let r#type = TypeParser.parse_using(iterator)?;
 
-        let default_value = if iterator.next.raw == Token![=] {
-            iterator.next_token();
+        let default_value = if iterator.next_token.raw == Token![=] {
+            iterator.advance();
             Some(ExpressionParser::default().parse_using(iterator)?)
         } else {
             None
@@ -227,7 +222,7 @@ impl Parse for FunctionParser {
     type Output = Option<Function>;
 
     fn parse_using(self, iterator: &mut TokenIterator<'_>) -> Self::Output {
-        iterator.next_token();
+        iterator.advance();
 
         let name = iterator.consume_identifier("function name")?;
 
@@ -235,14 +230,22 @@ impl Parse for FunctionParser {
 
         iterator.consume(Token!['('], "function")?;
 
-        let parameters = parse_list!(iterator, "function parameters", Token![')'], || {
-            FunctionParameterParser.parse_using(iterator)
+        let mut self_span = None;
+
+        let parameters = parse_list!(iterator, "function parameters", Token![')'], {
+            if iterator.next_token.raw == Token![self] {
+                iterator.advance();
+                self_span = Some(iterator.current_token.span);
+                continue;
+            } else {
+                FunctionParameterParser.parse_using(iterator)
+            }
         });
 
-        iterator.next_token();
+        iterator.advance();
 
-        let return_type = if iterator.next.raw == Token![:] {
-            iterator.next_token();
+        let return_type = if iterator.next_token.raw == Token![:] {
+            iterator.advance();
             Some(TypeParser.parse_using(iterator)?)
         } else {
             None
@@ -254,22 +257,23 @@ impl Parse for FunctionParser {
             visibility: self.visibility,
             name,
             generic_parameters,
+            self_span,
             parameters,
             return_type,
             where_clause,
-            body: match iterator.next.raw {
+            body: match iterator.next_token.raw {
                 Token![;] => {
-                    iterator.next_token();
+                    iterator.advance();
 
                     None
                 }
                 Token!['{'] => Some(StatementsBlockParser.parse_using(iterator)?),
                 _ => {
-                    iterator.next_token();
+                    iterator.advance();
 
                     iterator.diagnostics.push(
                         ParseDiagnostic::UnexpectedTokenError {
-                            got: iterator.current,
+                            got: iterator.current_token,
                             expected: expected!(Token![;], Token!['(']),
                             node: "function".to_owned(),
                         }
@@ -289,17 +293,17 @@ impl Parse for TraitItemsParser {
     fn parse_using(self, iterator: &mut TokenIterator<'_>) -> Self::Output {
         let mut items = vec![];
 
-        while iterator.next.raw != Token!['}'] {
+        while iterator.next_token.raw != Token!['}'] {
             let doc = iterator.consume_docstring();
 
-            let visibility = if iterator.next.raw == Token![pub] {
-                iterator.next_token();
-                Visibility::public(iterator.current.span)
+            let visibility = if iterator.next_token.raw == Token![pub] {
+                iterator.advance();
+                Visibility::public(iterator.current_token.span)
             } else {
                 Visibility::private()
             };
 
-            items.push(match iterator.next.raw {
+            items.push(match iterator.next_token.raw {
                 Token![fun] => Some(
                     TraitItem::AssociatedFunction(
                         FunctionParser { visibility }.parse_using(iterator)?,
@@ -315,7 +319,7 @@ impl Parse for TraitItemsParser {
                         ParseDiagnostic::EOFInsteadOfCloseBraceForItemError {
                             item_kind: self.item_kind,
                             item_name_span: self.name_span,
-                            span: iterator.current.span,
+                            span: iterator.current_token.span,
                         }
                         .build(),
                     );
@@ -324,7 +328,7 @@ impl Parse for TraitItemsParser {
                 _ => {
                     iterator.diagnostics.push(
                         ParseDiagnostic::UnexpectedTokenError {
-                            got: iterator.next,
+                            got: iterator.next_token,
                             expected: expected!(Token![fun], Token![type]),
                             node: "trait item".to_owned(),
                         }
@@ -343,13 +347,13 @@ impl Parse for TypeAliasParser {
     type Output = Option<TypeAlias>;
 
     fn parse_using(self, iterator: &mut TokenIterator<'_>) -> Self::Output {
-        iterator.next_token();
+        iterator.advance();
 
         let name = iterator.consume_identifier("type alias")?;
         let generic_parameters = GenericParametersParser.optionally_parse_using(iterator)?;
 
-        let value = if iterator.next.raw == Token![=] {
-            iterator.next_token();
+        let value = if iterator.next_token.raw == Token![=] {
+            iterator.advance();
 
             Some(TypeParser.parse_using(iterator)?)
         } else {
@@ -371,7 +375,7 @@ impl Parse for TraitItemParser {
     type Output = Option<Item>;
 
     fn parse_using(self, iterator: &mut TokenIterator<'_>) -> Self::Output {
-        iterator.next_token();
+        iterator.advance();
 
         let name = iterator.consume_identifier("trait name in trait declaration")?;
 
@@ -405,16 +409,16 @@ impl Parse for ImplItemParser {
     type Output = Option<Item>;
 
     fn parse_using(self, iterator: &mut TokenIterator<'_>) -> Self::Output {
-        iterator.next_token();
-        let impl_span = iterator.current.span;
+        iterator.advance();
+        let impl_span = iterator.current_token.span;
 
         let generic_parameters = GenericParametersParser.optionally_parse_using(iterator)?;
 
         let mut r#type = TypeParser.parse_using(iterator)?;
         let mut r#trait = None;
 
-        if iterator.next.raw == Token![for] {
-            iterator.next_token();
+        if iterator.next_token.raw == Token![for] {
+            iterator.advance();
 
             r#trait = Some(r#type);
             r#type = TypeParser.parse_using(iterator)?;
@@ -449,7 +453,7 @@ impl Parse for EnumParser {
     type Output = Option<Item>;
 
     fn parse_using(self, iterator: &mut TokenIterator<'_>) -> Self::Output {
-        iterator.next_token();
+        iterator.advance();
 
         let name = iterator.consume_identifier("enum name")?;
 
@@ -457,17 +461,12 @@ impl Parse for EnumParser {
 
         iterator.consume(Token!['{'], "enum")?;
 
-        let items = parse_list!(
-            iterator,
-            "enum items",
-            Token!['}'],
-            || -> Option<Documented<EnumItem>> {
-                let doc = iterator.consume_docstring();
-                Some(EnumItemParser.parse_using(iterator)?.with_doc_comment(doc))
-            }
-        );
+        let items = parse_list!(iterator, "enum items", Token!['}'], {
+            let doc = iterator.consume_docstring();
+            Some(EnumItemParser.parse_using(iterator)?.with_doc_comment(doc))
+        });
 
-        iterator.next_token(); // `}`
+        iterator.advance(); // `}`
 
         let where_clause = WhereClauseParser.optionally_parse_using(iterator)?;
 
@@ -487,7 +486,7 @@ impl Parse for EnumItemParser {
     fn parse_using(self, iterator: &mut TokenIterator<'_>) -> Self::Output {
         let name = iterator.consume_identifier("enum item")?;
 
-        match iterator.next.raw {
+        match iterator.next_token.raw {
             Token!['{'] => EnumItemStructParser { name }.parse_using(iterator),
             Token!['('] => Some(EnumItem::Tuple {
                 name,
@@ -518,16 +517,16 @@ impl Parse for ItemTupleParser {
     type Output = Option<Vec<TupleField>>;
 
     fn parse_using(self, iterator: &mut TokenIterator<'_>) -> Self::Output {
-        iterator.next_token(); // `(`
+        iterator.advance(); // `(`
 
         let fields = parse_list!(
             iterator,
             format!("item tuple in {}", self.context.to_string()),
             Token![')'],
-            || -> Option<TupleField> {
-                let visibility = if iterator.next.raw == Token![pub] {
-                    iterator.next_token();
-                    Visibility::public(iterator.current.span)
+            {
+                let visibility = if iterator.next_token.raw == Token![pub] {
+                    iterator.advance();
+                    Visibility::public(iterator.current_token.span)
                 } else {
                     Visibility::private()
                 };
@@ -538,7 +537,7 @@ impl Parse for ItemTupleParser {
             }
         );
 
-        iterator.next_token(); // `)`
+        iterator.advance(); // `)`
 
         Some(fields)
     }
@@ -551,7 +550,7 @@ impl Parse for ItemsParser {
         let mut items = vec![];
         let mut docstring = self.first_docstring;
 
-        while iterator.next.raw != RawToken::EndOfFile {
+        while iterator.next_token.raw != RawToken::EndOfFile {
             if let Some(item) = ItemParser.parse_using(iterator) {
                 items.push(item.with_doc_comment(docstring));
             }
@@ -566,7 +565,7 @@ impl Parse for ItemsParser {
 impl ItemParser {
     fn go_to_next_item(iterator: &mut TokenIterator<'_>) {
         loop {
-            match iterator.next.raw {
+            match iterator.next_token.raw {
                 Token![enum]
                 | Token![use]
                 | Token![struct]
@@ -575,7 +574,7 @@ impl ItemParser {
                 | Token![type]
                 | Token![impl]
                 | RawToken::EndOfFile => break,
-                _ => iterator.next_token(),
+                _ => iterator.advance(),
             }
         }
     }
@@ -598,12 +597,12 @@ impl Parse for ItemParser {
     fn parse_using(self, iterator: &mut TokenIterator<'_>) -> Self::Output {
         let mut visibility = Visibility::private();
 
-        if iterator.next.raw == Token![pub] {
-            visibility = Visibility::public(iterator.next.span);
-            iterator.next_token();
+        if iterator.next_token.raw == Token![pub] {
+            visibility = Visibility::public(iterator.next_token.span);
+            iterator.advance();
         }
 
-        Some(match iterator.next.raw {
+        Some(match iterator.next_token.raw {
             Token![enum] => {
                 go_to_next_valid_item!(iterator, EnumParser { visibility }.parse_using(iterator))
             }
@@ -639,7 +638,7 @@ impl Parse for ItemParser {
             _ => {
                 iterator.diagnostics.push(
                     ParseDiagnostic::UnexpectedTokenError {
-                        got: iterator.next,
+                        got: iterator.next_token,
                         expected: expected!(
                             Token![use],
                             Token![fun],
@@ -656,7 +655,7 @@ impl Parse for ItemParser {
                 );
 
                 loop {
-                    match iterator.next.raw {
+                    match iterator.next_token.raw {
                         Token![enum]
                         | Token![use]
                         | Token![struct]
@@ -665,7 +664,7 @@ impl Parse for ItemParser {
                         | Token![type]
                         | Token![impl]
                         | RawToken::EndOfFile => break,
-                        _ => iterator.next_token(),
+                        _ => iterator.advance(),
                     }
                 }
                 return None;

@@ -1089,7 +1089,7 @@ pub struct StructField {
 #[derive(Debug, PartialEq, Clone)]
 pub enum TraitItem {
     TypeAlias(TypeAlias),
-    AssociatedFunction(AssociatedFunction),
+    AssociatedFunction(Function),
 }
 
 /// Represents a function.
@@ -1102,14 +1102,20 @@ pub struct Function {
     pub visibility: Visibility,
     pub name: IdentifierAst,
     pub generic_parameters: Vec<GenericParameter>,
+
+    /// Span of self parameter.
+    ///
+    /// ```txt
+    /// fun to_string(self) -> String {
+    ///               ^^^^
+    ///     ...
+    /// }
+    pub self_span: Option<Span>,
     pub parameters: Vec<FunctionParameter>,
     pub return_type: Option<TypeAst>,
     pub where_clause: WhereClause,
     pub body: Option<StatementsBlock>,
 }
-
-/// Represents an associated function.
-pub type AssociatedFunction = Function;
 
 /// Represents a function parameter.
 ///

@@ -14,10 +14,10 @@ impl Parse for PathParser {
 
         let (start, mut end) = (first_identifier.span.start(), first_identifier.span.end());
 
-        while iterator.next.raw == Token![.] {
-            iterator.next_token();
+        while iterator.next_token.raw == Token![.] {
+            iterator.advance();
             symbols.push(iterator.consume_identifier("path")?);
-            end = iterator.current.span.end();
+            end = iterator.current_token.span.end();
         }
 
         Some(Path {
