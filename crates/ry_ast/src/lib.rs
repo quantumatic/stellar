@@ -606,7 +606,7 @@ pub enum UntypedExpression {
     /// ```
     Function {
         span: Span,
-        parameters: Vec<FunctionParameter>,
+        parameters: Vec<JustFunctionParameter>,
         return_type: Option<TypeAst>,
         block: Vec<Statement>,
     },
@@ -1102,15 +1102,6 @@ pub struct Function {
     pub visibility: Visibility,
     pub name: IdentifierAst,
     pub generic_parameters: Vec<GenericParameter>,
-
-    /// Span of self parameter.
-    ///
-    /// ```txt
-    /// fun to_string(self) -> String {
-    ///               ^^^^
-    ///     ...
-    /// }
-    pub self_span: Option<Span>,
     pub parameters: Vec<FunctionParameter>,
     pub return_type: Option<TypeAst>,
     pub where_clause: WhereClause,
@@ -1118,14 +1109,34 @@ pub struct Function {
 }
 
 /// Represents a function parameter.
+#[derive(Debug, PartialEq, Clone)]
+pub enum FunctionParameter {
+    Just(JustFunctionParameter),
+    Self_(SelfParameter),
+}
+
+/// Represents a self parameter.
+///
+/// ```txt
+/// fun to_string(self) -> String {
+///               ^^^^
+/// }
+#[derive(Debug, PartialEq, Clone)]
+pub struct SelfParameter {
+    pub self_span: Span,
+    pub ty: Option<TypeAst>,
+}
+
+/// Represents a function parameter that is not `self`.
 ///
 /// ```txt
 /// pub fun sum[T](a: T, b: T) -> T where T: Add[T, T] {
+///                ^^^^  ^^^^
 ///     a + b
 /// }
 /// ```
 #[derive(Debug, PartialEq, Clone)]
-pub struct FunctionParameter {
+pub struct JustFunctionParameter {
     pub name: IdentifierAst,
     pub r#type: TypeAst,
     pub default_value: Option<UntypedExpression>,

@@ -14,6 +14,7 @@ test!(struct3: "struct StringWrapper(String);");
 test!(empty_trait: "trait test {}");
 test!(trait1: "trait test { fun f(); }");
 test!(trait2: "trait Into[T] { fun into(self: Self): T; }");
+test!(trait3: "trait Into[T] { fun into(self): T; }");
 test!(empty_type_alias: "type A;");
 test!(type_alias1: "type B = Option[i32];");
 test!(type_alias2: "type B[T] = Option[T];");

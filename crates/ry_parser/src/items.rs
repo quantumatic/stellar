@@ -8,8 +8,8 @@ use crate::{
 };
 use ry_ast::{
     token::RawToken, Docstring, Documented, EnumItem, Function, FunctionParameter, IdentifierAst,
-    Item, ItemKind, Items, StructField, Token, TraitItem, TupleField, TypeAlias, Visibility,
-    WithDocComment,
+    Item, ItemKind, Items, JustFunctionParameter, SelfParameter, StructField, Token, TraitItem,
+    TupleField, TypeAlias, Visibility, WithDocComment,
 };
 use ry_diagnostics::{expected, parser::ParseDiagnostic, Report};
 use ry_source_file::span::Span;
@@ -194,7 +194,7 @@ impl Parse for StructItemParser {
 }
 
 impl Parse for FunctionParameterParser {
-    type Output = Option<FunctionParameter>;
+    type Output = Option<JustFunctionParameter>;
 
     fn parse_using(self, iterator: &mut TokenIterator<'_>) -> Self::Output {
         let name = iterator.consume_identifier("function parameter name")?;
@@ -210,7 +210,7 @@ impl Parse for FunctionParameterParser {
             None
         };
 
-        Some(FunctionParameter {
+        Some(JustFunctionParameter {
             name,
             r#type,
             default_value,
@@ -230,16 +230,25 @@ impl Parse for FunctionParser {
 
         iterator.consume(Token!['('], "function")?;
 
-        let mut self_span = None;
-
         let parameters = parse_list!(iterator, "function parameters", Token![')'], {
             if iterator.next_token.raw == Token![self] {
                 iterator.advance();
-                self_span = Some(iterator.current_token.span);
-                continue;
-            }
 
-            FunctionParameterParser.parse_using(iterator)
+                Some(FunctionParameter::Self_(SelfParameter {
+                    self_span: iterator.current_token.span,
+                    ty: if iterator.next_token.raw == Token![:] {
+                        iterator.advance();
+
+                        Some(TypeParser.parse_using(iterator)?)
+                    } else {
+                        None
+                    },
+                }))
+            } else {
+                Some(FunctionParameter::Just(
+                    FunctionParameterParser.parse_using(iterator)?,
+                ))
+            }
         });
 
         iterator.advance();
@@ -257,7 +266,6 @@ impl Parse for FunctionParser {
             visibility: self.visibility,
             name,
             generic_parameters,
-            self_span,
             parameters,
             return_type,
             where_clause,

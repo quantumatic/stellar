@@ -1,0 +1,3 @@
+trait Into[T] {
+    fun into(self: Self): T;
+}

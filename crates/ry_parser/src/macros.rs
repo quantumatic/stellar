@@ -50,7 +50,9 @@ macro_rules! parse_list {
             if $iterator.next_token.raw != $closing_token1 &&
                 $iterator.next_token.raw != $closing_token2 {
                 loop {
-                    result.push($blck?);
+                    if let Some(e) = $blck {
+                        result.push(e);
+                    }
 
                     #[allow(unused_qualifications)]
                     if $iterator.next_token.raw != $closing_token1
