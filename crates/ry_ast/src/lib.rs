@@ -843,6 +843,20 @@ pub enum Statement {
         has_semicolon: bool,
     },
 
+    /// Break statement
+    ///
+    /// ```txt
+    /// break;
+    /// ```
+    Break { span: Span },
+
+    /// Continue statement
+    ///
+    /// ```txt
+    /// continue;
+    /// ```
+    Continue { span: Span },
+
     /// Return statement
     ///
     /// ```txt

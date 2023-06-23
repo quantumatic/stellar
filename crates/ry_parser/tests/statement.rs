@@ -27,3 +27,13 @@ test!(let5: "fun test(): int32 {
 test!(let6: "fun test(): int32 {
     let a: Option[int32] = Some(2);
 }");
+test!(r#break: "fun test() {
+    while true {
+        break;
+    }
+}");
+test!(r#continue: "fun test() {
+    while true {
+        continue;
+    }
+}");

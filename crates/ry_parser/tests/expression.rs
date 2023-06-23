@@ -14,7 +14,6 @@ test!(call: "fun test(): int32 { 2 * b() + 2 }");
 test!(call_with_generic_arguments: "fun test(): usize { sizeof[int32]() }");
 test!(generic_arguments: "fun test() { let a = [1, 2, 3].into_iter() as Dispatcher[Iterator[Item = uint32]]; }");
 test!(ifelse: "fun test(): bool { if false { 2.3 } else if false { 5 as float32 } else { 2.0 } }");
-test!(r#while: "fun test(): bool { while true { print(\"hello\"); } }");
 test!(postfix: "fun test(): int32 { Some(a().unwrap_or(0) + b()?) }");
 test!(r#struct: "fun test(): Person { Person { age: 3, name } }");
 test!(match1: "fun test(): int32 { match Some(3) { Some(a) => println(a), .. => {} } }");
@@ -26,3 +25,20 @@ test!(match2: "fun test(): int32 {
     }
 }");
 test!(function: "fun test(): int32 { |a: int32, b: int32|: int32 { a + b } }");
+test!(r#while: "fun test() {
+    let x = 0;
+    
+    while x <= 100 {
+        x++;
+
+        if x % 15 == 0 {
+            println(\"FizzBuzz\");
+        } else if x % 3 == 0 {
+            println(\"Fizz\");
+        } else if x % 5 == 0 {
+            println(\"Buzz\");
+        } else {
+            println(x.to_string());
+        }
+    }
+}");

@@ -30,6 +30,20 @@ impl Parse for StatementParser {
             Token![return] => ReturnStatementParser.parse_using(iterator)?,
             Token![defer] => DeferStatementParser.parse_using(iterator)?,
             Token![let] => LetStatementParser.parse_using(iterator)?,
+            Token![continue] => {
+                iterator.advance();
+
+                Statement::Continue {
+                    span: iterator.current_token.span,
+                }
+            }
+            Token![break] => {
+                iterator.advance();
+
+                Statement::Break {
+                    span: iterator.current_token.span,
+                }
+            }
             _ => {
                 let expression = ExpressionParser::default().parse_using(iterator)?;
 

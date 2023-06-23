@@ -130,6 +130,8 @@ pub enum Keyword {
     Match,
     Use,
     Self_,
+    Break,
+    Continue,
 }
 
 impl AsRef<str> for Keyword {
@@ -154,6 +156,8 @@ impl AsRef<str> for Keyword {
             Self::Match => "`match`",
             Self::Use => "`use`",
             Self::Self_ => "`self`",
+            Self::Break => "`break`",
+            Self::Continue => "`continue`",
         }
     }
 }
@@ -550,7 +554,9 @@ macro_rules! Token {
     [for] =>                {$crate::token::RawToken::Keyword($crate::token::Keyword::For)};
     [where] =>              {$crate::token::RawToken::Keyword($crate::token::Keyword::Where)};
     [match] =>              {$crate::token::RawToken::Keyword($crate::token::Keyword::Match)};
-    [self] =>               {$crate::token::RawToken::Keyword($crate::token::Keyword::Self_)}
+    [self] =>               {$crate::token::RawToken::Keyword($crate::token::Keyword::Self_)};
+    [break] =>              {$crate::token::RawToken::Keyword($crate::token::Keyword::Break)};
+    [continue] =>           {$crate::token::RawToken::Keyword($crate::token::Keyword::Continue)};
 }
 
 /// List of reserved Ry names: keywords, boolean literals & etc..
