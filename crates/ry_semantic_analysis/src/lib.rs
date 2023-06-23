@@ -1,4 +1,1 @@
-#![allow(dead_code)]
-
-pub mod inference;
-pub mod resolver;
+pub mod scope;

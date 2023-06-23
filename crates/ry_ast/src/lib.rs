@@ -334,7 +334,17 @@ pub enum StructFieldPattern {
 #[derive(Debug, PartialEq, Clone)]
 pub enum TypeAst {
     /// A type constructor.
-    Constructor(TypeConstructorAst),
+    ///
+    /// ```txt
+    /// String
+    /// uint32
+    /// List[uint32]
+    /// ```
+    Constructor {
+        span: Span,
+        path: Path,
+        generic_arguments: Vec<TypeAst>,
+    },
 
     /// A tuple type.
     ///
@@ -356,20 +366,6 @@ pub enum TypeAst {
         parameter_types: Vec<Self>,
         return_type: Box<Self>,
     },
-}
-
-/// A type constructor in an untyped AST.
-///
-/// ```txt
-/// String
-/// uint32
-/// List[uint32]
-/// ```
-#[derive(Debug, PartialEq, Clone)]
-pub struct TypeConstructorAst {
-    pub span: Span,
-    pub path: Path,
-    pub generic_arguments: Vec<TypeAst>,
 }
 
 /// A generic parameter.

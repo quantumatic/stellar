@@ -234,56 +234,61 @@ impl Backend {
     }
 }
 
-/// `_` symbol.
-pub const UNDERSCORE: Symbol = 0;
+/// Defines symbols interned by default.
+pub mod symbols {
+    use super::Symbol;
 
-/// `int8` symbol.
-pub const INT8: Symbol = 1;
+    /// `_` symbol.
+    pub const UNDERSCORE: Symbol = 0;
 
-/// `int16` symbol.
-pub const INT16: Symbol = 2;
+    /// `int8` symbol.
+    pub const INT8: Symbol = 1;
 
-/// `int32` symbol.
-pub const INT32: Symbol = 3;
+    /// `int16` symbol.
+    pub const INT16: Symbol = 2;
 
-/// `int64` symbol.
-pub const INT64: Symbol = 4;
+    /// `int32` symbol.
+    pub const INT32: Symbol = 3;
 
-/// `uint8` symbol.
-pub const UINT8: Symbol = 5;
+    /// `int64` symbol.
+    pub const INT64: Symbol = 4;
 
-/// `uint16` symbol.
-pub const UINT16: Symbol = 6;
+    /// `uint8` symbol.
+    pub const UINT8: Symbol = 5;
 
-/// `uint32` symbol.
-pub const UINT32: Symbol = 7;
+    /// `uint16` symbol.
+    pub const UINT16: Symbol = 6;
 
-/// `uint64` symbol.
-pub const UINT64: Symbol = 8;
+    /// `uint32` symbol.
+    pub const UINT32: Symbol = 7;
 
-/// `float32` symbol.
-pub const FLOAT32: Symbol = 9;
+    /// `uint64` symbol.
+    pub const UINT64: Symbol = 8;
 
-/// `float64` symbol.
-pub const FLOAT64: Symbol = 10;
+    /// `float32` symbol.
+    pub const FLOAT32: Symbol = 9;
 
-/// `isize` symbol.
-pub const ISIZE: Symbol = 11;
+    /// `float64` symbol.
+    pub const FLOAT64: Symbol = 10;
 
-/// `usize` symbol.
-pub const USIZE: Symbol = 12;
+    /// `isize` symbol.
+    pub const ISIZE: Symbol = 11;
 
-/// `bool` symbol.
-pub const BOOL: Symbol = 13;
+    /// `usize` symbol.
+    pub const USIZE: Symbol = 12;
 
-/// `String` symbol.
-pub const STRING: Symbol = 14;
+    /// `bool` symbol.
+    pub const BOOL: Symbol = 13;
 
-/// `List` symbol.
-pub const LIST: Symbol = 15;
+    /// `String` symbol.
+    pub const STRING: Symbol = 14;
 
-/// `char` symbol.
-pub const CHAR: Symbol = 16;
+    /// `List` symbol.
+    pub const LIST: Symbol = 15;
+
+    /// `char` symbol.
+    pub const CHAR: Symbol = 16;
+}
 
 macro_rules! intern_primitive_symbols {
     ($interner:ident, $($name:ident),*) => {

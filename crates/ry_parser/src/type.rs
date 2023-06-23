@@ -1,8 +1,5 @@
 use crate::{macros::parse_list, path::PathParser, Cursor, OptionalParser, Parse};
-use ry_ast::{
-    token::RawToken, GenericParameter, Token, TypeAst, TypeConstructorAst, WhereClause,
-    WhereClauseItem,
-};
+use ry_ast::{token::RawToken, GenericParameter, Token, TypeAst, WhereClause, WhereClauseItem};
 use ry_diagnostics::{expected, parser::ParseDiagnostic, Report};
 use ry_source_file::span::Span;
 
@@ -142,11 +139,11 @@ impl Parse for TypeConstructorParser {
         let path = PathParser.parse_with(cursor)?;
         let generic_arguments = GenericArgumentsParser.optionally_parse_with(cursor)?;
 
-        Some(TypeAst::Constructor(TypeConstructorAst {
+        Some(TypeAst::Constructor {
             span: Span::new(path.span.start(), cursor.current.span.end(), cursor.file_id),
             path,
             generic_arguments,
-        }))
+        })
     }
 }
 
