@@ -237,9 +237,9 @@ impl Parse for FunctionParser {
                 iterator.advance();
                 self_span = Some(iterator.current_token.span);
                 continue;
-            } else {
-                FunctionParameterParser.parse_using(iterator)
             }
+
+            FunctionParameterParser.parse_using(iterator)
         });
 
         iterator.advance();
