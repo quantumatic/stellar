@@ -685,6 +685,8 @@ pub enum RawBinaryOperator {
     AndAnd,
     OrEq,
     AndEq,
+    Percent,
+    PercentEq,
 }
 
 impl From<RawToken> for RawBinaryOperator {
@@ -715,6 +717,8 @@ impl From<RawToken> for RawBinaryOperator {
             Token![&&] => Self::AndAnd,
             Token![|=] => Self::OrEq,
             Token![&=] => Self::AndEq,
+            Token![%] => Self::Percent,
+            Token![%=] => Self::PercentEq,
             _ => unreachable!(),
         }
     }

@@ -172,7 +172,7 @@ impl Display for Keyword {
 /// Represents a punctuator.
 #[derive(Debug, Clone, PartialEq, Copy, Eq, Hash)]
 pub enum Punctuator {
-    /// Arrow (->).
+    /// Arrow (=>).
     Arrow,
 
     /// Ampersand (&).
