@@ -27,14 +27,14 @@ impl<'a> SourceFileManager<'a> {
     /// Adds a new file to the [`SourceFileManager`] and returns its ID.
     pub fn add_file(&mut self, file: &'a SourceFile<'a>) -> usize {
         self.files.push(file);
-        self.files.len() - 1
+        self.files.len()
     }
 
     /// Returns the file with the given ID.
     #[inline]
     #[must_use]
     pub fn get_file_by_id(&self, file_id: usize) -> Option<&'a SourceFile<'a>> {
-        self.files.get(file_id).copied()
+        self.files.get(file_id - 1).copied()
     }
 
     /// Returns the file with the given ID, without doing bounds checking.
@@ -44,7 +44,7 @@ impl<'a> SourceFileManager<'a> {
     #[inline]
     #[must_use]
     pub unsafe fn get_file_by_id_unchecked(&self, file_id: usize) -> &SourceFile<'a> {
-        unsafe { self.files.get_unchecked(file_id) }
+        unsafe { self.files.get_unchecked(file_id - 1) }
     }
 
     /// Returns the content of the part of the source code situated

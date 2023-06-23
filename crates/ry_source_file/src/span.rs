@@ -14,6 +14,13 @@ pub struct Span {
     file_id: usize,
 }
 
+/// Dummy span - span that is used as a placeholder in tests.
+///
+/// Note: using dummy span in code except in tests is not recommended,
+/// because this can result in undefined behavior with diagnostics and
+/// debug information.
+pub const DUMMY_SPAN: Span = Span::new(0, 0, 0);
+
 impl Display for Span {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_fmt(format_args!("{}..{}", self.start, self.end))
@@ -87,7 +94,7 @@ pub trait SpanIndex {
     /// ```
     /// use ry_source_file::span::{Span, SpanIndex};
     ///
-    /// let span = Span::new(0, 3, 0);
+    /// let span = Span::new(0, 3, 1);
     /// assert_eq!("test".index(span), "tes");
     /// ```
     ///
