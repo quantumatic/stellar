@@ -1,5 +1,8 @@
 use crate::{macros::parse_list, path::PathParser, OptionalParser, Parse, TokenIterator};
-use ry_ast::{token::RawToken, GenericParameter, Token, TypeAst, WhereClause, WhereClauseItem};
+use ry_ast::{
+    token::RawToken, GenericArgument, GenericParameter, IdentifierAst, Token, TypeAst, WhereClause,
+    WhereClauseItem,
+};
 use ry_diagnostics::{expected, parser::ParseDiagnostic, Report};
 use ry_source_file::span::Span;
 
@@ -145,7 +148,7 @@ impl Parse for TypeConstructorParser {
 }
 
 impl OptionalParser for GenericArgumentsParser {
-    type Output = Option<Vec<TypeAst>>;
+    type Output = Option<Vec<GenericArgument>>;
 
     fn optionally_parse_using(self, iterator: &mut TokenIterator<'_>) -> Self::Output {
         if iterator.next_token.raw != Token!['['] {
@@ -155,15 +158,34 @@ impl OptionalParser for GenericArgumentsParser {
         self.parse_using(iterator)
     }
 }
-
 impl Parse for GenericArgumentsParser {
-    type Output = Option<Vec<TypeAst>>;
+    type Output = Option<Vec<GenericArgument>>;
 
     fn parse_using(self, iterator: &mut TokenIterator<'_>) -> Self::Output {
         iterator.advance();
 
         let result = parse_list!(iterator, "generic arguments", Token![']'], {
-            TypeParser.parse_using(iterator)
+            let ty = TypeParser.parse_using(iterator)?;
+
+            match (iterator.next_token.raw, &ty) {
+                (Token![=], TypeAst::Constructor { span, path, .. }) if *span == path.span => {
+                    match path.symbols.as_slice() {
+                        [IdentifierAst { symbol, .. }] => {
+                            iterator.advance();
+                            let value = TypeParser.parse_using(iterator)?;
+                            Some(GenericArgument::AssociatedType {
+                                name: IdentifierAst {
+                                    span: *span,
+                                    symbol: *symbol,
+                                },
+                                value,
+                            })
+                        }
+                        _ => None,
+                    }
+                }
+                _ => Some(GenericArgument::Type(ty)),
+            }
         });
 
         iterator.advance();

@@ -12,6 +12,7 @@ test!(binary: "fun test(): int32 { 1 + 2 }");
 test!(primitive_cast: "fun test(): float32 { 1 as float32 }");
 test!(call: "fun test(): int32 { 2 * b() + 2 }");
 test!(call_with_generic_arguments: "fun test(): usize { sizeof[int32]() }");
+test!(generic_arguments: "fun test() { let a = [1, 2, 3].into_iter() as Dispatcher[Iterator[Item = uint32]]; }");
 test!(ifelse: "fun test(): bool { if false { 2.3 } else if false { 5 as float32 } else { 2.0 } }");
 test!(r#while: "fun test(): bool { while true { print(\"hello\"); } }");
 test!(postfix: "fun test(): int32 { Some(a().unwrap_or(0) + b()?) }");

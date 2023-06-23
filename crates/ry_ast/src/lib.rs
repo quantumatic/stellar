@@ -343,7 +343,7 @@ pub enum TypeAst {
     Constructor {
         span: Span,
         path: Path,
-        generic_arguments: Vec<TypeAst>,
+        generic_arguments: Vec<GenericArgument>,
     },
 
     /// A tuple type.
@@ -562,7 +562,7 @@ pub enum UntypedExpression {
     GenericArguments {
         span: Span,
         left: Box<Self>,
-        arguments: Vec<TypeAst>,
+        arguments: Vec<GenericArgument>,
     },
 
     /// Tuple expression.
@@ -610,6 +610,12 @@ pub enum UntypedExpression {
         return_type: Option<TypeAst>,
         block: Vec<Statement>,
     },
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub enum GenericArgument {
+    Type(TypeAst),
+    AssociatedType { name: IdentifierAst, value: TypeAst },
 }
 
 impl UntypedExpression {
