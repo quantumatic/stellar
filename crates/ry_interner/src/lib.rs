@@ -286,8 +286,11 @@ pub mod symbols {
     /// `List` symbol.
     pub const LIST: Symbol = 15;
 
+    /// `Unit` symbol.
+    pub const UNIT: Symbol = 16;
+
     /// `char` symbol.
-    pub const CHAR: Symbol = 16;
+    pub const CHAR: Symbol = 17;
 }
 
 macro_rules! intern_primitive_symbols {
