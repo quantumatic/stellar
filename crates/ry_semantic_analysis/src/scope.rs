@@ -62,8 +62,8 @@ impl<'a> Scope<'a> {
     }
 
     pub fn lookup(&self, symbol: Symbol) -> Option<&SymbolData> {
-        if let Some(data) = self.symbols.get(&symbol) {
-            Some(&data)
+        if let data @ Some(..) = self.symbols.get(&symbol) {
+            data
         } else if let Some(parent) = self.parent() {
             parent.lookup(symbol)
         } else {
