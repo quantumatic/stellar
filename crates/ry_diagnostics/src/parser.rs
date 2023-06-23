@@ -1,4 +1,4 @@
-//! Error and result implementation for the cursor.
+//! Error and result implementation for the iterator.
 use crate::Report;
 use codespan_reporting::diagnostic::Diagnostic;
 use ry_ast::{
@@ -100,18 +100,6 @@ pub enum ParseDiagnostic {
 
         /// EOF token span.
         span: Span,
-    },
-
-    /// When got two `..` in struct pattern.
-    MoreThanTwoRestPatternsInStructPatternMembersError {
-        /// Location of struct name.
-        struct_name_span: Span,
-
-        /// Previous `..` struct member pattern location.
-        previous_rest_pattern_span: Span,
-
-        /// Current `..` struct member pattern location.
-        current_rest_pattern_span: Span,
     },
 }
 
@@ -223,17 +211,6 @@ impl Report for ParseDiagnostic {
                         span.to_secondary_label()
                             .with_message("consider adding `}`".to_owned())
                     ]),
-            Self::MoreThanTwoRestPatternsInStructPatternMembersError { struct_name_span, previous_rest_pattern_span, current_rest_pattern_span } =>
-                Diagnostic::error()
-                    .with_message("multiple appearances of `..` in struct pattern found".to_owned())
-                    .with_labels(vec![
-                        struct_name_span.to_primary_label()
-                            .with_message("happened when processing this struct pattern"),
-                        previous_rest_pattern_span.to_secondary_label()
-                            .with_message("first appearance of `..`"),
-                        current_rest_pattern_span.to_secondary_label()
-                            .with_message("second appearance of `..`")
-                    ])
         }
     }
 }

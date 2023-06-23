@@ -1,4 +1,4 @@
-//! This crate provides a cursor for Ry programming language
+//! This crate provides a iter for Ry programming language
 //!
 //! It uses the lexer from the ry_lexer crate to tokenize the input source
 //! code and produces an Abstract Syntax Tree (AST) that represents the parsed code.
@@ -67,16 +67,16 @@
 mod expression;
 mod items;
 mod literal;
+mod module;
 mod path;
 mod pattern;
 mod statement;
 mod r#type;
 
 use codespan_reporting::diagnostic::Diagnostic;
-use items::ItemsParser;
 use ry_ast::{
     token::{LexError, RawToken, Token},
-    Docstring, IdentifierAst, Module,
+    Docstring, IdentifierAst,
 };
 use ry_diagnostics::{expected, parser::ParseDiagnostic, Report};
 use ry_interner::Interner;
@@ -84,12 +84,14 @@ use ry_lexer::Lexer;
 use ry_source_file::source_file::SourceFile;
 use ry_source_file::span::{Span, SpanIndex};
 
+pub use module::parse_module;
+
 #[macro_use]
 mod macros;
 
 /// Represents token iterator.
 #[derive(Debug)]
-pub struct Cursor<'a> {
+struct TokenIterator<'a> {
     source_file: &'a SourceFile<'a>,
     file_id: usize,
     lexer: Lexer<'a>,
@@ -98,6 +100,7 @@ pub struct Cursor<'a> {
     diagnostics: &'a mut Vec<Diagnostic<usize>>,
 }
 
+/// Represents AST node that can be parsed.
 pub(crate) trait Parse
 where
     Self: Sized,
@@ -106,9 +109,18 @@ where
     type Output;
 
     /// Parse AST node of type [`Self::Output`].
-    fn parse_with(self, cursor: &mut Cursor<'_>) -> Self::Output;
+    fn parse_using(self, iterator: &mut TokenIterator<'_>) -> Self::Output;
 }
 
+/// Represents AST node that can optionally be parsed. Optionally
+/// in this context means that if some condition is satisfied,
+/// the AST node is parsed as usually (`Some(Parse::parse_with(...))`),
+/// but if not, it is skipped and token iterator is not advanced.
+///
+/// A great example of this is the where clause, which is found optional
+/// in the syntax definition of every item in the Ry programming language.
+/// To avoid copying the behaviour described below, this trait must
+/// be implemented.
 pub(crate) trait OptionalParser
 where
     Self: Sized,
@@ -117,35 +129,18 @@ where
     type Output;
 
     /// Optionally parse AST node of type [`Self::Output`].
-    fn optionally_parse_with(self, cursor: &mut Cursor<'_>) -> Self::Output;
+    ///
+    /// For more information, see [`OptionalParser`].
+    fn optionally_parse_using(self, iterator: &mut TokenIterator<'_>) -> Self::Output;
 }
 
-impl<'a> Cursor<'a> {
-    /// Creates an initial cursor.
+impl<'a> TokenIterator<'a> {
+    /// Creates an initial iterator.
     ///
-    /// # Usage
-    /// ```
-    /// use std::path::Path;
-    /// use ry_parser::Cursor;
-    /// use ry_interner::Interner;
-    /// use ry_source_file::source_file::SourceFile;
-    ///
-    /// let mut diagnostics = vec![];
-    /// let mut interner = Interner::default();
-    /// let source_file = SourceFile::new(
-    ///     Path::new("test.ry"),
-    ///     "pub fun test() {}",
-    /// );
-    ///
-    /// let cursor = Cursor::new(
-    ///     0,
-    ///     &source_file,
-    ///     &mut interner,
-    ///     &mut diagnostics
-    /// );
-    /// ```
+    /// Note: [`TokenIterator::current`] and [`TokenIterator::next`] are
+    /// the same at an initial state.
     #[must_use]
-    pub fn new(
+    fn new(
         file_id: usize,
         source_file: &'a SourceFile<'a>,
         interner: &'a mut Interner,
@@ -196,13 +191,7 @@ impl<'a> Cursor<'a> {
         self.resolve_span(self.current.span)
     }
 
-    /// Returns diagnostics emitted during parsing.
-    #[must_use]
-    pub fn diagnostics(&self) -> &Vec<Diagnostic<usize>> {
-        self.diagnostics
-    }
-
-    /// Advances the cursor to the next token (skips comment tokens).
+    /// Advances the iter to the next token (skips comment tokens).
     fn next_token(&mut self) {
         self.current = self.next;
         self.next = self.lexer.next_no_comments();
@@ -300,46 +289,6 @@ impl<'a> Cursor<'a> {
             }
 
             self.next_token();
-        }
-    }
-
-    /// Returns [`ParseResult<ProgramUnit>`] where [`ProgramUnit`] represents
-    /// AST for a Ry module.
-    /// ```
-    /// use std::path::Path;
-    /// use ry_parser::Cursor;
-    /// use ry_interner::Interner;
-    /// use ry_source_file::source_file::SourceFile;
-    ///
-    /// let mut diagnostics = vec![];
-    /// let mut interner = Interner::default();
-    ///
-    /// let source_file = SourceFile::new(
-    ///     Path::new("test.ry"),
-    ///     "fun test() {}",
-    /// );
-    ///
-    /// let mut cursor = Cursor::new(
-    ///     0,
-    ///     &source_file,
-    ///     &mut interner,
-    ///     &mut diagnostics
-    /// );
-    /// let ast = cursor.parse();
-    ///
-    /// assert_eq!(ast.items.len(), 1);
-    /// ```
-    ///
-    /// # Errors
-    ///
-    /// Will return [`Err`] on any parsing error.
-    pub fn parse(&mut self) -> Module<'a> {
-        let (global_docstring, first_docstring) = self.consume_module_and_first_item_docstrings();
-
-        Module {
-            filepath: self.source_file.path(),
-            docstring: global_docstring,
-            items: ItemsParser { first_docstring }.parse_with(self),
         }
     }
 }

@@ -5,7 +5,7 @@ use crate::{
     pattern::PatternParser,
     r#type::{GenericArgumentsParser, TypeParser},
     statement::StatementsBlockParser,
-    Cursor, Parse,
+    Parse, TokenIterator,
 };
 use ry_ast::{
     precedence::Precedence, token::RawToken, BinaryOperator, IdentifierAst, MatchExpressionItem,
@@ -90,38 +90,40 @@ struct StatementsBlockExpressionParser;
 impl Parse for ExpressionParser {
     type Output = Option<UntypedExpression>;
 
-    fn parse_with(self, cursor: &mut Cursor<'_>) -> Self::Output {
-        let start = cursor.next.span.start();
+    fn parse_using(self, iterator: &mut TokenIterator<'_>) -> Self::Output {
+        let start = iterator.next.span.start();
         let mut left = PrimaryExpressionParser {
             ignore_struct: self.ignore_struct,
         }
-        .parse_with(cursor)?;
+        .parse_using(iterator)?;
 
-        while self.precedence < cursor.next.raw.to_precedence() {
-            left = match cursor.next.raw {
-                Token!['('] => CallExpressionParser { start, left }.parse_with(cursor)?,
-                Token![.] => PropertyAccessExpressionParser { start, left }.parse_with(cursor)?,
-                Token!['['] => {
-                    GenericArgumentsExpressionParser { start, left }.parse_with(cursor)?
+        while self.precedence < iterator.next.raw.to_precedence() {
+            left = match iterator.next.raw {
+                Token!['('] => CallExpressionParser { start, left }.parse_using(iterator)?,
+                Token![.] => {
+                    PropertyAccessExpressionParser { start, left }.parse_using(iterator)?
                 }
-                Token![as] => CastExpressionParser { start, left }.parse_with(cursor)?,
+                Token!['['] => {
+                    GenericArgumentsExpressionParser { start, left }.parse_using(iterator)?
+                }
+                Token![as] => CastExpressionParser { start, left }.parse_using(iterator)?,
                 Token!['{'] => {
                     if self.ignore_struct {
                         return Some(left);
                     }
 
-                    StructExpressionParser { start, left }.parse_with(cursor)?
+                    StructExpressionParser { start, left }.parse_using(iterator)?
                 }
                 _ => {
-                    if cursor.next.raw.binary_operator() {
+                    if iterator.next.raw.binary_operator() {
                         BinaryExpressionParser {
                             start,
                             left,
                             ignore_struct: self.ignore_struct,
                         }
-                        .parse_with(cursor)?
-                    } else if cursor.next.raw.postfix_operator() {
-                        PostfixExpressionParser { start, left }.parse_with(cursor)?
+                        .parse_using(iterator)?
+                    } else if iterator.next.raw.postfix_operator() {
+                        PostfixExpressionParser { start, left }.parse_using(iterator)?
                     } else {
                         break;
                     }
@@ -136,20 +138,20 @@ impl Parse for ExpressionParser {
 impl Parse for WhileExpressionParser {
     type Output = Option<UntypedExpression>;
 
-    fn parse_with(self, cursor: &mut Cursor<'_>) -> Self::Output {
-        let start = cursor.next.span.start();
-        cursor.next_token(); // `while`
+    fn parse_using(self, iterator: &mut TokenIterator<'_>) -> Self::Output {
+        let start = iterator.next.span.start();
+        iterator.next_token(); // `while`
 
         let condition = ExpressionParser {
             precedence: Precedence::Lowest,
             ignore_struct: true,
         }
-        .parse_with(cursor)?;
+        .parse_using(iterator)?;
 
-        let body = StatementsBlockParser.parse_with(cursor)?;
+        let body = StatementsBlockParser.parse_using(iterator)?;
 
         Some(UntypedExpression::While {
-            span: Span::new(start, cursor.current.span.end(), cursor.file_id),
+            span: Span::new(start, iterator.current.span.end(), iterator.file_id),
             condition: Box::new(condition),
             body,
         })
@@ -159,20 +161,20 @@ impl Parse for WhileExpressionParser {
 impl Parse for MatchExpressionParser {
     type Output = Option<UntypedExpression>;
 
-    fn parse_with(self, cursor: &mut Cursor<'_>) -> Self::Output {
-        let start = cursor.next.span.start();
-        cursor.next_token(); // `match`
+    fn parse_using(self, iterator: &mut TokenIterator<'_>) -> Self::Output {
+        let start = iterator.next.span.start();
+        iterator.next_token(); // `match`
 
         let expression = ExpressionParser {
             precedence: Precedence::Lowest,
             ignore_struct: true,
         }
-        .parse_with(cursor)?;
+        .parse_using(iterator)?;
 
-        let block = MatchExpressionBlockParser.parse_with(cursor)?;
+        let block = MatchExpressionBlockParser.parse_using(iterator)?;
 
         Some(UntypedExpression::Match {
-            span: Span::new(start, cursor.current.span.end(), cursor.file_id),
+            span: Span::new(start, iterator.current.span.end(), iterator.file_id),
             expression: Box::new(expression),
             block,
         })
@@ -182,14 +184,14 @@ impl Parse for MatchExpressionParser {
 impl Parse for MatchExpressionBlockParser {
     type Output = Option<Vec<MatchExpressionItem>>;
 
-    fn parse_with(self, cursor: &mut Cursor<'_>) -> Self::Output {
-        cursor.consume(Token!['{'], "match expression block")?;
+    fn parse_using(self, iterator: &mut TokenIterator<'_>) -> Self::Output {
+        iterator.consume(Token!['{'], "match expression block")?;
 
-        let units = parse_list!(cursor, "match expression block", Token!['}'], || {
-            MatchExpressionUnitParser.parse_with(cursor)
+        let units = parse_list!(iterator, "match expression block", Token!['}'], || {
+            MatchExpressionUnitParser.parse_using(iterator)
         });
 
-        cursor.next_token(); // `}`
+        iterator.next_token(); // `}`
 
         Some(units)
     }
@@ -198,11 +200,11 @@ impl Parse for MatchExpressionBlockParser {
 impl Parse for MatchExpressionUnitParser {
     type Output = Option<MatchExpressionItem>;
 
-    fn parse_with(self, cursor: &mut Cursor<'_>) -> Self::Output {
-        let left = PatternParser.parse_with(cursor)?;
-        cursor.consume(Token![=>], "match expression unit")?;
+    fn parse_using(self, iterator: &mut TokenIterator<'_>) -> Self::Output {
+        let left = PatternParser.parse_using(iterator)?;
+        iterator.consume(Token![=>], "match expression unit")?;
 
-        let right = ExpressionParser::default().parse_with(cursor)?;
+        let right = ExpressionParser::default().parse_using(iterator)?;
 
         Some(MatchExpressionItem { left, right })
     }
@@ -211,43 +213,43 @@ impl Parse for MatchExpressionUnitParser {
 impl Parse for PrimaryExpressionParser {
     type Output = Option<UntypedExpression>;
 
-    fn parse_with(self, cursor: &mut Cursor<'_>) -> Self::Output {
-        match cursor.next.raw {
+    fn parse_using(self, iterator: &mut TokenIterator<'_>) -> Self::Output {
+        match iterator.next.raw {
             RawToken::IntegerLiteral
             | RawToken::FloatLiteral
             | RawToken::StringLiteral
             | RawToken::CharLiteral
             | Token![true]
             | Token![false] => Some(UntypedExpression::Literal(
-                LiteralParser.parse_with(cursor)?,
+                LiteralParser.parse_using(iterator)?,
             )),
             RawToken::Identifier => {
-                let symbol = cursor.lexer.identifier();
-                cursor.next_token();
+                let symbol = iterator.lexer.identifier();
+                iterator.next_token();
 
                 Some(UntypedExpression::Identifier(IdentifierAst {
-                    span: cursor.current.span,
+                    span: iterator.current.span,
                     symbol,
                 }))
             }
-            Token!['('] => ParenthesizedExpressionParser.parse_with(cursor),
-            Token!['['] => ListExpressionParser.parse_with(cursor),
-            Token!['{'] => StatementsBlockExpressionParser.parse_with(cursor),
-            Token![|] => FunctionExpressionParser.parse_with(cursor),
-            Token![#] => TupleExpressionParser.parse_with(cursor),
-            Token![if] => IfExpressionParser.parse_with(cursor),
-            Token![match] => MatchExpressionParser.parse_with(cursor),
-            Token![while] => WhileExpressionParser.parse_with(cursor),
+            Token!['('] => ParenthesizedExpressionParser.parse_using(iterator),
+            Token!['['] => ListExpressionParser.parse_using(iterator),
+            Token!['{'] => StatementsBlockExpressionParser.parse_using(iterator),
+            Token![|] => FunctionExpressionParser.parse_using(iterator),
+            Token![#] => TupleExpressionParser.parse_using(iterator),
+            Token![if] => IfExpressionParser.parse_using(iterator),
+            Token![match] => MatchExpressionParser.parse_using(iterator),
+            Token![while] => WhileExpressionParser.parse_using(iterator),
             _ => {
-                if cursor.next.raw.prefix_operator() {
+                if iterator.next.raw.prefix_operator() {
                     return PrefixExpressionParser {
                         ignore_struct: self.ignore_struct,
                     }
-                    .parse_with(cursor);
+                    .parse_using(iterator);
                 }
-                cursor.diagnostics.push(
+                iterator.diagnostics.push(
                     ParseDiagnostic::UnexpectedTokenError {
-                        got: cursor.next,
+                        got: iterator.next,
                         expected: expected!(
                             "integer literal",
                             "float literal",
@@ -277,11 +279,11 @@ impl Parse for PrimaryExpressionParser {
 impl Parse for GenericArgumentsExpressionParser {
     type Output = Option<UntypedExpression>;
 
-    fn parse_with(self, cursor: &mut Cursor<'_>) -> Self::Output {
-        let arguments = GenericArgumentsParser.parse_with(cursor)?;
+    fn parse_using(self, iterator: &mut TokenIterator<'_>) -> Self::Output {
+        let arguments = GenericArgumentsParser.parse_using(iterator)?;
 
         Some(UntypedExpression::GenericArguments {
-            span: Span::new(self.start, cursor.current.span.end(), cursor.file_id),
+            span: Span::new(self.start, iterator.current.span.end(), iterator.file_id),
             left: Box::new(self.left),
             arguments,
         })
@@ -291,13 +293,13 @@ impl Parse for GenericArgumentsExpressionParser {
 impl Parse for PropertyAccessExpressionParser {
     type Output = Option<UntypedExpression>;
 
-    fn parse_with(self, cursor: &mut Cursor<'_>) -> Self::Output {
-        cursor.next_token(); // `.`
+    fn parse_using(self, iterator: &mut TokenIterator<'_>) -> Self::Output {
+        iterator.next_token(); // `.`
 
         Some(UntypedExpression::Property {
-            span: Span::new(self.start, cursor.current.span.end(), cursor.file_id),
+            span: Span::new(self.start, iterator.current.span.end(), iterator.file_id),
             left: Box::new(self.left),
-            right: cursor.consume_identifier("property")?,
+            right: iterator.consume_identifier("property")?,
         })
     }
 }
@@ -305,25 +307,25 @@ impl Parse for PropertyAccessExpressionParser {
 impl Parse for PrefixExpressionParser {
     type Output = Option<UntypedExpression>;
 
-    fn parse_with(self, cursor: &mut Cursor<'_>) -> Self::Output {
-        let operator_token = cursor.next;
+    fn parse_using(self, iterator: &mut TokenIterator<'_>) -> Self::Output {
+        let operator_token = iterator.next;
         let operator: PrefixOperator = PrefixOperator {
             span: operator_token.span,
             raw: RawPrefixOperator::from(operator_token.raw),
         };
-        cursor.next_token();
+        iterator.next_token();
 
         let inner = ExpressionParser {
             precedence: Precedence::Unary,
             ignore_struct: self.ignore_struct,
         }
-        .parse_with(cursor)?;
+        .parse_using(iterator)?;
 
         Some(UntypedExpression::Prefix {
             span: Span::new(
                 operator_token.span.start(),
                 inner.span().end(),
-                cursor.file_id,
+                iterator.file_id,
             ),
             inner: Box::new(inner),
             operator,
@@ -334,16 +336,16 @@ impl Parse for PrefixExpressionParser {
 impl Parse for PostfixExpressionParser {
     type Output = Option<UntypedExpression>;
 
-    fn parse_with(self, cursor: &mut Cursor<'_>) -> Self::Output {
-        cursor.next_token();
+    fn parse_using(self, iterator: &mut TokenIterator<'_>) -> Self::Output {
+        iterator.next_token();
 
         let operator: PostfixOperator = PostfixOperator {
-            span: cursor.current.span,
-            raw: RawPostfixOperator::from(cursor.current.raw),
+            span: iterator.current.span,
+            raw: RawPostfixOperator::from(iterator.current.raw),
         };
 
         Some(UntypedExpression::Postfix {
-            span: Span::new(self.start, cursor.current.span.end(), cursor.file_id),
+            span: Span::new(self.start, iterator.current.span.end(), iterator.file_id),
             inner: Box::new(self.left),
             operator,
         })
@@ -353,20 +355,20 @@ impl Parse for PostfixExpressionParser {
 impl Parse for ParenthesizedExpressionParser {
     type Output = Option<UntypedExpression>;
 
-    fn parse_with(self, cursor: &mut Cursor<'_>) -> Self::Output {
-        let start = cursor.next.span.start();
-        cursor.next_token();
+    fn parse_using(self, iterator: &mut TokenIterator<'_>) -> Self::Output {
+        let start = iterator.next.span.start();
+        iterator.next_token();
 
         let inner = ExpressionParser {
             precedence: Precedence::Lowest,
             ignore_struct: false,
         }
-        .parse_with(cursor)?;
+        .parse_using(iterator)?;
 
-        cursor.consume(Token![')'], "parenthesized expression")?;
+        iterator.consume(Token![')'], "parenthesized expression")?;
 
         Some(UntypedExpression::Parenthesized {
-            span: Span::new(start, inner.span().end(), cursor.file_id),
+            span: Span::new(start, inner.span().end(), iterator.file_id),
             inner: Box::new(inner),
         })
     }
@@ -375,44 +377,44 @@ impl Parse for ParenthesizedExpressionParser {
 impl Parse for IfExpressionParser {
     type Output = Option<UntypedExpression>;
 
-    fn parse_with(self, cursor: &mut Cursor<'_>) -> Self::Output {
-        let start = cursor.next.span.start();
-        cursor.next_token(); // `if`
+    fn parse_using(self, iterator: &mut TokenIterator<'_>) -> Self::Output {
+        let start = iterator.next.span.start();
+        iterator.next_token(); // `if`
 
         let condition = ExpressionParser {
             precedence: Precedence::Lowest,
             ignore_struct: true,
         }
-        .parse_with(cursor)?;
+        .parse_using(iterator)?;
 
-        let block = StatementsBlockParser.parse_with(cursor)?;
+        let block = StatementsBlockParser.parse_using(iterator)?;
 
         let mut if_blocks = vec![(condition, block)];
 
         let mut r#else = None;
 
-        while cursor.next.raw == Token![else] {
-            cursor.next_token();
+        while iterator.next.raw == Token![else] {
+            iterator.next_token();
 
-            if cursor.next.raw != Token![if] {
-                r#else = Some(StatementsBlockParser.parse_with(cursor)?);
+            if iterator.next.raw != Token![if] {
+                r#else = Some(StatementsBlockParser.parse_using(iterator)?);
                 break;
             }
 
-            cursor.next_token();
+            iterator.next_token();
 
             let condition = ExpressionParser {
                 precedence: Precedence::Lowest,
                 ignore_struct: true,
             }
-            .parse_with(cursor)?;
-            let block = StatementsBlockParser.parse_with(cursor)?;
+            .parse_using(iterator)?;
+            let block = StatementsBlockParser.parse_using(iterator)?;
 
             if_blocks.push((condition, block));
         }
 
         Some(UntypedExpression::If {
-            span: Span::new(start, cursor.current.span.end(), cursor.file_id),
+            span: Span::new(start, iterator.current.span.end(), iterator.file_id),
             if_blocks,
             r#else,
         })
@@ -422,13 +424,13 @@ impl Parse for IfExpressionParser {
 impl Parse for CastExpressionParser {
     type Output = Option<UntypedExpression>;
 
-    fn parse_with(self, cursor: &mut Cursor<'_>) -> Self::Output {
-        cursor.next_token();
+    fn parse_using(self, iterator: &mut TokenIterator<'_>) -> Self::Output {
+        iterator.next_token();
 
-        let right = TypeParser.parse_with(cursor)?;
+        let right = TypeParser.parse_using(iterator)?;
 
         Some(UntypedExpression::As {
-            span: Span::new(self.start, cursor.current.span.end(), cursor.file_id),
+            span: Span::new(self.start, iterator.current.span.end(), iterator.file_id),
             left: Box::new(self.left),
             right,
         })
@@ -438,17 +440,17 @@ impl Parse for CastExpressionParser {
 impl Parse for CallExpressionParser {
     type Output = Option<UntypedExpression>;
 
-    fn parse_with(self, cursor: &mut Cursor<'_>) -> Self::Output {
-        cursor.next_token(); // `(`
+    fn parse_using(self, iterator: &mut TokenIterator<'_>) -> Self::Output {
+        iterator.next_token(); // `(`
 
-        let arguments = parse_list!(cursor, "call arguments list", Token![')'], || {
-            ExpressionParser::default().parse_with(cursor)
+        let arguments = parse_list!(iterator, "call arguments list", Token![')'], || {
+            ExpressionParser::default().parse_using(iterator)
         });
 
-        cursor.next_token();
+        iterator.next_token();
 
         Some(UntypedExpression::Call {
-            span: Span::new(self.start, cursor.current.span.end(), cursor.file_id),
+            span: Span::new(self.start, iterator.current.span.end(), iterator.file_id),
             left: Box::new(self.left),
             arguments,
         })
@@ -458,24 +460,24 @@ impl Parse for CallExpressionParser {
 impl Parse for BinaryExpressionParser {
     type Output = Option<UntypedExpression>;
 
-    fn parse_with(self, cursor: &mut Cursor<'_>) -> Self::Output {
-        let operator_token = cursor.next;
+    fn parse_using(self, iterator: &mut TokenIterator<'_>) -> Self::Output {
+        let operator_token = iterator.next;
         let operator: BinaryOperator = BinaryOperator {
             span: operator_token.span,
             raw: RawBinaryOperator::from(operator_token.raw),
         };
-        let precedence = cursor.next.raw.to_precedence();
+        let precedence = iterator.next.raw.to_precedence();
 
-        cursor.next_token();
+        iterator.next_token();
 
         let right = ExpressionParser {
             precedence,
             ignore_struct: self.ignore_struct,
         }
-        .parse_with(cursor)?;
+        .parse_using(iterator)?;
 
         Some(UntypedExpression::Binary {
-            span: Span::new(self.start, cursor.current.span.end(), cursor.file_id),
+            span: Span::new(self.start, iterator.current.span.end(), iterator.file_id),
             left: Box::new(self.left),
             right: Box::new(right),
             operator,
@@ -486,19 +488,19 @@ impl Parse for BinaryExpressionParser {
 impl Parse for ListExpressionParser {
     type Output = Option<UntypedExpression>;
 
-    fn parse_with(self, cursor: &mut Cursor<'_>) -> Self::Output {
-        cursor.next_token();
+    fn parse_using(self, iterator: &mut TokenIterator<'_>) -> Self::Output {
+        iterator.next_token();
 
-        let start = cursor.next.span.start();
+        let start = iterator.next.span.start();
 
-        let elements = parse_list!(cursor, "list expression", Token![']'], || {
-            ExpressionParser::default().parse_with(cursor)
+        let elements = parse_list!(iterator, "list expression", Token![']'], || {
+            ExpressionParser::default().parse_using(iterator)
         });
 
-        cursor.next_token();
+        iterator.next_token();
 
         Some(UntypedExpression::List {
-            span: Span::new(start, cursor.current.span.end(), cursor.file_id),
+            span: Span::new(start, iterator.current.span.end(), iterator.file_id),
             elements,
         })
     }
@@ -507,20 +509,20 @@ impl Parse for ListExpressionParser {
 impl Parse for TupleExpressionParser {
     type Output = Option<UntypedExpression>;
 
-    fn parse_with(self, cursor: &mut Cursor<'_>) -> Self::Output {
-        let start = cursor.next.span.start();
-        cursor.next_token(); // `#`
+    fn parse_using(self, iterator: &mut TokenIterator<'_>) -> Self::Output {
+        let start = iterator.next.span.start();
+        iterator.next_token(); // `#`
 
-        cursor.consume(Token!['('], "tuple expression")?;
+        iterator.consume(Token!['('], "tuple expression")?;
 
-        let elements = parse_list!(cursor, "tuple expression", Token![')'], || {
-            ExpressionParser::default().parse_with(cursor)
+        let elements = parse_list!(iterator, "tuple expression", Token![')'], || {
+            ExpressionParser::default().parse_using(iterator)
         });
 
-        cursor.next_token(); // `)`
+        iterator.next_token(); // `)`
 
         Some(UntypedExpression::Tuple {
-            span: Span::new(start, cursor.current.span.end(), cursor.file_id),
+            span: Span::new(start, iterator.current.span.end(), iterator.file_id),
             elements,
         })
     }
@@ -529,17 +531,17 @@ impl Parse for TupleExpressionParser {
 impl Parse for StructExpressionParser {
     type Output = Option<UntypedExpression>;
 
-    fn parse_with(self, cursor: &mut Cursor<'_>) -> Self::Output {
-        cursor.next_token(); // `{`
+    fn parse_using(self, iterator: &mut TokenIterator<'_>) -> Self::Output {
+        iterator.next_token(); // `{`
 
-        let fields = parse_list!(cursor, "struct expression", Token!['}'], || {
-            StructExpressionUnitParser.parse_with(cursor)
+        let fields = parse_list!(iterator, "struct expression", Token!['}'], || {
+            StructExpressionUnitParser.parse_using(iterator)
         });
 
-        cursor.next_token(); // `}`
+        iterator.next_token(); // `}`
 
         Some(UntypedExpression::Struct {
-            span: Span::new(self.start, cursor.current.span.end(), cursor.file_id),
+            span: Span::new(self.start, iterator.current.span.end(), iterator.file_id),
             left: Box::new(self.left),
             fields,
         })
@@ -549,12 +551,12 @@ impl Parse for StructExpressionParser {
 impl Parse for StructExpressionUnitParser {
     type Output = Option<StructExpressionItem>;
 
-    fn parse_with(self, cursor: &mut Cursor<'_>) -> Self::Output {
-        let name = cursor.consume_identifier("struct field")?;
+    fn parse_using(self, iterator: &mut TokenIterator<'_>) -> Self::Output {
+        let name = iterator.consume_identifier("struct field")?;
 
-        let value = if cursor.next.raw == Token![:] {
-            cursor.next_token();
-            Some(ExpressionParser::default().parse_with(cursor)?)
+        let value = if iterator.next.raw == Token![:] {
+            iterator.next_token();
+            Some(ExpressionParser::default().parse_using(iterator)?)
         } else {
             None
         };
@@ -566,12 +568,12 @@ impl Parse for StructExpressionUnitParser {
 impl Parse for StatementsBlockExpressionParser {
     type Output = Option<UntypedExpression>;
 
-    fn parse_with(self, cursor: &mut Cursor<'_>) -> Self::Output {
-        let start = cursor.next.span.start();
-        let block = StatementsBlockParser.parse_with(cursor)?;
+    fn parse_using(self, iterator: &mut TokenIterator<'_>) -> Self::Output {
+        let start = iterator.next.span.start();
+        let block = StatementsBlockParser.parse_using(iterator)?;
 
         Some(UntypedExpression::StatementsBlock {
-            span: Span::new(start, cursor.current.span.end(), cursor.file_id),
+            span: Span::new(start, iterator.current.span.end(), iterator.file_id),
             block,
         })
     }
@@ -580,28 +582,31 @@ impl Parse for StatementsBlockExpressionParser {
 impl Parse for FunctionExpressionParser {
     type Output = Option<UntypedExpression>;
 
-    fn parse_with(self, cursor: &mut Cursor<'_>) -> Self::Output {
-        let start = cursor.next.span.start();
-        cursor.next_token(); // `|`
+    fn parse_using(self, iterator: &mut TokenIterator<'_>) -> Self::Output {
+        let start = iterator.next.span.start();
+        iterator.next_token(); // `|`
 
-        let parameters = parse_list!(cursor, "function expression parameters", Token![|], || {
-            FunctionParameterParser.parse_with(cursor)
-        });
+        let parameters = parse_list!(
+            iterator,
+            "function expression parameters",
+            Token![|],
+            || { FunctionParameterParser.parse_using(iterator) }
+        );
 
-        cursor.next_token();
+        iterator.next_token();
 
-        let return_type = if cursor.next.raw == Token![:] {
-            cursor.next_token();
+        let return_type = if iterator.next.raw == Token![:] {
+            iterator.next_token();
 
-            Some(TypeParser.parse_with(cursor)?)
+            Some(TypeParser.parse_using(iterator)?)
         } else {
             None
         };
 
-        let block = StatementsBlockParser.parse_with(cursor)?;
+        let block = StatementsBlockParser.parse_using(iterator)?;
 
         Some(UntypedExpression::Function {
-            span: Span::new(start, cursor.current.span.end(), cursor.file_id),
+            span: Span::new(start, iterator.current.span.end(), iterator.file_id),
             parameters,
             return_type,
             block,

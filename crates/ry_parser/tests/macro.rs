@@ -11,11 +11,9 @@ macro_rules! test {
                 $source,
             );
 
-            let mut cursor =
-                ry_parser::Cursor::new(0, &source_file, &mut string_interner, &mut diagnostics);
+            ry_parser::parse_module(0, &source_file, &mut string_interner, &mut diagnostics);
 
-            cursor.parse();
-            assert!(cursor.diagnostics().is_empty());
+            assert!(diagnostics.is_empty());
         }
     };
 }

@@ -19,6 +19,10 @@ impl<'a> Scope<'a> {
         self.parent
     }
 
+    pub fn variables(&self) -> &HashMap<Symbol, Arc<Type>> {
+        &self.variables
+    }
+
     pub fn add(&mut self, symbol: Symbol, ty: Arc<Type>) {
         self.variables.insert(symbol, ty);
     }

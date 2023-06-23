@@ -51,6 +51,7 @@ use prefix::{create_unique_file, log_with_left_padded_prefix};
 use ry_diagnostics::DiagnosticsEmitterBuilder;
 use ry_interner::Interner;
 use ry_lexer::Lexer;
+use ry_parser::parse_module;
 use ry_source_file::{source_file::SourceFile, source_file_manager::SourceFileManager};
 use std::{fs, io::Write, path::Path, process::exit, time::Instant};
 
@@ -131,18 +132,12 @@ fn main() {
                     let file_id = diagnostics_emitter.add_file(&source_file);
 
                     let mut diagnostics = vec![];
-                    let mut cursor = ry_parser::Cursor::new(
-                        file_id,
-                        &source_file,
-                        &mut interner,
-                        &mut diagnostics,
-                    );
 
                     let now = Instant::now();
 
                     log_with_left_padded_prefix("Parsing", filepath);
 
-                    let ast = cursor.parse();
+                    let ast = parse_module(file_id, &source_file, &mut interner, &mut diagnostics);
                     let ast_string = format!("{:?}", ast);
 
                     diagnostics_emitter.emit_diagnostics(diagnostics.as_slice());

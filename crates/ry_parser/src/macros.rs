@@ -1,22 +1,22 @@
 macro_rules! parse_list {
     (
-        $cursor:ident,
+        $iterator:ident,
         $node_name:expr,
         $closing_token:expr,
         $fn:expr) => {
         {
             let mut result = vec![];
 
-            if $cursor.next.raw != $closing_token {
+            if $iterator.next.raw != $closing_token {
                 loop {
                     result.push($fn()?);
 
                     #[allow(unused_qualifications)]
-                    if $cursor.next.raw != $closing_token {
-                        if $cursor.next.raw != Token![,] {
-                            $cursor.diagnostics.push(
+                    if $iterator.next.raw != $closing_token {
+                        if $iterator.next.raw != Token![,] {
+                            $iterator.diagnostics.push(
                                 ParseDiagnostic::UnexpectedTokenError {
-                                    got: $cursor.next.clone(),
+                                    got: $iterator.next.clone(),
                                     expected: expected!($closing_token, Token![,]),
                                     node: $node_name.to_owned(),
                                 }
@@ -25,9 +25,9 @@ macro_rules! parse_list {
                             break;
                         }
 
-                        $cursor.next_token();
+                        $iterator.next_token();
 
-                        if $cursor.next.raw == $closing_token {
+                        if $iterator.next.raw == $closing_token {
                             break;
                         }
                     } else {
@@ -40,25 +40,25 @@ macro_rules! parse_list {
         }
     };
     (
-        $cursor:ident,
+        $iterator:ident,
         $node_name:expr,
         ($closing_token1:expr) or ($closing_token2:expr),
         $fn:expr) => {
         {
             let mut result = vec![];
 
-            if $cursor.next.raw != $closing_token1 &&
-                $cursor.next.raw != $closing_token2 {
+            if $iterator.next.raw != $closing_token1 &&
+                $iterator.next.raw != $closing_token2 {
                 loop {
                     result.push($fn()?);
 
                     #[allow(unused_qualifications)]
-                    if $cursor.next.raw != $closing_token1
-                        && $cursor.next.raw != $closing_token2 {
-                        if $cursor.next.raw != Token![,] {
-                            $cursor.diagnostics.push(
+                    if $iterator.next.raw != $closing_token1
+                        && $iterator.next.raw != $closing_token2 {
+                        if $iterator.next.raw != Token![,] {
+                            $iterator.diagnostics.push(
                                 ParseDiagnostic::UnexpectedTokenError {
-                                    got: $cursor.next.clone(),
+                                    got: $iterator.next.clone(),
                                     expected: expected!($closing_token1, $closing_token2, Token![,]),
                                     node: $node_name.to_owned(),
                                 }
@@ -67,10 +67,10 @@ macro_rules! parse_list {
                             break;
                         }
 
-                        $cursor.next_token();
+                        $iterator.next_token();
 
-                        if $cursor.next.raw == $closing_token1
-                            || $cursor.next.raw == $closing_token2 {
+                        if $iterator.next.raw == $closing_token1
+                            || $iterator.next.raw == $closing_token2 {
                             break;
                         }
                     } else {
