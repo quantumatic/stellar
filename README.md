@@ -105,7 +105,7 @@ fun foo[S](s: S) where S: ToString + Default { ... }
 And function types:
 
 ```
-fun do_stuff_with(a: uint32, b: uint32, fn: (uint32, uint32): Unit) {
+fun do_stuff_with(a: uint32, b: uint32, fn: Fun (uint32, uint32): Unit) {
     fn(a, b)
 }
 ```

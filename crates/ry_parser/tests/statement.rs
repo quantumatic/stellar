@@ -35,6 +35,9 @@ test!(let8: "fun test(): uint32 {
     let a = [1, 2, 3].into_iter() as dyn Iterator[Item = uint32];
     a.next()
 }");
+
+// parenthesized type
+test!(let9: "fun main() { let a: (((uint32))) = 2; }");
 test!(r#break: "fun test() {
     while true {
         break;
