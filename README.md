@@ -43,7 +43,7 @@ fun factorial(n: uint32): uint32 {
 
 > `let` is a statement!
 
-It can also be used in `let` statement for destructuring:
+Pattern matching can also be used in `let` statement for destructuring:
 
 ```
 let Person {
