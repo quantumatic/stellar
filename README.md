@@ -15,19 +15,33 @@ Pattern matching is supported!
 ```
 match tuple {
     #(1, ..) => {
-        println!("First element is 1");
+        println("First element is 1");
     }
     #(.., 'b', true) | #(.., 'a', true) => {
-        println!("Second element is 'b' or 'a', and third element is true");
+        println("Second element is 'b' or 'a', and third element is true");
     }
     #(.., false) => {
-        println!("Third element is false");
+        println("Third element is false");
     }
     .. => {
-        println!("Default case");
+        println("Default case");
     }
 }
 ```
+
+Ry follows "most of stuff is expression" philosophy. So `if`, `match`, `while`, etc. are expressions:
+
+```
+fun factorial(n: uint32): uint32 {
+    if n < 2 {
+        1
+    } else {
+        factorial(n - 1) * n
+    }
+}
+```
+
+> `let` is a statement!
 
 It can also be used in `let` statement for destructuring:
 
