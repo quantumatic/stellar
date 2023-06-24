@@ -197,7 +197,7 @@ Ry is going to have documentation generation tool, package manager and more!
 You need to have Rust installed on your system. Then run:
 
 ```
-<b>cargo</b> install --path crates/ry
+cargo install --path crates/ry
 ```
 
 Then you're good to go coding in Ry!
