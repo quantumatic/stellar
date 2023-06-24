@@ -414,6 +414,21 @@ pub enum TypeAst {
     /// dyn Iterator[Item = uint32]
     /// ```
     TraitObject { span: Span, bounds: TypeBounds },
+
+    /// A type with a qualified path.
+    ///
+    /// ```txt
+    /// [List[[List[uint32] as IntoIterator].Item] as IntoIterator].Item
+    ///        ^^^^^^^^^^^^    ^^^^^^^^^^^^  ^^^^
+    ///        |               |             |
+    ///        left            right         segments[0]
+    /// ```
+    WithQualifiedPath {
+        span: Span,
+        left: Box<Self>,
+        right: TypePath,
+        segments: Vec<TypePathSegment>,
+    },
 }
 
 /// A generic parameter.

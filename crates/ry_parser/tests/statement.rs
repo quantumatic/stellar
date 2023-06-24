@@ -38,6 +38,9 @@ test!(let8: "fun test(): uint32 {
 
 // parenthesized type
 test!(let9: "fun main() { let a: (((uint32))) = 2; }");
+
+test!(let10: "fun main() { let a: [List[uint32] as IntoIterator].Item = 3; }");
+
 test!(r#break: "fun test() {
     while true {
         break;

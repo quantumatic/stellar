@@ -10,6 +10,8 @@ pub(crate) struct TypeBoundsParser;
 
 pub(crate) struct TypeParser;
 
+struct TypeWithQualifiedPathParser;
+
 struct TraitObjectTypeParser;
 
 struct ParenthesizedTypeParser;
@@ -55,6 +57,7 @@ impl Parse for TypeParser {
             Token![#] => TupleTypeParser.parse_using(iterator),
             Token![Fun] => FunctionTypeParser.parse_using(iterator),
             Token![dyn] => TraitObjectTypeParser.parse_using(iterator),
+            Token!['['] => TypeWithQualifiedPathParser.parse_using(iterator),
             _ => {
                 iterator.diagnostics.push(
                     ParseDiagnostic::UnexpectedTokenError {
@@ -68,6 +71,38 @@ impl Parse for TypeParser {
                 None
             }
         }
+    }
+}
+
+impl Parse for TypeWithQualifiedPathParser {
+    type Output = Option<TypeAst>;
+
+    fn parse_using(self, iterator: &mut TokenIterator<'_>) -> Self::Output {
+        let start = iterator.next_token.span.start();
+        iterator.advance(); // `[`
+
+        let left = Box::new(TypeParser.parse_using(iterator)?);
+        iterator.consume(Token![as], "type with qualified path")?;
+
+        let right = TypePathParser.parse_using(iterator)?;
+
+        iterator.consume(Token![']'], "type with qualified path")?;
+        iterator.consume(Token![.], "type with qualified path")?;
+
+        let mut segments = vec![TypePathSegmentParser.parse_using(iterator)?];
+
+        while iterator.next_token.raw == Token![.] {
+            iterator.advance();
+
+            segments.push(TypePathSegmentParser.parse_using(iterator)?);
+        }
+
+        Some(TypeAst::WithQualifiedPath {
+            span: Span::new(start, iterator.current_token.span.end(), iterator.file_id),
+            left,
+            right,
+            segments,
+        })
     }
 }
 
