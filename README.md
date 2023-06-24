@@ -171,7 +171,7 @@ If you want to have to deal with dynamic dispatch, you can use `Dispatcher` type
 fun main() {
     let iter = [1, 2, 3].into_iter() as Dispatcher[Iterator[Item = uint32]];
 
-    assert(iter.next(), Some(1));
+    assert(iter.next() == Some(1));
 }
 ```
 
