@@ -2,7 +2,7 @@ use crate::{
     expression::ExpressionParser,
     macros::parse_list,
     path::PathParser,
-    r#type::{GenericParametersParser, TypeParser, WhereClauseParser},
+    r#type::{GenericParametersParser, TypeBoundsParser, TypeParser, WhereClauseParser},
     statement::StatementsBlockParser,
     OptionalParser, Parse, TokenIterator,
 };
@@ -360,6 +360,14 @@ impl Parse for TypeAliasParser {
         let name = iterator.consume_identifier("type alias")?;
         let generic_parameters = GenericParametersParser.optionally_parse_using(iterator)?;
 
+        let bounds = if iterator.next_token.raw == Token![:] {
+            iterator.advance();
+
+            Some(TypeBoundsParser.parse_using(iterator)?)
+        } else {
+            None
+        };
+
         let value = if iterator.next_token.raw == Token![=] {
             iterator.advance();
 
@@ -374,6 +382,7 @@ impl Parse for TypeAliasParser {
             visibility: self.visibility,
             name,
             generic_parameters,
+            bounds,
             value,
         })
     }

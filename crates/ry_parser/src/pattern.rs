@@ -70,8 +70,8 @@ impl Parse for PatternExceptOrParser {
                 };
 
                 // If it is only 1 identifier
-                if path.symbols.len() == 1 {
-                    let identifier = path.symbols.first().expect(
+                if path.identifiers.len() == 1 {
+                    let identifier = path.identifiers.first().expect(
                         "Cannot get first identifier in path when parsing identifier pattern",
                     );
 

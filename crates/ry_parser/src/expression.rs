@@ -280,7 +280,7 @@ impl Parse for GenericArgumentsExpressionParser {
     type Output = Option<UntypedExpression>;
 
     fn parse_using(self, iterator: &mut TokenIterator<'_>) -> Self::Output {
-        let arguments = GenericArgumentsParser.parse_using(iterator)?;
+        let generic_arguments = GenericArgumentsParser.parse_using(iterator)?;
 
         Some(UntypedExpression::GenericArguments {
             span: Span::new(
@@ -289,7 +289,7 @@ impl Parse for GenericArgumentsExpressionParser {
                 iterator.file_id,
             ),
             left: Box::new(self.left),
-            arguments,
+            generic_arguments,
         })
     }
 }

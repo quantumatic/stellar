@@ -27,6 +27,14 @@ test!(let5: "fun test(): int32 {
 test!(let6: "fun test(): int32 {
     let a: Option[int32] = Some(2);
 }");
+test!(let7: "fun test(): int32 {
+    let a: Iterator[Item = uint32].Item = 3;
+    a
+}");
+test!(let8: "fun test(): uint32 {
+    let a = [1, 2, 3].into_iter() as dyn Iterator[Item = uint32];
+    a.next()
+}");
 test!(r#break: "fun test() {
     while true {
         break;

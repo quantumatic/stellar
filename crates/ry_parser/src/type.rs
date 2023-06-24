@@ -1,14 +1,22 @@
 use crate::{macros::parse_list, path::PathParser, OptionalParser, Parse, TokenIterator};
 use ry_ast::{
-    token::RawToken, GenericArgument, GenericParameter, IdentifierAst, Token, TypeAst, WhereClause,
-    WhereClauseItem,
+    token::RawToken, GenericArgument, GenericParameter, Path, Token, TypeAst, TypeBounds, TypePath,
+    TypePathSegment, WhereClause, WhereClauseItem,
 };
 use ry_diagnostics::{expected, parser::ParseDiagnostic, Report};
 use ry_source_file::span::Span;
 
+pub(crate) struct TypeBoundsParser;
+
 pub(crate) struct TypeParser;
 
-struct TypeConstructorParser;
+struct TraitObjectTypeParser;
+
+struct ParenthesizedTypeParser;
+
+struct TypePathParser;
+
+struct TypePathSegmentParser;
 
 struct TupleTypeParser;
 
@@ -20,14 +28,33 @@ pub(crate) struct GenericArgumentsParser;
 
 pub(crate) struct WhereClauseParser;
 
+impl Parse for TypeBoundsParser {
+    type Output = Option<TypeBounds>;
+
+    fn parse_using(self, iterator: &mut TokenIterator<'_>) -> Self::Output {
+        let mut bounds = vec![];
+        bounds.push(TypePathParser.parse_using(iterator)?);
+
+        while iterator.next_token.raw == Token![+] {
+            iterator.advance();
+
+            bounds.push(TypePathParser.parse_using(iterator)?);
+        }
+
+        Some(TypeBounds { bounds })
+    }
+}
+
 impl Parse for TypeParser {
     type Output = Option<TypeAst>;
 
     fn parse_using(self, iterator: &mut TokenIterator<'_>) -> Self::Output {
         match iterator.next_token.raw {
-            RawToken::Identifier => TypeConstructorParser.parse_using(iterator),
+            Token!['('] => ParenthesizedTypeParser.parse_using(iterator),
+            RawToken::Identifier => TypePathParser.parse_using(iterator).map(TypeAst::Path),
             Token![#] => TupleTypeParser.parse_using(iterator),
-            Token!['('] => FunctionTypeParser.parse_using(iterator),
+            Token![Fun] => FunctionTypeParser.parse_using(iterator),
+            Token![dyn] => TraitObjectTypeParser.parse_using(iterator),
             _ => {
                 iterator.diagnostics.push(
                     ParseDiagnostic::UnexpectedTokenError {
@@ -41,6 +68,21 @@ impl Parse for TypeParser {
                 None
             }
         }
+    }
+}
+
+impl Parse for TraitObjectTypeParser {
+    type Output = Option<TypeAst>;
+
+    fn parse_using(self, iterator: &mut TokenIterator<'_>) -> Self::Output {
+        let start = iterator.next_token.span.start();
+
+        iterator.advance(); // `dyn`
+
+        Some(TypeAst::TraitObject {
+            bounds: TypeBoundsParser.parse_using(iterator)?,
+            span: Span::new(start, iterator.current_token.span.end(), iterator.file_id),
+        })
     }
 }
 
@@ -66,12 +108,32 @@ impl Parse for TupleTypeParser {
     }
 }
 
-impl Parse for FunctionTypeParser {
+impl Parse for ParenthesizedTypeParser {
     type Output = Option<TypeAst>;
 
     fn parse_using(self, iterator: &mut TokenIterator<'_>) -> Self::Output {
         let start = iterator.next_token.span.start();
         iterator.advance(); // `(`
+
+        let inner = Box::new(TypeParser.parse_using(iterator)?);
+
+        iterator.consume(Token![')'], "parenthesized type")?;
+
+        Some(TypeAst::Parenthesized {
+            span: Span::new(start, iterator.current_token.span.end(), iterator.file_id),
+            inner,
+        })
+    }
+}
+
+impl Parse for FunctionTypeParser {
+    type Output = Option<TypeAst>;
+
+    fn parse_using(self, iterator: &mut TokenIterator<'_>) -> Self::Output {
+        let start = iterator.next_token.span.start();
+        iterator.advance(); // `Fun`
+
+        iterator.consume(Token!['('], "function type")?;
 
         let parameter_types =
             parse_list!(iterator, "parameter types in function type", Token![')'], {
@@ -93,11 +155,11 @@ impl Parse for FunctionTypeParser {
 }
 
 impl OptionalParser for GenericParametersParser {
-    type Output = Option<Vec<GenericParameter>>;
+    type Output = Option<Option<Vec<GenericParameter>>>;
 
     fn optionally_parse_using(self, iterator: &mut TokenIterator<'_>) -> Self::Output {
         if iterator.next_token.raw != Token!['['] {
-            return Some(vec![]);
+            return Some(None);
         }
 
         iterator.advance();
@@ -105,10 +167,10 @@ impl OptionalParser for GenericParametersParser {
         let result = parse_list!(iterator, "generic parameters", Token![']'], {
             Some(GenericParameter {
                 name: iterator.consume_identifier("generic parameter name")?,
-                constraint: if iterator.next_token.raw == Token![:] {
+                bounds: if iterator.next_token.raw == Token![:] {
                     iterator.advance();
 
-                    Some(TypeParser.parse_using(iterator)?)
+                    Some(TypeBoundsParser.parse_using(iterator)?)
                 } else {
                     None
                 },
@@ -124,18 +186,40 @@ impl OptionalParser for GenericParametersParser {
 
         iterator.advance();
 
-        Some(result)
+        Some(Some(result))
     }
 }
 
-impl Parse for TypeConstructorParser {
-    type Output = Option<TypeAst>;
+impl Parse for TypePathParser {
+    type Output = Option<TypePath>;
+
+    fn parse_using(self, iterator: &mut TokenIterator<'_>) -> Self::Output {
+        let start = iterator.next_token.span.start();
+
+        let mut segments = vec![];
+        segments.push(TypePathSegmentParser.parse_using(iterator)?);
+
+        while iterator.next_token.raw == Token![.] {
+            iterator.advance();
+
+            segments.push(TypePathSegmentParser.parse_using(iterator)?);
+        }
+
+        Some(TypePath {
+            span: Span::new(start, iterator.current_token.span.end(), iterator.file_id),
+            segments,
+        })
+    }
+}
+
+impl Parse for TypePathSegmentParser {
+    type Output = Option<TypePathSegment>;
 
     fn parse_using(self, iterator: &mut TokenIterator<'_>) -> Self::Output {
         let path = PathParser.parse_using(iterator)?;
         let generic_arguments = GenericArgumentsParser.optionally_parse_using(iterator)?;
 
-        Some(TypeAst::Constructor {
+        Some(TypePathSegment {
             span: Span::new(
                 path.span.start(),
                 iterator.current_token.span.end(),
@@ -148,14 +232,14 @@ impl Parse for TypeConstructorParser {
 }
 
 impl OptionalParser for GenericArgumentsParser {
-    type Output = Option<Vec<GenericArgument>>;
+    type Output = Option<Option<Vec<GenericArgument>>>;
 
     fn optionally_parse_using(self, iterator: &mut TokenIterator<'_>) -> Self::Output {
         if iterator.next_token.raw != Token!['['] {
-            return Some(vec![]);
+            return Some(None);
         }
 
-        self.parse_using(iterator)
+        Some(self.parse_using(iterator))
     }
 }
 impl Parse for GenericArgumentsParser {
@@ -168,16 +252,19 @@ impl Parse for GenericArgumentsParser {
             let ty = TypeParser.parse_using(iterator)?;
 
             match (iterator.next_token.raw, &ty) {
-                (Token![=], TypeAst::Constructor { span, path, .. }) if *span == path.span => {
-                    match path.symbols.as_slice() {
-                        [IdentifierAst { symbol, .. }] => {
+                (Token![=], TypeAst::Path(TypePath { segments, .. })) => {
+                    match segments.as_slice() {
+                        [TypePathSegment {
+                            path: Path { identifiers, .. },
+                            generic_arguments: None,
+                            ..
+                        }] if identifiers.len() == 1 => {
                             iterator.advance();
                             let value = TypeParser.parse_using(iterator)?;
                             Some(GenericArgument::AssociatedType {
-                                name: IdentifierAst {
-                                    span: *span,
-                                    symbol: *symbol,
-                                },
+                                name: *identifiers
+                                    .first()
+                                    .expect("Cannot get first identifier of type path"),
                                 value,
                             })
                         }
@@ -195,28 +282,44 @@ impl Parse for GenericArgumentsParser {
 }
 
 impl OptionalParser for WhereClauseParser {
-    type Output = Option<WhereClause>;
+    type Output = Option<Option<WhereClause>>;
 
     fn optionally_parse_using(self, iterator: &mut TokenIterator<'_>) -> Self::Output {
         if iterator.next_token.raw != Token![where] {
-            return Some(vec![]);
+            return Some(None);
         }
 
         iterator.advance();
 
-        Some(parse_list!(
+        Some(Some(parse_list!(
             iterator,
             "where clause",
             (Token!['{']) or (Token![;]),
              {
-                let r#type = TypeParser.parse_using(iterator)?;
+                let left = TypeParser.parse_using(iterator)?;
 
-                iterator.consume(Token![:], "where clause")?;
+                match iterator.next_token.raw {
+                    Token![:] => {
+                        iterator.advance();
 
-                let constraint = TypeParser.parse_using(iterator)?;
+                        Some(WhereClauseItem::Satisfies { left, right: TypeBoundsParser.parse_using(iterator)? })
+                    },
+                    Token![=] => {
+                        iterator.advance();
 
-                Some(WhereClauseItem { r#type, constraint })
+                        Some(WhereClauseItem::Eq { left, right: TypeParser.parse_using(iterator)? })
+                    },
+                    _ => {
+                        iterator.diagnostics.push(ParseDiagnostic::UnexpectedTokenError {
+                            got: iterator.next_token,
+                            expected: expected!(Token![=], Token![:]),
+                            node: "where clause".to_owned(),
+                        }.build());
+
+                        None
+                    }
+                }
             }
-        ))
+        )))
     }
 }

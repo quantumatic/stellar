@@ -8,21 +8,21 @@ impl Parse for PathParser {
     type Output = Option<Path>;
 
     fn parse_using(self, iterator: &mut TokenIterator<'_>) -> Self::Output {
-        let mut symbols = vec![];
+        let mut identifiers = vec![];
         let first_identifier = iterator.consume_identifier("path")?;
-        symbols.push(first_identifier);
+        identifiers.push(first_identifier);
 
         let (start, mut end) = (first_identifier.span.start(), first_identifier.span.end());
 
         while iterator.next_token.raw == Token![.] {
             iterator.advance();
-            symbols.push(iterator.consume_identifier("path")?);
+            identifiers.push(iterator.consume_identifier("path")?);
             end = iterator.current_token.span.end();
         }
 
         Some(Path {
             span: Span::new(start, end, iterator.file_id),
-            symbols,
+            identifiers,
         })
     }
 }

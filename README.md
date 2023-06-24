@@ -99,7 +99,7 @@ trait NotDefault: Not[Default] {}
 The language supports where clause in top level items:
 
 ```
-fun foo[S](s: S) where S: ToString { ... }
+fun foo[S](s: S) where S: ToString + Default { ... }
 ```
 
 And function types:
@@ -165,11 +165,11 @@ fun main() {
 }
 ```
 
-If you want to have to deal with dynamic dispatch, you can use `Dispatcher` type:
+If you want to have to deal with dynamic dispatch, you can use `dyn` type:
 
 ```
 fun main() {
-    let iter = [1, 2, 3].into_iter() as Dispatcher[Iterator[Item = uint32]];
+    let iter = [1, 2, 3].into_iter() as dyn Iterator[Item = uint32];
 
     assert(iter.next() == Some(1));
 }

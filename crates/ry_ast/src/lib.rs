@@ -81,7 +81,31 @@ pub struct IdentifierAst {
 #[derive(Debug, PartialEq, Clone)]
 pub struct Path {
     pub span: Span,
-    pub symbols: Vec<IdentifierAst>,
+    pub identifiers: Vec<IdentifierAst>,
+}
+
+/// AST Node for a type path.
+///
+/// ```txt
+/// let a: Iterator[Item = uint32].Item = 3;
+///        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/// ```
+#[derive(Debug, PartialEq, Clone)]
+pub struct TypePath {
+    pub span: Span,
+    pub segments: Vec<TypePathSegment>,
+}
+
+/// A type path segment.
+///
+/// ```txt
+/// let a: Iterator[Item = uint32].Item = 3;
+///        ^^^^^^^^^^^^^^^^^^^^^^^ ^^^^
+#[derive(Debug, PartialEq, Clone)]
+pub struct TypePathSegment {
+    pub span: Span,
+    pub path: Path,
+    pub generic_arguments: Option<Vec<GenericArgument>>,
 }
 
 /// AST Node for a pattern.
@@ -324,6 +348,19 @@ pub enum StructFieldPattern {
     },
 }
 
+/// An AST node used to represent type bounds.
+///
+/// # Example
+/// ```txt
+/// pub trait DefaultAndDebug: Default + Debug {
+///                            ^^^^^^^^^^^^^^^
+/// }
+/// ```
+#[derive(Debug, PartialEq, Clone)]
+pub struct TypeBounds {
+    pub bounds: Vec<TypePath>,
+}
+
 /// An AST node used to represent types in an untyped AST.
 ///
 /// # Example
@@ -333,18 +370,15 @@ pub enum StructFieldPattern {
 /// ```
 #[derive(Debug, PartialEq, Clone)]
 pub enum TypeAst {
-    /// A type constructor.
+    /// A type path.
     ///
     /// ```txt
     /// String
     /// uint32
+    /// Iterator[Item = uint32].Item
     /// List[uint32]
     /// ```
-    Constructor {
-        span: Span,
-        path: Path,
-        generic_arguments: Vec<GenericArgument>,
-    },
+    Path(TypePath),
 
     /// A tuple type.
     ///
@@ -366,6 +400,20 @@ pub enum TypeAst {
         parameter_types: Vec<Self>,
         return_type: Box<Self>,
     },
+
+    /// A parenthesized type.
+    ///
+    /// ```txt
+    /// (Option[uint32])
+    /// ```
+    Parenthesized { span: Span, inner: Box<Self> },
+
+    /// A trait object type.
+    ///
+    /// ```txt
+    /// dyn Iterator[Item = uint32]
+    /// ```
+    TraitObject { span: Span, bounds: TypeBounds },
 }
 
 /// A generic parameter.
@@ -379,7 +427,7 @@ pub enum TypeAst {
 #[derive(Debug, PartialEq, Clone)]
 pub struct GenericParameter {
     pub name: IdentifierAst,
-    pub constraint: Option<TypeAst>, // constraints can be outside of the where clause
+    pub bounds: Option<TypeBounds>,
     pub default_value: Option<TypeAst>,
 }
 
@@ -399,21 +447,22 @@ pub type WhereClause = Vec<WhereClauseItem>;
 pub struct TypeAlias {
     pub visibility: Visibility,
     pub name: IdentifierAst,
-    pub generic_parameters: Vec<GenericParameter>,
+    pub generic_parameters: Option<Vec<GenericParameter>>,
+    pub bounds: Option<TypeBounds>,
     pub value: Option<TypeAst>,
 }
 
 /// A where clause item.
 ///
 /// ```txt
-/// impl[T, M] ToString for #(T, M) where T: Into[String], M: Into[String] { ... }
+/// impl[T, M] ToString for #(T, M) where T: Into[String], M = dyn Into[String] { ... }
 ///                                       ^^^^^^^^^^^^^^^ where clause item #1
-///                                                        ^^^^^^^^^^^^^^^ where clause item #2
+///                                                        ^^^^^^^^^^^^^^^^^^^^ where clause item #2
 /// ```
 #[derive(Debug, PartialEq, Clone)]
-pub struct WhereClauseItem {
-    pub r#type: TypeAst,
-    pub constraint: TypeAst,
+pub enum WhereClauseItem {
+    Eq { left: TypeAst, right: TypeAst },
+    Satisfies { left: TypeAst, right: TypeBounds },
 }
 
 /// Represents an expression in an untyped AST.
@@ -562,7 +611,7 @@ pub enum UntypedExpression {
     GenericArguments {
         span: Span,
         left: Box<Self>,
-        arguments: Vec<GenericArgument>,
+        generic_arguments: Vec<GenericArgument>,
     },
 
     /// Tuple expression.
@@ -933,8 +982,8 @@ pub enum Item {
     Enum {
         visibility: Visibility,
         name: IdentifierAst,
-        generic_parameters: Vec<GenericParameter>,
-        where_clause: WhereClause,
+        generic_parameters: Option<Vec<GenericParameter>>,
+        where_clause: Option<WhereClause>,
         items: Vec<Documented<EnumItem>>,
     },
 
@@ -964,8 +1013,8 @@ pub enum Item {
     Trait {
         visibility: Visibility,
         name: IdentifierAst,
-        generic_parameters: Vec<GenericParameter>,
-        where_clause: WhereClause,
+        generic_parameters: Option<Vec<GenericParameter>>,
+        where_clause: Option<WhereClause>,
         items: Vec<Documented<TraitItem>>,
     },
 
@@ -982,10 +1031,10 @@ pub enum Item {
     /// ```
     Impl {
         visibility: Visibility,
-        generic_parameters: Vec<GenericParameter>,
+        generic_parameters: Option<Vec<GenericParameter>>,
         r#type: TypeAst,
         r#trait: Option<TypeAst>,
-        where_clause: WhereClause,
+        where_clause: Option<WhereClause>,
         items: Vec<Documented<TraitItem>>,
     },
 
@@ -1001,8 +1050,8 @@ pub enum Item {
     Struct {
         visibility: Visibility,
         name: IdentifierAst,
-        generic_parameters: Vec<GenericParameter>,
-        where_clause: WhereClause,
+        generic_parameters: Option<Vec<GenericParameter>>,
+        where_clause: Option<WhereClause>,
         fields: Vec<Documented<StructField>>,
     },
 
@@ -1014,8 +1063,8 @@ pub enum Item {
     TupleLikeStruct {
         visibility: Visibility,
         name: IdentifierAst,
-        generic_parameters: Vec<GenericParameter>,
-        where_clause: WhereClause,
+        generic_parameters: Option<Vec<GenericParameter>>,
+        where_clause: Option<WhereClause>,
         fields: Vec<TupleField>,
     },
 
@@ -1125,10 +1174,10 @@ pub enum TraitItem {
 pub struct Function {
     pub visibility: Visibility,
     pub name: IdentifierAst,
-    pub generic_parameters: Vec<GenericParameter>,
+    pub generic_parameters: Option<Vec<GenericParameter>>,
     pub parameters: Vec<FunctionParameter>,
     pub return_type: Option<TypeAst>,
-    pub where_clause: WhereClause,
+    pub where_clause: Option<WhereClause>,
     pub body: Option<StatementsBlock>,
 }
 
