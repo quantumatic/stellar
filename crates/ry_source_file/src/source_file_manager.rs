@@ -16,6 +16,9 @@ impl Default for SourceFileManager<'_> {
     }
 }
 
+/// An ID used to refer to files in [`SourceFileManager`].
+pub type FileID = usize;
+
 impl<'a> SourceFileManager<'a> {
     /// Creates a new empty [`SourceFileManager`].
     #[inline]
@@ -33,7 +36,7 @@ impl<'a> SourceFileManager<'a> {
     /// Returns the file with the given ID.
     #[inline]
     #[must_use]
-    pub fn get_file_by_id(&self, file_id: usize) -> Option<&'a SourceFile<'a>> {
+    pub fn get_file_by_id(&self, file_id: FileID) -> Option<&'a SourceFile<'a>> {
         self.files.get(file_id - 1).copied()
     }
 
@@ -43,7 +46,7 @@ impl<'a> SourceFileManager<'a> {
     /// Calling this method with an out-of-bounds index is undefined behavior even if the resulting reference is not used.
     #[inline]
     #[must_use]
-    pub unsafe fn get_file_by_id_unchecked(&self, file_id: usize) -> &SourceFile<'a> {
+    pub unsafe fn get_file_by_id_unchecked(&self, file_id: FileID) -> &SourceFile<'a> {
         unsafe { self.files.get_unchecked(file_id - 1) }
     }
 
@@ -124,29 +127,29 @@ impl<'a> SourceFileManager<'a> {
 }
 
 impl<'a> Files<'a> for SourceFileManager<'a> {
-    type FileId = usize;
+    type FileId = FileID;
     type Name = &'a str;
     type Source = &'a str;
 
-    fn name(&self, file_id: usize) -> Result<Self::Name, Error> {
+    fn name(&self, file_id: FileID) -> Result<Self::Name, Error> {
         self.get_file_by_id(file_id)
             .map(SourceFile::path_str)
             .ok_or(Error::FileMissing)
     }
 
-    fn source(&self, file_id: usize) -> Result<Self::Source, Error> {
+    fn source(&self, file_id: FileID) -> Result<Self::Source, Error> {
         self.get_file_by_id(file_id)
             .map(SourceFile::source)
             .ok_or(Error::FileMissing)
     }
 
-    fn line_index(&self, file_id: usize, byte_index: usize) -> Result<usize, Error> {
+    fn line_index(&self, file_id: FileID, byte_index: usize) -> Result<usize, Error> {
         self.get_file_by_id(file_id)
             .ok_or(Error::FileMissing)?
             .line_index((), byte_index)
     }
 
-    fn line_range(&self, file_id: usize, line_index: usize) -> Result<Range<usize>, Error> {
+    fn line_range(&self, file_id: FileID, line_index: usize) -> Result<Range<usize>, Error> {
         self.get_file_by_id(file_id)
             .ok_or(Error::FileMissing)?
             .line_range((), line_index)

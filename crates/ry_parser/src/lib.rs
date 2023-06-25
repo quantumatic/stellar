@@ -73,16 +73,17 @@ mod pattern;
 mod statement;
 mod r#type;
 
-use codespan_reporting::diagnostic::Diagnostic;
 use ry_ast::{
     token::{LexError, RawToken, Token},
     Docstring, IdentifierAst,
 };
-use ry_diagnostics::{expected, parser::ParseDiagnostic, Report};
+use ry_diagnostics::{expected, parser::ParseDiagnostic, BuildDiagnostic, CompilerDiagnostic};
 use ry_interner::Interner;
 use ry_lexer::Lexer;
-use ry_source_file::source_file::SourceFile;
-use ry_source_file::span::{Span, SpanIndex};
+use ry_source_file::{
+    source_file::SourceFile,
+    span::{Span, SpanIndex},
+};
 
 pub use module::parse_module;
 
@@ -97,7 +98,7 @@ struct TokenIterator<'a> {
     lexer: Lexer<'a>,
     current_token: Token,
     next_token: Token,
-    diagnostics: &'a mut Vec<Diagnostic<usize>>,
+    diagnostics: &'a mut Vec<CompilerDiagnostic>,
 }
 
 /// Represents AST node that can be parsed.
@@ -145,7 +146,7 @@ impl<'a> TokenIterator<'a> {
         file_id: usize,
         source_file: &'a SourceFile<'a>,
         interner: &'a mut Interner,
-        diagnostics: &'a mut Vec<Diagnostic<usize>>,
+        diagnostics: &'a mut Vec<CompilerDiagnostic>,
     ) -> Self {
         let mut lexer = Lexer::new(file_id, source_file.source(), interner);
 

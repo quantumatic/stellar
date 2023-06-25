@@ -3,7 +3,7 @@ use ry_ast::{
     token::RawToken, GenericArgument, GenericParameter, Path, Token, TypeAst, TypeBounds, TypePath,
     TypePathSegment, WhereClause, WhereClauseItem,
 };
-use ry_diagnostics::{expected, parser::ParseDiagnostic, Report};
+use ry_diagnostics::{expected, parser::ParseDiagnostic, BuildDiagnostic};
 use ry_source_file::span::Span;
 
 pub(crate) struct TypeBoundsParser;

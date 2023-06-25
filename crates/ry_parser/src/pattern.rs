@@ -1,6 +1,6 @@
 use crate::{literal::LiteralParser, macros::parse_list, path::PathParser, Parse, TokenIterator};
 use ry_ast::{token::RawToken, Path, Pattern, StructFieldPattern, Token};
-use ry_diagnostics::{expected, parser::ParseDiagnostic, Report};
+use ry_diagnostics::{expected, parser::ParseDiagnostic, BuildDiagnostic};
 use ry_source_file::span::Span;
 
 pub(crate) struct PatternParser;

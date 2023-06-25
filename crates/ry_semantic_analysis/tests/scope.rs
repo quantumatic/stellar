@@ -3,7 +3,7 @@ use ry_interner::{
     symbols::{STRING, UINT8},
     Interner,
 };
-use ry_semantic_analysis::scope::{Scope, SymbolData};
+use ry_semantic_analysis::scope::{LocalScope, SymbolData};
 use ry_source_file::span::DUMMY_SPAN;
 use std::sync::Arc;
 
@@ -13,8 +13,8 @@ fn single_scope_lookup() {
     let a = interner.get_or_intern("a");
     let b = interner.get_or_intern("b");
 
-    let mut scope = Scope::new(None);
-    scope.add(
+    let mut scope = LocalScope::new(None);
+    scope.add_symbol(
         a,
         SymbolData::new(DUMMY_SPAN, Arc::new(primitive_constructor(UINT8))),
     );
@@ -45,14 +45,14 @@ fn inherited_scope_lookup() {
     let a = interner.get_or_intern("a");
     let b = interner.get_or_intern("b");
 
-    let mut parent_scope = Scope::new(None);
-    parent_scope.add(
+    let mut parent_scope = LocalScope::new(None);
+    parent_scope.add_symbol(
         a,
         SymbolData::new(DUMMY_SPAN, Arc::new(primitive_constructor(STRING))),
     );
 
-    let mut scope = Scope::new(Some(&parent_scope));
-    scope.add(
+    let mut scope = LocalScope::new(Some(&parent_scope));
+    scope.add_symbol(
         b,
         SymbolData::new(DUMMY_SPAN, Arc::new(primitive_constructor(UINT8))),
     );

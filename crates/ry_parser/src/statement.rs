@@ -2,7 +2,7 @@ use crate::{
     expression::ExpressionParser, pattern::PatternParser, r#type::TypeParser, Parse, TokenIterator,
 };
 use ry_ast::{token::RawToken, Statement, StatementsBlock, Token};
-use ry_diagnostics::{parser::ParseDiagnostic, Report};
+use ry_diagnostics::{parser::ParseDiagnostic, BuildDiagnostic};
 use ry_source_file::span::Span;
 
 struct StatementParser;

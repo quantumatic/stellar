@@ -12,7 +12,7 @@ use ry_ast::{
     PostfixOperator, PrefixOperator, RawBinaryOperator, RawPostfixOperator, RawPrefixOperator,
     StructExpressionItem, Token, UntypedExpression,
 };
-use ry_diagnostics::{expected, parser::ParseDiagnostic, Report};
+use ry_diagnostics::{expected, parser::ParseDiagnostic, BuildDiagnostic};
 use ry_source_file::span::Span;
 
 #[derive(Default)]

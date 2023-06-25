@@ -1,5 +1,6 @@
-//! Error and result implementation for the iterator.
-use crate::Report;
+//! Defines diagnostics for parser.
+
+use crate::{BuildDiagnostic, CompilerDiagnostic};
 use codespan_reporting::diagnostic::Diagnostic;
 use ry_ast::{
     token::{LexError, Token},
@@ -129,8 +130,8 @@ impl Display for Expected {
     }
 }
 
-impl Report for ParseDiagnostic {
-    fn build(&self) -> Diagnostic<usize> {
+impl BuildDiagnostic for ParseDiagnostic {
+    fn build(&self) -> CompilerDiagnostic {
         match self {
             Self::LexError(error) =>
                 Diagnostic::error()
@@ -150,6 +151,7 @@ impl Report for ParseDiagnostic {
             Self::IntegerOverflowError { span } =>
                 Diagnostic::error()
                     .with_message("unexpected integer overflow".to_owned())
+                    .with_code("E002")
                     .with_labels(vec![span.to_primary_label()
                         .with_message("error appeared when parsing this integer")])
                     .with_notes(vec![
@@ -159,6 +161,7 @@ impl Report for ParseDiagnostic {
             Self::FloatOverflowError { span } =>
                 Diagnostic::error()
                     .with_message("unexpected float overflow".to_owned())
+                    .with_code("E003")
                     .with_labels(vec![span.to_primary_label()
                         .with_message("error appeared when parsing this float literal")])
                         .with_notes(vec![
@@ -168,6 +171,7 @@ impl Report for ParseDiagnostic {
             Self::NoSemicolonAfterExpressionError { expression_span, span } =>
                 Diagnostic::error()
                     .with_message("it seems that you forgot to put `;` after the expression")
+                    .with_code("E004")
                     .with_labels(vec![
                         span.to_secondary_label()
                             .with_message("add `;` here"),
@@ -177,6 +181,7 @@ impl Report for ParseDiagnostic {
             Self::NoSemicolonAfterStatementError { statement_span, span } =>
                 Diagnostic::error()
                     .with_message("it seems that you forgot to put `;` after the statement")
+                        .with_code("E004")
                     .with_labels(vec![
                         span.to_secondary_label()
                             .with_message("add `;` here"),
@@ -186,6 +191,7 @@ impl Report for ParseDiagnostic {
             Self::EOFInsteadOfCloseBraceForStatementsBlockError { statements_block_start_span, span } =>
                 Diagnostic::error()
                     .with_message("unexpected end of file".to_owned())
+                    .with_code("E001")
                     .with_labels(vec![
                         statements_block_start_span.to_primary_label()
                             .with_message("happened when parsing this statements block"),
@@ -205,6 +211,7 @@ impl Report for ParseDiagnostic {
             Self::EOFInsteadOfCloseBraceForItemError { item_kind, item_name_span, span } =>
                 Diagnostic::error()
                     .with_message("unexpected end of file".to_owned())
+                    .with_code("E001")
                     .with_labels(vec![
                         item_name_span.to_primary_label()
                             .with_message(format!("happened when parsing this {}", item_kind.to_string())),

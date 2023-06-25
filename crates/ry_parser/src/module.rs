@@ -1,6 +1,6 @@
 use crate::{items::ItemsParser, Parse, TokenIterator};
-use codespan_reporting::diagnostic::Diagnostic;
 use ry_ast::Module;
+use ry_diagnostics::CompilerDiagnostic;
 use ry_interner::Interner;
 use ry_source_file::source_file::SourceFile;
 
@@ -9,7 +9,7 @@ pub fn parse_module<'a>(
     file_id: usize,
     source_file: &'a SourceFile<'a>,
     interner: &'a mut Interner,
-    diagnostics: &'a mut Vec<Diagnostic<usize>>,
+    diagnostics: &'a mut Vec<CompilerDiagnostic>,
 ) -> Module<'a> {
     parse_module_using(&mut TokenIterator::new(
         file_id,

@@ -67,9 +67,13 @@ use codespan_reporting::{
         Config,
     },
 };
-use ry_source_file::{source_file::SourceFile, source_file_manager::SourceFileManager};
+use ry_source_file::{
+    source_file::SourceFile,
+    source_file_manager::{FileID, SourceFileManager},
+};
 
 pub mod parser;
+pub mod scope;
 
 /// Stores basic `codespan_reporting` structs for reporting diagnostics.
 #[derive(Debug)]
@@ -84,6 +88,9 @@ pub struct DiagnosticsEmitter<'a> {
     pub file_manager: &'a mut SourceFileManager<'a>,
 }
 
+/// A diagnostic.
+pub type CompilerDiagnostic = Diagnostic<FileID>;
+
 impl<'a> DiagnosticsEmitter<'a> {
     /// Emit the error not related to a conrete file.
     pub fn emit_global_error(&self, msg: &str) {
@@ -97,7 +104,7 @@ impl<'a> DiagnosticsEmitter<'a> {
     }
 
     /// Emit a diagnostic.
-    pub fn emit_diagnostic(&self, diagnostic: &Diagnostic<usize>) {
+    pub fn emit_diagnostic(&self, diagnostic: &CompilerDiagnostic) {
         term::emit(
             &mut self.writer.lock(),
             &self.config,
@@ -108,7 +115,7 @@ impl<'a> DiagnosticsEmitter<'a> {
     }
 
     /// Emit a list of diagnostic.
-    pub fn emit_diagnostics(&self, diagnostics: &[Diagnostic<usize>]) {
+    pub fn emit_diagnostics(&self, diagnostics: &[CompilerDiagnostic]) {
         for diagnostic in diagnostics {
             self.emit_diagnostic(diagnostic);
         }
@@ -178,7 +185,7 @@ impl<'a> DiagnosticsEmitterBuilder<'a> {
 }
 
 /// Anything that can be reported using [`Reporter`].
-pub trait Report {
-    /// Convert [`self`] into [`Diagnostic<usize>`].
-    fn build(&self) -> Diagnostic<usize>;
+pub trait BuildDiagnostic {
+    /// Convert [`self`] into [`CompilerDiagnostic`].
+    fn build(&self) -> CompilerDiagnostic;
 }

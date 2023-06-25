@@ -11,7 +11,7 @@ use ry_ast::{
     Item, ItemKind, Items, JustFunctionParameter, SelfParameter, StructField, Token, TraitItem,
     TupleField, TypeAlias, Visibility, WithDocComment,
 };
-use ry_diagnostics::{expected, parser::ParseDiagnostic, Report};
+use ry_diagnostics::{expected, parser::ParseDiagnostic, BuildDiagnostic};
 use ry_source_file::span::Span;
 
 struct UseItemParser {
