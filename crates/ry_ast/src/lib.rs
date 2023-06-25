@@ -50,6 +50,7 @@ use std::path;
 use token::RawToken;
 
 pub mod precedence;
+pub mod serialize;
 pub mod token;
 pub mod typed;
 

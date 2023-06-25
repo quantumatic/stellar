@@ -12,8 +12,14 @@ pub struct SourceFile<'a> {
     /// The path of the source file.
     path: &'a Path,
 
+    /// The path of the source file as a string slice.
+    path_str: &'a str,
+
     /// The source content of the file.
     source: &'a str,
+
+    /// The length of the source content (in bytes).
+    source_len: usize,
 
     /// The array of line starting byte indices in the [`SourceFile::source`].
     line_starts: Vec<usize>,
@@ -26,7 +32,9 @@ impl<'a> SourceFile<'a> {
     pub fn new(path: &'a Path, source: &'a str) -> Self {
         Self {
             path,
+            path_str: path.to_str().expect("Invalid UTF-8 data in path"),
             source,
+            source_len: source.len(),
             line_starts: std::iter::once(0)
                 .chain(source.match_indices('\n').map(|(i, _)| i + 1))
                 .collect(),
@@ -43,8 +51,8 @@ impl<'a> SourceFile<'a> {
     /// Returns the path of the source file as a string slice.
     #[inline]
     #[must_use]
-    pub fn path_str(&self) -> &'a str {
-        self.path.to_str().expect("Invalid UTF-8 data in path")
+    pub const fn path_str(&self) -> &'a str {
+        self.path_str
     }
 
     /// Returns the source content of the file.
@@ -52,6 +60,13 @@ impl<'a> SourceFile<'a> {
     #[must_use]
     pub const fn source(&self) -> &'a str {
         self.source
+    }
+
+    /// Returns the length of the source content (in bytes).
+    #[inline]
+    #[must_use]
+    pub const fn source_len(&self) -> usize {
+        self.source_len
     }
 
     /// Returns the array of line starting byte indices in the [`SourceFile::source`].

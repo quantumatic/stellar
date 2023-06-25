@@ -121,18 +121,24 @@ pub struct Lexer<'a> {
     file_id: usize,
     /// Content of the file being scanned.
     source: &'a str,
+
     /// Current character.
     current: char,
     /// Next character.
     next: char,
+
     /// Iterator through source text characters.
     chars: Chars<'a>,
+
     /// Location of the current character being processed.
     location: usize,
+
     /// Identifier interner.
     interner: &'a mut Interner,
+
     /// Symbol corresponding to an identifier being processed early on.
     identifier: Symbol,
+
     /// Buffer for storing scanned characters (after processing escape sequences).
     char_buffer: char,
     /// Buffer for storing scanned strings (after processing escape sequences).
