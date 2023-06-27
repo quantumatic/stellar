@@ -92,7 +92,6 @@ impl Parse for PatternExceptOrParser {
                             iterator.file_id,
                         ),
                         identifier: *identifier,
-                        ty: None,
                         pattern,
                     })
                 } else {
@@ -246,7 +245,7 @@ impl Parse for TupleLikePatternParser {
                 iterator.current_token.span.end(),
                 iterator.file_id,
             ),
-            r#enum: self.r#enum,
+            path: self.r#enum,
             inner_patterns,
         })
     }

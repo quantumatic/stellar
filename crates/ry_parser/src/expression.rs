@@ -300,7 +300,7 @@ impl Parse for PropertyAccessExpressionParser {
     fn parse_using(self, iterator: &mut TokenIterator<'_>) -> Self::Output {
         iterator.advance(); // `.`
 
-        Some(UntypedExpression::Property {
+        Some(UntypedExpression::FieldAccess {
             span: Span::new(
                 self.start,
                 iterator.current_token.span.end(),

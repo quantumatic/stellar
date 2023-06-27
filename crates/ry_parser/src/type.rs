@@ -43,7 +43,7 @@ impl Parse for TypeBoundsParser {
             bounds.push(TypePathParser.parse_using(iterator)?);
         }
 
-        Some(TypeBounds { bounds })
+        Some(bounds)
     }
 }
 
@@ -337,7 +337,7 @@ impl OptionalParser for WhereClauseParser {
                     Token![:] => {
                         iterator.advance();
 
-                        Some(WhereClauseItem::Satisfies { left, right: TypeBoundsParser.parse_using(iterator)? })
+                        Some(WhereClauseItem::Satisfies { ty: left, bounds: TypeBoundsParser.parse_using(iterator)? })
                     },
                     Token![=] => {
                         iterator.advance();

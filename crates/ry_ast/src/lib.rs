@@ -151,7 +151,6 @@ pub enum Pattern {
     Identifier {
         span: Span,
         identifier: IdentifierAst,
-        ty: Option<TypeAst>, // variable can already be initialized before
         pattern: Option<Box<Self>>,
     },
 
@@ -187,7 +186,7 @@ pub enum Pattern {
     /// ```
     TupleLike {
         span: Span,
-        r#enum: Path,
+        path: Path,
         inner_patterns: Vec<Self>,
     },
 
@@ -357,10 +356,7 @@ pub enum StructFieldPattern {
 ///                            ^^^^^^^^^^^^^^^
 /// }
 /// ```
-#[derive(Debug, PartialEq, Clone)]
-pub struct TypeBounds {
-    pub bounds: Vec<TypePath>,
-}
+pub type TypeBounds = Vec<TypePath>;
 
 /// An AST node used to represent types in an untyped AST.
 ///
@@ -432,6 +428,21 @@ pub enum TypeAst {
     },
 }
 
+impl TypeAst {
+    #[inline]
+    #[must_use]
+    pub const fn span(&self) -> Span {
+        match self {
+            Self::Function { span, .. }
+            | Self::Parenthesized { span, .. }
+            | Self::Path(TypePath { span, .. })
+            | Self::TraitObject { span, .. }
+            | Self::Tuple { span, .. }
+            | Self::WithQualifiedPath { span, .. } => *span,
+        }
+    }
+}
+
 /// A generic parameter.
 ///
 /// # Example
@@ -478,7 +489,7 @@ pub struct TypeAlias {
 #[derive(Debug, PartialEq, Clone)]
 pub enum WhereClauseItem {
     Eq { left: TypeAst, right: TypeAst },
-    Satisfies { left: TypeAst, right: TypeBounds },
+    Satisfies { ty: TypeAst, bounds: TypeBounds },
 }
 
 /// Represents an expression in an untyped AST.
@@ -565,7 +576,7 @@ pub enum UntypedExpression {
     /// ```txt
     /// x.y
     /// ```
-    Property {
+    FieldAccess {
         span: Span,
         left: Box<Self>,
         right: IdentifierAst,
@@ -701,7 +712,7 @@ impl UntypedExpression {
             | Self::Identifier(IdentifierAst { span, .. })
             | Self::Parenthesized { span, .. }
             | Self::If { span, .. }
-            | Self::Property { span, .. }
+            | Self::FieldAccess { span, .. }
             | Self::Prefix { span, .. }
             | Self::Postfix { span, .. }
             | Self::While { span, .. }
@@ -789,6 +800,40 @@ impl From<RawToken> for RawBinaryOperator {
     }
 }
 
+impl From<RawBinaryOperator> for RawToken {
+    fn from(operator: RawBinaryOperator) -> Self {
+        match operator {
+            RawBinaryOperator::PlusEq => Token![+=],
+            RawBinaryOperator::Plus => Token![+],
+            RawBinaryOperator::MinusEq => Token![-=],
+            RawBinaryOperator::Minus => Token![-],
+            RawBinaryOperator::StarEq => Token![*=],
+            RawBinaryOperator::StarStar => Token![**],
+            RawBinaryOperator::Star => Token![*],
+            RawBinaryOperator::SlashEq => Token![/=],
+            RawBinaryOperator::Slash => Token![/],
+            RawBinaryOperator::NotEq => Token![!=],
+            RawBinaryOperator::Bang => Token![!],
+            RawBinaryOperator::RightShift => Token![>>],
+            RawBinaryOperator::LeftShift => Token![<<],
+            RawBinaryOperator::LessEq => Token![<=],
+            RawBinaryOperator::Less => Token![<],
+            RawBinaryOperator::GreaterEq => Token![>=],
+            RawBinaryOperator::Greater => Token![>],
+            RawBinaryOperator::EqEq => Token![==],
+            RawBinaryOperator::Eq => Token![=],
+            RawBinaryOperator::Or => Token![|],
+            RawBinaryOperator::And => Token![&],
+            RawBinaryOperator::OrOr => Token![||],
+            RawBinaryOperator::AndAnd => Token![&&],
+            RawBinaryOperator::OrEq => Token![|=],
+            RawBinaryOperator::AndEq => Token![&=],
+            RawBinaryOperator::Percent => Token![%],
+            RawBinaryOperator::PercentEq => Token![%=],
+        }
+    }
+}
+
 /// Represents a prefix operator with a specific span.
 #[derive(Debug, PartialEq, Copy, Clone, Eq, Hash)]
 pub struct PrefixOperator {
@@ -821,6 +866,19 @@ impl From<RawToken> for RawPrefixOperator {
     }
 }
 
+impl From<RawPrefixOperator> for RawToken {
+    fn from(operator: RawPrefixOperator) -> Self {
+        match operator {
+            RawPrefixOperator::Bang => Token![!],
+            RawPrefixOperator::Not => Token![~],
+            RawPrefixOperator::PlusPlus => Token![++],
+            RawPrefixOperator::MinusMinus => Token![--],
+            RawPrefixOperator::Plus => Token![+],
+            RawPrefixOperator::Minus => Token![-],
+        }
+    }
+}
+
 /// Represents a postfix operator with a specific span.
 #[derive(Debug, PartialEq, Copy, Clone, Eq, Hash)]
 pub struct PostfixOperator {
@@ -843,6 +901,16 @@ impl From<RawToken> for RawPostfixOperator {
             Token![++] => Self::PlusPlus,
             Token![--] => Self::MinusMinus,
             _ => unreachable!(),
+        }
+    }
+}
+
+impl From<RawPostfixOperator> for RawToken {
+    fn from(operator: RawPostfixOperator) -> Self {
+        match operator {
+            RawPostfixOperator::QuestionMark => Token![?],
+            RawPostfixOperator::PlusPlus => Token![++],
+            RawPostfixOperator::MinusMinus => Token![--],
         }
     }
 }
@@ -1227,7 +1295,7 @@ pub struct SelfParameter {
 #[derive(Debug, PartialEq, Clone)]
 pub struct JustFunctionParameter {
     pub name: IdentifierAst,
-    pub r#type: TypeAst,
+    pub ty: TypeAst,
     pub default_value: Option<UntypedExpression>,
 }
 

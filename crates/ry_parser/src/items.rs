@@ -201,7 +201,7 @@ impl Parse for FunctionParameterParser {
 
         iterator.consume(Token![:], "function parameter name")?;
 
-        let r#type = TypeParser.parse_using(iterator)?;
+        let ty = TypeParser.parse_using(iterator)?;
 
         let default_value = if iterator.next_token.raw == Token![=] {
             iterator.advance();
@@ -212,7 +212,7 @@ impl Parse for FunctionParameterParser {
 
         Some(JustFunctionParameter {
             name,
-            r#type,
+            ty,
             default_value,
         })
     }
