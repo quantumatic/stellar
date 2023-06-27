@@ -852,13 +852,13 @@ impl<'a> Serialize<'a> for EnumItem {
                 serializer.write_node_name("STRUCT_ENUM_ITEM");
 
                 serializer.serialize_key_value_pair("NAME", name);
-                serializer.serialize_key_list_value_pair("FIELDS", &fields);
+                serializer.serialize_key_list_value_pair("FIELDS", fields);
             }
             Self::Tuple { name, fields } => {
                 serializer.write_node_name("TUPLE_ENUM_ITEM");
 
                 serializer.serialize_key_value_pair("NAME", name);
-                serializer.serialize_key_list_value_pair("FIELDS", &fields);
+                serializer.serialize_key_list_value_pair("FIELDS", fields);
             }
         }
     }
@@ -913,7 +913,7 @@ impl<'a> Serialize<'a> for Item {
                 if let Some(where_clause) = where_clause {
                     serializer.serialize_key_list_value_pair("WHERE_CLAUSE", where_clause);
                 }
-                serializer.serialize_key_list_value_pair("ITEMS", &items);
+                serializer.serialize_key_list_value_pair("ITEMS", items);
             }
             Self::Function(function) => function.serialize(serializer),
             Self::Impl {
@@ -941,7 +941,7 @@ impl<'a> Serialize<'a> for Item {
                     serializer.serialize_key_list_value_pair("WHERE_CLAUSE", where_clause);
                 }
 
-                serializer.serialize_key_list_value_pair("ITEMS", &items);
+                serializer.serialize_key_list_value_pair("ITEMS", items);
             }
             Self::Struct {
                 visibility,
@@ -961,7 +961,7 @@ impl<'a> Serialize<'a> for Item {
                     serializer.serialize_key_list_value_pair("WHERE_CLAUSE", where_clause);
                 }
 
-                serializer.serialize_key_list_value_pair("FIELDS", &fields);
+                serializer.serialize_key_list_value_pair("FIELDS", fields);
             }
             Self::Trait {
                 visibility,
@@ -981,7 +981,7 @@ impl<'a> Serialize<'a> for Item {
                     serializer.serialize_key_list_value_pair("WHERE_CLAUSE", where_clause);
                 }
 
-                serializer.serialize_key_list_value_pair("ITEMS", &items);
+                serializer.serialize_key_list_value_pair("ITEMS", items);
             }
             Self::TupleLikeStruct {
                 visibility,

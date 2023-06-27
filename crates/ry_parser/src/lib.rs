@@ -92,17 +92,17 @@ mod macros;
 
 /// Represents token iterator.
 #[derive(Debug)]
-struct TokenIterator<'a> {
+pub struct TokenIterator<'a> {
     source_file: &'a SourceFile<'a>,
     file_id: usize,
     lexer: Lexer<'a>,
     current_token: Token,
     next_token: Token,
-    diagnostics: &'a mut Vec<CompilerDiagnostic>,
+    diagnostics: Vec<CompilerDiagnostic>,
 }
 
 /// Represents AST node that can be parsed.
-pub(crate) trait Parse
+pub trait Parse
 where
     Self: Sized,
 {
@@ -123,7 +123,7 @@ where
 /// in the syntax definition of every item in the Ry programming language.
 /// To avoid copying the behaviour described below, this trait must
 /// be implemented.
-pub(crate) trait OptionalParser
+pub trait OptionalParser
 where
     Self: Sized,
 {
@@ -142,28 +142,23 @@ impl<'a> TokenIterator<'a> {
     /// Note: [`TokenIterator::current`] and [`TokenIterator::next`] are
     /// the same at an initial state.
     #[must_use]
-    fn new(
-        file_id: usize,
-        source_file: &'a SourceFile<'a>,
-        interner: &'a mut Interner,
-        diagnostics: &'a mut Vec<CompilerDiagnostic>,
-    ) -> Self {
-        let mut lexer = Lexer::new(file_id, source_file.source(), interner);
+    pub fn new(file_id: usize, source_file: &'a SourceFile<'a>) -> Self {
+        let mut lexer = Lexer::new(file_id, source_file.source());
 
         let current = lexer.next_no_comments();
         let next = current;
 
-        let mut lexer = Self {
+        let mut iterator = Self {
             source_file,
             file_id,
             lexer,
             current_token: current,
             next_token: next,
-            diagnostics,
+            diagnostics: vec![],
         };
-        lexer.check_next_token();
+        iterator.check_next_token();
 
-        lexer
+        iterator
     }
 
     /// Adds diagnostic if the next token has lex error in itself.
@@ -191,6 +186,20 @@ impl<'a> TokenIterator<'a> {
     #[must_use]
     fn resolve_current(&self) -> &str {
         self.resolve_span(self.current_token.span)
+    }
+
+    /// Returns a lexer instance used for parsing.
+    #[inline]
+    #[must_use]
+    pub const fn lexer(&self) -> &Lexer<'a> {
+        &self.lexer
+    }
+
+    /// Returns an interner used for parsing.
+    #[inline]
+    #[must_use]
+    pub const fn interner(&self) -> &Interner {
+        self.lexer.interner()
     }
 
     /// Advances the iter to the next token (skips comment tokens).

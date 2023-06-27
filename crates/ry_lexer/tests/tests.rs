@@ -6,8 +6,7 @@ mod tests {
         ($name:ident, $source:expr, $expected:pat) => {
             #[test]
             fn $name() {
-                let mut interner = ry_interner::Interner::default();
-                let mut lexer = ry_lexer::Lexer::new(0, $source, &mut interner);
+                let mut lexer = ry_lexer::Lexer::new(0, $source);
                 assert!(matches!(lexer.next_token().raw, $expected));
             }
         };

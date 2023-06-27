@@ -4,14 +4,13 @@ macro_rules! test {
         #[test]
         #[allow(unused_qualifications)]
         fn $name() {
-            let mut diagnostics = vec![];
-            let mut string_interner = ry_interner::Interner::default();
             let source_file = ry_source_file::source_file::SourceFile::new(
                 std::path::Path::new("test.ry"),
                 $source,
             );
 
-            ry_parser::parse_module(0, &source_file, &mut string_interner, &mut diagnostics);
+            let mut iterator = ry_parser::TokenIterator::new(0, &source_file);
+            let (_, diagnostics, _) = ry_parser::parse_module(&mut iterator);
 
             assert!(diagnostics.is_empty());
         }

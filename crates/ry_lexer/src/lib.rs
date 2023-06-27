@@ -134,7 +134,7 @@ pub struct Lexer<'a> {
     location: usize,
 
     /// Identifier interner.
-    interner: &'a mut Interner,
+    interner: Interner,
 
     /// Symbol corresponding to an identifier being processed early on.
     identifier: Symbol,
@@ -148,7 +148,7 @@ pub struct Lexer<'a> {
 impl<'a> Lexer<'a> {
     /// Creates a new [`Lexer`].
     #[must_use]
-    pub fn new(file_id: usize, source: &'a str, interner: &'a mut Interner) -> Self {
+    pub fn new(file_id: usize, source: &'a str) -> Self {
         let mut chars = source.chars();
 
         let current = chars.next().unwrap_or('\0');
@@ -160,7 +160,7 @@ impl<'a> Lexer<'a> {
             current,
             next,
             chars,
-            interner,
+            interner: Interner::default(),
             location: 0,
             identifier: 0,
             char_buffer: '\0',
@@ -201,6 +201,13 @@ impl<'a> Lexer<'a> {
     #[inline]
     const fn eof(&self) -> bool {
         self.current == '\0'
+    }
+
+    /// Returns an identifier interner used in the lexer.    
+    #[inline]
+    #[must_use]
+    pub const fn interner(&self) -> &Interner {
+        &self.interner
     }
 
     /// Skips whitespace characters. See [`Lexer::is_whitespace()`] for more details.
