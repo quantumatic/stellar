@@ -14,11 +14,11 @@ struct GroupedPatternParser;
 struct TuplePatternParser;
 
 struct StructPatternParser {
-    pub(crate) r#struct: Path,
+    pub(crate) path: Path,
 }
 
 struct TupleLikePatternParser {
-    pub(crate) r#enum: Path,
+    pub(crate) path: Path,
 }
 
 impl Parse for PatternParser {
@@ -61,10 +61,10 @@ impl Parse for PatternExceptOrParser {
 
                 match iterator.next_token.raw {
                     Token!['{'] => {
-                        return StructPatternParser { r#struct: path }.parse_using(iterator);
+                        return StructPatternParser { path }.parse_using(iterator);
                     }
                     Token!['('] => {
-                        return TupleLikePatternParser { r#enum: path }.parse_using(iterator);
+                        return TupleLikePatternParser { path }.parse_using(iterator);
                     }
                     _ => {}
                 };
@@ -175,11 +175,11 @@ impl Parse for StructPatternParser {
 
         Some(Pattern::Struct {
             span: Span::new(
-                self.r#struct.span.start(),
+                self.path.span.start(),
                 iterator.current_token.span.end(),
                 iterator.file_id,
             ),
-            r#struct: self.r#struct,
+            path: self.path,
             fields,
         })
     }
@@ -241,11 +241,11 @@ impl Parse for TupleLikePatternParser {
 
         Some(Pattern::TupleLike {
             span: Span::new(
-                self.r#enum.span.start(),
+                self.path.span.start(),
                 iterator.current_token.span.end(),
                 iterator.file_id,
             ),
-            path: self.r#enum,
+            path: self.path,
             inner_patterns,
         })
     }

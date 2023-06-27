@@ -22,7 +22,7 @@ fn check_project_name(name: &str) -> Option<usize> {
     None
 }
 
-pub(crate) fn create_new_project_folder(project_name: &str) {
+pub fn command(project_name: &str) {
     if let Some(e) = check_project_name(project_name) {
         log_with_prefix("error", ": cannot create project with a given name");
         log_with_prefix(

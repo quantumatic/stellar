@@ -44,21 +44,14 @@
 )]
 #![allow(clippy::match_single_binding, clippy::inconsistent_struct_constructor)]
 
-use crate::prefix::log_with_prefix;
-use clap::{arg, Parser, Subcommand};
-use new_project::create_new_project_folder;
-use prefix::{create_unique_file, log_with_left_padded_prefix};
-use ry_diagnostics::DiagnosticsEmitterBuilder;
-use ry_interner::Interner;
-use ry_lexer::Lexer;
-use ry_parser::parse_module;
-use ry_source_file::{source_file::SourceFile, source_file_manager::SourceFileManager};
-use std::{fs, io::Write, path::Path, process::exit, time::Instant};
+use clap::{Parser, Subcommand};
 
-mod new_project;
+mod lex;
+mod new;
+mod parse;
 mod prefix;
 
-#[derive(clap::Parser)]
+#[derive(Parser)]
 #[command(name = "ry")]
 #[command(about = "Ry programming language compiler cli", long_about = None)]
 struct Cli {
@@ -82,84 +75,16 @@ enum Commands {
 }
 
 fn main() {
-    let mut file_manager = SourceFileManager::new();
-    let mut diagnostics_emitter = DiagnosticsEmitterBuilder::new(&mut file_manager).build();
-
-    let mut interner = Interner::default();
-
     match Cli::parse().command {
         Commands::Lex {
             filepath,
             show_locations,
-        } => match fs::read_to_string(filepath) {
-            Ok(source) => {
-                let mut lexer = Lexer::new(0, &source, &mut interner);
-                let mut current_token_index = 0;
-
-                loop {
-                    let token = lexer.next_token();
-
-                    if token.raw.eof() {
-                        break;
-                    } else {
-                        if show_locations {
-                            println!(
-                                "{:08}: [{}]@{}..{}",
-                                current_token_index,
-                                token.raw,
-                                token.span.start(),
-                                token.span.end()
-                            );
-                        } else {
-                            println!("{:08}: [{}]", current_token_index, token.raw);
-                        }
-
-                        current_token_index += 1;
-                    }
-                }
-            }
-            Err(_) => {
-                log_with_prefix("error", ": cannot read given file");
-                exit(1);
-            }
-        },
+        } => lex::command(&filepath, show_locations),
         Commands::Parse { filepath } => {
-            let filepath = &filepath;
-
-            match fs::read_to_string(filepath) {
-                Ok(source) => {
-                    let source_file = SourceFile::new(Path::new(filepath), &source);
-                    let file_id = diagnostics_emitter.add_file(&source_file);
-
-                    let mut diagnostics = vec![];
-
-                    let now = Instant::now();
-
-                    log_with_left_padded_prefix("Parsing", filepath);
-
-                    let ast = parse_module(file_id, &source_file, &mut interner, &mut diagnostics);
-                    let ast_string = format!("{:?}", ast);
-
-                    diagnostics_emitter.emit_diagnostics(diagnostics.as_slice());
-
-                    let (filename, mut file) = create_unique_file("ast", "txt");
-                    file.write_all(ast_string.as_bytes())
-                        .unwrap_or_else(|_| panic!("Cannot write to file {}", filename));
-
-                    log_with_left_padded_prefix(
-                        "Parsed",
-                        format!("in {}s", now.elapsed().as_secs_f64()),
-                    );
-                    log_with_left_padded_prefix("Emitted", format!("AST in `{}`", filename));
-                }
-                Err(_) => {
-                    log_with_prefix("error", ": cannot read given file");
-                    exit(1);
-                }
-            }
+            parse::command(&filepath);
         }
         Commands::New { project_name } => {
-            create_new_project_folder(&project_name);
+            new::command(&project_name);
         }
     }
 }

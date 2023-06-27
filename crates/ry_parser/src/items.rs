@@ -100,12 +100,12 @@ impl Parse for StructFieldParser {
 
         iterator.consume(Token![:], "struct field")?;
 
-        let r#type = TypeParser.parse_using(iterator)?;
+        let ty = TypeParser.parse_using(iterator)?;
 
         Some(StructField {
             visibility,
             name,
-            r#type,
+            ty,
         })
     }
 }
@@ -431,14 +431,14 @@ impl Parse for ImplItemParser {
 
         let generic_parameters = GenericParametersParser.optionally_parse_using(iterator)?;
 
-        let mut r#type = TypeParser.parse_using(iterator)?;
+        let mut ty = TypeParser.parse_using(iterator)?;
         let mut r#trait = None;
 
         if iterator.next_token.raw == Token![for] {
             iterator.advance();
 
-            r#trait = Some(r#type);
-            r#type = TypeParser.parse_using(iterator)?;
+            r#trait = Some(ty);
+            ty = TypeParser.parse_using(iterator)?;
         }
 
         let where_clause = WhereClauseParser.optionally_parse_using(iterator)?;
@@ -458,7 +458,7 @@ impl Parse for ImplItemParser {
         Some(Item::Impl {
             visibility: self.visibility,
             generic_parameters,
-            r#type,
+            ty,
             r#trait,
             where_clause,
             items: items.0,
@@ -541,16 +541,15 @@ impl Parse for ItemTupleParser {
             format!("item tuple in {}", self.context.to_string()),
             Token![')'],
             {
-                let visibility = if iterator.next_token.raw == Token![pub] {
-                    iterator.advance();
-                    Visibility::public(iterator.current_token.span)
-                } else {
-                    Visibility::private()
-                };
-
-                let r#type = TypeParser.parse_using(iterator)?;
-
-                Some(TupleField { visibility, r#type })
+                Some(TupleField {
+                    visibility: if iterator.next_token.raw == Token![pub] {
+                        iterator.advance();
+                        Visibility::public(iterator.current_token.span)
+                    } else {
+                        Visibility::private()
+                    },
+                    ty: TypeParser.parse_using(iterator)?,
+                })
             }
         );
 

@@ -1,9 +1,11 @@
 use std::path;
 
 use crate::{
-    token::RawToken, BinaryOperator, Docstring, Function, FunctionParameter, GenericArgument,
-    GenericParameter, IdentifierAst, Item, Module, Path, PostfixOperator, PrefixOperator, TypeAst,
-    TypePath, TypePathSegment, UntypedExpression, Visibility, WhereClauseItem,
+    token::RawToken, BinaryOperator, Documented, EnumItem, Function, FunctionParameter,
+    GenericArgument, GenericParameter, IdentifierAst, Item, JustFunctionParameter, Literal,
+    MatchExpressionItem, Module, Path, Pattern, PostfixOperator, PrefixOperator, Statement,
+    StructExpressionItem, StructField, StructFieldPattern, TraitItem, TupleField, TypeAlias,
+    TypeAst, TypePath, TypePathSegment, UntypedExpression, Visibility, WhereClauseItem,
 };
 use ry_interner::{Interner, Symbol};
 use ry_source_file::{
@@ -230,10 +232,23 @@ impl<'a> Serializer<'a> {
     pub fn output(&self) -> &str {
         &self.output
     }
+
+    /// Returns the owned output string produced.
+    #[inline]
+    #[must_use]
+    pub fn take_output(self) -> String {
+        self.output
+    }
 }
 
 pub trait Serialize<'a> {
     fn serialize(&self, serializer: &mut Serializer<'a>);
+}
+
+impl<'a> Serialize<'a> for bool {
+    fn serialize(&self, serializer: &mut Serializer<'a>) {
+        serializer.write(if *self { "TRUE" } else { "FALSE" });
+    }
 }
 
 impl<'a> Serialize<'a> for Span {
@@ -332,6 +347,195 @@ impl<'a> Serialize<'a> for PrefixOperator {
     }
 }
 
+impl<'a> Serialize<'a> for StructExpressionItem {
+    fn serialize(&self, serializer: &mut Serializer<'a>) {
+        serializer.write_node_name("STRUCT_EXPRESSION_ITEM");
+
+        serializer.serialize_key_value_pair("FIELD_NAME", &self.name);
+
+        if let Some(value) = &self.value {
+            serializer.serialize_key_value_pair("VALUE", value);
+        }
+    }
+}
+
+impl<'a> Serialize<'a> for Literal {
+    fn serialize(&self, serializer: &mut Serializer<'a>) {
+        match self {
+            Self::Boolean { value, span } => {
+                serializer.write_node_name_with_span(
+                    format!("BOOLEAN_LITERAL({})", if *value { "TRUE" } else { "FALSE" }),
+                    *span,
+                );
+            }
+            Self::Character { value, span } => serializer
+                .write_node_name_with_span(format!("CHARACTER_LITERAL(`{}`)", value), *span),
+            Self::Float { value, span } => {
+                serializer.write_node_name_with_span(format!("FLOAT_LITERAL({})", value), *span)
+            }
+            Self::Integer { value, span } => {
+                serializer.write_node_name_with_span(format!("INTEGER_LITERAL({})", value), *span)
+            }
+            Self::String { value, span } => {
+                serializer.write_node_name_with_span(format!("STRING_LITERAL(`{}`)", value), *span)
+            }
+        }
+    }
+}
+
+impl<'a> Serialize<'a> for StructFieldPattern {
+    fn serialize(&self, serializer: &mut Serializer<'a>) {
+        match self {
+            Self::Rest { span } => {
+                serializer.write_node_name_with_span("REST_STRUCT_FIELD_PATTERN", *span);
+            }
+            Self::NotRest {
+                span,
+                field_name,
+                value_pattern,
+            } => {
+                serializer.write_node_name_with_span("STRUCT_FIELD_PATTERN", *span);
+
+                serializer.serialize_key_value_pair("FIELD_NAME", field_name);
+
+                if let Some(value_pattern) = value_pattern {
+                    serializer.serialize_key_value_pair("VALUE_PATTERN", value_pattern);
+                }
+            }
+        }
+    }
+}
+
+impl<'a> Serialize<'a> for Pattern {
+    fn serialize(&self, serializer: &mut Serializer<'a>) {
+        match self {
+            Self::Grouped { span, inner } => {
+                serializer.write_node_name_with_span("GROUPED_PATTERN", *span);
+
+                serializer.serialize_key_value_pair("INNER_PATTERN", &**inner);
+            }
+            Self::Identifier {
+                span,
+                identifier,
+                pattern,
+            } => {
+                serializer.write_node_name_with_span("IDENTIFIER_PATTERN", *span);
+
+                serializer.serialize_key_value_pair("IDENTIFIER", identifier);
+
+                if let Some(pattern) = pattern {
+                    serializer.serialize_key_value_pair("PATTERN", &**pattern);
+                }
+            }
+            Self::List {
+                span,
+                inner_patterns,
+            } => {
+                serializer.write_node_name_with_span("LIST_PATTERN", *span);
+
+                serializer.serialize_key_list_value_pair("INNER_PATTERNS", inner_patterns);
+            }
+            Self::Literal(literal) => literal.serialize(serializer),
+            Self::Or { span, left, right } => {
+                serializer.write_node_name_with_span("OR_PATTERN", *span);
+
+                serializer.serialize_key_value_pair("LEFT", &**left);
+                serializer.serialize_key_value_pair("RIGHT", &**right);
+            }
+            Self::Path { span, path } => {
+                serializer.write_node_name_with_span("PATH_PATTERN", *span);
+
+                serializer.serialize_key_value_pair("PATH", path);
+            }
+            Self::Rest { span } => {
+                serializer.write_node_name_with_span("REST_PATTERN", *span);
+            }
+            Self::Struct { span, path, fields } => {
+                serializer.write_node_name_with_span("STRUCT_PATTERN", *span);
+
+                serializer.serialize_key_value_pair("STRUCT_PATH", path);
+                serializer.serialize_key_list_value_pair("FIELDS", fields);
+            }
+            Self::Tuple {
+                span,
+                inner_patterns,
+            } => {
+                serializer.write_node_name_with_span("TUPLE_PATTERN", *span);
+
+                serializer.serialize_key_list_value_pair("INNER_PATTERNS", inner_patterns);
+            }
+            Self::TupleLike {
+                span,
+                path,
+                inner_patterns,
+            } => {
+                serializer.write_node_name_with_span("TUPLE_PATTERN", *span);
+
+                serializer.serialize_key_value_pair("PATH", path);
+                serializer.serialize_key_list_value_pair("INNER_PATTERNS", inner_patterns);
+            }
+        }
+    }
+}
+
+impl<'a> Serialize<'a> for Statement {
+    fn serialize(&self, serializer: &mut Serializer<'a>) {
+        match self {
+            Self::Break { span } => serializer.write_node_name_with_span("BREAK_STATEMENT", *span),
+            Self::Continue { span } => {
+                serializer.write_node_name_with_span("CONTINUE_STATEMENT", *span)
+            }
+            Self::Return { expression } => {
+                serializer.write_node_name("RETURN_STATEMENT");
+
+                serializer.serialize_key_value_pair("EXPRESSION", expression);
+            }
+            Self::Defer { call } => {
+                serializer.write_node_name("DEFER_STATEMENT");
+
+                serializer.serialize_key_value_pair("CALL", call);
+            }
+            Self::Expression {
+                expression,
+                has_semicolon,
+            } => {
+                serializer.write_node_name("EXPRESSION_STATEMENT");
+
+                serializer.serialize_key_value_pair("EXPRESSION", expression);
+                serializer.serialize_key_value_pair("HAS_SEMICOLON", has_semicolon);
+            }
+            Self::Let { pattern, value, ty } => {
+                serializer.write_node_name("LET_STATEMENT");
+
+                serializer.serialize_key_value_pair("PATTERN", pattern);
+                serializer.serialize_key_value_pair("VALUE", &**value);
+
+                if let Some(ty) = ty {
+                    serializer.serialize_key_value_pair("TYPE", ty);
+                }
+            }
+        }
+    }
+}
+
+impl<'a> Serialize<'a> for (UntypedExpression, Vec<Statement>) {
+    fn serialize(&self, serializer: &mut Serializer<'a>) {
+        serializer.write_node_name("ELSE_IF_NODE");
+
+        serializer.serialize_key_value_pair("CONDITION", &self.0);
+        serializer.serialize_key_list_value_pair("STATEMENTS_BLOCK", &self.1);
+    }
+}
+
+impl<'a> Serialize<'a> for MatchExpressionItem {
+    fn serialize(&self, serializer: &mut Serializer<'a>) {
+        serializer.write_node_name("MATCH_EXPRESSION_ITEM");
+
+        serializer.serialize_key_value_pair("PATTERN", &self.left);
+        serializer.serialize_key_value_pair("EXPRESSION", &self.right);
+    }
+}
+
 impl<'a> Serialize<'a> for UntypedExpression {
     fn serialize(&self, serializer: &mut Serializer<'a>) {
         match self {
@@ -373,7 +577,7 @@ impl<'a> Serialize<'a> for UntypedExpression {
                     serializer.serialize_key_value_pair("RETURN_TYPE", return_type);
                 }
 
-                serializer.serialize_key_value_pair("STATEMENTS_BLOCK", block);
+                serializer.serialize_key_list_value_pair("STATEMENTS_BLOCK", block);
             }
             Self::GenericArguments {
                 span,
@@ -554,26 +758,32 @@ impl<'a> Serialize<'a> for WhereClauseItem {
     }
 }
 
+impl<'a> Serialize<'a> for JustFunctionParameter {
+    fn serialize(&self, serializer: &mut Serializer<'a>) {
+        serializer.write_node_name("FUNCTION_PARAMETER");
+
+        serializer.serialize_key_value_pair("NAME", &self.name);
+        serializer.serialize_key_value_pair("TYPE", &self.ty);
+
+        if let Some(default_value) = &self.default_value {
+            serializer.serialize_key_value_pair("DEFAULT_VALUE", default_value);
+        }
+    }
+}
+
 impl<'a> Serialize<'a> for FunctionParameter {
     fn serialize(&self, serializer: &mut Serializer<'a>) {
         match self {
             Self::Just(parameter) => {
-                serializer.write_node_name("FUNCTION_PARAMETER");
-
-                serializer.serialize_key_value_pair("NAME", &parameter.name);
-                serializer.serialize_key_value_pair("TYPE", &parameter.ty);
-
-                if let Some(default_value) = parameter.default_value {
-                    serializer.serialize_key_value_pair("DEFAULT_VALUE", &default_value);
-                }
+                parameter.serialize(serializer);
             }
             Self::Self_(parameter) => {
                 serializer.write_node_name("SELF_PARAMETER");
 
                 serializer.serialize_key_value_pair("SELF_SPAN", &parameter.self_span);
 
-                if let Some(ty) = parameter.ty {
-                    serializer.serialize_key_value_pair("TYPE", &ty);
+                if let Some(ty) = &parameter.ty {
+                    serializer.serialize_key_value_pair("TYPE", ty);
                 }
             }
         }
@@ -602,6 +812,87 @@ impl<'a> Serialize<'a> for Function {
     }
 }
 
+impl<'a> Serialize<'a> for StructField {
+    fn serialize(&self, serializer: &mut Serializer<'a>) {
+        serializer.write_node_name("STRUCT_FIELD");
+
+        serializer.serialize_key_value_pair("VISIBILITY", &self.visibility);
+        serializer.serialize_key_value_pair("NAME", &self.name);
+        serializer.serialize_key_value_pair("TYPE", &self.ty);
+    }
+}
+
+impl<'a> Serialize<'a> for TupleField {
+    fn serialize(&self, serializer: &mut Serializer<'a>) {
+        serializer.write_node_name("TUPLE_FIELD");
+
+        serializer.serialize_key_value_pair("VISIBILITY", &self.visibility);
+        serializer.serialize_key_value_pair("TYPE", &self.ty);
+    }
+}
+
+impl<'a, T> Serialize<'a> for Documented<T>
+where
+    T: Serialize<'a>,
+{
+    fn serialize(&self, serializer: &mut Serializer<'a>) {
+        self.value.serialize(serializer);
+    }
+}
+
+impl<'a> Serialize<'a> for EnumItem {
+    fn serialize(&self, serializer: &mut Serializer<'a>) {
+        match self {
+            Self::Just(identifier) => {
+                serializer.write_node_name("EMPTY_ENUM_ITEM");
+
+                serializer.serialize_key_value_pair("ITEM_NAME", identifier);
+            }
+            Self::Struct { name, fields } => {
+                serializer.write_node_name("STRUCT_ENUM_ITEM");
+
+                serializer.serialize_key_value_pair("NAME", name);
+                serializer.serialize_key_list_value_pair("FIELDS", &fields);
+            }
+            Self::Tuple { name, fields } => {
+                serializer.write_node_name("TUPLE_ENUM_ITEM");
+
+                serializer.serialize_key_value_pair("NAME", name);
+                serializer.serialize_key_list_value_pair("FIELDS", &fields);
+            }
+        }
+    }
+}
+
+impl<'a> Serialize<'a> for TypeAlias {
+    fn serialize(&self, serializer: &mut Serializer<'a>) {
+        serializer.write_node_name("TYPE_ALIAS");
+
+        serializer.serialize_key_value_pair("NAME", &self.name);
+
+        if let Some(generic_parameters) = &self.generic_parameters {
+            serializer.serialize_key_list_value_pair("GENERIC_PARAMETERS", generic_parameters);
+        }
+
+        if let Some(bounds) = &self.bounds {
+            serializer.serialize_key_list_value_pair("BOUNDS", bounds);
+        }
+
+        if let Some(value) = &self.value {
+            serializer.serialize_key_value_pair("VALUE", value);
+        }
+    }
+}
+
+impl<'a> Serialize<'a> for TraitItem {
+    fn serialize(&self, serializer: &mut Serializer<'a>) {
+        match self {
+            Self::AssociatedFunction(function) => function.serialize(serializer),
+            Self::TypeAlias(alias) => alias.serialize(serializer),
+        }
+    }
+}
+
 impl<'a> Serialize<'a> for Item {
     fn serialize(&self, serializer: &mut Serializer<'a>) {
         match self {
@@ -622,13 +913,13 @@ impl<'a> Serialize<'a> for Item {
                 if let Some(where_clause) = where_clause {
                     serializer.serialize_key_list_value_pair("WHERE_CLAUSE", where_clause);
                 }
-                serializer.serialize_key_list_value_pair("ITEMS", items);
+                serializer.serialize_key_list_value_pair("ITEMS", &items);
             }
             Self::Function(function) => function.serialize(serializer),
             Self::Impl {
                 visibility,
                 generic_parameters,
-                r#type,
+                ty: r#type,
                 r#trait,
                 where_clause,
                 items,
@@ -649,6 +940,8 @@ impl<'a> Serialize<'a> for Item {
                 if let Some(where_clause) = where_clause {
                     serializer.serialize_key_list_value_pair("WHERE_CLAUSE", where_clause);
                 }
+
+                serializer.serialize_key_list_value_pair("ITEMS", &items);
             }
             Self::Struct {
                 visibility,
@@ -668,10 +961,7 @@ impl<'a> Serialize<'a> for Item {
                     serializer.serialize_key_list_value_pair("WHERE_CLAUSE", where_clause);
                 }
 
-                serializer.serialize_key_list_value_pair(
-                    "FIELDS",
-                    &fields.into_iter().map(|f| f.value).collect::<Vec<_>>(),
-                );
+                serializer.serialize_key_list_value_pair("FIELDS", &fields);
             }
             Self::Trait {
                 visibility,
@@ -691,10 +981,7 @@ impl<'a> Serialize<'a> for Item {
                     serializer.serialize_key_list_value_pair("WHERE_CLAUSE", where_clause);
                 }
 
-                serializer.serialize_key_list_value_pair(
-                    "ITEMS",
-                    &items.into_iter().map(|i| i.value).collect::<Vec<_>>(),
-                );
+                serializer.serialize_key_list_value_pair("ITEMS", &items);
             }
             Self::TupleLikeStruct {
                 visibility,
@@ -738,10 +1025,25 @@ impl<'a> Serialize<'a> for &path::Path {
 impl<'a> Serialize<'a> for Module<'a> {
     fn serialize(&self, serializer: &mut Serializer<'a>) {
         serializer.write_node_name("MODULE");
-        serializer.serialize_key_value_pair("FILEPATH", &self.filepath);
-        serializer.serialize_key_list_value_pair(
-            "ITEMS",
-            &self.items.into_iter().map(|i| i.value).collect::<Vec<_>>(),
-        );
+        serializer.serialize_key_value_pair("FILEPATH", &self.path);
+        serializer.serialize_key_list_value_pair("ITEMS", &self.items);
     }
+}
+
+pub fn serialize_ast(
+    module: &Module<'_>,
+    interner: &Interner,
+    file_manager: &SourceFileManager<'_>,
+) -> Option<String> {
+    let mut serializer = Serializer::new(interner, module.file_id, file_manager)?;
+    module.serialize(&mut serializer);
+    Some(serializer.take_output())
+}
+
+pub fn serialize_ast_or_panic(
+    module: &Module<'_>,
+    interner: &Interner,
+    file_manager: &SourceFileManager<'_>,
+) -> String {
+    serialize_ast(module, interner, file_manager).expect("Failed to resolve file id")
 }

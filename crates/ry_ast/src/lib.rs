@@ -45,7 +45,7 @@
 #![allow(clippy::match_single_binding, clippy::inconsistent_struct_constructor)]
 
 use ry_interner::Symbol;
-use ry_source_file::span::Span;
+use ry_source_file::{span::Span, source_file_manager::FileID};
 use std::path;
 use token::RawToken;
 
@@ -167,7 +167,7 @@ pub enum Pattern {
     /// ```
     Struct {
         span: Span,
-        r#struct: Path,
+        path: Path,
         fields: Vec<StructFieldPattern>,
     },
 
@@ -1116,7 +1116,7 @@ pub enum Item {
     Impl {
         visibility: Visibility,
         generic_parameters: Option<Vec<GenericParameter>>,
-        r#type: TypeAst,
+        ty: TypeAst,
         r#trait: Option<TypeAst>,
         where_clause: Option<WhereClause>,
         items: Vec<Documented<TraitItem>>,
@@ -1222,7 +1222,7 @@ pub enum EnumItem {
 #[derive(Debug, PartialEq, Clone)]
 pub struct TupleField {
     pub visibility: Visibility,
-    pub r#type: TypeAst,
+    pub ty: TypeAst,
 }
 
 /// Represents a struct field.
@@ -1239,7 +1239,7 @@ pub struct TupleField {
 pub struct StructField {
     pub visibility: Visibility,
     pub name: IdentifierAst,
-    pub r#type: TypeAst,
+    pub ty: TypeAst,
 }
 
 /// Represents a trait item.
@@ -1302,7 +1302,8 @@ pub struct JustFunctionParameter {
 /// Represents Ry source file.
 #[derive(Debug, PartialEq, Clone)]
 pub struct Module<'a> {
-    pub filepath: &'a path::Path,
+    pub path: &'a path::Path,
+    pub file_id: FileID,
     pub docstring: Docstring,
     pub items: Items,
 }
