@@ -45,7 +45,7 @@
 #![allow(clippy::match_single_binding, clippy::inconsistent_struct_constructor)]
 
 use ry_interner::Symbol;
-use ry_source_file::{span::Span, source_file_manager::FileID};
+use ry_source_file::{source_file_manager::FileID, span::Span};
 use std::path;
 use token::RawToken;
 
