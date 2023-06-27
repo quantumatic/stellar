@@ -90,9 +90,9 @@ pub use module::parse_module;
 #[macro_use]
 mod macros;
 
-/// Represents token iterator.
+/// Represents token state.
 #[derive(Debug)]
-pub struct TokenIterator<'a> {
+pub struct ParseState<'a> {
     source_file: &'a SourceFile<'a>,
     file_id: usize,
     lexer: Lexer<'a>,
@@ -110,13 +110,13 @@ where
     type Output;
 
     /// Parse AST node of type [`Self::Output`].
-    fn parse_using(self, iterator: &mut TokenIterator<'_>) -> Self::Output;
+    fn parse(self, state: &mut ParseState<'_>) -> Self::Output;
 }
 
 /// Represents AST node that can optionally be parsed. Optionally
 /// in this context means that if some condition is satisfied,
 /// the AST node is parsed as usually (`Parse::parse_with(...)`),
-/// but if not, it is skipped, token iterator is not advanced and the
+/// but if not, it is skipped, token state is not advanced and the
 /// default value is returned.
 ///
 /// A great example of this is the where clause, which is found optional
@@ -133,11 +133,11 @@ where
     /// Optionally parse AST node of type [`Self::Output`].
     ///
     /// For more information, see [`OptionalParser`].
-    fn optionally_parse_using(self, iterator: &mut TokenIterator<'_>) -> Self::Output;
+    fn optionally_parse(self, state: &mut ParseState<'_>) -> Self::Output;
 }
 
-impl<'a> TokenIterator<'a> {
-    /// Creates an initial iterator.
+impl<'a> ParseState<'a> {
+    /// Creates an initial state.
     ///
     /// Note: [`TokenIterator::current`] and [`TokenIterator::next`] are
     /// the same at an initial state.
@@ -148,7 +148,7 @@ impl<'a> TokenIterator<'a> {
         let current = lexer.next_no_comments();
         let next = current;
 
-        let mut iterator = Self {
+        let mut state = Self {
             source_file,
             file_id,
             lexer,
@@ -156,9 +156,9 @@ impl<'a> TokenIterator<'a> {
             next_token: next,
             diagnostics: vec![],
         };
-        iterator.check_next_token();
+        state.check_next_token();
 
-        iterator
+        state
     }
 
     /// Adds diagnostic if the next token has lex error in itself.

@@ -13,8 +13,7 @@
 //! use ry_interner::Interner;
 //! use ry_source_file::span::Span;
 //!
-//! let mut interner = Interner::default();
-//! let mut lexer = Lexer::new(0, "", &mut interner);
+//! let mut lexer = Lexer::new(0, "");
 //!
 //! assert_eq!(
 //!     lexer.next_token(),
@@ -37,8 +36,7 @@
 //! use ry_ast::token::{RawLexError, RawToken::Error};
 //! use ry_interner::Interner;
 //!
-//! let mut interner = Interner::default();
-//! let mut lexer = Lexer::new(0, "١", &mut interner);
+//! let mut lexer = Lexer::new(0, "١");
 //!
 //! assert_eq!(lexer.next_token().raw, Error(RawLexError::UnexpectedChar));
 //! ```

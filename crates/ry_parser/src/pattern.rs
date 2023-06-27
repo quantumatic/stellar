@@ -1,4 +1,4 @@
-use crate::{literal::LiteralParser, macros::parse_list, path::PathParser, Parse, TokenIterator};
+use crate::{literal::LiteralParser, macros::parse_list, path::PathParser, Parse, ParseState};
 use ry_ast::{token::RawToken, Path, Pattern, StructFieldPattern, Token};
 use ry_diagnostics::{expected, parser::ParseDiagnostic, BuildDiagnostic};
 use ry_source_file::span::Span;
@@ -24,16 +24,16 @@ struct TupleLikePatternParser {
 impl Parse for PatternParser {
     type Output = Option<Pattern>;
 
-    fn parse_using(self, iterator: &mut TokenIterator<'_>) -> Self::Output {
-        let left = PatternExceptOrParser.parse_using(iterator)?;
+    fn parse(self, state: &mut ParseState<'_>) -> Self::Output {
+        let left = PatternExceptOrParser.parse(state)?;
 
-        if iterator.next_token.raw == Token![|] {
-            iterator.advance();
+        if state.next_token.raw == Token![|] {
+            state.advance();
 
-            let right = Self.parse_using(iterator)?;
+            let right = Self.parse(state)?;
 
             Some(Pattern::Or {
-                span: Span::new(left.span().start(), right.span().end(), iterator.file_id),
+                span: Span::new(left.span().start(), right.span().end(), state.file_id),
                 left: Box::new(left),
                 right: Box::new(right),
             })
@@ -46,25 +46,23 @@ impl Parse for PatternParser {
 impl Parse for PatternExceptOrParser {
     type Output = Option<Pattern>;
 
-    fn parse_using(self, iterator: &mut TokenIterator<'_>) -> Self::Output {
-        match iterator.next_token.raw {
+    fn parse(self, state: &mut ParseState<'_>) -> Self::Output {
+        match state.next_token.raw {
             RawToken::StringLiteral
             | RawToken::CharLiteral
             | RawToken::IntegerLiteral
             | RawToken::FloatLiteral
             | RawToken::TrueBoolLiteral
-            | RawToken::FalseBoolLiteral => {
-                Some(Pattern::Literal(LiteralParser.parse_using(iterator)?))
-            }
+            | RawToken::FalseBoolLiteral => Some(Pattern::Literal(LiteralParser.parse(state)?)),
             RawToken::Identifier => {
-                let path = PathParser.parse_using(iterator)?;
+                let path = PathParser.parse(state)?;
 
-                match iterator.next_token.raw {
+                match state.next_token.raw {
                     Token!['{'] => {
-                        return StructPatternParser { path }.parse_using(iterator);
+                        return StructPatternParser { path }.parse(state);
                     }
                     Token!['('] => {
-                        return TupleLikePatternParser { path }.parse_using(iterator);
+                        return TupleLikePatternParser { path }.parse(state);
                     }
                     _ => {}
                 };
@@ -75,9 +73,9 @@ impl Parse for PatternExceptOrParser {
                         "Cannot get first identifier in path when parsing identifier pattern",
                     );
 
-                    let pattern = if iterator.next_token.raw == Token![@] {
-                        iterator.advance();
-                        Some(Box::new(PatternParser.parse_using(iterator)?))
+                    let pattern = if state.next_token.raw == Token![@] {
+                        state.advance();
+                        Some(Box::new(PatternParser.parse(state)?))
                     } else {
                         None
                     };
@@ -89,7 +87,7 @@ impl Parse for PatternExceptOrParser {
                                 Some(ref pattern) => pattern.span().end(),
                                 None => path.span.end(),
                             },
-                            iterator.file_id,
+                            state.file_id,
                         ),
                         identifier: *identifier,
                         pattern,
@@ -101,19 +99,19 @@ impl Parse for PatternExceptOrParser {
                     })
                 }
             }
-            Token!['['] => ArrayPatternParser.parse_using(iterator),
+            Token!['['] => ArrayPatternParser.parse(state),
             Token![..] => {
-                iterator.advance();
+                state.advance();
                 Some(Pattern::Rest {
-                    span: iterator.next_token.span,
+                    span: state.next_token.span,
                 })
             }
-            Token!['('] => GroupedPatternParser.parse_using(iterator),
-            Token![#] => TuplePatternParser.parse_using(iterator),
+            Token!['('] => GroupedPatternParser.parse(state),
+            Token![#] => TuplePatternParser.parse(state),
             _ => {
-                iterator.diagnostics.push(
+                state.diagnostics.push(
                     ParseDiagnostic::UnexpectedTokenError {
-                        got: iterator.next_token,
+                        got: state.next_token,
                         expected: expected!(
                             "integer literal",
                             "float literal",
@@ -139,22 +137,22 @@ impl Parse for PatternExceptOrParser {
 impl Parse for StructPatternParser {
     type Output = Option<Pattern>;
 
-    fn parse_using(self, iterator: &mut TokenIterator<'_>) -> Self::Output {
-        iterator.advance(); // `{`
+    fn parse(self, state: &mut ParseState<'_>) -> Self::Output {
+        state.advance(); // `{`
 
-        let fields = parse_list!(iterator, "struct pattern", Token!['}'], {
-            if iterator.next_token.raw == Token![..] {
-                iterator.advance();
+        let fields = parse_list!(state, "struct pattern", Token!['}'], {
+            if state.next_token.raw == Token![..] {
+                state.advance();
 
                 Some(StructFieldPattern::Rest {
-                    span: iterator.current_token.span,
+                    span: state.current_token.span,
                 })
             } else {
-                let field_name = iterator.consume_identifier("struct pattern")?;
-                let value_pattern = if iterator.next_token.raw == Token![:] {
-                    iterator.advance();
+                let field_name = state.consume_identifier("struct pattern")?;
+                let value_pattern = if state.next_token.raw == Token![:] {
+                    state.advance();
 
-                    Some(PatternParser.parse_using(iterator)?)
+                    Some(PatternParser.parse(state)?)
                 } else {
                     None
                 };
@@ -162,8 +160,8 @@ impl Parse for StructPatternParser {
                 Some(StructFieldPattern::NotRest {
                     span: Span::new(
                         field_name.span.start(),
-                        iterator.current_token.span.end(),
-                        iterator.file_id,
+                        state.current_token.span.end(),
+                        state.file_id,
                     ),
                     field_name,
                     value_pattern,
@@ -171,13 +169,13 @@ impl Parse for StructPatternParser {
             }
         });
 
-        iterator.advance();
+        state.advance();
 
         Some(Pattern::Struct {
             span: Span::new(
                 self.path.span.start(),
-                iterator.current_token.span.end(),
-                iterator.file_id,
+                state.current_token.span.end(),
+                state.file_id,
             ),
             path: self.path,
             fields,
@@ -188,18 +186,18 @@ impl Parse for StructPatternParser {
 impl Parse for ArrayPatternParser {
     type Output = Option<Pattern>;
 
-    fn parse_using(self, iterator: &mut TokenIterator<'_>) -> Self::Output {
-        let start = iterator.next_token.span.start();
-        iterator.advance(); // `[`
+    fn parse(self, state: &mut ParseState<'_>) -> Self::Output {
+        let start = state.next_token.span.start();
+        state.advance(); // `[`
 
-        let inner_patterns = parse_list!(iterator, "array pattern", Token![']'], {
-            PatternParser.parse_using(iterator)
+        let inner_patterns = parse_list!(state, "array pattern", Token![']'], {
+            PatternParser.parse(state)
         });
 
-        iterator.advance(); // `]`
+        state.advance(); // `]`
 
         Some(Pattern::List {
-            span: Span::new(start, iterator.current_token.span.end(), iterator.file_id),
+            span: Span::new(start, state.current_token.span.end(), state.file_id),
             inner_patterns,
         })
     }
@@ -208,20 +206,20 @@ impl Parse for ArrayPatternParser {
 impl Parse for TuplePatternParser {
     type Output = Option<Pattern>;
 
-    fn parse_using(self, iterator: &mut TokenIterator<'_>) -> Self::Output {
-        let start = iterator.next_token.span.start();
-        iterator.advance(); // `#`
+    fn parse(self, state: &mut ParseState<'_>) -> Self::Output {
+        let start = state.next_token.span.start();
+        state.advance(); // `#`
 
-        iterator.consume(Token!['('], "tuple pattern")?;
+        state.consume(Token!['('], "tuple pattern")?;
 
-        let inner_patterns = parse_list!(iterator, "tuple pattern", Token![')'], {
-            PatternParser.parse_using(iterator)
+        let inner_patterns = parse_list!(state, "tuple pattern", Token![')'], {
+            PatternParser.parse(state)
         });
 
-        iterator.advance(); // `)`
+        state.advance(); // `)`
 
         Some(Pattern::Tuple {
-            span: Span::new(start, iterator.current_token.span.end(), iterator.file_id),
+            span: Span::new(start, state.current_token.span.end(), state.file_id),
             inner_patterns,
         })
     }
@@ -230,20 +228,20 @@ impl Parse for TuplePatternParser {
 impl Parse for TupleLikePatternParser {
     type Output = Option<Pattern>;
 
-    fn parse_using(self, iterator: &mut TokenIterator<'_>) -> Self::Output {
-        iterator.advance(); // `(`
+    fn parse(self, state: &mut ParseState<'_>) -> Self::Output {
+        state.advance(); // `(`
 
-        let inner_patterns = parse_list!(iterator, "enum item tuple pattern", Token![')'], {
-            PatternParser.parse_using(iterator)
+        let inner_patterns = parse_list!(state, "enum item tuple pattern", Token![')'], {
+            PatternParser.parse(state)
         });
 
-        iterator.advance(); // `)`
+        state.advance(); // `)`
 
         Some(Pattern::TupleLike {
             span: Span::new(
                 self.path.span.start(),
-                iterator.current_token.span.end(),
-                iterator.file_id,
+                state.current_token.span.end(),
+                state.file_id,
             ),
             path: self.path,
             inner_patterns,
@@ -254,16 +252,16 @@ impl Parse for TupleLikePatternParser {
 impl Parse for GroupedPatternParser {
     type Output = Option<Pattern>;
 
-    fn parse_using(self, iterator: &mut TokenIterator<'_>) -> Self::Output {
-        let start = iterator.next_token.span.start();
-        iterator.advance(); // `(`
+    fn parse(self, state: &mut ParseState<'_>) -> Self::Output {
+        let start = state.next_token.span.start();
+        state.advance(); // `(`
 
-        let inner = Box::new(PatternParser.parse_using(iterator)?);
+        let inner = Box::new(PatternParser.parse(state)?);
 
-        iterator.consume(Token![')'], "grouped pattern")?;
+        state.consume(Token![')'], "grouped pattern")?;
 
         Some(Pattern::Grouped {
-            span: Span::new(start, iterator.current_token.span.end(), iterator.file_id),
+            span: Span::new(start, state.current_token.span.end(), state.file_id),
             inner,
         })
     }

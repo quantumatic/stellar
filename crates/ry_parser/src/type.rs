@@ -1,4 +1,4 @@
-use crate::{macros::parse_list, path::PathParser, OptionalParser, Parse, TokenIterator};
+use crate::{macros::parse_list, path::PathParser, OptionalParser, Parse, ParseState};
 use ry_ast::{
     token::RawToken, GenericArgument, GenericParameter, Path, Token, TypeAst, TypeBounds, TypePath,
     TypePathSegment, WhereClause, WhereClauseItem,
@@ -33,14 +33,14 @@ pub(crate) struct WhereClauseParser;
 impl Parse for TypeBoundsParser {
     type Output = Option<TypeBounds>;
 
-    fn parse_using(self, iterator: &mut TokenIterator<'_>) -> Self::Output {
+    fn parse(self, state: &mut ParseState<'_>) -> Self::Output {
         let mut bounds = vec![];
-        bounds.push(TypePathParser.parse_using(iterator)?);
+        bounds.push(TypePathParser.parse(state)?);
 
-        while iterator.next_token.raw == Token![+] {
-            iterator.advance();
+        while state.next_token.raw == Token![+] {
+            state.advance();
 
-            bounds.push(TypePathParser.parse_using(iterator)?);
+            bounds.push(TypePathParser.parse(state)?);
         }
 
         Some(bounds)
@@ -50,18 +50,18 @@ impl Parse for TypeBoundsParser {
 impl Parse for TypeParser {
     type Output = Option<TypeAst>;
 
-    fn parse_using(self, iterator: &mut TokenIterator<'_>) -> Self::Output {
-        match iterator.next_token.raw {
-            Token!['('] => ParenthesizedTypeParser.parse_using(iterator),
-            RawToken::Identifier => TypePathParser.parse_using(iterator).map(TypeAst::Path),
-            Token![#] => TupleTypeParser.parse_using(iterator),
-            Token![Fun] => FunctionTypeParser.parse_using(iterator),
-            Token![dyn] => TraitObjectTypeParser.parse_using(iterator),
-            Token!['['] => TypeWithQualifiedPathParser.parse_using(iterator),
+    fn parse(self, state: &mut ParseState<'_>) -> Self::Output {
+        match state.next_token.raw {
+            Token!['('] => ParenthesizedTypeParser.parse(state),
+            RawToken::Identifier => TypePathParser.parse(state).map(TypeAst::Path),
+            Token![#] => TupleTypeParser.parse(state),
+            Token![Fun] => FunctionTypeParser.parse(state),
+            Token![dyn] => TraitObjectTypeParser.parse(state),
+            Token!['['] => TypeWithQualifiedPathParser.parse(state),
             _ => {
-                iterator.diagnostics.push(
+                state.diagnostics.push(
                     ParseDiagnostic::UnexpectedTokenError {
-                        got: iterator.next_token,
+                        got: state.next_token,
                         expected: expected!("identifier", Token!['['], Token![#], Token!['(']),
                         node: "type".to_owned(),
                     }
@@ -77,28 +77,28 @@ impl Parse for TypeParser {
 impl Parse for TypeWithQualifiedPathParser {
     type Output = Option<TypeAst>;
 
-    fn parse_using(self, iterator: &mut TokenIterator<'_>) -> Self::Output {
-        let start = iterator.next_token.span.start();
-        iterator.advance(); // `[`
+    fn parse(self, state: &mut ParseState<'_>) -> Self::Output {
+        let start = state.next_token.span.start();
+        state.advance(); // `[`
 
-        let left = Box::new(TypeParser.parse_using(iterator)?);
-        iterator.consume(Token![as], "type with qualified path")?;
+        let left = Box::new(TypeParser.parse(state)?);
+        state.consume(Token![as], "type with qualified path")?;
 
-        let right = TypePathParser.parse_using(iterator)?;
+        let right = TypePathParser.parse(state)?;
 
-        iterator.consume(Token![']'], "type with qualified path")?;
-        iterator.consume(Token![.], "type with qualified path")?;
+        state.consume(Token![']'], "type with qualified path")?;
+        state.consume(Token![.], "type with qualified path")?;
 
-        let mut segments = vec![TypePathSegmentParser.parse_using(iterator)?];
+        let mut segments = vec![TypePathSegmentParser.parse(state)?];
 
-        while iterator.next_token.raw == Token![.] {
-            iterator.advance();
+        while state.next_token.raw == Token![.] {
+            state.advance();
 
-            segments.push(TypePathSegmentParser.parse_using(iterator)?);
+            segments.push(TypePathSegmentParser.parse(state)?);
         }
 
         Some(TypeAst::WithQualifiedPath {
-            span: Span::new(start, iterator.current_token.span.end(), iterator.file_id),
+            span: Span::new(start, state.current_token.span.end(), state.file_id),
             left,
             right,
             segments,
@@ -109,14 +109,14 @@ impl Parse for TypeWithQualifiedPathParser {
 impl Parse for TraitObjectTypeParser {
     type Output = Option<TypeAst>;
 
-    fn parse_using(self, iterator: &mut TokenIterator<'_>) -> Self::Output {
-        let start = iterator.next_token.span.start();
+    fn parse(self, state: &mut ParseState<'_>) -> Self::Output {
+        let start = state.next_token.span.start();
 
-        iterator.advance(); // `dyn`
+        state.advance(); // `dyn`
 
         Some(TypeAst::TraitObject {
-            bounds: TypeBoundsParser.parse_using(iterator)?,
-            span: Span::new(start, iterator.current_token.span.end(), iterator.file_id),
+            bounds: TypeBoundsParser.parse(state)?,
+            span: Span::new(start, state.current_token.span.end(), state.file_id),
         })
     }
 }
@@ -124,20 +124,20 @@ impl Parse for TraitObjectTypeParser {
 impl Parse for TupleTypeParser {
     type Output = Option<TypeAst>;
 
-    fn parse_using(self, iterator: &mut TokenIterator<'_>) -> Self::Output {
-        let start = iterator.next_token.span.start();
-        iterator.advance(); // `#`
+    fn parse(self, state: &mut ParseState<'_>) -> Self::Output {
+        let start = state.next_token.span.start();
+        state.advance(); // `#`
 
-        iterator.consume(Token!['('], "tuple type")?;
+        state.consume(Token!['('], "tuple type")?;
 
-        let element_types = parse_list!(iterator, "tuple type", Token![')'], {
-            TypeParser.parse_using(iterator)
+        let element_types = parse_list!(state, "tuple type", Token![')'], {
+            TypeParser.parse(state)
         });
 
-        iterator.advance(); // `)`
+        state.advance(); // `)`
 
         Some(TypeAst::Tuple {
-            span: Span::new(start, iterator.current_token.span.end(), iterator.file_id),
+            span: Span::new(start, state.current_token.span.end(), state.file_id),
             element_types,
         })
     }
@@ -146,16 +146,16 @@ impl Parse for TupleTypeParser {
 impl Parse for ParenthesizedTypeParser {
     type Output = Option<TypeAst>;
 
-    fn parse_using(self, iterator: &mut TokenIterator<'_>) -> Self::Output {
-        let start = iterator.next_token.span.start();
-        iterator.advance(); // `(`
+    fn parse(self, state: &mut ParseState<'_>) -> Self::Output {
+        let start = state.next_token.span.start();
+        state.advance(); // `(`
 
-        let inner = Box::new(TypeParser.parse_using(iterator)?);
+        let inner = Box::new(TypeParser.parse(state)?);
 
-        iterator.consume(Token![')'], "parenthesized type")?;
+        state.consume(Token![')'], "parenthesized type")?;
 
         Some(TypeAst::Parenthesized {
-            span: Span::new(start, iterator.current_token.span.end(), iterator.file_id),
+            span: Span::new(start, state.current_token.span.end(), state.file_id),
             inner,
         })
     }
@@ -164,25 +164,25 @@ impl Parse for ParenthesizedTypeParser {
 impl Parse for FunctionTypeParser {
     type Output = Option<TypeAst>;
 
-    fn parse_using(self, iterator: &mut TokenIterator<'_>) -> Self::Output {
-        let start = iterator.next_token.span.start();
-        iterator.advance(); // `Fun`
+    fn parse(self, state: &mut ParseState<'_>) -> Self::Output {
+        let start = state.next_token.span.start();
+        state.advance(); // `Fun`
 
-        iterator.consume(Token!['('], "function type")?;
+        state.consume(Token!['('], "function type")?;
 
         let parameter_types =
-            parse_list!(iterator, "parameter types in function type", Token![')'], {
-                TypeParser.parse_using(iterator)
+            parse_list!(state, "parameter types in function type", Token![')'], {
+                TypeParser.parse(state)
             });
 
-        iterator.advance(); // `)`
+        state.advance(); // `)`
 
-        iterator.consume(Token![:], "return type of function in the function type")?;
+        state.consume(Token![:], "return type of function in the function type")?;
 
-        let return_type = Box::new(TypeParser.parse_using(iterator)?);
+        let return_type = Box::new(TypeParser.parse(state)?);
 
         Some(TypeAst::Function {
-            span: Span::new(start, iterator.current_token.span.end(), iterator.file_id),
+            span: Span::new(start, state.current_token.span.end(), state.file_id),
             parameter_types,
             return_type,
         })
@@ -192,34 +192,34 @@ impl Parse for FunctionTypeParser {
 impl OptionalParser for GenericParametersParser {
     type Output = Option<Option<Vec<GenericParameter>>>;
 
-    fn optionally_parse_using(self, iterator: &mut TokenIterator<'_>) -> Self::Output {
-        if iterator.next_token.raw != Token!['['] {
+    fn optionally_parse(self, state: &mut ParseState<'_>) -> Self::Output {
+        if state.next_token.raw != Token!['['] {
             return Some(None);
         }
 
-        iterator.advance();
+        state.advance();
 
-        let result = parse_list!(iterator, "generic parameters", Token![']'], {
+        let result = parse_list!(state, "generic parameters", Token![']'], {
             Some(GenericParameter {
-                name: iterator.consume_identifier("generic parameter name")?,
-                bounds: if iterator.next_token.raw == Token![:] {
-                    iterator.advance();
+                name: state.consume_identifier("generic parameter name")?,
+                bounds: if state.next_token.raw == Token![:] {
+                    state.advance();
 
-                    Some(TypeBoundsParser.parse_using(iterator)?)
+                    Some(TypeBoundsParser.parse(state)?)
                 } else {
                     None
                 },
-                default_value: if iterator.next_token.raw == Token![=] {
-                    iterator.advance();
+                default_value: if state.next_token.raw == Token![=] {
+                    state.advance();
 
-                    Some(TypeParser.parse_using(iterator)?)
+                    Some(TypeParser.parse(state)?)
                 } else {
                     None
                 },
             })
         });
 
-        iterator.advance();
+        state.advance();
 
         Some(Some(result))
     }
@@ -228,20 +228,20 @@ impl OptionalParser for GenericParametersParser {
 impl Parse for TypePathParser {
     type Output = Option<TypePath>;
 
-    fn parse_using(self, iterator: &mut TokenIterator<'_>) -> Self::Output {
-        let start = iterator.next_token.span.start();
+    fn parse(self, state: &mut ParseState<'_>) -> Self::Output {
+        let start = state.next_token.span.start();
 
         let mut segments = vec![];
-        segments.push(TypePathSegmentParser.parse_using(iterator)?);
+        segments.push(TypePathSegmentParser.parse(state)?);
 
-        while iterator.next_token.raw == Token![.] {
-            iterator.advance();
+        while state.next_token.raw == Token![.] {
+            state.advance();
 
-            segments.push(TypePathSegmentParser.parse_using(iterator)?);
+            segments.push(TypePathSegmentParser.parse(state)?);
         }
 
         Some(TypePath {
-            span: Span::new(start, iterator.current_token.span.end(), iterator.file_id),
+            span: Span::new(start, state.current_token.span.end(), state.file_id),
             segments,
         })
     }
@@ -250,15 +250,15 @@ impl Parse for TypePathParser {
 impl Parse for TypePathSegmentParser {
     type Output = Option<TypePathSegment>;
 
-    fn parse_using(self, iterator: &mut TokenIterator<'_>) -> Self::Output {
-        let path = PathParser.parse_using(iterator)?;
-        let generic_arguments = GenericArgumentsParser.optionally_parse_using(iterator)?;
+    fn parse(self, state: &mut ParseState<'_>) -> Self::Output {
+        let path = PathParser.parse(state)?;
+        let generic_arguments = GenericArgumentsParser.optionally_parse(state)?;
 
         Some(TypePathSegment {
             span: Span::new(
                 path.span.start(),
-                iterator.current_token.span.end(),
-                iterator.file_id,
+                state.current_token.span.end(),
+                state.file_id,
             ),
             path,
             generic_arguments,
@@ -269,24 +269,24 @@ impl Parse for TypePathSegmentParser {
 impl OptionalParser for GenericArgumentsParser {
     type Output = Option<Option<Vec<GenericArgument>>>;
 
-    fn optionally_parse_using(self, iterator: &mut TokenIterator<'_>) -> Self::Output {
-        if iterator.next_token.raw != Token!['['] {
+    fn optionally_parse(self, state: &mut ParseState<'_>) -> Self::Output {
+        if state.next_token.raw != Token!['['] {
             return Some(None);
         }
 
-        Some(self.parse_using(iterator))
+        Some(self.parse(state))
     }
 }
 impl Parse for GenericArgumentsParser {
     type Output = Option<Vec<GenericArgument>>;
 
-    fn parse_using(self, iterator: &mut TokenIterator<'_>) -> Self::Output {
-        iterator.advance();
+    fn parse(self, state: &mut ParseState<'_>) -> Self::Output {
+        state.advance();
 
-        let result = parse_list!(iterator, "generic arguments", Token![']'], {
-            let ty = TypeParser.parse_using(iterator)?;
+        let result = parse_list!(state, "generic arguments", Token![']'], {
+            let ty = TypeParser.parse(state)?;
 
-            match (iterator.next_token.raw, &ty) {
+            match (state.next_token.raw, &ty) {
                 (Token![=], TypeAst::Path(TypePath { segments, .. })) => {
                     match segments.as_slice() {
                         [TypePathSegment {
@@ -294,8 +294,8 @@ impl Parse for GenericArgumentsParser {
                             generic_arguments: None,
                             ..
                         }] if identifiers.len() == 1 => {
-                            iterator.advance();
-                            let value = TypeParser.parse_using(iterator)?;
+                            state.advance();
+                            let value = TypeParser.parse(state)?;
                             Some(GenericArgument::AssociatedType {
                                 name: *identifiers
                                     .first()
@@ -310,7 +310,7 @@ impl Parse for GenericArgumentsParser {
             }
         });
 
-        iterator.advance();
+        state.advance();
 
         Some(result)
     }
@@ -319,34 +319,34 @@ impl Parse for GenericArgumentsParser {
 impl OptionalParser for WhereClauseParser {
     type Output = Option<Option<WhereClause>>;
 
-    fn optionally_parse_using(self, iterator: &mut TokenIterator<'_>) -> Self::Output {
-        if iterator.next_token.raw != Token![where] {
+    fn optionally_parse(self, state: &mut ParseState<'_>) -> Self::Output {
+        if state.next_token.raw != Token![where] {
             return Some(None);
         }
 
-        iterator.advance();
+        state.advance();
 
         Some(Some(parse_list!(
-            iterator,
+            state,
             "where clause",
             (Token!['{']) or (Token![;]),
              {
-                let left = TypeParser.parse_using(iterator)?;
+                let left = TypeParser.parse(state)?;
 
-                match iterator.next_token.raw {
+                match state.next_token.raw {
                     Token![:] => {
-                        iterator.advance();
+                        state.advance();
 
-                        Some(WhereClauseItem::Satisfies { ty: left, bounds: TypeBoundsParser.parse_using(iterator)? })
+                        Some(WhereClauseItem::Satisfies { ty: left, bounds: TypeBoundsParser.parse(state)? })
                     },
                     Token![=] => {
-                        iterator.advance();
+                        state.advance();
 
-                        Some(WhereClauseItem::Eq { left, right: TypeParser.parse_using(iterator)? })
+                        Some(WhereClauseItem::Eq { left, right: TypeParser.parse(state)? })
                     },
                     _ => {
-                        iterator.diagnostics.push(ParseDiagnostic::UnexpectedTokenError {
-                            got: iterator.next_token,
+                        state.diagnostics.push(ParseDiagnostic::UnexpectedTokenError {
+                            got: state.next_token,
                             expected: expected!(Token![=], Token![:]),
                             node: "where clause".to_owned(),
                         }.build());

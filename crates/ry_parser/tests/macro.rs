@@ -9,8 +9,8 @@ macro_rules! test {
                 $source,
             );
 
-            let mut iterator = ry_parser::TokenIterator::new(0, &source_file);
-            let (_, diagnostics, _) = ry_parser::parse_module(&mut iterator);
+            let mut state = ry_parser::ParseState::new(0, &source_file);
+            let (_, diagnostics, _) = ry_parser::parse_module(&mut state);
 
             assert!(diagnostics.is_empty());
         }

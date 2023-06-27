@@ -1,5 +1,5 @@
 use crate::{
-    expression::ExpressionParser, pattern::PatternParser, r#type::TypeParser, Parse, TokenIterator,
+    expression::ExpressionParser, pattern::PatternParser, r#type::TypeParser, Parse, ParseState,
 };
 use ry_ast::{token::RawToken, Statement, StatementsBlock, Token};
 use ry_diagnostics::{parser::ParseDiagnostic, BuildDiagnostic};
@@ -18,38 +18,38 @@ struct LetStatementParser;
 impl Parse for StatementParser {
     type Output = Option<(Statement, bool)>;
 
-    fn parse_using(self, iterator: &mut TokenIterator<'_>) -> Self::Output {
+    fn parse(self, state: &mut ParseState<'_>) -> Self::Output {
         let mut last_statement_in_block = false;
         let mut must_have_semicolon_at_the_end = true;
 
         let mut no_semicolon_after_expression_error_emitted = false;
 
-        let start = iterator.next_token.span.start();
+        let start = state.next_token.span.start();
 
-        let statement = match iterator.next_token.raw {
-            Token![return] => ReturnStatementParser.parse_using(iterator)?,
-            Token![defer] => DeferStatementParser.parse_using(iterator)?,
-            Token![let] => LetStatementParser.parse_using(iterator)?,
+        let statement = match state.next_token.raw {
+            Token![return] => ReturnStatementParser.parse(state)?,
+            Token![defer] => DeferStatementParser.parse(state)?,
+            Token![let] => LetStatementParser.parse(state)?,
             Token![continue] => {
-                iterator.advance();
+                state.advance();
 
                 Statement::Continue {
-                    span: iterator.current_token.span,
+                    span: state.current_token.span,
                 }
             }
             Token![break] => {
-                iterator.advance();
+                state.advance();
 
                 Statement::Break {
-                    span: iterator.current_token.span,
+                    span: state.current_token.span,
                 }
             }
             _ => {
-                let expression = ExpressionParser::default().parse_using(iterator)?;
+                let expression = ExpressionParser::default().parse(state)?;
 
                 must_have_semicolon_at_the_end = !expression.with_block();
 
-                match iterator.next_token.raw {
+                match state.next_token.raw {
                     Token![;] => {}
                     Token!['}'] => {
                         if must_have_semicolon_at_the_end {
@@ -59,13 +59,13 @@ impl Parse for StatementParser {
                     _ => {
                         no_semicolon_after_expression_error_emitted = true;
 
-                        iterator.diagnostics.push(
+                        state.diagnostics.push(
                             ParseDiagnostic::NoSemicolonAfterExpressionError {
                                 expression_span: expression.span(),
                                 span: Span::new(
                                     expression.span().end() - 1,
                                     expression.span().end(),
-                                    iterator.file_id,
+                                    state.file_id,
                                 ),
                             }
                             .build(),
@@ -87,19 +87,19 @@ impl Parse for StatementParser {
             }
         };
 
-        let end = iterator.current_token.span.end();
+        let end = state.current_token.span.end();
 
         if !last_statement_in_block
             && must_have_semicolon_at_the_end
             && !no_semicolon_after_expression_error_emitted
         {
-            if iterator.next_token.raw == Token![;] {
-                iterator.advance();
+            if state.next_token.raw == Token![;] {
+                state.advance();
             } else {
-                iterator.diagnostics.push(
+                state.diagnostics.push(
                     ParseDiagnostic::NoSemicolonAfterStatementError {
-                        statement_span: Span::new(start, end - 1, iterator.file_id),
-                        span: Span::new(end, end, iterator.file_id),
+                        statement_span: Span::new(start, end - 1, state.file_id),
+                        span: Span::new(end, end, state.file_id),
                     }
                     .build(),
                 );
@@ -113,24 +113,20 @@ impl Parse for StatementParser {
 impl Parse for StatementsBlockParser {
     type Output = Option<StatementsBlock>;
 
-    fn parse_using(self, iterator: &mut TokenIterator<'_>) -> Self::Output {
-        iterator.consume(Token!['{'], "statements block")?;
-        let start = iterator.current_token.span.start();
+    fn parse(self, state: &mut ParseState<'_>) -> Self::Output {
+        state.consume(Token!['{'], "statements block")?;
+        let start = state.current_token.span.start();
 
         let mut block = vec![];
 
         loop {
-            match iterator.next_token.raw {
+            match state.next_token.raw {
                 Token!['}'] => break,
                 RawToken::EndOfFile => {
-                    iterator.diagnostics.push(
+                    state.diagnostics.push(
                         ParseDiagnostic::EOFInsteadOfCloseBraceForStatementsBlockError {
-                            statements_block_start_span: Span::new(
-                                start,
-                                start + 1,
-                                iterator.file_id,
-                            ),
-                            span: iterator.current_token.span,
+                            statements_block_start_span: Span::new(start, start + 1, state.file_id),
+                            span: state.current_token.span,
                         }
                         .build(),
                     );
@@ -138,21 +134,21 @@ impl Parse for StatementsBlockParser {
                     return None;
                 }
                 Token![;] => {
-                    iterator.diagnostics.push(
+                    state.diagnostics.push(
                         ParseDiagnostic::EmptyStatementWarning {
-                            span: iterator.next_token.span,
+                            span: state.next_token.span,
                         }
                         .build(),
                     );
 
                     // Recover
-                    iterator.advance(); // `;`
+                    state.advance(); // `;`
                     continue;
                 }
                 _ => {}
             }
 
-            let (statement, last) = StatementParser.parse_using(iterator)?;
+            let (statement, last) = StatementParser.parse(state)?;
             block.push(statement);
 
             if last {
@@ -160,7 +156,7 @@ impl Parse for StatementsBlockParser {
             }
         }
 
-        iterator.advance();
+        state.advance();
 
         Some(block)
     }
@@ -169,11 +165,11 @@ impl Parse for StatementsBlockParser {
 impl Parse for DeferStatementParser {
     type Output = Option<Statement>;
 
-    fn parse_using(self, iterator: &mut TokenIterator<'_>) -> Self::Output {
-        iterator.advance();
+    fn parse(self, state: &mut ParseState<'_>) -> Self::Output {
+        state.advance();
 
         Some(Statement::Defer {
-            call: ExpressionParser::default().parse_using(iterator)?,
+            call: ExpressionParser::default().parse(state)?,
         })
     }
 }
@@ -181,11 +177,11 @@ impl Parse for DeferStatementParser {
 impl Parse for ReturnStatementParser {
     type Output = Option<Statement>;
 
-    fn parse_using(self, iterator: &mut TokenIterator<'_>) -> Self::Output {
-        iterator.advance();
+    fn parse(self, state: &mut ParseState<'_>) -> Self::Output {
+        state.advance();
 
         Some(Statement::Return {
-            expression: ExpressionParser::default().parse_using(iterator)?,
+            expression: ExpressionParser::default().parse(state)?,
         })
     }
 }
@@ -193,21 +189,21 @@ impl Parse for ReturnStatementParser {
 impl Parse for LetStatementParser {
     type Output = Option<Statement>;
 
-    fn parse_using(self, iterator: &mut TokenIterator<'_>) -> Self::Output {
-        iterator.advance(); // `let`
+    fn parse(self, state: &mut ParseState<'_>) -> Self::Output {
+        state.advance(); // `let`
 
-        let pattern = PatternParser.parse_using(iterator)?;
+        let pattern = PatternParser.parse(state)?;
 
-        let ty = if iterator.next_token.raw == Token![:] {
-            iterator.advance();
-            Some(TypeParser.parse_using(iterator)?)
+        let ty = if state.next_token.raw == Token![:] {
+            state.advance();
+            Some(TypeParser.parse(state)?)
         } else {
             None
         };
 
-        iterator.consume(Token![=], "let statement")?;
+        state.consume(Token![=], "let statement")?;
 
-        let value = Box::new(ExpressionParser::default().parse_using(iterator)?);
+        let value = Box::new(ExpressionParser::default().parse(state)?);
 
         Some(Statement::Let { pattern, value, ty })
     }

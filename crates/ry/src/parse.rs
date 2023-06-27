@@ -1,7 +1,7 @@
 use crate::prefix::{create_unique_file, log_with_left_padded_prefix, log_with_prefix};
 use ry_ast::serialize::serialize_ast_or_panic;
 use ry_diagnostics::DiagnosticsEmitter;
-use ry_parser::{parse_module, TokenIterator};
+use ry_parser::{parse_module, ParseState};
 use ry_source_file::{source_file::SourceFile, source_file_manager::SourceFileManager};
 use std::{fs, io::Write, path::Path, process::exit, time::Instant};
 
@@ -17,8 +17,8 @@ pub fn command(filepath: &str) {
 
             log_with_left_padded_prefix("Parsing", filepath);
 
-            let mut iterator = TokenIterator::new(file_id, &source_file);
-            let (ast, diagnostics, interner) = parse_module(&mut iterator);
+            let mut state = ParseState::new(file_id, &source_file);
+            let (ast, diagnostics, interner) = parse_module(&mut state);
 
             log_with_left_padded_prefix("Parsed", format!("in {}s", now.elapsed().as_secs_f64()));
 
