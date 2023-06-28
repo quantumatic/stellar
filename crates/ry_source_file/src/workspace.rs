@@ -110,12 +110,12 @@ impl<'m> Workspace<'m> {
     /// );
     /// assert_eq!(
     ///     // file does not exist
-    ///     file_manager.resolve_span(Span::new(0, 0, file_id + 1)),
+    ///     workspace.resolve_span(Span::new(0, 0, file_id + 1)),
     ///     None
     /// );
     /// assert_eq!(
     ///     // out of bounds
-    ///     file_manager.resolve_span(Span::new(99, 100, file_id)),
+    ///     workspace.resolve_span(Span::new(99, 100, file_id)),
     ///     None
     /// );
     #[must_use]
