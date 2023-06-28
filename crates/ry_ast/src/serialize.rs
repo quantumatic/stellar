@@ -98,10 +98,10 @@ impl<'interner> Serializer<'interner> {
         span.serialize(self);
     }
 
-    fn serialize_key_value_pair<S, Se>(&mut self, key: S, value: &Se)
+    fn serialize_key_value_pair<A, S>(&mut self, key: A, value: &S)
     where
-        S: AsRef<str>,
-        Se: Serialize,
+        A: AsRef<str>,
+        S: Serialize,
     {
         self.write_newline();
         self.write_identation();
