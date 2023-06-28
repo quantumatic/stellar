@@ -91,7 +91,7 @@ pub use module::{parse_module, parse_module_using};
 #[macro_use]
 mod macros;
 
-/// Represents token state.
+/// Represents a parse state.
 #[derive(Debug)]
 pub struct ParseState<'source, 'diagnostics, 'interner> {
     source_file: &'source SourceFile<'source>,
@@ -116,7 +116,7 @@ where
 
 /// Represents AST node that can optionally be parsed. Optionally
 /// in this context means that if some condition is satisfied,
-/// the AST node is parsed as usually (`Parse::parse_with(...)`),
+/// the AST node is parsed as usually (`Parse::parse(...)`),
 /// but if not, it is skipped, token state is not advanced and the
 /// default value is returned.
 ///
@@ -140,7 +140,7 @@ where
 impl<'source, 'diagnostics, 'interner> ParseState<'source, 'diagnostics, 'interner> {
     /// Creates an initial state.
     ///
-    /// Note: [`TokenIterator::current`] and [`TokenIterator::next`] are
+    /// Note: [`ParseState::current`] and [`ParseState::next`] are
     /// the same at an initial state.
     #[must_use]
     pub fn new(
@@ -302,7 +302,7 @@ impl<'source, 'diagnostics, 'interner> ParseState<'source, 'diagnostics, 'intern
 
     /// Consumes the docstring for a local item (i.e., anything that is not the module docstring
     /// or the first item in the module (because it will be already consumed in
-    /// [`Parser::consume_module_and_first_item_docstrings()`])).
+    /// [`ParseState::consume_module_and_first_item_docstrings()`])).
     pub(crate) fn consume_docstring(&mut self) -> Docstring {
         let mut result = vec![];
 
