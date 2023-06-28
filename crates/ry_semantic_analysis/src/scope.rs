@@ -38,18 +38,18 @@ impl SymbolData {
 
 /// Represents a local scope (a scope that is not a global).
 #[derive(Debug)]
-pub struct LocalScope<'a> {
+pub struct LocalScope<'parent> {
     /// Symbols in this scope (not the ones contained in the parent scopes).
     symbols: HashMap<Symbol, SymbolData>,
 
     /// Parent scope.
-    parent: Option<&'a LocalScope<'a>>,
+    parent: Option<&'parent LocalScope<'parent>>,
 }
 
-impl<'a> LocalScope<'a> {
+impl<'parent> LocalScope<'parent> {
     #[inline]
     #[must_use]
-    pub fn new(parent: Option<&'a LocalScope<'a>>) -> Self {
+    pub fn new(parent: Option<&'parent LocalScope<'parent>>) -> Self {
         Self {
             symbols: HashMap::new(),
             parent,
@@ -59,7 +59,7 @@ impl<'a> LocalScope<'a> {
     /// Returns the parent scope.
     #[inline]
     #[must_use]
-    pub const fn parent(&self) -> Option<&'a LocalScope<'a>> {
+    pub const fn parent(&self) -> Option<&'parent LocalScope<'parent>> {
         self.parent
     }
 
