@@ -33,7 +33,7 @@ pub(crate) struct WhereClauseParser;
 impl Parse for TypeBoundsParser {
     type Output = Option<TypeBounds>;
 
-    fn parse(self, state: &mut ParseState<'_>) -> Self::Output {
+    fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
         let mut bounds = vec![];
         bounds.push(TypePathParser.parse(state)?);
 
@@ -50,7 +50,7 @@ impl Parse for TypeBoundsParser {
 impl Parse for TypeParser {
     type Output = Option<TypeAst>;
 
-    fn parse(self, state: &mut ParseState<'_>) -> Self::Output {
+    fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
         match state.next_token.raw {
             Token!['('] => ParenthesizedTypeParser.parse(state),
             RawToken::Identifier => TypePathParser.parse(state).map(TypeAst::Path),
@@ -77,7 +77,7 @@ impl Parse for TypeParser {
 impl Parse for TypeWithQualifiedPathParser {
     type Output = Option<TypeAst>;
 
-    fn parse(self, state: &mut ParseState<'_>) -> Self::Output {
+    fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
         let start = state.next_token.span.start();
         state.advance(); // `[`
 
@@ -109,7 +109,7 @@ impl Parse for TypeWithQualifiedPathParser {
 impl Parse for TraitObjectTypeParser {
     type Output = Option<TypeAst>;
 
-    fn parse(self, state: &mut ParseState<'_>) -> Self::Output {
+    fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
         let start = state.next_token.span.start();
 
         state.advance(); // `dyn`
@@ -124,7 +124,7 @@ impl Parse for TraitObjectTypeParser {
 impl Parse for TupleTypeParser {
     type Output = Option<TypeAst>;
 
-    fn parse(self, state: &mut ParseState<'_>) -> Self::Output {
+    fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
         let start = state.next_token.span.start();
         state.advance(); // `#`
 
@@ -146,7 +146,7 @@ impl Parse for TupleTypeParser {
 impl Parse for ParenthesizedTypeParser {
     type Output = Option<TypeAst>;
 
-    fn parse(self, state: &mut ParseState<'_>) -> Self::Output {
+    fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
         let start = state.next_token.span.start();
         state.advance(); // `(`
 
@@ -164,7 +164,7 @@ impl Parse for ParenthesizedTypeParser {
 impl Parse for FunctionTypeParser {
     type Output = Option<TypeAst>;
 
-    fn parse(self, state: &mut ParseState<'_>) -> Self::Output {
+    fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
         let start = state.next_token.span.start();
         state.advance(); // `Fun`
 
@@ -192,7 +192,7 @@ impl Parse for FunctionTypeParser {
 impl OptionalParser for GenericParametersParser {
     type Output = Option<Option<Vec<GenericParameter>>>;
 
-    fn optionally_parse(self, state: &mut ParseState<'_>) -> Self::Output {
+    fn optionally_parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
         if state.next_token.raw != Token!['['] {
             return Some(None);
         }
@@ -228,7 +228,7 @@ impl OptionalParser for GenericParametersParser {
 impl Parse for TypePathParser {
     type Output = Option<TypePath>;
 
-    fn parse(self, state: &mut ParseState<'_>) -> Self::Output {
+    fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
         let start = state.next_token.span.start();
 
         let mut segments = vec![];
@@ -250,7 +250,7 @@ impl Parse for TypePathParser {
 impl Parse for TypePathSegmentParser {
     type Output = Option<TypePathSegment>;
 
-    fn parse(self, state: &mut ParseState<'_>) -> Self::Output {
+    fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
         let path = PathParser.parse(state)?;
         let generic_arguments = GenericArgumentsParser.optionally_parse(state)?;
 
@@ -269,7 +269,7 @@ impl Parse for TypePathSegmentParser {
 impl OptionalParser for GenericArgumentsParser {
     type Output = Option<Option<Vec<GenericArgument>>>;
 
-    fn optionally_parse(self, state: &mut ParseState<'_>) -> Self::Output {
+    fn optionally_parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
         if state.next_token.raw != Token!['['] {
             return Some(None);
         }
@@ -280,7 +280,7 @@ impl OptionalParser for GenericArgumentsParser {
 impl Parse for GenericArgumentsParser {
     type Output = Option<Vec<GenericArgument>>;
 
-    fn parse(self, state: &mut ParseState<'_>) -> Self::Output {
+    fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
         state.advance();
 
         let result = parse_list!(state, "generic arguments", Token![']'], {
@@ -319,7 +319,7 @@ impl Parse for GenericArgumentsParser {
 impl OptionalParser for WhereClauseParser {
     type Output = Option<Option<WhereClause>>;
 
-    fn optionally_parse(self, state: &mut ParseState<'_>) -> Self::Output {
+    fn optionally_parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
         if state.next_token.raw != Token![where] {
             return Some(None);
         }

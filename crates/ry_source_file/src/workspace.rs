@@ -1,4 +1,4 @@
-//! Defines a [`SourceFileManager`] for diagnostics reporting and advanced file management.
+//! Defines a [`Workspace`] for diagnostics reporting and advanced file management.
 
 use crate::{source_file::SourceFile, span::Span};
 use codespan_reporting::files::{Error, Files};
@@ -6,29 +6,29 @@ use std::ops::Range;
 
 /// A source file manager.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct SourceFileManager<'a> {
-    files: Vec<&'a SourceFile<'a>>,
+pub struct Workspace<'m> {
+    files: Vec<&'m SourceFile<'m>>,
 }
 
-impl Default for SourceFileManager<'_> {
+impl Default for Workspace<'_> {
     fn default() -> Self {
         Self::new()
     }
 }
 
-/// An ID used to refer to files in [`SourceFileManager`].
+/// An ID used to refer to files in [`Workspace`].
 pub type FileID = usize;
 
-impl<'a> SourceFileManager<'a> {
-    /// Creates a new empty [`SourceFileManager`].
+impl<'m> Workspace<'m> {
+    /// Creates a new empty [`Workspace`].
     #[inline]
     #[must_use]
     pub const fn new() -> Self {
         Self { files: Vec::new() }
     }
 
-    /// Adds a new file to the [`SourceFileManager`] and returns its ID.
-    pub fn add_file(&mut self, file: &'a SourceFile<'a>) -> usize {
+    /// Adds a new file to the [`Workspace`] and returns its ID.
+    pub fn add_file(&mut self, file: &'m SourceFile<'m>) -> usize {
         self.files.push(file);
         self.files.len()
     }
@@ -36,7 +36,7 @@ impl<'a> SourceFileManager<'a> {
     /// Returns the file with the given ID.
     #[inline]
     #[must_use]
-    pub fn get_file_by_id(&self, file_id: FileID) -> Option<&'a SourceFile<'a>> {
+    pub fn get_file_by_id(&self, file_id: FileID) -> Option<&'m SourceFile<'m>> {
         self.files.get(file_id - 1).copied()
     }
 
@@ -46,7 +46,7 @@ impl<'a> SourceFileManager<'a> {
     /// Calling this method with an out-of-bounds index is undefined behavior even if the resulting reference is not used.
     #[inline]
     #[must_use]
-    pub unsafe fn get_file_by_id_unchecked(&self, file_id: FileID) -> &SourceFile<'a> {
+    pub unsafe fn get_file_by_id_unchecked(&self, file_id: FileID) -> &SourceFile<'m> {
         unsafe { self.files.get_unchecked(file_id - 1) }
     }
 
@@ -61,21 +61,21 @@ impl<'a> SourceFileManager<'a> {
     ///
     /// ```
     /// use std::path::Path;
-    /// use ry_source_file::{source_file_manager::SourceFileManager, source_file::SourceFile, span::Span};
+    /// use ry_source_file::{workspace::Workspace, source_file::SourceFile, span::Span};
     ///
-    /// let mut file_manager = SourceFileManager::new();
+    /// let mut workspace = Workspace::new();
     /// let source_file = SourceFile::new(
     ///     Path::new("test.ry"),
     ///     "fun main() { println(\"Hello, world!\"); }"
     /// );
     ///
-    /// let file_id = file_manager.add_file(&source_file);
+    /// let file_id = workspace.add_file(&source_file);
     /// let span = Span::new(21, 36, file_id);
     ///
-    /// assert_eq!(file_manager.resolve_span_or_panic(span), "\"Hello, world!\"");
+    /// assert_eq!(workspace.resolve_span_or_panic(span), "\"Hello, world!\"");
     /// ```
     #[must_use]
-    pub fn resolve_span_or_panic(&self, span: Span) -> &'a str {
+    pub fn resolve_span_or_panic(&self, span: Span) -> &'m str {
         self.get_file_by_id(span.file_id())
             .expect("File does not exist")
             .source()
@@ -86,24 +86,24 @@ impl<'a> SourceFileManager<'a> {
     /// Returns the content of the part of the source code situated
     /// at the given span.
     ///
-    /// Instead of panicking in the situation when [`SourceFileManager::resolve_span_or_panic()`] does,
+    /// Instead of panicking in the situation when [`Workspace::resolve_span_or_panic()`] does,
     /// the function returns [`None`].
     ///
     /// # Examples
     ///
     /// ```
     /// use std::path::Path;
-    /// use ry_source_file::{source_file_manager::SourceFileManager, span::Span, source_file::SourceFile};
+    /// use ry_source_file::{workspace::Workspace, span::Span, source_file::SourceFile};
     ///
-    /// let mut file_manager = SourceFileManager::new();
+    /// let mut workspace = Workspace::new();
     /// let source_file = SourceFile::new(
     ///     Path::new("test.ry"),
     ///     "fun main() { println(\"Hello, world!\"); }"
     /// );
-    /// let file_id = file_manager.add_file(&source_file);
+    /// let file_id = workspace.add_file(&source_file);
     ///
     /// assert_eq!(
-    ///     file_manager.resolve_span(
+    ///     workspace.resolve_span(
     ///         Span::new(21, 36, file_id)
     ///     ),
     ///     Some("\"Hello, world!\"")
@@ -119,17 +119,17 @@ impl<'a> SourceFileManager<'a> {
     ///     None
     /// );
     #[must_use]
-    pub fn resolve_span(&self, span: Span) -> Option<&'a str> {
+    pub fn resolve_span(&self, span: Span) -> Option<&'m str> {
         self.get_file_by_id(span.file_id())?
             .source()
             .get(span.start()..span.end())
     }
 }
 
-impl<'a> Files<'a> for SourceFileManager<'a> {
+impl<'workspace> Files<'workspace> for Workspace<'workspace> {
     type FileId = FileID;
-    type Name = &'a str;
-    type Source = &'a str;
+    type Name = &'workspace str;
+    type Source = &'workspace str;
 
     fn name(&self, file_id: FileID) -> Result<Self::Name, Error> {
         self.get_file_by_id(file_id)

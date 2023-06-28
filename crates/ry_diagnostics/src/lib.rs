@@ -60,41 +60,41 @@
 )]
 
 use codespan_reporting::{
-    diagnostic::Diagnostic,
+    diagnostic::{Diagnostic, Severity},
     term::{
         self,
         termcolor::{ColorChoice, StandardStream},
         Config,
     },
 };
-use ry_source_file::source_file_manager::{FileID, SourceFileManager};
+use ry_source_file::workspace::{FileID, Workspace};
 
 pub mod parser;
 pub mod scope;
 
 /// Stores basic `codespan_reporting` structs for reporting diagnostics.
 #[derive(Debug)]
-pub struct DiagnosticsEmitter<'a> {
+pub struct DiagnosticsEmitter<'workspace> {
     /// The stream in which diagnostics is reported into.
     pub writer: StandardStream,
 
     /// The config for diagnostics reporting.
     pub config: Config,
 
-    /// The source file manager.
-    pub file_manager: &'a SourceFileManager<'a>,
+    /// The workspace in which diagnostics are reported.
+    pub workspace: &'workspace Workspace<'workspace>,
 }
 
 /// A diagnostic.
 pub type CompilerDiagnostic = Diagnostic<FileID>;
 
-impl<'a> DiagnosticsEmitter<'a> {
+impl<'workspace> DiagnosticsEmitter<'workspace> {
     /// Emit the error not related to a conrete file.
     pub fn emit_global_error(&self, msg: &str) {
         term::emit(
             &mut self.writer.lock(),
             &self.config,
-            self.file_manager,
+            self.workspace,
             &Diagnostic::error().with_message(msg),
         )
         .expect("emit_global_diagnostic() failed");
@@ -105,14 +105,14 @@ impl<'a> DiagnosticsEmitter<'a> {
         term::emit(
             &mut self.writer.lock(),
             &self.config,
-            self.file_manager,
+            self.workspace,
             diagnostic,
         )
         .expect("emit_diagnostic() failed");
     }
 
     /// Emit a list of diagnostic.
-    pub fn emit_diagnostics(&self, diagnostics: &[CompilerDiagnostic]) {
+    pub fn emit_diagnostics(&self, diagnostics: &Vec<CompilerDiagnostic>) {
         for diagnostic in diagnostics {
             self.emit_diagnostic(diagnostic);
         }
@@ -121,11 +121,11 @@ impl<'a> DiagnosticsEmitter<'a> {
     /// Create a new [`DiagnosticsEmitter`] instance.
     #[must_use]
     #[inline]
-    pub fn new(file_manager: &'a SourceFileManager<'a>) -> Self {
+    pub fn new(workspace: &'workspace Workspace<'workspace>) -> Self {
         Self {
             writer: StandardStream::stderr(ColorChoice::Always),
             config: Config::default(),
-            file_manager,
+            workspace,
         }
     }
 
@@ -144,6 +144,18 @@ impl<'a> DiagnosticsEmitter<'a> {
         self.config = config;
         self
     }
+}
+
+/// Check if diagnostics are fatal.
+#[must_use]
+pub fn is_fatal(diagnostics: &Vec<CompilerDiagnostic>) -> bool {
+    for diagnostic in diagnostics {
+        if matches!(diagnostic.severity, Severity::Error | Severity::Bug) {
+            return true;
+        }
+    }
+
+    false
 }
 
 /// Anything that can be reported using [`Reporter`].

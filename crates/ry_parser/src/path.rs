@@ -7,7 +7,7 @@ pub(crate) struct PathParser;
 impl Parse for PathParser {
     type Output = Option<Path>;
 
-    fn parse(self, state: &mut ParseState<'_>) -> Self::Output {
+    fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
         let mut identifiers = vec![];
         let first_identifier = state.consume_identifier("path")?;
         identifiers.push(first_identifier);

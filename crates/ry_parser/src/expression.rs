@@ -90,7 +90,7 @@ struct StatementsBlockExpressionParser;
 impl Parse for ExpressionParser {
     type Output = Option<UntypedExpression>;
 
-    fn parse(self, state: &mut ParseState<'_>) -> Self::Output {
+    fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
         let start = state.next_token.span.start();
         let mut left = PrimaryExpressionParser {
             ignore_struct: self.ignore_struct,
@@ -134,7 +134,7 @@ impl Parse for ExpressionParser {
 impl Parse for WhileExpressionParser {
     type Output = Option<UntypedExpression>;
 
-    fn parse(self, state: &mut ParseState<'_>) -> Self::Output {
+    fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
         let start = state.next_token.span.start();
         state.advance(); // `while`
 
@@ -157,7 +157,7 @@ impl Parse for WhileExpressionParser {
 impl Parse for MatchExpressionParser {
     type Output = Option<UntypedExpression>;
 
-    fn parse(self, state: &mut ParseState<'_>) -> Self::Output {
+    fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
         let start = state.next_token.span.start();
         state.advance(); // `match`
 
@@ -180,7 +180,7 @@ impl Parse for MatchExpressionParser {
 impl Parse for MatchExpressionBlockParser {
     type Output = Option<Vec<MatchExpressionItem>>;
 
-    fn parse(self, state: &mut ParseState<'_>) -> Self::Output {
+    fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
         state.consume(Token!['{'], "match expression block")?;
 
         let units = parse_list!(state, "match expression block", Token!['}'], {
@@ -196,7 +196,7 @@ impl Parse for MatchExpressionBlockParser {
 impl Parse for MatchExpressionUnitParser {
     type Output = Option<MatchExpressionItem>;
 
-    fn parse(self, state: &mut ParseState<'_>) -> Self::Output {
+    fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
         let left = PatternParser.parse(state)?;
         state.consume(Token![=>], "match expression unit")?;
 
@@ -209,7 +209,7 @@ impl Parse for MatchExpressionUnitParser {
 impl Parse for PrimaryExpressionParser {
     type Output = Option<UntypedExpression>;
 
-    fn parse(self, state: &mut ParseState<'_>) -> Self::Output {
+    fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
         match state.next_token.raw {
             RawToken::IntegerLiteral
             | RawToken::FloatLiteral
@@ -273,7 +273,7 @@ impl Parse for PrimaryExpressionParser {
 impl Parse for GenericArgumentsExpressionParser {
     type Output = Option<UntypedExpression>;
 
-    fn parse(self, state: &mut ParseState<'_>) -> Self::Output {
+    fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
         let generic_arguments = GenericArgumentsParser.parse(state)?;
 
         Some(UntypedExpression::GenericArguments {
@@ -287,7 +287,7 @@ impl Parse for GenericArgumentsExpressionParser {
 impl Parse for PropertyAccessExpressionParser {
     type Output = Option<UntypedExpression>;
 
-    fn parse(self, state: &mut ParseState<'_>) -> Self::Output {
+    fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
         state.advance(); // `.`
 
         Some(UntypedExpression::FieldAccess {
@@ -301,7 +301,7 @@ impl Parse for PropertyAccessExpressionParser {
 impl Parse for PrefixExpressionParser {
     type Output = Option<UntypedExpression>;
 
-    fn parse(self, state: &mut ParseState<'_>) -> Self::Output {
+    fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
         let operator_token = state.next_token;
         let operator: PrefixOperator = PrefixOperator {
             span: operator_token.span,
@@ -330,7 +330,7 @@ impl Parse for PrefixExpressionParser {
 impl Parse for PostfixExpressionParser {
     type Output = Option<UntypedExpression>;
 
-    fn parse(self, state: &mut ParseState<'_>) -> Self::Output {
+    fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
         state.advance();
 
         let operator: PostfixOperator = PostfixOperator {
@@ -349,7 +349,7 @@ impl Parse for PostfixExpressionParser {
 impl Parse for ParenthesizedExpressionParser {
     type Output = Option<UntypedExpression>;
 
-    fn parse(self, state: &mut ParseState<'_>) -> Self::Output {
+    fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
         let start = state.next_token.span.start();
         state.advance();
 
@@ -371,7 +371,7 @@ impl Parse for ParenthesizedExpressionParser {
 impl Parse for IfExpressionParser {
     type Output = Option<UntypedExpression>;
 
-    fn parse(self, state: &mut ParseState<'_>) -> Self::Output {
+    fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
         let start = state.next_token.span.start();
         state.advance(); // `if`
 
@@ -418,7 +418,7 @@ impl Parse for IfExpressionParser {
 impl Parse for CastExpressionParser {
     type Output = Option<UntypedExpression>;
 
-    fn parse(self, state: &mut ParseState<'_>) -> Self::Output {
+    fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
         state.advance();
 
         let right = TypeParser.parse(state)?;
@@ -434,7 +434,7 @@ impl Parse for CastExpressionParser {
 impl Parse for CallExpressionParser {
     type Output = Option<UntypedExpression>;
 
-    fn parse(self, state: &mut ParseState<'_>) -> Self::Output {
+    fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
         state.advance(); // `(`
 
         let arguments = parse_list!(state, "call arguments list", Token![')'], {
@@ -454,7 +454,7 @@ impl Parse for CallExpressionParser {
 impl Parse for BinaryExpressionParser {
     type Output = Option<UntypedExpression>;
 
-    fn parse(self, state: &mut ParseState<'_>) -> Self::Output {
+    fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
         let operator_token = state.next_token;
         let operator: BinaryOperator = BinaryOperator {
             span: operator_token.span,
@@ -482,7 +482,7 @@ impl Parse for BinaryExpressionParser {
 impl Parse for ListExpressionParser {
     type Output = Option<UntypedExpression>;
 
-    fn parse(self, state: &mut ParseState<'_>) -> Self::Output {
+    fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
         state.advance();
 
         let start = state.next_token.span.start();
@@ -503,7 +503,7 @@ impl Parse for ListExpressionParser {
 impl Parse for TupleExpressionParser {
     type Output = Option<UntypedExpression>;
 
-    fn parse(self, state: &mut ParseState<'_>) -> Self::Output {
+    fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
         let start = state.next_token.span.start();
         state.advance(); // `#`
 
@@ -525,7 +525,7 @@ impl Parse for TupleExpressionParser {
 impl Parse for StructExpressionParser {
     type Output = Option<UntypedExpression>;
 
-    fn parse(self, state: &mut ParseState<'_>) -> Self::Output {
+    fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
         state.advance(); // `{`
 
         let fields = parse_list!(state, "struct expression", Token!['}'], {
@@ -545,7 +545,7 @@ impl Parse for StructExpressionParser {
 impl Parse for StructExpressionUnitParser {
     type Output = Option<StructExpressionItem>;
 
-    fn parse(self, state: &mut ParseState<'_>) -> Self::Output {
+    fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
         let name = state.consume_identifier("struct field")?;
 
         let value = if state.next_token.raw == Token![:] {
@@ -562,7 +562,7 @@ impl Parse for StructExpressionUnitParser {
 impl Parse for StatementsBlockExpressionParser {
     type Output = Option<UntypedExpression>;
 
-    fn parse(self, state: &mut ParseState<'_>) -> Self::Output {
+    fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
         let start = state.next_token.span.start();
         let block = StatementsBlockParser.parse(state)?;
 
@@ -576,7 +576,7 @@ impl Parse for StatementsBlockExpressionParser {
 impl Parse for FunctionExpressionParser {
     type Output = Option<UntypedExpression>;
 
-    fn parse(self, state: &mut ParseState<'_>) -> Self::Output {
+    fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
         let start = state.next_token.span.start();
         state.advance(); // `|`
 

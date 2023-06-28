@@ -72,7 +72,7 @@ pub(crate) struct ItemParser;
 impl Parse for UseItemParser {
     type Output = Option<Item>;
 
-    fn parse(self, state: &mut ParseState<'_>) -> Self::Output {
+    fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
         state.advance();
 
         let path = PathParser.parse(state)?;
@@ -88,7 +88,7 @@ impl Parse for UseItemParser {
 impl Parse for StructFieldParser {
     type Output = Option<StructField>;
 
-    fn parse(self, state: &mut ParseState<'_>) -> Self::Output {
+    fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
         let visibility = if state.next_token.raw == Token![pub] {
             state.advance();
             Visibility::public(state.current_token.span)
@@ -113,7 +113,7 @@ impl Parse for StructFieldParser {
 impl Parse for StructFieldsParser {
     type Output = Option<Vec<Documented<StructField>>>;
 
-    fn parse(self, state: &mut ParseState<'_>) -> Self::Output {
+    fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
         state.consume(Token!['{'], "struct fields")?;
 
         let fields = parse_list!(state, "struct fields", Token!['}'], {
@@ -130,7 +130,7 @@ impl Parse for StructFieldsParser {
 impl Parse for StructItemParser {
     type Output = Option<Item>;
 
-    fn parse(self, state: &mut ParseState<'_>) -> Self::Output {
+    fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
         state.advance();
 
         let name = state.consume_identifier("struct name")?;
@@ -192,7 +192,7 @@ impl Parse for StructItemParser {
 impl Parse for FunctionParameterParser {
     type Output = Option<JustFunctionParameter>;
 
-    fn parse(self, state: &mut ParseState<'_>) -> Self::Output {
+    fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
         let name = state.consume_identifier("function parameter name")?;
 
         state.consume(Token![:], "function parameter name")?;
@@ -217,7 +217,7 @@ impl Parse for FunctionParameterParser {
 impl Parse for FunctionParser {
     type Output = Option<Function>;
 
-    fn parse(self, state: &mut ParseState<'_>) -> Self::Output {
+    fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
         state.advance();
 
         let name = state.consume_identifier("function name")?;
@@ -294,7 +294,7 @@ impl Parse for FunctionParser {
 impl Parse for TraitItemsParser {
     type Output = Option<(Vec<Documented<TraitItem>>, bool)>;
 
-    fn parse(self, state: &mut ParseState<'_>) -> Self::Output {
+    fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
         let mut items = vec![];
 
         while state.next_token.raw != Token!['}'] {
@@ -348,7 +348,7 @@ impl Parse for TraitItemsParser {
 impl Parse for TypeAliasParser {
     type Output = Option<TypeAlias>;
 
-    fn parse(self, state: &mut ParseState<'_>) -> Self::Output {
+    fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
         state.advance();
 
         let name = state.consume_identifier("type alias")?;
@@ -385,7 +385,7 @@ impl Parse for TypeAliasParser {
 impl Parse for TraitItemParser {
     type Output = Option<Item>;
 
-    fn parse(self, state: &mut ParseState<'_>) -> Self::Output {
+    fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
         state.advance();
 
         let name = state.consume_identifier("trait name in trait declaration")?;
@@ -419,7 +419,7 @@ impl Parse for TraitItemParser {
 impl Parse for ImplItemParser {
     type Output = Option<Item>;
 
-    fn parse(self, state: &mut ParseState<'_>) -> Self::Output {
+    fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
         state.advance();
         let impl_span = state.current_token.span;
 
@@ -463,7 +463,7 @@ impl Parse for ImplItemParser {
 impl Parse for EnumParser {
     type Output = Option<Item>;
 
-    fn parse(self, state: &mut ParseState<'_>) -> Self::Output {
+    fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
         state.advance();
 
         let name = state.consume_identifier("enum name")?;
@@ -494,7 +494,7 @@ impl Parse for EnumParser {
 impl Parse for EnumItemParser {
     type Output = Option<EnumItem>;
 
-    fn parse(self, state: &mut ParseState<'_>) -> Self::Output {
+    fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
         let name = state.consume_identifier("enum item")?;
 
         match state.next_token.raw {
@@ -514,7 +514,7 @@ impl Parse for EnumItemParser {
 impl Parse for EnumItemStructParser {
     type Output = Option<EnumItem>;
 
-    fn parse(self, state: &mut ParseState<'_>) -> Self::Output {
+    fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
         let fields = StructFieldsParser.parse(state)?;
 
         Some(EnumItem::Struct {
@@ -527,7 +527,7 @@ impl Parse for EnumItemStructParser {
 impl Parse for ItemTupleParser {
     type Output = Option<Vec<TupleField>>;
 
-    fn parse(self, state: &mut ParseState<'_>) -> Self::Output {
+    fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
         state.advance(); // `(`
 
         let fields = parse_list!(
@@ -556,7 +556,7 @@ impl Parse for ItemTupleParser {
 impl Parse for ItemsParser {
     type Output = Items;
 
-    fn parse(self, state: &mut ParseState<'_>) -> Self::Output {
+    fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
         let mut items = vec![];
         let mut docstring = self.first_docstring;
 
@@ -573,7 +573,7 @@ impl Parse for ItemsParser {
 }
 
 impl ItemParser {
-    fn go_to_next_item(state: &mut ParseState<'_>) {
+    fn go_to_next_item(state: &mut ParseState<'_, '_, '_>) {
         loop {
             match state.next_token.raw {
                 Token![enum]
@@ -604,7 +604,7 @@ macro_rules! go_to_next_valid_item {
 impl Parse for ItemParser {
     type Output = Option<Item>;
 
-    fn parse(self, state: &mut ParseState<'_>) -> Self::Output {
+    fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
         let mut visibility = Visibility::private();
 
         if state.next_token.raw == Token![pub] {

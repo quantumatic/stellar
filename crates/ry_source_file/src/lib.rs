@@ -63,5 +63,5 @@
 )]
 
 pub mod source_file;
-pub mod source_file_manager;
 pub mod span;
+pub mod workspace;

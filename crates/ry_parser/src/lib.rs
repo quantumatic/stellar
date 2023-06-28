@@ -83,22 +83,23 @@ use ry_lexer::Lexer;
 use ry_source_file::{
     source_file::SourceFile,
     span::{Span, SpanIndex},
+    workspace::FileID,
 };
 
-pub use module::parse_module;
+pub use module::{parse_module, parse_module_using};
 
 #[macro_use]
 mod macros;
 
 /// Represents token state.
 #[derive(Debug)]
-pub struct ParseState<'a> {
-    source_file: &'a SourceFile<'a>,
+pub struct ParseState<'source, 'diagnostics, 'interner> {
+    source_file: &'source SourceFile<'source>,
     file_id: usize,
-    lexer: Lexer<'a>,
+    lexer: Lexer<'source, 'interner>,
     current_token: Token,
     next_token: Token,
-    diagnostics: Vec<CompilerDiagnostic>,
+    diagnostics: &'diagnostics mut Vec<CompilerDiagnostic>,
 }
 
 /// Represents AST node that can be parsed.
@@ -110,7 +111,7 @@ where
     type Output;
 
     /// Parse AST node of type [`Self::Output`].
-    fn parse(self, state: &mut ParseState<'_>) -> Self::Output;
+    fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output;
 }
 
 /// Represents AST node that can optionally be parsed. Optionally
@@ -133,17 +134,22 @@ where
     /// Optionally parse AST node of type [`Self::Output`].
     ///
     /// For more information, see [`OptionalParser`].
-    fn optionally_parse(self, state: &mut ParseState<'_>) -> Self::Output;
+    fn optionally_parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output;
 }
 
-impl<'a> ParseState<'a> {
+impl<'source, 'diagnostics, 'interner> ParseState<'source, 'diagnostics, 'interner> {
     /// Creates an initial state.
     ///
     /// Note: [`TokenIterator::current`] and [`TokenIterator::next`] are
     /// the same at an initial state.
     #[must_use]
-    pub fn new(file_id: usize, source_file: &'a SourceFile<'a>) -> Self {
-        let mut lexer = Lexer::new(file_id, source_file.source());
+    pub fn new(
+        file_id: FileID,
+        source_file: &'source SourceFile<'source>,
+        diagnostics: &'diagnostics mut Vec<CompilerDiagnostic>,
+        interner: &'interner mut Interner,
+    ) -> Self {
+        let mut lexer = Lexer::new(file_id, source_file.source(), interner);
 
         let current = lexer.next_no_comments();
         let next = current;
@@ -154,7 +160,7 @@ impl<'a> ParseState<'a> {
             lexer,
             current_token: current,
             next_token: next,
-            diagnostics: vec![],
+            diagnostics,
         };
         state.check_next_token();
 
@@ -191,7 +197,7 @@ impl<'a> ParseState<'a> {
     /// Returns a lexer instance used for parsing.
     #[inline]
     #[must_use]
-    pub const fn lexer(&self) -> &Lexer<'a> {
+    pub const fn lexer(&self) -> &Lexer<'source, 'interner> {
         &self.lexer
     }
 

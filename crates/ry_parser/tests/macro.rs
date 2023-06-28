@@ -9,8 +9,9 @@ macro_rules! test {
                 $source,
             );
 
-            let mut state = ry_parser::ParseState::new(0, &source_file);
-            let (_, diagnostics, _) = ry_parser::parse_module(&mut state);
+            let mut diagnostics = vec![];
+            let mut interner = ry_interner::Interner::default();
+            let _ = ry_parser::parse_module(0, &source_file, &mut diagnostics, &mut interner);
 
             assert!(diagnostics.is_empty());
         }

@@ -57,7 +57,7 @@ pub const INT16: Symbol = 2;
 ...
 
 /// `char` symbol.
-pub const CHAR: Symbol = 13;
+pub const CHAR: Symbol = 17;
 ```
 
 And as long as id values are sequential:
@@ -68,7 +68,7 @@ use ry_interner::Interner;
 let mut interner = Interner::default();
 let symbol = interner.get_or_intern("foo");
 
-assert_eq!(symbol, CHAR + 1); // symbol == 14
+assert_eq!(symbol, CHAR + 1); // symbol == 18 
 ```
 
 You can also resolve symbols this way:

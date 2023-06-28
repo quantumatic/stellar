@@ -6,21 +6,21 @@
 
 This crate provides utilities for working with Ry source files.
 
-## `SourceFileManager` and `SourceFile`
+## `Workspace` and `SourceFile`
 
-`SourceFileManager` is a helper struct for working with Ry source files and also provides implementation for `Files` in `codespan_reporting` for proper error reporting. It is important to make sure that you added your source file into the `SourceFileManager`, because it would not report diagnostics properly with ID being out of bonds:
+`Workspace` is a helper struct for working with Ry source files and also provides implementation for `Files` in `codespan_reporting` for proper error reporting. It is important to make sure that you added your source file into the `Workspace`, because it would not report diagnostics properly with ID being out of bonds:
 
 ```rs
 use std::path::Path;
-use ry_source_file::{SourceFileManager, SourceFile};
+use ry_source_file::{Workspace, SourceFile};
 
-let file_manager = SourceFileManager::new();
+let workspace = Workspace::new();
 let source_file = SourceFile::new(
     Path::new("test.ry"),
     "pub fun main() {}",
 );
 
-let file_id = file_manager.add_file(source_file);
+let file_id = workspace.add_file(source_file);
 ```
 
 `SourceFile` is a helper struct for working with invidiual Ry source files. Example of how you can use it:
@@ -49,33 +49,14 @@ assert_eq!(source_file.line_range_by_index(2), Some(43..44));
 `Span` struct represents a location of some text in the source file. Example of how you can use it:
 
 ```rs
-use ry_source_file::{span::Span, SourceFileManager};
+use ry_source_file::{span::Span, Workspace};
 
-let file_manager = SourceFileManager::new();
+let workspace = Workspace::new();
 
-let file_id = file_manager.add_file(SourceFile::new(Path::new("test.ry"), "pub fun main() {}"));
-let fun = file_manager.resolve_span(Span::new(4, 7, file_id));
-let main = file_manager.resolve_span_or_panic(Span::new(8, 12, file_id)); // doesn't return option type
+let file_id = workspace.add_file(SourceFile::new(Path::new("test.ry"), "pub fun main() {}"));
+let fun = workspace.resolve_span(Span::new(4, 7, file_id));
+let main = workspace.resolve_span_or_panic(Span::new(8, 12, file_id)); // doesn't return option type
 
 assert_eq!(fun, Some("fun"));
 assert_eq!(main, "main");
-```
-
-If you want to represents an object associated with a particular location:
-
-```rs
-//Represents some value that has associated span ([`Span`]) with it.
-#[derive(Debug, PartialEq, Clone, Default, Eq, Hash)]
-pub struct Spanned<T> {
-    //Inner content.
-    inner: T,
-    //Span.
-    span: Span,
-}
-```
-
-You can use `Spanned` type. For example, where is how token type is defined in `ry_ast`:
-
-```rs
-pub type Token = Spanned<RawToken>;
 ```

@@ -98,8 +98,8 @@ pub trait SpanIndex {
     /// assert_eq!("test".index(span), "tes");
     /// ```
     ///
-    /// **Note**: use [`SourceFileManager::resolve_span()`] and
-    /// [`SourceFileManager::resolve_span_or_panic()`] instead.
+    /// **Note**: use [`Workspace::resolve_span()`] and
+    /// [`Workspace::resolve_span_or_panic()`] instead.
     fn index(&self, span: Span) -> &Self::Output;
 }
 

@@ -24,7 +24,7 @@ struct TupleLikePatternParser {
 impl Parse for PatternParser {
     type Output = Option<Pattern>;
 
-    fn parse(self, state: &mut ParseState<'_>) -> Self::Output {
+    fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
         let left = PatternExceptOrParser.parse(state)?;
 
         if state.next_token.raw == Token![|] {
@@ -46,7 +46,7 @@ impl Parse for PatternParser {
 impl Parse for PatternExceptOrParser {
     type Output = Option<Pattern>;
 
-    fn parse(self, state: &mut ParseState<'_>) -> Self::Output {
+    fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
         match state.next_token.raw {
             RawToken::StringLiteral
             | RawToken::CharLiteral
@@ -137,7 +137,7 @@ impl Parse for PatternExceptOrParser {
 impl Parse for StructPatternParser {
     type Output = Option<Pattern>;
 
-    fn parse(self, state: &mut ParseState<'_>) -> Self::Output {
+    fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
         state.advance(); // `{`
 
         let fields = parse_list!(state, "struct pattern", Token!['}'], {
@@ -186,7 +186,7 @@ impl Parse for StructPatternParser {
 impl Parse for ArrayPatternParser {
     type Output = Option<Pattern>;
 
-    fn parse(self, state: &mut ParseState<'_>) -> Self::Output {
+    fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
         let start = state.next_token.span.start();
         state.advance(); // `[`
 
@@ -206,7 +206,7 @@ impl Parse for ArrayPatternParser {
 impl Parse for TuplePatternParser {
     type Output = Option<Pattern>;
 
-    fn parse(self, state: &mut ParseState<'_>) -> Self::Output {
+    fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
         let start = state.next_token.span.start();
         state.advance(); // `#`
 
@@ -228,7 +228,7 @@ impl Parse for TuplePatternParser {
 impl Parse for TupleLikePatternParser {
     type Output = Option<Pattern>;
 
-    fn parse(self, state: &mut ParseState<'_>) -> Self::Output {
+    fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
         state.advance(); // `(`
 
         let inner_patterns = parse_list!(state, "enum item tuple pattern", Token![')'], {
@@ -252,7 +252,7 @@ impl Parse for TupleLikePatternParser {
 impl Parse for GroupedPatternParser {
     type Output = Option<Pattern>;
 
-    fn parse(self, state: &mut ParseState<'_>) -> Self::Output {
+    fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
         let start = state.next_token.span.start();
         state.advance(); // `(`
 

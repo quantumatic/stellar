@@ -60,7 +60,7 @@ fn invalid_separator(string: &str) -> i32 {
     -1
 }
 
-impl Lexer<'_> {
+impl Lexer<'_, '_> {
     pub(crate) fn eat_number(&mut self) -> Token {
         let start_location = self.location;
 

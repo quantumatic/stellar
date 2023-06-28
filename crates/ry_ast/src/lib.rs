@@ -45,8 +45,7 @@
 #![allow(clippy::match_single_binding, clippy::inconsistent_struct_constructor)]
 
 use ry_interner::Symbol;
-use ry_source_file::{source_file_manager::FileID, span::Span};
-use std::path;
+use ry_source_file::{source_file::SourceFile, span::Span, workspace::FileID};
 use token::RawToken;
 
 pub mod precedence;
@@ -1301,9 +1300,9 @@ pub struct JustFunctionParameter {
 
 /// Represents Ry source file.
 #[derive(Debug, PartialEq, Clone)]
-pub struct Module<'a> {
-    pub path: &'a path::Path,
+pub struct Module<'source> {
     pub file_id: FileID,
+    pub source_file: &'source SourceFile<'source>,
     pub docstring: Docstring,
     pub items: Items,
 }

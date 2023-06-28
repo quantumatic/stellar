@@ -13,7 +13,8 @@
 //! use ry_interner::Interner;
 //! use ry_source_file::span::Span;
 //!
-//! let mut lexer = Lexer::new(0, "");
+//! let mut interner = Interner::default();
+//! let mut lexer = Lexer::new(0, "", &mut interner);
 //!
 //! assert_eq!(
 //!     lexer.next_token(),
@@ -36,7 +37,8 @@
 //! use ry_ast::token::{RawLexError, RawToken::Error};
 //! use ry_interner::Interner;
 //!
-//! let mut lexer = Lexer::new(0, "١");
+//! let mut interner = Interner::default();
+//! let mut lexer = Lexer::new(0, "١", &mut interner);
 //!
 //! assert_eq!(lexer.next_token().raw, Error(RawLexError::UnexpectedChar));
 //! ```
@@ -114,11 +116,11 @@ mod number;
 
 /// Represents a lexer state machine.
 #[derive(Debug)]
-pub struct Lexer<'a> {
+pub struct Lexer<'source, 'interner> {
     /// Id of the file being scanned.
     file_id: usize,
     /// Content of the file being scanned.
-    source: &'a str,
+    source: &'source str,
 
     /// Current character.
     current: char,
@@ -126,13 +128,13 @@ pub struct Lexer<'a> {
     next: char,
 
     /// Iterator through source text characters.
-    chars: Chars<'a>,
+    chars: Chars<'source>,
 
     /// Location of the current character being processed.
     location: usize,
 
     /// Identifier interner.
-    interner: Interner,
+    interner: &'interner mut Interner,
 
     /// Symbol corresponding to an identifier being processed early on.
     identifier: Symbol,
@@ -143,10 +145,10 @@ pub struct Lexer<'a> {
     string_buffer: String,
 }
 
-impl<'a> Lexer<'a> {
+impl<'source, 'interner> Lexer<'source, 'interner> {
     /// Creates a new [`Lexer`].
     #[must_use]
-    pub fn new(file_id: usize, source: &'a str) -> Self {
+    pub fn new(file_id: usize, source: &'source str, interner: &'interner mut Interner) -> Self {
         let mut chars = source.chars();
 
         let current = chars.next().unwrap_or('\0');
@@ -158,7 +160,7 @@ impl<'a> Lexer<'a> {
             current,
             next,
             chars,
-            interner: Interner::default(),
+            interner,
             location: 0,
             identifier: 0,
             char_buffer: '\0',
@@ -205,7 +207,7 @@ impl<'a> Lexer<'a> {
     #[inline]
     #[must_use]
     pub const fn interner(&self) -> &Interner {
-        &self.interner
+        self.interner
     }
 
     /// Skips whitespace characters. See [`Lexer::is_whitespace()`] for more details.
@@ -260,7 +262,7 @@ impl<'a> Lexer<'a> {
     /// where its arguments are the current and next characters.
     /// Returns the string slice of source text between `start_location`
     /// and `self.location` when `f` returns `false` OR `self.eof() == true`.
-    fn advance_while<F>(&mut self, start_location: usize, mut f: F) -> &'a str
+    fn advance_while<F>(&mut self, start_location: usize, mut f: F) -> &'source str
     where
         F: FnMut(char, char) -> bool,
     {

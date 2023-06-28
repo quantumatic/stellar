@@ -18,7 +18,7 @@ struct LetStatementParser;
 impl Parse for StatementParser {
     type Output = Option<(Statement, bool)>;
 
-    fn parse(self, state: &mut ParseState<'_>) -> Self::Output {
+    fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
         let mut last_statement_in_block = false;
         let mut must_have_semicolon_at_the_end = true;
 
@@ -113,7 +113,7 @@ impl Parse for StatementParser {
 impl Parse for StatementsBlockParser {
     type Output = Option<StatementsBlock>;
 
-    fn parse(self, state: &mut ParseState<'_>) -> Self::Output {
+    fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
         state.consume(Token!['{'], "statements block")?;
         let start = state.current_token.span.start();
 
@@ -165,7 +165,7 @@ impl Parse for StatementsBlockParser {
 impl Parse for DeferStatementParser {
     type Output = Option<Statement>;
 
-    fn parse(self, state: &mut ParseState<'_>) -> Self::Output {
+    fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
         state.advance();
 
         Some(Statement::Defer {
@@ -177,7 +177,7 @@ impl Parse for DeferStatementParser {
 impl Parse for ReturnStatementParser {
     type Output = Option<Statement>;
 
-    fn parse(self, state: &mut ParseState<'_>) -> Self::Output {
+    fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
         state.advance();
 
         Some(Statement::Return {
@@ -189,7 +189,7 @@ impl Parse for ReturnStatementParser {
 impl Parse for LetStatementParser {
     type Output = Option<Statement>;
 
-    fn parse(self, state: &mut ParseState<'_>) -> Self::Output {
+    fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
         state.advance(); // `let`
 
         let pattern = PatternParser.parse(state)?;

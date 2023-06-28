@@ -1,5 +1,3 @@
-use std::path;
-
 use crate::{
     token::RawToken, BinaryOperator, Documented, EnumItem, Function, FunctionParameter,
     GenericArgument, GenericParameter, IdentifierAst, Item, JustFunctionParameter, Literal,
@@ -8,112 +6,37 @@ use crate::{
     TypeAst, TypePath, TypePathSegment, UntypedExpression, Visibility, WhereClauseItem,
 };
 use ry_interner::{Interner, Symbol};
-use ry_source_file::{
-    source_file::SourceFile,
-    source_file_manager::{FileID, SourceFileManager},
-    span::{Span, DUMMY_SPAN},
-};
+use ry_source_file::span::{Span, DUMMY_SPAN};
 
 /// A struct that allows to serialize a Ry module into a string, for debug purposes.
 #[derive(Debug)]
-pub struct Serializer<'a> {
+pub struct Serializer<'interner> {
     /// An interner used to resolve symbols in an AST.
-    interner: &'a Interner,
-
-    /// A source file being serialized.
-    source_file: &'a SourceFile<'a>,
-
-    /// An ID of the source file being serialized.
-    source_file_id: FileID,
-
-    /// A source file manager.
-    source_file_manager: &'a SourceFileManager<'a>,
+    interner: &'interner Interner,
 
     /// Current indentation level
     identation: usize,
-
-    /// Symbols used for indentation.
-    identation_symbols: &'a str,
 
     /// An output string produced,
     output: String,
 }
 
-impl<'a> Serializer<'a> {
+impl<'interner> Serializer<'interner> {
     #[inline]
     #[must_use]
-    pub fn new(
-        interner: &'a Interner,
-        source_file_id: FileID,
-        source_file_manager: &'a SourceFileManager<'a>,
-    ) -> Option<Self> {
-        Some(Self {
+    pub fn new(interner: &'interner Interner) -> Self {
+        Self {
             interner,
-            source_file: source_file_manager.get_file_by_id(source_file_id)?,
-            source_file_id,
-            source_file_manager,
             identation: 0,
-            identation_symbols: "\t",
             output: String::new(),
-        })
-    }
-
-    /// Sets the symbols used for indentation.
-    #[inline]
-    #[must_use]
-    pub fn with_identation_symbols(mut self, identation_symbols: &'a str) -> Self {
-        self.identation_symbols = identation_symbols;
-
-        self
-    }
-
-    /// Returns the path of the source file being serialized as a string slice.
-    #[inline]
-    #[must_use]
-    pub fn filepath_str(&self) -> &'a str {
-        self.source_file.path_str()
-    }
-
-    /// Returns the path of the source file being serialized.
-    #[inline]
-    #[must_use]
-    pub const fn filepath(&self) -> &'a path::Path {
-        self.source_file.path()
-    }
-
-    /// Returns the source content of the file being serialized.
-    #[inline]
-    #[must_use]
-    pub const fn source(&self) -> &'a str {
-        self.source_file.source()
-    }
-
-    /// Returns the length of the source content (in bytes).
-    #[inline]
-    #[must_use]
-    pub const fn source_len(&self) -> usize {
-        self.source_file.source().len()
-    }
-
-    /// Returns the ID of the source file being serialized.
-    #[inline]
-    #[must_use]
-    pub const fn file_id(&self) -> FileID {
-        self.source_file_id
+        }
     }
 
     /// Returns the interner used to resolve symbols in the AST of the module being serialized.
     #[inline]
     #[must_use]
-    pub const fn interner(&self) -> &'a Interner {
+    pub const fn interner(&self) -> &'interner Interner {
         self.interner
-    }
-
-    /// Returns the source file manager.
-    #[inline]
-    #[must_use]
-    pub fn file_manager(&self) -> &'a SourceFileManager<'a> {
-        self.source_file_manager
     }
 
     /// Returns the current indentation level.
@@ -135,13 +58,6 @@ impl<'a> Serializer<'a> {
         self.identation -= 1;
     }
 
-    /// Returns the symbols used for indentation.
-    #[inline]
-    #[must_use]
-    pub const fn identation_symbols(&self) -> &'a str {
-        self.identation_symbols
-    }
-
     /// Pushes a string into the output.
     pub fn write<S>(&mut self, str: S)
     where
@@ -159,18 +75,20 @@ impl<'a> Serializer<'a> {
     /// Adds indentation symbols into the output.
     pub fn write_identation(&mut self) {
         for _ in 0..self.identation() {
-            self.write(self.identation_symbols());
+            self.write("\t");
         }
     }
 
-    pub fn write_node_name<S>(&mut self, node_name: S)
+    #[inline]
+    fn write_node_name<S>(&mut self, node_name: S)
     where
         S: AsRef<str>,
     {
         self.write(node_name);
     }
 
-    pub fn write_node_name_with_span<S>(&mut self, node_name: S, span: Span)
+    #[inline]
+    fn write_node_name_with_span<S>(&mut self, node_name: S, span: Span)
     where
         S: AsRef<str>,
     {
@@ -180,10 +98,10 @@ impl<'a> Serializer<'a> {
         span.serialize(self);
     }
 
-    pub fn serialize_key_value_pair<S, Se>(&mut self, key: S, value: &Se)
+    fn serialize_key_value_pair<S, Se>(&mut self, key: S, value: &Se)
     where
         S: AsRef<str>,
-        Se: Serialize<'a>,
+        Se: Serialize,
     {
         self.write_newline();
         self.write_identation();
@@ -192,38 +110,51 @@ impl<'a> Serializer<'a> {
         value.serialize(self);
     }
 
-    pub fn serialize_item<S>(&mut self, item: &S)
+    fn serialize_item<S>(&mut self, item: &S)
     where
-        S: Serialize<'a>,
+        S: Serialize,
     {
         self.write_newline();
         self.write_identation();
         item.serialize(self);
     }
 
-    pub fn serialize_items<S>(&mut self, items: &Vec<S>)
+    fn serialize_items<S>(&mut self, items: &Vec<S>)
     where
-        S: Serialize<'a>,
+        S: Serialize,
     {
-        self.increment_indentation();
+        if items.is_empty() {
+            self.write("EMPTY");
+        } else {
+            self.increment_indentation();
 
-        for item in items {
-            self.serialize_item(item);
+            for item in items {
+                self.serialize_item(item);
+            }
+
+            self.decrement_indentation();
         }
-
-        self.decrement_indentation();
     }
 
-    pub fn serialize_key_list_value_pair<S, Se>(&mut self, key: S, items: &Vec<Se>)
+    fn serialize_key_list_value_pair<A, S>(&mut self, key: A, items: &Vec<S>)
     where
-        S: AsRef<str>,
-        Se: Serialize<'a>,
+        A: AsRef<str>,
+        S: Serialize,
     {
         self.write_newline();
         self.write_identation();
         self.write(key);
         self.write(": ");
         self.serialize_items(items);
+    }
+
+    /// Allows to create spans inside the serializer.
+    #[inline]
+    #[must_use]
+    fn new_span(&self, start: usize, end: usize) -> Span {
+        Span::new(
+            start, end, 0, // serializer doesn't care about invalid file IDs
+        )
     }
 
     /// Returns the output string produced.
@@ -241,33 +172,31 @@ impl<'a> Serializer<'a> {
     }
 }
 
-pub trait Serialize<'a> {
-    fn serialize(&self, serializer: &mut Serializer<'a>);
+pub trait Serialize {
+    fn serialize(&self, serializer: &mut Serializer<'_>);
 }
 
-impl<'a> Serialize<'a> for bool {
-    fn serialize(&self, serializer: &mut Serializer<'a>) {
+impl Serialize for bool {
+    fn serialize(&self, serializer: &mut Serializer<'_>) {
         serializer.write(if *self { "TRUE" } else { "FALSE" });
     }
 }
 
-impl<'a> Serialize<'a> for Span {
-    fn serialize(&self, serializer: &mut Serializer<'a>) {
+impl Serialize for Span {
+    fn serialize(&self, serializer: &mut Serializer<'_>) {
         match self {
             &DUMMY_SPAN => serializer.write("DUMMY"),
-            _ => serializer.write(
-                if self.start() >= self.end() || self.file_id() != serializer.file_id() {
-                    "INVALID".to_owned()
-                } else {
-                    format!("{}..{}", self.start(), self.end())
-                },
-            ),
+            _ => serializer.write(if self.start() >= self.end() {
+                "INVALID".to_owned()
+            } else {
+                format!("{}..{}", self.start(), self.end())
+            }),
         }
     }
 }
 
-impl<'a> Serialize<'a> for Symbol {
-    fn serialize(&self, serializer: &mut Serializer<'a>) {
+impl Serialize for Symbol {
+    fn serialize(&self, serializer: &mut Serializer<'_>) {
         serializer.write(
             serializer
                 .interner()
@@ -277,8 +206,8 @@ impl<'a> Serialize<'a> for Symbol {
     }
 }
 
-impl<'a> Serialize<'a> for IdentifierAst {
-    fn serialize(&self, serializer: &mut Serializer<'a>) {
+impl Serialize for IdentifierAst {
+    fn serialize(&self, serializer: &mut Serializer<'_>) {
         serializer.write("IDENTIFIER(`");
         self.symbol.serialize(serializer);
         serializer.write("`)@");
@@ -286,8 +215,8 @@ impl<'a> Serialize<'a> for IdentifierAst {
     }
 }
 
-impl<'a> Serialize<'a> for Path {
-    fn serialize(&self, serializer: &mut Serializer<'a>) {
+impl Serialize for Path {
+    fn serialize(&self, serializer: &mut Serializer<'_>) {
         serializer.write_node_name_with_span("PATH", self.span);
         serializer.increment_indentation();
         serializer.serialize_items(&self.identifiers);
@@ -295,8 +224,8 @@ impl<'a> Serialize<'a> for Path {
     }
 }
 
-impl<'a> Serialize<'a> for TypePath {
-    fn serialize(&self, serializer: &mut Serializer<'a>) {
+impl Serialize for TypePath {
+    fn serialize(&self, serializer: &mut Serializer<'_>) {
         serializer.write_node_name_with_span("TYPE_PATH", self.span);
         serializer.increment_indentation();
         serializer.serialize_items(&self.segments);
@@ -304,8 +233,8 @@ impl<'a> Serialize<'a> for TypePath {
     }
 }
 
-impl<'a> Serialize<'a> for TypePathSegment {
-    fn serialize(&self, serializer: &mut Serializer<'a>) {
+impl Serialize for TypePathSegment {
+    fn serialize(&self, serializer: &mut Serializer<'_>) {
         serializer.write_node_name_with_span("TYPE_PATH_SEGMENT", self.span);
         serializer.increment_indentation();
         serializer.serialize_key_value_pair("PATH", &self.path);
@@ -316,8 +245,8 @@ impl<'a> Serialize<'a> for TypePathSegment {
     }
 }
 
-impl<'a> Serialize<'a> for GenericArgument {
-    fn serialize(&self, serializer: &mut Serializer<'a>) {
+impl Serialize for GenericArgument {
+    fn serialize(&self, serializer: &mut Serializer<'_>) {
         match self {
             Self::Type(ty) => {
                 serializer.write_node_name_with_span("GENERIC_ARGUMENT", ty.span());
@@ -328,7 +257,7 @@ impl<'a> Serialize<'a> for GenericArgument {
             Self::AssociatedType { name, value } => {
                 serializer.write_node_name_with_span(
                     "NAMED_GENERIC_ARGUMENT",
-                    Span::new(name.span.start(), value.span().end(), serializer.file_id()),
+                    serializer.new_span(name.span.start(), value.span().end()),
                 );
                 serializer.increment_indentation();
                 serializer.serialize_key_value_pair("NAME", name);
@@ -339,26 +268,26 @@ impl<'a> Serialize<'a> for GenericArgument {
     }
 }
 
-impl<'a> Serialize<'a> for BinaryOperator {
-    fn serialize(&self, serializer: &mut Serializer<'a>) {
+impl Serialize for BinaryOperator {
+    fn serialize(&self, serializer: &mut Serializer<'_>) {
         serializer.write_node_name_with_span(format!("{}", RawToken::from(self.raw)), self.span);
     }
 }
 
-impl<'a> Serialize<'a> for PostfixOperator {
-    fn serialize(&self, serializer: &mut Serializer<'a>) {
+impl Serialize for PostfixOperator {
+    fn serialize(&self, serializer: &mut Serializer<'_>) {
         serializer.write_node_name_with_span(format!("{}", RawToken::from(self.raw)), self.span);
     }
 }
 
-impl<'a> Serialize<'a> for PrefixOperator {
-    fn serialize(&self, serializer: &mut Serializer<'a>) {
+impl Serialize for PrefixOperator {
+    fn serialize(&self, serializer: &mut Serializer<'_>) {
         serializer.write_node_name_with_span(format!("{}", RawToken::from(self.raw)), self.span);
     }
 }
 
-impl<'a> Serialize<'a> for StructExpressionItem {
-    fn serialize(&self, serializer: &mut Serializer<'a>) {
+impl Serialize for StructExpressionItem {
+    fn serialize(&self, serializer: &mut Serializer<'_>) {
         serializer.write_node_name("STRUCT_EXPRESSION_ITEM");
         serializer.increment_indentation();
         serializer.serialize_key_value_pair("FIELD_NAME", &self.name);
@@ -369,8 +298,8 @@ impl<'a> Serialize<'a> for StructExpressionItem {
     }
 }
 
-impl<'a> Serialize<'a> for Literal {
-    fn serialize(&self, serializer: &mut Serializer<'a>) {
+impl Serialize for Literal {
+    fn serialize(&self, serializer: &mut Serializer<'_>) {
         match self {
             Self::Boolean { value, span } => {
                 serializer.write_node_name_with_span(
@@ -393,8 +322,8 @@ impl<'a> Serialize<'a> for Literal {
     }
 }
 
-impl<'a> Serialize<'a> for StructFieldPattern {
-    fn serialize(&self, serializer: &mut Serializer<'a>) {
+impl Serialize for StructFieldPattern {
+    fn serialize(&self, serializer: &mut Serializer<'_>) {
         match self {
             Self::Rest { span } => {
                 serializer.write_node_name_with_span("REST_STRUCT_FIELD_PATTERN", *span);
@@ -416,8 +345,8 @@ impl<'a> Serialize<'a> for StructFieldPattern {
     }
 }
 
-impl<'a> Serialize<'a> for Pattern {
-    fn serialize(&self, serializer: &mut Serializer<'a>) {
+impl Serialize for Pattern {
+    fn serialize(&self, serializer: &mut Serializer<'_>) {
         match self {
             Self::Grouped { span, inner } => {
                 serializer.write_node_name_with_span("GROUPED_PATTERN", *span);
@@ -495,8 +424,8 @@ impl<'a> Serialize<'a> for Pattern {
     }
 }
 
-impl<'a> Serialize<'a> for Statement {
-    fn serialize(&self, serializer: &mut Serializer<'a>) {
+impl Serialize for Statement {
+    fn serialize(&self, serializer: &mut Serializer<'_>) {
         match self {
             Self::Break { span } => serializer.write_node_name_with_span("BREAK_STATEMENT", *span),
             Self::Continue { span } => {
@@ -538,8 +467,8 @@ impl<'a> Serialize<'a> for Statement {
     }
 }
 
-impl<'a> Serialize<'a> for (UntypedExpression, Vec<Statement>) {
-    fn serialize(&self, serializer: &mut Serializer<'a>) {
+impl Serialize for (UntypedExpression, Vec<Statement>) {
+    fn serialize(&self, serializer: &mut Serializer<'_>) {
         serializer.write_node_name("ELSE_IF_NODE");
         serializer.increment_indentation();
         serializer.serialize_key_value_pair("CONDITION", &self.0);
@@ -548,8 +477,8 @@ impl<'a> Serialize<'a> for (UntypedExpression, Vec<Statement>) {
     }
 }
 
-impl<'a> Serialize<'a> for MatchExpressionItem {
-    fn serialize(&self, serializer: &mut Serializer<'a>) {
+impl Serialize for MatchExpressionItem {
+    fn serialize(&self, serializer: &mut Serializer<'_>) {
         serializer.write_node_name("MATCH_EXPRESSION_ITEM");
         serializer.increment_indentation();
         serializer.serialize_key_value_pair("PATTERN", &self.left);
@@ -558,8 +487,8 @@ impl<'a> Serialize<'a> for MatchExpressionItem {
     }
 }
 
-impl<'a> Serialize<'a> for UntypedExpression {
-    fn serialize(&self, serializer: &mut Serializer<'a>) {
+impl Serialize for UntypedExpression {
+    fn serialize(&self, serializer: &mut Serializer<'_>) {
         match self {
             Self::As { span, left, right } => {
                 serializer.write_node_name_with_span("CAST_EXPRESSION", *span);
@@ -719,8 +648,8 @@ impl<'a> Serialize<'a> for UntypedExpression {
     }
 }
 
-impl<'a> Serialize<'a> for TypeAst {
-    fn serialize(&self, serializer: &mut Serializer<'a>) {
+impl Serialize for TypeAst {
+    fn serialize(&self, serializer: &mut Serializer<'_>) {
         match self {
             Self::Function {
                 span,
@@ -774,8 +703,8 @@ impl<'a> Serialize<'a> for TypeAst {
     }
 }
 
-impl<'a> Serialize<'a> for Visibility {
-    fn serialize(&self, serializer: &mut Serializer<'a>) {
+impl Serialize for Visibility {
+    fn serialize(&self, serializer: &mut Serializer<'_>) {
         match self.span_of_pub() {
             Some(pub_span) => {
                 serializer.write("PUBLIC@");
@@ -788,8 +717,8 @@ impl<'a> Serialize<'a> for Visibility {
     }
 }
 
-impl<'a> Serialize<'a> for GenericParameter {
-    fn serialize(&self, serializer: &mut Serializer<'a>) {
+impl Serialize for GenericParameter {
+    fn serialize(&self, serializer: &mut Serializer<'_>) {
         serializer.write_node_name("GENERIC_PARAMETER");
         serializer.increment_indentation();
         serializer.serialize_key_value_pair("NAME", &self.name);
@@ -803,8 +732,8 @@ impl<'a> Serialize<'a> for GenericParameter {
     }
 }
 
-impl<'a> Serialize<'a> for WhereClauseItem {
-    fn serialize(&self, serializer: &mut Serializer<'a>) {
+impl Serialize for WhereClauseItem {
+    fn serialize(&self, serializer: &mut Serializer<'_>) {
         match self {
             Self::Eq { left, right } => {
                 serializer.write_node_name("WHERE_CLAUSE_ITEM_EQ");
@@ -824,8 +753,8 @@ impl<'a> Serialize<'a> for WhereClauseItem {
     }
 }
 
-impl<'a> Serialize<'a> for JustFunctionParameter {
-    fn serialize(&self, serializer: &mut Serializer<'a>) {
+impl Serialize for JustFunctionParameter {
+    fn serialize(&self, serializer: &mut Serializer<'_>) {
         serializer.write_node_name("FUNCTION_PARAMETER");
         serializer.increment_indentation();
         serializer.serialize_key_value_pair("NAME", &self.name);
@@ -837,8 +766,8 @@ impl<'a> Serialize<'a> for JustFunctionParameter {
     }
 }
 
-impl<'a> Serialize<'a> for FunctionParameter {
-    fn serialize(&self, serializer: &mut Serializer<'a>) {
+impl Serialize for FunctionParameter {
+    fn serialize(&self, serializer: &mut Serializer<'_>) {
         match self {
             Self::Just(parameter) => {
                 parameter.serialize(serializer);
@@ -856,8 +785,8 @@ impl<'a> Serialize<'a> for FunctionParameter {
     }
 }
 
-impl<'a> Serialize<'a> for Function {
-    fn serialize(&self, serializer: &mut Serializer<'a>) {
+impl Serialize for Function {
+    fn serialize(&self, serializer: &mut Serializer<'_>) {
         serializer.write_node_name("FUNCTION");
         serializer.increment_indentation();
         serializer.serialize_key_value_pair("VISIBILITY", &self.visibility);
@@ -876,8 +805,8 @@ impl<'a> Serialize<'a> for Function {
     }
 }
 
-impl<'a> Serialize<'a> for StructField {
-    fn serialize(&self, serializer: &mut Serializer<'a>) {
+impl Serialize for StructField {
+    fn serialize(&self, serializer: &mut Serializer<'_>) {
         serializer.write_node_name("STRUCT_FIELD");
         serializer.increment_indentation();
         serializer.serialize_key_value_pair("VISIBILITY", &self.visibility);
@@ -887,8 +816,8 @@ impl<'a> Serialize<'a> for StructField {
     }
 }
 
-impl<'a> Serialize<'a> for TupleField {
-    fn serialize(&self, serializer: &mut Serializer<'a>) {
+impl Serialize for TupleField {
+    fn serialize(&self, serializer: &mut Serializer<'_>) {
         serializer.write_node_name("TUPLE_FIELD");
         serializer.increment_indentation();
         serializer.serialize_key_value_pair("VISIBILITY", &self.visibility);
@@ -897,17 +826,17 @@ impl<'a> Serialize<'a> for TupleField {
     }
 }
 
-impl<'a, T> Serialize<'a> for Documented<T>
+impl<S> Serialize for Documented<S>
 where
-    T: Serialize<'a>,
+    S: Serialize,
 {
-    fn serialize(&self, serializer: &mut Serializer<'a>) {
+    fn serialize(&self, serializer: &mut Serializer<'_>) {
         self.value.serialize(serializer);
     }
 }
 
-impl<'a> Serialize<'a> for EnumItem {
-    fn serialize(&self, serializer: &mut Serializer<'a>) {
+impl Serialize for EnumItem {
+    fn serialize(&self, serializer: &mut Serializer<'_>) {
         match self {
             Self::Just(identifier) => {
                 serializer.write_node_name("EMPTY_ENUM_ITEM");
@@ -933,8 +862,8 @@ impl<'a> Serialize<'a> for EnumItem {
     }
 }
 
-impl<'a> Serialize<'a> for TypeAlias {
-    fn serialize(&self, serializer: &mut Serializer<'a>) {
+impl Serialize for TypeAlias {
+    fn serialize(&self, serializer: &mut Serializer<'_>) {
         serializer.write_node_name("TYPE_ALIAS");
         serializer.increment_indentation();
         serializer.serialize_key_value_pair("NAME", &self.name);
@@ -951,8 +880,8 @@ impl<'a> Serialize<'a> for TypeAlias {
     }
 }
 
-impl<'a> Serialize<'a> for TraitItem {
-    fn serialize(&self, serializer: &mut Serializer<'a>) {
+impl Serialize for TraitItem {
+    fn serialize(&self, serializer: &mut Serializer<'_>) {
         match self {
             Self::AssociatedFunction(function) => function.serialize(serializer),
             Self::TypeAlias(alias) => alias.serialize(serializer),
@@ -960,8 +889,8 @@ impl<'a> Serialize<'a> for TraitItem {
     }
 }
 
-impl<'a> Serialize<'a> for Item {
-    fn serialize(&self, serializer: &mut Serializer<'a>) {
+impl Serialize for Item {
+    fn serialize(&self, serializer: &mut Serializer<'_>) {
         match self {
             Self::Enum {
                 visibility,
@@ -1085,36 +1014,24 @@ impl<'a> Serialize<'a> for Item {
     }
 }
 
-impl<'a> Serialize<'a> for &path::Path {
-    fn serialize(&self, serializer: &mut Serializer<'a>) {
-        serializer.write(self.to_str().expect("Invalid UTF-8 in filepath"));
+impl Serialize for &str {
+    fn serialize(&self, serializer: &mut Serializer<'_>) {
+        serializer.write(self);
     }
 }
 
-impl<'a> Serialize<'a> for Module<'a> {
-    fn serialize(&self, serializer: &mut Serializer<'a>) {
+impl Serialize for Module<'_> {
+    fn serialize(&self, serializer: &mut Serializer<'_>) {
         serializer.write_node_name("MODULE");
         serializer.increment_indentation();
-        serializer.serialize_key_value_pair("FILEPATH", &self.path);
+        serializer.serialize_key_value_pair("FILEPATH", &self.source_file.path_str());
         serializer.serialize_key_list_value_pair("ITEMS", &self.items);
         serializer.decrement_indentation();
     }
 }
 
-pub fn serialize_ast(
-    module: &Module<'_>,
-    interner: &Interner,
-    file_manager: &SourceFileManager<'_>,
-) -> Option<String> {
-    let mut serializer = Serializer::new(interner, module.file_id, file_manager)?;
+pub fn serialize_ast(module: &Module<'_>, interner: &Interner) -> String {
+    let mut serializer = Serializer::new(interner);
     module.serialize(&mut serializer);
-    Some(serializer.take_output())
-}
-
-pub fn serialize_ast_or_panic(
-    module: &Module<'_>,
-    interner: &Interner,
-    file_manager: &SourceFileManager<'_>,
-) -> String {
-    serialize_ast(module, interner, file_manager).expect("Failed to resolve file id")
+    serializer.take_output()
 }

@@ -7,7 +7,7 @@ where
     P: AsRef<str>,
     M: AsRef<str>,
 {
-    log_with_prefix(leftpad(&format!("{} ", prefix.as_ref()), 9, ' '), message);
+    log_with_prefix(leftpad(&format!("{} ", prefix.as_ref()), 15, ' '), message);
 }
 
 pub(crate) fn log_with_prefix<P, M>(prefix: P, message: M)

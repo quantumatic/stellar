@@ -8,15 +8,15 @@ use std::path::Path;
 
 /// A Ry source file.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct SourceFile<'a> {
+pub struct SourceFile<'source> {
     /// The path of the source file.
-    path: &'a Path,
+    path: &'source Path,
 
     /// The path of the source file as a string slice.
-    path_str: &'a str,
+    path_str: &'source str,
 
     /// The source content of the file.
-    source: &'a str,
+    source: &'source str,
 
     /// The length of the source content (in bytes).
     source_len: usize,
@@ -25,11 +25,11 @@ pub struct SourceFile<'a> {
     line_starts: Vec<usize>,
 }
 
-impl<'a> SourceFile<'a> {
+impl<'source> SourceFile<'source> {
     /// Creates a new [`SourceFile`].
     #[inline]
     #[must_use]
-    pub fn new(path: &'a Path, source: &'a str) -> Self {
+    pub fn new(path: &'source Path, source: &'source str) -> Self {
         Self {
             path,
             path_str: path.to_str().expect("Invalid UTF-8 data in path"),
@@ -44,21 +44,21 @@ impl<'a> SourceFile<'a> {
     /// Returns the path of the source file.
     #[inline]
     #[must_use]
-    pub const fn path(&self) -> &'a Path {
+    pub const fn path(&self) -> &'source Path {
         self.path
     }
 
     /// Returns the path of the source file as a string slice.
     #[inline]
     #[must_use]
-    pub const fn path_str(&self) -> &'a str {
+    pub const fn path_str(&self) -> &'source str {
         self.path_str
     }
 
     /// Returns the source content of the file.
     #[inline]
     #[must_use]
-    pub const fn source(&self) -> &'a str {
+    pub const fn source(&self) -> &'source str {
         self.source
     }
 
@@ -173,26 +173,26 @@ impl<'a> SourceFile<'a> {
 }
 
 // For proper error reporting
-impl<'a> Files<'a> for SourceFile<'a> {
+impl<'source> Files<'source> for SourceFile<'source> {
     // we don't care about file IDs, because we have only one individual file here
     type FileId = ();
 
-    type Name = &'a str;
-    type Source = &'a str;
+    type Name = &'source str;
+    type Source = &'source str;
 
-    fn name(&'a self, _: ()) -> Result<Self::Name, Error> {
+    fn name(&'source self, _: ()) -> Result<Self::Name, Error> {
         Ok(self.path_str())
     }
 
-    fn source(&'a self, _: ()) -> Result<Self::Source, Error> {
+    fn source(&'source self, _: ()) -> Result<Self::Source, Error> {
         Ok(self.source)
     }
 
-    fn line_index(&'a self, _: (), byte_index: usize) -> Result<usize, Error> {
+    fn line_index(&'source self, _: (), byte_index: usize) -> Result<usize, Error> {
         Ok(self.get_line_index_by_byte_index(byte_index))
     }
 
-    fn line_range(&'a self, _: (), line_index: usize) -> Result<Range<usize>, Error> {
+    fn line_range(&'source self, _: (), line_index: usize) -> Result<Range<usize>, Error> {
         let line_start = self.get_line_start_by_index(line_index)?;
         let next_line_start = self.get_line_start_by_index(line_index + 1)?;
 
