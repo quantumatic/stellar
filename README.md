@@ -141,7 +141,7 @@ fun main() {
 If type implements 2 traits having functions with the same names, you can use type qualification:
 
 ```
-struct S;
+struct S {}
 
 impl S {
     fun f() { println("S"); }
