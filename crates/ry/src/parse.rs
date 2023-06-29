@@ -3,7 +3,7 @@ use ry_ast::serialize::serialize_ast;
 use ry_diagnostics::{is_fatal, DiagnosticsEmitter};
 use ry_interner::Interner;
 use ry_parser::parse_module;
-use ry_source_file::{source_file::SourceFile, workspace::Workspace};
+use ry_workspace::{file::SourceFile, workspace::Workspace};
 use std::{fs, io::Write, path::Path, process::exit, time::Instant};
 
 pub fn command(filepath: &str) {

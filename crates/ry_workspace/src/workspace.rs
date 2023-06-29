@@ -1,13 +1,13 @@
 //! Defines a [`Workspace`] for diagnostics reporting and advanced file management.
 
-use crate::{source_file::SourceFile, span::Span};
+use crate::{file::SourceFile, span::Span};
 use codespan_reporting::files::{Error, Files};
 use std::ops::Range;
 
 /// A source file manager.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct Workspace<'m> {
-    files: Vec<&'m SourceFile<'m>>,
+pub struct Workspace<'workspace> {
+    files: Vec<&'workspace SourceFile<'workspace>>,
 }
 
 impl Default for Workspace<'_> {
@@ -19,7 +19,7 @@ impl Default for Workspace<'_> {
 /// An ID used to refer to files in [`Workspace`].
 pub type FileID = usize;
 
-impl<'m> Workspace<'m> {
+impl<'workspace> Workspace<'workspace> {
     /// Creates a new empty [`Workspace`].
     #[inline]
     #[must_use]
@@ -28,7 +28,7 @@ impl<'m> Workspace<'m> {
     }
 
     /// Adds a new file to the [`Workspace`] and returns its ID.
-    pub fn add_file(&mut self, file: &'m SourceFile<'m>) -> usize {
+    pub fn add_file(&mut self, file: &'workspace SourceFile<'workspace>) -> usize {
         self.files.push(file);
         self.files.len()
     }
@@ -36,7 +36,7 @@ impl<'m> Workspace<'m> {
     /// Returns the file with the given ID.
     #[inline]
     #[must_use]
-    pub fn get_file_by_id(&self, file_id: FileID) -> Option<&'m SourceFile<'m>> {
+    pub fn get_file_by_id(&self, file_id: FileID) -> Option<&'workspace SourceFile<'workspace>> {
         self.files.get(file_id - 1).copied()
     }
 
@@ -46,7 +46,7 @@ impl<'m> Workspace<'m> {
     /// Calling this method with an out-of-bounds index is undefined behavior even if the resulting reference is not used.
     #[inline]
     #[must_use]
-    pub unsafe fn get_file_by_id_unchecked(&self, file_id: FileID) -> &SourceFile<'m> {
+    pub unsafe fn get_file_by_id_unchecked(&self, file_id: FileID) -> &SourceFile<'workspace> {
         unsafe { self.files.get_unchecked(file_id - 1) }
     }
 
@@ -61,7 +61,7 @@ impl<'m> Workspace<'m> {
     ///
     /// ```
     /// use std::path::Path;
-    /// use ry_source_file::{workspace::Workspace, source_file::SourceFile, span::Span};
+    /// use ry_workspace::{workspace::Workspace, source_file::SourceFile, span::Span};
     ///
     /// let mut workspace = Workspace::new();
     /// let source_file = SourceFile::new(
@@ -75,7 +75,7 @@ impl<'m> Workspace<'m> {
     /// assert_eq!(workspace.resolve_span_or_panic(span), "\"Hello, world!\"");
     /// ```
     #[must_use]
-    pub fn resolve_span_or_panic(&self, span: Span) -> &'m str {
+    pub fn resolve_span_or_panic(&self, span: Span) -> &'workspace str {
         self.get_file_by_id(span.file_id())
             .expect("File does not exist")
             .source()
@@ -93,7 +93,7 @@ impl<'m> Workspace<'m> {
     ///
     /// ```
     /// use std::path::Path;
-    /// use ry_source_file::{workspace::Workspace, span::Span, source_file::SourceFile};
+    /// use ry_workspace::{workspace::Workspace, span::Span, source_file::SourceFile};
     ///
     /// let mut workspace = Workspace::new();
     /// let source_file = SourceFile::new(
@@ -119,7 +119,7 @@ impl<'m> Workspace<'m> {
     ///     None
     /// );
     #[must_use]
-    pub fn resolve_span(&self, span: Span) -> Option<&'m str> {
+    pub fn resolve_span(&self, span: Span) -> Option<&'workspace str> {
         self.get_file_by_id(span.file_id())?
             .source()
             .get(span.start()..span.end())

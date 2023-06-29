@@ -80,8 +80,8 @@ use ry_ast::{
 use ry_diagnostics::{expected, parser::ParseDiagnostic, BuildDiagnostic, CompilerDiagnostic};
 use ry_interner::Interner;
 use ry_lexer::Lexer;
-use ry_source_file::{
-    source_file::SourceFile,
+use ry_workspace::{
+    file::SourceFile,
     span::{Span, SpanIndex},
     workspace::FileID,
 };
@@ -93,10 +93,10 @@ mod macros;
 
 /// Represents a parse state.
 #[derive(Debug)]
-pub struct ParseState<'source, 'diagnostics, 'interner> {
-    source_file: &'source SourceFile<'source>,
+pub struct ParseState<'workspace, 'diagnostics, 'interner> {
+    source_file: &'workspace SourceFile<'workspace>,
     file_id: usize,
-    lexer: Lexer<'source, 'interner>,
+    lexer: Lexer<'workspace, 'interner>,
     current_token: Token,
     next_token: Token,
     diagnostics: &'diagnostics mut Vec<CompilerDiagnostic>,
@@ -137,7 +137,7 @@ where
     fn optionally_parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output;
 }
 
-impl<'source, 'diagnostics, 'interner> ParseState<'source, 'diagnostics, 'interner> {
+impl<'workspace, 'diagnostics, 'interner> ParseState<'workspace, 'diagnostics, 'interner> {
     /// Creates an initial state.
     ///
     /// Note: [`ParseState::current`] and [`ParseState::next`] are
@@ -145,7 +145,7 @@ impl<'source, 'diagnostics, 'interner> ParseState<'source, 'diagnostics, 'intern
     #[must_use]
     pub fn new(
         file_id: FileID,
-        source_file: &'source SourceFile<'source>,
+        source_file: &'workspace SourceFile<'workspace>,
         diagnostics: &'diagnostics mut Vec<CompilerDiagnostic>,
         interner: &'interner mut Interner,
     ) -> Self {
@@ -197,7 +197,7 @@ impl<'source, 'diagnostics, 'interner> ParseState<'source, 'diagnostics, 'intern
     /// Returns a lexer instance used for parsing.
     #[inline]
     #[must_use]
-    pub const fn lexer(&self) -> &Lexer<'source, 'interner> {
+    pub const fn lexer(&self) -> &Lexer<'workspace, 'interner> {
         &self.lexer
     }
 

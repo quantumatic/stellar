@@ -1,7 +1,7 @@
 use ry_ast::typed::Type;
 use ry_diagnostics::{scope::ScopeDiagnostic, BuildDiagnostic, CompilerDiagnostic};
 use ry_interner::{Interner, Symbol};
-use ry_source_file::span::Span;
+use ry_workspace::span::Span;
 use std::{collections::HashMap, sync::Arc};
 
 /// Information that compiler has about a particular symbol.
@@ -38,18 +38,18 @@ impl SymbolData {
 
 /// Represents a local scope (a scope that is not a global).
 #[derive(Debug)]
-pub struct LocalScope<'a> {
+pub struct LocalScope<'scope> {
     /// Symbols in this scope (not the ones contained in the parent scopes).
     symbols: HashMap<Symbol, SymbolData>,
 
     /// Parent scope.
-    parent: Option<&'a LocalScope<'a>>,
+    parent: Option<&'scope LocalScope<'scope>>,
 }
 
-impl<'a> LocalScope<'a> {
+impl<'scope> LocalScope<'scope> {
     #[inline]
     #[must_use]
-    pub fn new(parent: Option<&'a LocalScope<'a>>) -> Self {
+    pub fn new(parent: Option<&'scope LocalScope<'scope>>) -> Self {
         Self {
             symbols: HashMap::new(),
             parent,
@@ -59,7 +59,7 @@ impl<'a> LocalScope<'a> {
     /// Returns the parent scope.
     #[inline]
     #[must_use]
-    pub const fn parent(&self) -> Option<&'a LocalScope<'a>> {
+    pub const fn parent(&self) -> Option<&'scope LocalScope<'scope>> {
         self.parent
     }
 
@@ -82,45 +82,14 @@ impl<'a> LocalScope<'a> {
         symbols
     }
 
-    /// Adds a symbol to this scope and if an error occurs, returns `None`.
-    pub fn add_symbol(&mut self, symbol: Symbol, data: SymbolData) -> Option<()> {
+    /// Adds a symbol to this scope.
+    pub fn add_symbol(&mut self, symbol: Symbol, data: SymbolData) {
+        // shadowing
         if self.symbols.contains_key(&symbol) {
-            return None;
+            self.symbols.remove(&symbol);
         }
 
         self.symbols.insert(symbol, data);
-        Some(())
-    }
-
-    /// Adds a symbol to this scope and if an error occurs, it will be added into `diagnostics` and
-    /// the function returns `None`.
-    ///
-    /// Interner `interner` here is used to resolve the symbol for building a diagnostic.
-    pub fn add_symbol_or_save_diagnostic(
-        &mut self,
-        symbol: Symbol,
-        data: SymbolData,
-        interner: &Interner,
-        diagnostics: &mut Vec<CompilerDiagnostic>,
-    ) -> Option<()> {
-        if let Some(SymbolData { span, .. }) = self.symbols.get(&symbol) {
-            diagnostics.push(
-                ScopeDiagnostic::SymbolOverwritten {
-                    symbol: interner
-                        .resolve(symbol)
-                        .unwrap_or_else(|| panic!("Symbol {symbol} cannot be resolved"))
-                        .to_owned(),
-                    first_definition_span: *span,
-                    second_definition_span: data.span(),
-                }
-                .build(),
-            );
-
-            None
-        } else {
-            self.symbols.insert(symbol, data);
-            Some(())
-        }
     }
 
     /// Returns the symbol data for the given symbol. If the symbol is not in this scope, `None` is returned.

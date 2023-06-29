@@ -4,7 +4,7 @@ use ry_ast::{
     TypePathSegment, WhereClause, WhereClauseItem,
 };
 use ry_diagnostics::{expected, parser::ParseDiagnostic, BuildDiagnostic};
-use ry_source_file::span::Span;
+use ry_workspace::span::Span;
 
 pub(crate) struct TypeBoundsParser;
 

@@ -4,10 +4,8 @@ macro_rules! test {
         #[test]
         #[allow(unused_qualifications)]
         fn $name() {
-            let source_file = ry_source_file::source_file::SourceFile::new(
-                std::path::Path::new("test.ry"),
-                $source,
-            );
+            let source_file =
+                ry_workspace::file::SourceFile::new(std::path::Path::new("test.ry"), $source);
 
             let mut diagnostics = vec![];
             let mut interner = ry_interner::Interner::default();

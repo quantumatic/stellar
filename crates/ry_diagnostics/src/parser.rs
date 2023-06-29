@@ -6,7 +6,7 @@ use ry_ast::{
     token::{LexError, Token},
     ItemKind,
 };
-use ry_source_file::span::Span;
+use ry_workspace::span::Span;
 use std::fmt::Display;
 
 /// Represents list of expected tokens.

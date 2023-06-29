@@ -8,15 +8,15 @@ use std::path::Path;
 
 /// A Ry source file.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct SourceFile<'source> {
+pub struct SourceFile<'workspace> {
     /// The path of the source file.
-    path: &'source Path,
+    path: &'workspace Path,
 
     /// The path of the source file as a string slice.
-    path_str: &'source str,
+    path_str: &'workspace str,
 
     /// The source content of the file.
-    source: &'source str,
+    source: &'workspace str,
 
     /// The length of the source content (in bytes).
     source_len: usize,
@@ -25,11 +25,11 @@ pub struct SourceFile<'source> {
     line_starts: Vec<usize>,
 }
 
-impl<'source> SourceFile<'source> {
+impl<'workspace> SourceFile<'workspace> {
     /// Creates a new [`SourceFile`].
     #[inline]
     #[must_use]
-    pub fn new(path: &'source Path, source: &'source str) -> Self {
+    pub fn new(path: &'workspace Path, source: &'workspace str) -> Self {
         Self {
             path,
             path_str: path.to_str().expect("Invalid UTF-8 data in path"),
@@ -44,21 +44,21 @@ impl<'source> SourceFile<'source> {
     /// Returns the path of the source file.
     #[inline]
     #[must_use]
-    pub const fn path(&self) -> &'source Path {
+    pub const fn path(&self) -> &'workspace Path {
         self.path
     }
 
     /// Returns the path of the source file as a string slice.
     #[inline]
     #[must_use]
-    pub const fn path_str(&self) -> &'source str {
+    pub const fn path_str(&self) -> &'workspace str {
         self.path_str
     }
 
     /// Returns the source content of the file.
     #[inline]
     #[must_use]
-    pub const fn source(&self) -> &'source str {
+    pub const fn source(&self) -> &'workspace str {
         self.source
     }
 
@@ -92,7 +92,7 @@ impl<'source> SourceFile<'source> {
     ///
     /// ```ignore
     /// use std::path::Path;
-    /// use ry_source_file::source_file::SourceFile;
+    /// use ry_workspace::file::SourceFile;
     ///
     /// let source_file = SourceFile::new(
     ///     Path::new("test.ry"),
@@ -125,7 +125,7 @@ impl<'source> SourceFile<'source> {
     ///
     /// ```
     /// use std::path::Path;
-    /// use ry_source_file::source_file::SourceFile;
+    /// use ry_workspace::file::SourceFile;
     ///
     /// let source_file = SourceFile::new(
     ///     Path::new("test.ry"),
@@ -150,7 +150,7 @@ impl<'source> SourceFile<'source> {
     ///
     /// ```
     /// use std::path::Path;
-    /// use ry_source_file::source_file::SourceFile;
+    /// use ry_workspace::file::SourceFile;
     ///
     /// let source_file = SourceFile::new(
     ///     Path::new("test.ry"),
@@ -173,26 +173,26 @@ impl<'source> SourceFile<'source> {
 }
 
 // For proper error reporting
-impl<'source> Files<'source> for SourceFile<'source> {
+impl<'workspace> Files<'workspace> for SourceFile<'workspace> {
     // we don't care about file IDs, because we have only one individual file here
     type FileId = ();
 
-    type Name = &'source str;
-    type Source = &'source str;
+    type Name = &'workspace str;
+    type Source = &'workspace str;
 
-    fn name(&'source self, _: ()) -> Result<Self::Name, Error> {
+    fn name(&'workspace self, _: ()) -> Result<Self::Name, Error> {
         Ok(self.path_str())
     }
 
-    fn source(&'source self, _: ()) -> Result<Self::Source, Error> {
+    fn source(&'workspace self, _: ()) -> Result<Self::Source, Error> {
         Ok(self.source)
     }
 
-    fn line_index(&'source self, _: (), byte_index: usize) -> Result<usize, Error> {
+    fn line_index(&'workspace self, _: (), byte_index: usize) -> Result<usize, Error> {
         Ok(self.get_line_index_by_byte_index(byte_index))
     }
 
-    fn line_range(&'source self, _: (), line_index: usize) -> Result<Range<usize>, Error> {
+    fn line_range(&'workspace self, _: (), line_index: usize) -> Result<Range<usize>, Error> {
         let line_start = self.get_line_start_by_index(line_index)?;
         let next_line_start = self.get_line_start_by_index(line_index + 1)?;
 

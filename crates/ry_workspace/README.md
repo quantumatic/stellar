@@ -2,7 +2,7 @@
     <img width="70%" src="../../additional/icon/banner.png">
 </p>
 
-# `ry_source_file` crate.
+# `ry_workspace` crate.
 
 This crate provides utilities for working with Ry source files.
 
@@ -12,7 +12,7 @@ This crate provides utilities for working with Ry source files.
 
 ```rs
 use std::path::Path;
-use ry_source_file::{Workspace, SourceFile};
+use ry_workspace::{Workspace, SourceFile};
 
 let workspace = Workspace::new();
 let source_file = SourceFile::new(
@@ -27,7 +27,7 @@ let file_id = workspace.add_file(source_file);
 
 ```rs
 use std::path::Path;
-use ry_source_file::source_file::SourceFile;
+use ry_workspace::file::SourceFile;
 
 let source_file = SourceFile::new(
     Path::new("test.ry"),
@@ -49,7 +49,7 @@ assert_eq!(source_file.line_range_by_index(2), Some(43..44));
 `Span` struct represents a location of some text in the source file. Example of how you can use it:
 
 ```rs
-use ry_source_file::{span::Span, Workspace};
+use ry_workspace::{span::Span, Workspace};
 
 let workspace = Workspace::new();
 

@@ -11,7 +11,7 @@
 //! use ry_lexer::Lexer;
 //! use ry_ast::token::{Token, RawToken::EndOfFile};
 //! use ry_interner::Interner;
-//! use ry_source_file::span::Span;
+//! use ry_workspace::span::Span;
 //!
 //! let mut interner = Interner::default();
 //! let mut lexer = Lexer::new(0, "", &mut interner);
@@ -109,18 +109,18 @@ use ry_ast::{
     Token,
 };
 use ry_interner::{Interner, Symbol};
-use ry_source_file::span::Span;
+use ry_workspace::span::Span;
 use std::{mem, str::Chars, string::String};
 
 mod number;
 
 /// Represents a lexer state machine.
 #[derive(Debug)]
-pub struct Lexer<'source, 'interner> {
+pub struct Lexer<'workspace, 'interner> {
     /// Id of the file being scanned.
     file_id: usize,
     /// Content of the file being scanned.
-    source: &'source str,
+    source: &'workspace str,
 
     /// Current character.
     current: char,
@@ -128,7 +128,7 @@ pub struct Lexer<'source, 'interner> {
     next: char,
 
     /// Iterator through source text characters.
-    chars: Chars<'source>,
+    chars: Chars<'workspace>,
 
     /// Location of the current character being processed.
     location: usize,
@@ -145,10 +145,10 @@ pub struct Lexer<'source, 'interner> {
     string_buffer: String,
 }
 
-impl<'source, 'interner> Lexer<'source, 'interner> {
+impl<'workspace, 'interner> Lexer<'workspace, 'interner> {
     /// Creates a new [`Lexer`].
     #[must_use]
-    pub fn new(file_id: usize, source: &'source str, interner: &'interner mut Interner) -> Self {
+    pub fn new(file_id: usize, source: &'workspace str, interner: &'interner mut Interner) -> Self {
         let mut chars = source.chars();
 
         let current = chars.next().unwrap_or('\0');
@@ -262,7 +262,7 @@ impl<'source, 'interner> Lexer<'source, 'interner> {
     /// where its arguments are the current and next characters.
     /// Returns the string slice of source text between `start_location`
     /// and `self.location` when `f` returns `false` OR `self.eof() == true`.
-    fn advance_while<F>(&mut self, start_location: usize, mut f: F) -> &'source str
+    fn advance_while<F>(&mut self, start_location: usize, mut f: F) -> &'workspace str
     where
         F: FnMut(char, char) -> bool,
     {

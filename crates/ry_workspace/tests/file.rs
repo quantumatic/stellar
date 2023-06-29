@@ -1,6 +1,6 @@
 use std::path::Path;
 
-use ry_source_file::source_file::SourceFile;
+use ry_workspace::file::SourceFile;
 
 const TEST_SOURCE: &str = "foo\nbar\r\n\nbaz";
 

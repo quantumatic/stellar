@@ -2,24 +2,26 @@ use crate::{items::ItemsParser, Parse, ParseState};
 use ry_ast::Module;
 use ry_diagnostics::CompilerDiagnostic;
 use ry_interner::Interner;
-use ry_source_file::{source_file::SourceFile, workspace::FileID};
+use ry_workspace::{file::SourceFile, workspace::FileID};
 
 /// Parse a Ry module.
 #[inline]
 #[must_use]
-pub fn parse_module<'source>(
+pub fn parse_module<'workspace>(
     file_id: FileID,
-    source_file: &'source SourceFile<'source>,
+    source_file: &'workspace SourceFile<'workspace>,
     diagnostics: &mut Vec<CompilerDiagnostic>,
     interner: &mut Interner,
-) -> Module<'source> {
+) -> Module<'workspace> {
     let state = ParseState::new(file_id, source_file, diagnostics, interner);
     parse_module_using(state)
 }
 
 /// Parse a Ry module using a given parse state.
 #[must_use]
-pub fn parse_module_using<'source>(mut state: ParseState<'source, '_, '_>) -> Module<'source> {
+pub fn parse_module_using<'workspace>(
+    mut state: ParseState<'workspace, '_, '_>,
+) -> Module<'workspace> {
     let (global_docstring, first_docstring) = state.consume_module_and_first_item_docstrings();
 
     Module {

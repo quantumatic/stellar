@@ -1,6 +1,6 @@
 use crate::{is_id_start, Lexer};
 use ry_ast::token::{NumberKind, RawLexError, RawToken, Token};
-use ry_source_file::span::Span;
+use ry_workspace::span::Span;
 use std::char::from_u32;
 
 /// True if `c` is a valid decimal digit.

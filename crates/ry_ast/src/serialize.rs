@@ -6,7 +6,7 @@ use crate::{
     TypeAst, TypePath, TypePathSegment, UntypedExpression, Visibility, WhereClauseItem,
 };
 use ry_interner::{Interner, Symbol};
-use ry_source_file::span::{Span, DUMMY_SPAN};
+use ry_workspace::span::{Span, DUMMY_SPAN};
 
 /// A struct that allows to serialize a Ry module into a string, for debug purposes.
 #[derive(Debug)]

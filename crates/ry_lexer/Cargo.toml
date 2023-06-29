@@ -9,4 +9,4 @@ authors = ["Adi Salimgereyev <adisalimgereev@gmail.com>"]
 ry_ast = { path = "../ry_ast" }
 unicode-xid = "0.2.4"
 ry_interner = { path = "../ry_interner" }
-ry_source_file = { path = "../ry_source_file" }
+ry_workspace = { path = "../ry_workspace" }

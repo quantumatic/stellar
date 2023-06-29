@@ -11,7 +11,7 @@ ry_lexer = {path = "../ry_lexer"}
 ry_diagnostics = {path = "../ry_diagnostics"}
 ry_ast = {path = "../ry_ast"}
 ry_interner = {path = "../ry_interner"}
-ry_source_file = {path = "../ry_source_file"}
+ry_workspace = {path = "../ry_workspace"}
 codespan-reporting = "0.11.1"
 clap = {version = "4.1.4", features = ["derive"]}
 serde = { version = "1.0.160", features = ["derive"] }

@@ -67,7 +67,7 @@ use codespan_reporting::{
         Config,
     },
 };
-use ry_source_file::workspace::{FileID, Workspace};
+use ry_workspace::workspace::{FileID, Workspace};
 
 pub mod parser;
 pub mod scope;

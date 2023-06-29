@@ -92,7 +92,7 @@ pub trait SpanIndex {
     ///
     /// # Example:
     /// ```
-    /// use ry_source_file::span::{Span, SpanIndex};
+    /// use ry_workspace::span::{Span, SpanIndex};
     ///
     /// let span = Span::new(0, 3, 1);
     /// assert_eq!("test".index(span), "tes");

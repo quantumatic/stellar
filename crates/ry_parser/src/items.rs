@@ -12,7 +12,7 @@ use ry_ast::{
     TupleField, TypeAlias, Visibility, WithDocComment,
 };
 use ry_diagnostics::{expected, parser::ParseDiagnostic, BuildDiagnostic};
-use ry_source_file::span::Span;
+use ry_workspace::span::Span;
 
 struct UseItemParser {
     pub(crate) visibility: Visibility,

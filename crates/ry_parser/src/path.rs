@@ -1,6 +1,6 @@
 use crate::{Parse, ParseState};
 use ry_ast::{Path, Token};
-use ry_source_file::span::Span;
+use ry_workspace::span::Span;
 
 pub(crate) struct PathParser;
 

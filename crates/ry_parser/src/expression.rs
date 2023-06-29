@@ -13,7 +13,7 @@ use ry_ast::{
     StructExpressionItem, Token, UntypedExpression,
 };
 use ry_diagnostics::{expected, parser::ParseDiagnostic, BuildDiagnostic};
-use ry_source_file::span::Span;
+use ry_workspace::span::Span;
 
 #[derive(Default)]
 pub(crate) struct ExpressionParser {

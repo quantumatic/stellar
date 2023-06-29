@@ -3,7 +3,7 @@ use crate::{
 };
 use ry_ast::{token::RawToken, Statement, StatementsBlock, Token};
 use ry_diagnostics::{parser::ParseDiagnostic, BuildDiagnostic};
-use ry_source_file::span::Span;
+use ry_workspace::span::Span;
 
 struct StatementParser;
 
