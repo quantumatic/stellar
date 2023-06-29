@@ -61,7 +61,7 @@ impl<'workspace> Workspace<'workspace> {
     ///
     /// ```
     /// use std::path::Path;
-    /// use ry_workspace::{workspace::Workspace, source_file::SourceFile, span::Span};
+    /// use ry_workspace::{workspace::Workspace, file::SourceFile, span::Span};
     ///
     /// let mut workspace = Workspace::new();
     /// let source_file = SourceFile::new(
@@ -93,7 +93,7 @@ impl<'workspace> Workspace<'workspace> {
     ///
     /// ```
     /// use std::path::Path;
-    /// use ry_workspace::{workspace::Workspace, span::Span, source_file::SourceFile};
+    /// use ry_workspace::{workspace::Workspace, span::Span, file::SourceFile};
     ///
     /// let mut workspace = Workspace::new();
     /// let source_file = SourceFile::new(
