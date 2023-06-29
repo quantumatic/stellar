@@ -272,8 +272,6 @@ pub enum Pattern {
     ///     // always matches
     ///     Some(..) | None => { println("ok"); }
     ///     ^^^^^^^^^^^^^^^ or pattern
-    ///
-    ///     _ => { unreachable(); }
     /// }
     /// ```
     Or {
@@ -290,8 +288,6 @@ pub enum Pattern {
     ///     // always matches
     ///     .. => { println("ok"); }
     ///     ^^ rest pattern
-    ///
-    ///     _ => { unreachable(); }
     /// }
     Rest { span: Span },
 }
