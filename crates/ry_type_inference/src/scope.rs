@@ -38,16 +38,11 @@ impl SymbolData {
 
 /// Represents a local scope (a scope that is not a global).
 #[derive(Debug)]
-<<<<<<< HEAD:crates/ry_type_inference/src/scope.rs
 pub struct LocalScope<'scope> {
-=======
-pub struct LocalScope<'parent> {
->>>>>>> 09550bb2c48bb365bd88cfd7167646cf695234a0:crates/ry_semantic_analysis/src/scope.rs
     /// Symbols in this scope (not the ones contained in the parent scopes).
     symbols: HashMap<Symbol, SymbolData>,
 
     /// Parent scope.
-<<<<<<< HEAD:crates/ry_type_inference/src/scope.rs
     parent: Option<&'scope LocalScope<'scope>>,
 }
 
@@ -55,15 +50,6 @@ impl<'scope> LocalScope<'scope> {
     #[inline]
     #[must_use]
     pub fn new(parent: Option<&'scope LocalScope<'scope>>) -> Self {
-=======
-    parent: Option<&'parent LocalScope<'parent>>,
-}
-
-impl<'parent> LocalScope<'parent> {
-    #[inline]
-    #[must_use]
-    pub fn new(parent: Option<&'parent LocalScope<'parent>>) -> Self {
->>>>>>> 09550bb2c48bb365bd88cfd7167646cf695234a0:crates/ry_semantic_analysis/src/scope.rs
         Self {
             symbols: HashMap::new(),
             parent,
@@ -73,11 +59,7 @@ impl<'parent> LocalScope<'parent> {
     /// Returns the parent scope.
     #[inline]
     #[must_use]
-<<<<<<< HEAD:crates/ry_type_inference/src/scope.rs
     pub const fn parent(&self) -> Option<&'scope LocalScope<'scope>> {
-=======
-    pub const fn parent(&self) -> Option<&'parent LocalScope<'parent>> {
->>>>>>> 09550bb2c48bb365bd88cfd7167646cf695234a0:crates/ry_semantic_analysis/src/scope.rs
         self.parent
     }
 
