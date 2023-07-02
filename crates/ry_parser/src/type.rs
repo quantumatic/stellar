@@ -14,13 +14,11 @@ struct TypeWithQualifiedPathParser;
 
 struct TraitObjectTypeParser;
 
-struct ParenthesizedOrTupleTypeParser;
+struct ParenthesizedTupleOrFunctionTypeParser;
 
 struct TypePathParser;
 
 struct TypePathSegmentParser;
-
-struct FunctionTypeParser;
 
 pub(crate) struct GenericParametersParser;
 
@@ -50,9 +48,8 @@ impl Parse for TypeParser {
 
     fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
         match state.next_token.raw {
-            Token!['('] => ParenthesizedOrTupleTypeParser.parse(state),
+            Token!['('] => ParenthesizedTupleOrFunctionTypeParser.parse(state),
             RawToken::Identifier => TypePathParser.parse(state).map(TypeAst::Path),
-            Token![Fun] => FunctionTypeParser.parse(state),
             Token![dyn] => TraitObjectTypeParser.parse(state),
             Token!['['] => TypeWithQualifiedPathParser.parse(state),
             _ => {
@@ -118,7 +115,7 @@ impl Parse for TraitObjectTypeParser {
     }
 }
 
-impl Parse for ParenthesizedOrTupleTypeParser {
+impl Parse for ParenthesizedTupleOrFunctionTypeParser {
     type Output = Option<TypeAst>;
 
     fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
@@ -130,6 +127,22 @@ impl Parse for ParenthesizedOrTupleTypeParser {
         });
 
         state.advance(); // `)`
+
+        if state.next_token.raw == Token![:] {
+            state.advance();
+
+            let return_type = Box::new(TypeParser.parse(state)?);
+
+            return Some(TypeAst::Function {
+                span: Span::new(
+                    start,
+                    state.current_token.span.end(),
+                    state.current_token.span.file_id(),
+                ),
+                parameter_types: element_types,
+                return_type,
+            });
+        }
 
         let span = Span::new(
             start,
@@ -180,34 +193,6 @@ impl Parse for ParenthesizedOrTupleTypeParser {
             }
             _ => unreachable!(),
         }
-    }
-}
-
-impl Parse for FunctionTypeParser {
-    type Output = Option<TypeAst>;
-
-    fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
-        let start = state.next_token.span.start();
-        state.advance(); // `Fun`
-
-        state.consume(Token!['('], "function type")?;
-
-        let parameter_types =
-            parse_list!(state, "parameter types in function type", Token![')'], {
-                TypeParser.parse(state)
-            });
-
-        state.advance(); // `)`
-
-        state.consume(Token![:], "return type of function in the function type")?;
-
-        let return_type = Box::new(TypeParser.parse(state)?);
-
-        Some(TypeAst::Function {
-            span: Span::new(start, state.current_token.span.end(), state.file_id),
-            parameter_types,
-            return_type,
-        })
     }
 }
 

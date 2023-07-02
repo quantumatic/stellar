@@ -3,7 +3,7 @@ mod r#macro;
 test!(function1: "fun test();");
 test!(function2: "fun test[A](a: A): A { a }");
 test!(function3: "fun unwrap[T, B = Option[T]](a: B): T { a.unwrap() }");
-test!(function4: "fun foo(a: uint32, b: uint32, fn: Fun (uint32, uint32): uint32): uint32 { fn(a, b) }");
+test!(function4: "fun foo(a: uint32, b: uint32, fn: (uint32, uint32): uint32): uint32 { fn(a, b) }");
 test!(impl1: "impl[T] NotOption for T {}");
 test!(impl2: "impl[T] Into[Option[M]] for Tuple[T, M] where M: Into[T] {}");
 test!(use1: "use test;");

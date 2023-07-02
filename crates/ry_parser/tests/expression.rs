@@ -24,7 +24,7 @@ test!(match2: "fun test(): int32 {
         .. => {}
     }
 }");
-test!(function: "fun test(): int32 { |a: int32, b: int32|: int32 { a + b } }");
+test!(function: "fun test(): int32 { |a: int32, b: int32|: int32 { a + b }(1, 2) }");
 test!(r#while: "fun test() {
     let x = 0;
 

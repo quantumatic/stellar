@@ -132,7 +132,6 @@ pub enum Keyword {
     Self_,
     Break,
     Continue,
-    FunT,
     Dyn,
 }
 
@@ -160,7 +159,6 @@ impl AsRef<str> for Keyword {
             Self::Self_ => "`self`",
             Self::Break => "`break`",
             Self::Continue => "`continue`",
-            Self::FunT => "`Fun`",
             Self::Dyn => "`dyn`",
         }
     }
@@ -561,7 +559,6 @@ macro_rules! Token {
     [self] =>               {$crate::token::RawToken::Keyword($crate::token::Keyword::Self_)};
     [break] =>              {$crate::token::RawToken::Keyword($crate::token::Keyword::Break)};
     [continue] =>           {$crate::token::RawToken::Keyword($crate::token::Keyword::Continue)};
-    [Fun] =>                {$crate::token::RawToken::Keyword($crate::token::Keyword::FunT)};
     [dyn] =>                {$crate::token::RawToken::Keyword($crate::token::Keyword::Dyn)};
 }
 
@@ -590,7 +587,6 @@ pub static RESERVED: phf::Map<&'static str, RawToken> = phf_map! {
     "self" => Token![self],
     "break" => Token![break],
     "continue" => Token![continue],
-    "Fun" => Token![Fun],
     "dyn" => Token![dyn],
 };
 
