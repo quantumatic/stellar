@@ -1,7 +1,24 @@
-//! Defines the [`Span`] struct for representing
-//! locations in the source code throughout the compiler.
-//! Most notably, these locations are passed around throughout the parser
-//! and are stored in each AST node via [`Spanned`] struct.
+//! # Source Files Managment.
+//!
+//! This crate provides utilities for working with Ry source files.
+//!
+//! ## [`Workspace`] and [`SourceFile`]
+//!
+//! - [`Workspace`] is a helper struct for working with Ry source files and also provides implementation for
+//! [`Files`] in [`codespan_reporting`] for proper error reporting. It is important to make
+//! sure that you added your source file into the [`Workspace`], because it would not
+//! report diagnostics properly with ID being out of bonds.
+//!
+//! - [`SourceFile`] is an interface for working with Ry source files.
+//!
+//! ## [`Span`]
+//!
+//! [`Span`] is an interface for working with source code locations.
+//!
+//! [`Workspace`]: crate::workspace::Workspace
+//! [`SourceFile`]: crate::file::SourceFile
+//! [`Span`]: crate::span::Span
+//! [`Files`]: codespan_reporting::files::Files
 
 #![doc(
     html_logo_url = "https://raw.githubusercontent.com/abs0luty/Ry/main/additional/icon/ry.png",

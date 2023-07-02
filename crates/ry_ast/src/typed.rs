@@ -1,3 +1,5 @@
+//! Defines [`Type`] for working with types and typed AST nodes.
+
 use ry_interner::{symbols::LIST, Symbol};
 use std::sync::Arc;
 
@@ -18,6 +20,8 @@ pub enum Type {
     Variable(usize),
 }
 
+#[inline]
+#[must_use]
 pub fn primitive_constructor(symbol: Symbol) -> Type {
     Type::Constructor {
         path: vec![symbol],
@@ -25,7 +29,9 @@ pub fn primitive_constructor(symbol: Symbol) -> Type {
     }
 }
 
-pub fn list(element_type: Arc<Type>) -> Type {
+#[inline]
+#[must_use]
+pub fn list_of(element_type: Arc<Type>) -> Type {
     Type::Constructor {
         path: vec![LIST],
         generic_arguments: vec![element_type],

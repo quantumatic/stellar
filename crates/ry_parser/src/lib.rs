@@ -1,7 +1,9 @@
 //! This crate provides a iter for Ry programming language
 //!
-//! It uses the lexer from the ry_lexer crate to tokenize the input source
+//! It uses the lexer from the [`ry_lexer`] crate to tokenize the input source
 //! code and produces an Abstract Syntax Tree (AST) that represents the parsed code.
+//!
+//! [`ry_lexer`]: ../ry_lexer/index.html
 
 #![doc(
     html_logo_url = "https://raw.githubusercontent.com/abs0luty/Ry/main/additional/icon/ry.png",
@@ -143,10 +145,7 @@ where
 }
 
 impl<'workspace, 'diagnostics, 'interner> ParseState<'workspace, 'diagnostics, 'interner> {
-    /// Creates an initial state.
-    ///
-    /// Note: [`ParseState::current`] and [`ParseState::next`] are
-    /// the same at an initial state.
+    /// Creates an initial parse state.
     #[must_use]
     pub fn new(
         file_id: FileID,

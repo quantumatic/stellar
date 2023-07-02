@@ -158,7 +158,7 @@ pub fn is_fatal(diagnostics: &Vec<CompilerDiagnostic>) -> bool {
     false
 }
 
-/// Anything that can be reported using [`Reporter`].
+/// Anything that can be reported using [`DiagnosticsEmitter`].
 pub trait BuildDiagnostic {
     /// Convert [`self`] into [`CompilerDiagnostic`].
     fn build(&self) -> CompilerDiagnostic;

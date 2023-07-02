@@ -1,40 +1,8 @@
 //! The crate implements string internering for Ry programming language
-//! compiler.
+//! compiler. It allows to cache strings and associate them with unique symbols.
+//! These allows constant time comparisons and look-ups to underlying interned strings!
 //!
-//! The crate caches strings and associates them with unique symbols.
-//! These allows constant time comparisons and look-ups to underlying interned strings.
-//!
-//! ### Examples:
-//!
-//! Interning:
-//! ```
-//! use ry_interner::Interner;
-//!
-//! let mut interner = Interner::default();
-//! let symbol0 = interner.get_or_intern("A");
-//! let symbol1 = interner.get_or_intern("B");
-//! let symbol2 = interner.get_or_intern("C");
-//! let symbol3 = interner.get_or_intern("A");
-//!
-//! assert_ne!(symbol0, symbol1);
-//! assert_ne!(symbol0, symbol2);
-//! assert_ne!(symbol1, symbol2);
-//! assert_eq!(symbol0, symbol3);
-//! ```
-//!
-//! Resolving symbols:
-//! ```
-//! use ry_interner::Interner;
-//!
-//! let mut interner = Interner::default();
-//! let symbol0 = interner.get_or_intern("A");
-//! let symbol1 = interner.get_or_intern("B");
-//!
-//! assert_eq!(interner.resolve(symbol0), Some("A"));
-//! assert_eq!(interner.resolve(symbol0 + 1), Some("B"));
-//! assert_eq!(interner.resolve(symbol1), Some("B"));
-//! assert_eq!(interner.resolve(symbol1 + 1), None);
-//! ```
+//! See the [`Interner`] for more information.
 
 #![doc(
     html_logo_url = "https://raw.githubusercontent.com/abs0luty/Ry/main/additional/icon/ry.png",
@@ -109,7 +77,7 @@ use hashbrown::{
 };
 
 /// Represents unique symbol corresponding to some interned string.
-pub type Symbol = u32;
+pub type Symbol = usize;
 
 /// Defines all primitive symbols that are interned by default.
 pub mod symbols {
@@ -170,11 +138,17 @@ pub mod symbols {
     pub const CHAR: Symbol = 17;
 }
 
+/// # Identifier Interner.
 /// Data structure that allows to resolve/intern strings.
 ///
+/// Interning is a process of storing only a single copy of a particular
+/// immutable data value (in this case an identifier), and reusing that copy
+/// whenever the same value is encountered again.
+///
 /// See:
-///  - [`Interner::get_or_intern`] to intern a new string.
-///  - [`Interner::resolve`] to resolve already interned strings.
+/// - [`Interner::default()`] to create a new empty instance of [`Interner`].
+/// - [`Interner::get_or_intern()`] to intern a new identifier.
+/// - [`Interner::resolve()`] to resolve already interned strings.
 #[derive(Debug)]
 pub struct Interner<H = DefaultHashBuilder>
 where
@@ -187,12 +161,13 @@ where
 
 /// Data structures that organizes interned strings.
 #[derive(Debug, Default)]
-pub struct Backend {
+struct Backend {
     ends: Vec<usize>,
     buffer: String,
 }
 
 impl Default for Interner {
+    /// Creates a new empty [`Interner`] which doesn’t store any data.
     #[inline]
     fn default() -> Self {
         Self::new()
@@ -254,24 +229,16 @@ impl Backend {
 
     /// Returns the span for the given symbol if any.
     fn span_of(&self, symbol: Symbol) -> Option<Span> {
-        self.ends.get(symbol as usize).copied().map(|end| Span {
-            start: self
-                .ends
-                .get(symbol.wrapping_sub(1) as usize)
-                .copied()
-                .unwrap_or(0),
+        self.ends.get(symbol).copied().map(|end| Span {
+            start: self.ends.get(symbol.wrapping_sub(1)).copied().unwrap_or(0),
             end,
         })
     }
 
     /// Returns the span for the given symbol if any, but without additional checks.
     unsafe fn unchecked_span_of(&self, symbol: Symbol) -> Span {
-        let end = unsafe { *self.ends.get_unchecked(symbol as usize) };
-        let start = self
-            .ends
-            .get(symbol.wrapping_sub(1) as usize)
-            .copied()
-            .unwrap_or(0);
+        let end = unsafe { *self.ends.get_unchecked(symbol) };
+        let start = self.ends.get(symbol.wrapping_sub(1)).copied().unwrap_or(0);
 
         Span { start, end }
     }
@@ -305,10 +272,10 @@ impl<H> Interner<H>
 where
     H: BuildHasher + Default,
 {
-    /// Creates a new empty `Interner`.
+    /// Creates a new empty [`Interner`] which doesn't store any data.
     #[must_use]
     #[inline]
-    pub fn new() -> Self {
+    fn new() -> Self {
         let mut interner = Self {
             dedup: HashMap::default(),
             hasher: Default::default(),
@@ -363,12 +330,25 @@ where
     }
 
     /// Returns `true` if the string interner has no interned strings/amount of symbols is `0`.
+    ///
+    /// ```
+    /// # use ry_interner::Interner;
+    /// assert!(Interner::default().is_empty());
+    /// ```
     #[inline]
     pub fn is_empty(&self) -> bool {
         self.len() == 0
     }
 
-    /// Returns the symbol for the given string if any.
+    /// Returns the symbol for the given string if it is interned.
+    ///
+    /// # Example
+    /// ```
+    /// # use ry_interner::Interner;
+    /// let interner = Interner::default();
+    /// let hello_symbol = interner.get_or_intern("hello");
+    /// assert_eq!(Some(hello_symbol), interner.get("hello"));
+    /// ```
     #[inline]
     pub fn get<T>(&self, string: T) -> Option<Symbol>
     where
@@ -438,6 +418,17 @@ where
     }
 
     /// Returns the string for the given symbol if any.
+    ///
+    /// # Example
+    /// ```
+    /// # use ry_interner::{Interner, symbols::UINT8};
+    /// let interner = Interner::default();
+    /// let hello_symbol = interner.get_or_intern("hello");
+    ///
+    /// assert_eq!(interner.get("hello"), Some(hello_symbol));
+    /// assert_eq!(interner.get("uint8"), Some(UINT8)); // interned by default
+    /// assert_eq!(interner.get("!"), None);
+    /// ```
     #[inline]
     pub fn resolve(&self, symbol: Symbol) -> Option<&str> {
         self.backend.resolve(symbol)
@@ -447,7 +438,7 @@ where
 /// Represents a location of an interned string inside the [`Backend`]'s internal
 /// string buffer.
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub struct Span {
+struct Span {
     start: usize,
     end: usize,
 }

@@ -1,47 +1,9 @@
 //! This crate provides a lexer for Ry programming language.
 //!
-//! Lexer is a first stage of compilation, state machine
-//! that converts Ry source text into [`type@Token`]s.
+//! Lexer is a first stage of compilation, state machine that converts
+//! source text into [`type@Token`]s.
 //!
-//! Whitespaces are ignored during scanning process.
-//!
-//! Lexer is fairly standart. It returns [`type@Token`] and then advances its state on
-//! each iteration and stops at eof (always returns [`EndOfFile`]).
-//! ```
-//! use ry_lexer::Lexer;
-//! use ry_ast::token::{Token, RawToken::EndOfFile};
-//! use ry_interner::Interner;
-//! use ry_workspace::span::Span;
-//!
-//! let mut interner = Interner::default();
-//! let mut lexer = Lexer::new(0, "", &mut interner);
-//!
-//! assert_eq!(
-//!     lexer.next_token(),
-//!     Token
-//!     {
-//!         raw: EndOfFile,
-//!         span: Span::new(0, 1, 0)
-//!     }
-//! );
-//! ```
-//!
-//! > Note: the Ry lexer makes use of the `ry_interner` crate to perform string interning,
-//! > a process of deduplicating strings, which can be highly beneficial when dealing with
-//! > identifiers.
-//!
-//! If error appeared in the process, [`Error`] token will be returned:
-//!
-//! ```
-//! use ry_lexer::Lexer;
-//! use ry_ast::token::{RawLexError, RawToken::Error};
-//! use ry_interner::Interner;
-//!
-//! let mut interner = Interner::default();
-//! let mut lexer = Lexer::new(0, "١", &mut interner);
-//!
-//! assert_eq!(lexer.next_token().raw, Error(RawLexError::UnexpectedChar));
-//! ```
+//! See [`Lexer`] for more information.
 
 #![doc(
     html_logo_url = "https://raw.githubusercontent.com/abs0luty/Ry/main/additional/icon/ry.png",
@@ -115,6 +77,44 @@ use std::{mem, str::Chars, string::String};
 mod number;
 
 /// Represents a lexer state machine.
+/// Lexer is fairly standart. It returns [`type@Token`] and then advances its state on
+/// each iteration and stops at eof (always returns [`EndOfFile`]).
+/// ```
+/// # use ry_lexer::Lexer;
+/// # use ry_ast::token::{Token, RawToken::EndOfFile};
+/// # use ry_interner::Interner;
+/// # use ry_workspace::span::Span;
+/// let mut interner = Interner::default();
+/// let mut lexer = Lexer::new(0, "", &mut interner);
+///
+/// assert_eq!(
+///     lexer.next_token(),
+///     Token {
+///         raw: EndOfFile,
+///         span: Span::new(0, 1, 0)
+///     }
+/// );
+/// ```
+///
+/// If error appeared in the process, [`Error`] token will be returned:
+///
+/// ```
+/// # use ry_lexer::Lexer;
+/// # use ry_ast::token::{RawLexError, RawToken::Error};
+/// # use ry_interner::Interner;
+/// let mut interner = Interner::default();
+/// let mut lexer = Lexer::new(0, "١", &mut interner);
+///
+/// assert_eq!(lexer.next_token().raw, Error(RawLexError::UnexpectedChar));
+/// ```
+///
+/// # Note
+/// The lexer makes use of the `ry_interner` crate to perform string interning,
+/// a process of deduplicating strings, which can be highly beneficial when dealing with
+/// identifiers.
+///
+/// [`EndOfFile`]: ry_ast::token::RawToken::EndOfFile
+/// [`Error`]: ry_ast::token::RawToken::Error
 #[derive(Debug)]
 pub struct Lexer<'workspace, 'interner> {
     /// Id of the file being scanned.
@@ -146,7 +146,7 @@ pub struct Lexer<'workspace, 'interner> {
 }
 
 impl<'workspace, 'interner> Lexer<'workspace, 'interner> {
-    /// Creates a new [`Lexer`].
+    /// Creates a new [`Lexer`] instance.
     #[must_use]
     pub fn new(file_id: usize, source: &'workspace str, interner: &'interner mut Interner) -> Self {
         let mut chars = source.chars();
@@ -203,7 +203,7 @@ impl<'workspace, 'interner> Lexer<'workspace, 'interner> {
         self.current == '\0'
     }
 
-    /// Returns an identifier interner used in the lexer.    
+    /// Returns an identifier interner used in the lexer.
     #[inline]
     #[must_use]
     pub const fn interner(&self) -> &Interner {

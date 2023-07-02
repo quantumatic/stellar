@@ -1,3 +1,5 @@
+//! Defines [`Serializer`] to serialize AST into a string.
+
 use crate::{
     token::RawToken, BinaryOperator, EnumItem, Function, FunctionParameter, GenericArgument,
     GenericParameter, IdentifierAst, ImportPath, Item, JustFunctionParameter, Literal,
@@ -22,9 +24,10 @@ pub struct Serializer<'interner> {
 }
 
 impl<'interner> Serializer<'interner> {
+    /// Creates a new serializer instance.
     #[inline]
     #[must_use]
-    pub fn new(interner: &'interner Interner) -> Self {
+    pub const fn new(interner: &'interner Interner) -> Self {
         Self {
             interner,
             identation: 0,
@@ -151,7 +154,7 @@ impl<'interner> Serializer<'interner> {
     /// Allows to create spans inside the serializer.
     #[inline]
     #[must_use]
-    fn new_span(&self, start: usize, end: usize) -> Span {
+    const fn new_span(start: usize, end: usize) -> Span {
         Span::new(
             start, end, 0, // serializer doesn't care about invalid file IDs
         )
@@ -167,6 +170,7 @@ impl<'interner> Serializer<'interner> {
     /// Returns the owned output string produced.
     #[inline]
     #[must_use]
+    #[allow(clippy::missing_const_for_fn)] // false-positive clippy lint
     pub fn take_output(self) -> String {
         self.output
     }
@@ -257,7 +261,7 @@ impl Serialize for GenericArgument {
             Self::AssociatedType { name, value } => {
                 serializer.write_node_name_with_span(
                     "NAMED_GENERIC_ARGUMENT",
-                    serializer.new_span(name.span.start(), value.span().end()),
+                    Serializer::new_span(name.span.start(), value.span().end()),
                 );
                 serializer.increment_indentation();
                 serializer.serialize_key_value_pair("NAME", name);
@@ -307,16 +311,18 @@ impl Serialize for Literal {
                     *span,
                 );
             }
-            Self::Character { value, span } => serializer
-                .write_node_name_with_span(format!("CHARACTER_LITERAL(`{}`)", value), *span),
+            Self::Character { value, span } => {
+                serializer
+                    .write_node_name_with_span(format!("CHARACTER_LITERAL(`{value}`)"), *span);
+            }
             Self::Float { value, span } => {
-                serializer.write_node_name_with_span(format!("FLOAT_LITERAL({})", value), *span)
+                serializer.write_node_name_with_span(format!("FLOAT_LITERAL({value})"), *span);
             }
             Self::Integer { value, span } => {
-                serializer.write_node_name_with_span(format!("INTEGER_LITERAL({})", value), *span)
+                serializer.write_node_name_with_span(format!("INTEGER_LITERAL({value})"), *span);
             }
             Self::String { value, span } => {
-                serializer.write_node_name_with_span(format!("STRING_LITERAL(`{}`)", value), *span)
+                serializer.write_node_name_with_span(format!("STRING_LITERAL(`{value}`)"), *span);
             }
         }
     }
@@ -426,7 +432,7 @@ impl Serialize for Statement {
         match self {
             Self::Break { span } => serializer.write_node_name_with_span("BREAK_STATEMENT", *span),
             Self::Continue { span } => {
-                serializer.write_node_name_with_span("CONTINUE_STATEMENT", *span)
+                serializer.write_node_name_with_span("CONTINUE_STATEMENT", *span);
             }
             Self::Return { expression } => {
                 serializer.write_node_name("RETURN_STATEMENT");
@@ -1050,6 +1056,8 @@ impl Serialize for Module<'_> {
     }
 }
 
+/// Serialize a module AST into a string.
+#[must_use]
 pub fn serialize_ast(module: &Module<'_>, interner: &Interner) -> String {
     let mut serializer = Serializer::new(interner);
     module.serialize(&mut serializer);

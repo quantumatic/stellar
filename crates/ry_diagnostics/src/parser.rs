@@ -10,7 +10,7 @@ use ry_workspace::span::Span;
 use std::fmt::Display;
 
 /// Represents list of expected tokens.
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Expected(pub Vec<String>);
 
 /// Allows to construct [`Expected`] object shorter:
@@ -52,7 +52,7 @@ pub enum UnnecessaryVisibilityQualifierContext {
 }
 
 /// An enum which represents diagnostic encountered during parsing stage.
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub enum ParseDiagnostic {
     /// A lexing error.
     LexError(LexError),

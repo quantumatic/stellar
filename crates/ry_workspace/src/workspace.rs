@@ -54,15 +54,15 @@ impl<'workspace> Workspace<'workspace> {
     /// at the given span if it is valid.
     ///
     /// # Panics
-    /// - If the span is out of bounds ([`Span::start`] and [`Span::end`]).
-    /// - If the file with the given [`Span::file_id`] does not exist.
+    /// - If the span is out of bounds ([`crate::span::Span::start`] and
+    /// [`crate::span::Span::end`]).
+    /// - If the file with the given [`crate::span::Span::file_id`] does not exist.
     ///
     /// # Examples
     ///
     /// ```
-    /// use std::path::Path;
-    /// use ry_workspace::{workspace::Workspace, file::SourceFile, span::Span};
-    ///
+    /// # use std::path::Path;
+    /// # use ry_workspace::{workspace::Workspace, file::SourceFile, span::Span};
     /// let mut workspace = Workspace::new();
     /// let source_file = SourceFile::new(
     ///     Path::new("test.ry"),
@@ -92,9 +92,8 @@ impl<'workspace> Workspace<'workspace> {
     /// # Examples
     ///
     /// ```
-    /// use std::path::Path;
-    /// use ry_workspace::{workspace::Workspace, span::Span, file::SourceFile};
-    ///
+    /// # use std::path::Path;
+    /// # use ry_workspace::{workspace::Workspace, span::Span, file::SourceFile};
     /// let mut workspace = Workspace::new();
     /// let source_file = SourceFile::new(
     ///     Path::new("test.ry"),

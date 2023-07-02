@@ -1,5 +1,4 @@
-//! `token.rs` - defines the token which represents grammatical unit of Ry
-//! source text.
+//! Defines [`Token`] which represents grammatical unit of Ry source text.
 use crate::precedence::Precedence;
 use phf::phf_map;
 use ry_workspace::span::Span;
@@ -100,7 +99,7 @@ pub struct LexError {
 }
 
 /// Either the number is integer, float or imaginary literal.
-#[derive(Debug, Clone, PartialEq, Copy)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum NumberKind {
     Invalid,
     Int,
@@ -109,7 +108,7 @@ pub enum NumberKind {
 
 /// This enum represents a set of keywords used in the Ry programming language.
 /// Each variant of the enum corresponds to a specific keyword.
-#[derive(Debug, Clone, PartialEq, Copy)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum Keyword {
     As,
     Defer,
@@ -378,7 +377,7 @@ impl Display for Punctuator {
 }
 
 /// Represents token without a specific location in source text.
-#[derive(Copy, Clone, Debug, PartialEq, Default)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Default)]
 pub enum RawToken {
     /// True boolean literal (`true`).
     TrueBoolLiteral,
@@ -411,7 +410,7 @@ pub enum RawToken {
     StringLiteral,
 }
 
-impl AsRef<RawToken> for RawToken {
+impl AsRef<Self> for RawToken {
     fn as_ref(&self) -> &Self {
         self
     }
@@ -432,7 +431,7 @@ impl AsRef<str> for RawToken {
             Self::GlobalDocComment | Self::LocalDocComment => "doc comment",
             Self::Comment => "comment",
             Self::EndOfFile => "end of file",
-            RawToken::Error(..) => "error token",
+            Self::Error(..) => "error token",
         }
     }
 }
@@ -457,13 +456,15 @@ impl From<RawToken> for String {
 }
 
 impl RawToken {
-    pub fn eof(&self) -> bool {
+    #[inline]
+    #[must_use]
+    pub const fn eof(&self) -> bool {
         matches!(self, Self::EndOfFile)
     }
 }
 
 /// Represents a token with a specified location in source text.
-#[derive(Copy, Clone, Debug, PartialEq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct Token {
     pub span: Span,
     pub raw: RawToken,
@@ -591,7 +592,9 @@ pub static RESERVED: phf::Map<&'static str, RawToken> = phf_map! {
 };
 
 impl Punctuator {
-    pub fn to_precedence(&self) -> Precedence {
+    #[inline]
+    #[must_use]
+    pub const fn to_precedence(&self) -> Precedence {
         match self {
             Self::OrOr => Precedence::OrOr,
             Self::AndAnd => Precedence::AndAnd,
@@ -607,7 +610,7 @@ impl Punctuator {
             | Self::OrEq
             | Self::XorEq => Precedence::Assign,
             Self::LessThan | Self::LessThanOrEq | Self::GreaterThan | Self::GreaterThanOrEq => {
-                Precedence::LessOrGreater
+                Precedence::Comparison
             }
             Self::OpenBracket => Precedence::GenericArgument,
             Self::LeftShift | Self::RightShift => Precedence::LeftRightShift,
@@ -627,7 +630,9 @@ impl Punctuator {
 }
 
 impl RawToken {
-    pub fn to_precedence(&self) -> Precedence {
+    #[inline]
+    #[must_use]
+    pub const fn to_precedence(&self) -> Precedence {
         match self {
             Self::Punctuator(punctuator) => punctuator.to_precedence(),
             Self::Keyword(Keyword::As) => Precedence::As,
@@ -636,6 +641,7 @@ impl RawToken {
     }
 
     #[inline]
+    #[must_use]
     pub const fn binary_operator(&self) -> bool {
         matches!(
             self,
@@ -670,6 +676,7 @@ impl RawToken {
     }
 
     #[inline]
+    #[must_use]
     pub const fn prefix_operator(&self) -> bool {
         matches!(
             self,
@@ -678,6 +685,7 @@ impl RawToken {
     }
 
     #[inline]
+    #[must_use]
     pub const fn postfix_operator(&self) -> bool {
         matches!(self, Token![?] | Token![++] | Token![--])
     }

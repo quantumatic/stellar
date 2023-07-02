@@ -3,6 +3,8 @@
 use codespan_reporting::diagnostic::Label;
 use std::{fmt::Display, ops::Range};
 
+use crate::workspace::FileID;
+
 /// Represents location in the source text.
 #[derive(Copy, Clone, Hash, Debug, Default, PartialEq, Eq)]
 pub struct Span {
@@ -11,7 +13,7 @@ pub struct Span {
     /// Offset of ending byte in the source text.
     end: usize,
     /// Id of the file containing the span.
-    file_id: usize,
+    file_id: FileID,
 }
 
 /// Dummy span - span that is used as a placeholder in tests.
@@ -31,7 +33,7 @@ impl Span {
     /// Creates a new span.
     #[inline]
     #[must_use]
-    pub const fn new(start: usize, end: usize, file_id: usize) -> Self {
+    pub const fn new(start: usize, end: usize, file_id: FileID) -> Self {
         Self {
             start,
             end,
@@ -56,23 +58,23 @@ impl Span {
     /// Returns the id of the file containing the span.
     #[inline]
     #[must_use]
-    pub const fn file_id(&self) -> usize {
+    pub const fn file_id(&self) -> FileID {
         self.file_id
     }
 
-    /// Gets primary diagnostics label ([`Label<usize>`] from [`codespan_reporting`])
+    /// Gets primary diagnostics label ([`Label<FileID>`] from [`codespan_reporting`])
     /// in the span.
     #[inline]
     #[must_use]
-    pub fn to_primary_label(self) -> Label<usize> {
+    pub fn to_primary_label(self) -> Label<FileID> {
         Label::primary(self.file_id(), self)
     }
 
-    /// Gets secondary diagnostics label ([`Label<usize>`] from [`codespan_reporting`])
+    /// Gets secondary diagnostics label ([`Label<FileID>`] from [`codespan_reporting`])
     /// in the span.
     #[inline]
     #[must_use]
-    pub fn to_secondary_label(self) -> Label<usize> {
+    pub fn to_secondary_label(self) -> Label<FileID> {
         Label::secondary(self.file_id(), self)
     }
 }
@@ -92,14 +94,13 @@ pub trait SpanIndex {
     ///
     /// # Example:
     /// ```
-    /// use ry_workspace::span::{Span, SpanIndex};
-    ///
+    /// # use ry_workspace::span::{Span, SpanIndex};
     /// let span = Span::new(0, 3, 1);
     /// assert_eq!("test".index(span), "tes");
     /// ```
     ///
-    /// **Note**: use [`Workspace::resolve_span()`] and
-    /// [`Workspace::resolve_span_or_panic()`] instead.
+    /// **Note**: use [`crate::workspace::Workspace::resolve_span()`] and
+    /// [`crate::workspace::Workspace::resolve_span_or_panic()`] instead.
     fn index(&self, span: Span) -> &Self::Output;
 }
 

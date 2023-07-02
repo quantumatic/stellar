@@ -1,48 +1,87 @@
-//! `lib.rs` - defines AST nodes and additional stuff.
-#![warn(
-    clippy::all,
-    clippy::doc_markdown,
-    clippy::dbg_macro,
-    clippy::todo,
-    clippy::mem_forget,
-    clippy::filter_map_next,
-    clippy::needless_continue,
-    clippy::needless_borrow,
-    clippy::match_wildcard_for_single_variants,
-    clippy::mismatched_target_os,
-    clippy::match_on_vec_items,
-    clippy::imprecise_flops,
-    clippy::suboptimal_flops,
-    clippy::lossy_float_literal,
-    clippy::rest_pat_in_fully_bound_structs,
-    clippy::fn_params_excessive_bools,
-    clippy::inefficient_to_string,
-    clippy::linkedlist,
-    clippy::macro_use_imports,
-    clippy::option_option,
-    clippy::verbose_file_reads,
+//! # Token
+//!
+//! Token is a grammatical unit of the Ry programming language. It is defined
+//! in the [`token`] module. See [`Token`] and [`RawToken`] for more information.
+//!
+//! # Abstract Syntax Tree
+//!
+//! AST (or Abstract Syntax Tree) is a representation of the code that stores
+//! information about relations between tokens. It can be emitted by
+//! the parser defined in [`ry_parser`] crate.
+//!
+//! For more details see the module items and start with [`Module`] node.
+//!
+//! # Serialization
+//!
+//! AST can be serialized into a string using [`serialize_ast()`]. This is used in the
+//! language CLI `parse` command, when serialized AST is written into a txt file.
+//!
+//! See [`Serializer`] for more details.
+//!
+//! [`Serializer`]: crate::serialize::Serializer
+//! [`serialize_ast()`]: crate::serialize::serialize_ast
+//! [`Token`]: crate::token::Token
+//! [`ry_parser`]: ../ry_parser/index.html
+
+#![doc(
+    html_logo_url = "https://raw.githubusercontent.com/abs0luty/Ry/main/additional/icon/ry.png",
+    html_favicon_url = "https://raw.githubusercontent.com/abs0luty/Ry/main/additional/icon/ry.png"
+)]
+#![cfg_attr(not(test), forbid(clippy::unwrap_used))]
+#![warn(clippy::dbg_macro)]
+#![deny(
+    // rustc lint groups https://doc.rust-lang.org/rustc/lints/groups.html
+    warnings,
+    future_incompatible,
+    let_underscore,
+    nonstandard_style,
+    rust_2018_compatibility,
     rust_2018_idioms,
-    missing_debug_implementations,
+    rust_2021_compatibility,
+    unused,
+    // rustc allowed-by-default lints https://doc.rust-lang.org/rustc/lints/listing/allowed-by-default.html
+    macro_use_extern_crate,
+    meta_variable_misuse,
+    missing_abi,
     missing_copy_implementations,
+    missing_debug_implementations,
+    non_ascii_idents,
+    noop_method_call,
+    single_use_lifetimes,
     trivial_casts,
     trivial_numeric_casts,
-    nonstandard_style,
+    unreachable_pub,
+    unsafe_op_in_unsafe_fn,
+    unused_crate_dependencies,
     unused_import_braces,
-    unused_qualifications
+    unused_lifetimes,
+    unused_qualifications,
+    unused_tuple_struct_fields,
+    variant_size_differences,
+    // rustdoc lints https://doc.rust-lang.org/rustdoc/lints.html
+    rustdoc::broken_intra_doc_links,
+    rustdoc::private_intra_doc_links,
+    //rustdoc::missing_crate_level_docs,
+    rustdoc::private_doc_tests,
+    rustdoc::invalid_codeblock_attributes,
+    rustdoc::invalid_rust_codeblocks,
+    rustdoc::bare_urls,
+    // clippy categories https://doc.rust-lang.org/clippy/
+    clippy::all,
+    clippy::correctness,
+    clippy::suspicious,
+    clippy::style,
+    clippy::complexity,
+    clippy::perf,
+    clippy::pedantic,
+    clippy::nursery,
 )]
-#![deny(
-    clippy::await_holding_lock,
-    clippy::if_let_mutex,
-    clippy::indexing_slicing,
-    clippy::mem_forget,
-    clippy::ok_expect,
-    clippy::unimplemented,
-    clippy::unwrap_used,
-    unsafe_code,
-    unstable_features,
-    unused_results
+#![allow(
+    clippy::module_name_repetitions,
+    clippy::too_many_lines,
+    clippy::option_if_let_else,
+    clippy::unnested_or_patterns
 )]
-#![allow(clippy::match_single_binding, clippy::inconsistent_struct_constructor)]
 
 use ry_interner::Symbol;
 use ry_workspace::{file::SourceFile, span::Span, workspace::FileID};
@@ -53,6 +92,7 @@ pub mod serialize;
 pub mod token;
 pub mod typed;
 
+/// Represents a literal.
 #[derive(Debug, PartialEq, Clone)]
 pub enum Literal {
     Boolean { value: bool, span: Span },
@@ -62,14 +102,15 @@ pub enum Literal {
     Float { value: f64, span: Span },
 }
 
-/// Symbol with a specified span.
-#[derive(Debug, PartialEq, Clone, Copy)]
+/// Represents a symbol with a specified span.
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub struct IdentifierAst {
     pub span: Span,
     pub symbol: Symbol,
 }
 
-/// AST Node corresponding to a sequence of identifiers separated by `.`.
+/// Represents an AST node corresponding to a sequence of identifiers separated
+/// by `.`.
 ///
 /// # Example
 /// Here is an example of it is used in the use item:
@@ -78,27 +119,27 @@ pub struct IdentifierAst {
 /// use std.io;
 ///     ^^^^^^
 /// ```
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Path {
     pub span: Span,
     pub identifiers: Vec<IdentifierAst>,
 }
 
-/// AST Node corresponding to an import path.
+/// Represents an import path.
 ///
 /// # Example
 /// ```txt
 /// import std.io.*;
 /// import std.io as myio;
 /// ```
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct ImportPath {
     pub left: Path,
     pub r#as: Option<IdentifierAst>,
     pub star_span: Option<Span>, // span of `*`
 }
 
-/// AST Node for a type path.
+/// Represents a type path.
 ///
 /// ```txt
 /// let a: Iterator[Item = uint32].Item = 3;
@@ -110,7 +151,7 @@ pub struct TypePath {
     pub segments: Vec<TypePathSegment>,
 }
 
-/// A type path segment.
+/// Represents a type path segment.
 ///
 /// ```txt
 /// let a: Iterator[Item = uint32].Item = 3;
@@ -122,7 +163,7 @@ pub struct TypePathSegment {
     pub generic_arguments: Option<Vec<GenericArgument>>,
 }
 
-/// AST Node for a pattern.
+/// Represents a pattern AST node.
 ///
 /// # Example
 /// Here is an example of it is used in the match expression:
@@ -305,7 +346,9 @@ pub enum Pattern {
 
 impl Pattern {
     /// Returns the span of the pattern.
-    pub fn span(&self) -> Span {
+    #[inline]
+    #[must_use]
+    pub const fn span(&self) -> Span {
         match self {
             Self::Literal(
                 Literal::Boolean { span, .. }
@@ -327,7 +370,7 @@ impl Pattern {
     }
 }
 
-/// A pattern used inside a struct pattern.
+/// Represents a pattern used inside of a struct pattern.
 ///
 /// # Example
 /// ```txt
@@ -354,7 +397,7 @@ pub enum StructFieldPattern {
     },
 }
 
-/// An AST node used to represent type bounds.
+/// Represents a list of trait bounds being type pathes.
 ///
 /// # Example
 /// ```txt
@@ -364,7 +407,7 @@ pub enum StructFieldPattern {
 /// ```
 pub type TypeBounds = Vec<TypePath>;
 
-/// An AST node used to represent types in an untyped AST.
+/// Represents an AST node used to represent types in an untyped AST.
 ///
 /// # Example
 /// ```txt
@@ -449,7 +492,7 @@ impl TypeAst {
     }
 }
 
-/// A generic parameter.
+/// Represents a generic parameter.
 ///
 /// # Example
 ///
@@ -464,7 +507,7 @@ pub struct GenericParameter {
     pub default_value: Option<TypeAst>,
 }
 
-/// A where clause.
+/// Represents a where clause.
 ///
 /// ```txt
 /// impl[T] ToString for T where T: Into[String] { ... }
@@ -472,7 +515,7 @@ pub struct GenericParameter {
 /// ```
 pub type WhereClause = Vec<WhereClauseItem>;
 
-/// A type alias.
+/// Represents a type alias.
 ///
 /// ```txt
 /// type StringRes[E] = Result[String, E];
@@ -486,7 +529,7 @@ pub struct TypeAlias {
     pub docstring: Option<String>,
 }
 
-/// A where clause item.
+/// Represents a where clause item.
 ///
 /// ```txt
 /// impl[T, M] ToString for (T, M) where T: Into[String], M = dyn Into[String] { ... }
@@ -696,6 +739,7 @@ pub enum UntypedExpression {
     },
 }
 
+/// Represents a generic argument.
 #[derive(Debug, PartialEq, Clone)]
 pub enum GenericArgument {
     Type(TypeAst),
@@ -704,7 +748,9 @@ pub enum GenericArgument {
 
 impl UntypedExpression {
     /// Returns the span of the expression.
-    pub fn span(&self) -> Span {
+    #[inline]
+    #[must_use]
+    pub const fn span(&self) -> Span {
         match self {
             Self::List { span, .. }
             | Self::As { span, .. }
@@ -961,7 +1007,9 @@ impl UntypedExpression {
     /// Returns `true` if this expression has a block in it (except function expressions).
     /// Used to determine if this expression has to have semicolon at the end.
     /// Function expression do have blocks in them, but they must have a semicolon at the end.
-    pub fn with_block(&self) -> bool {
+    #[inline]
+    #[must_use]
+    pub const fn with_block(&self) -> bool {
         matches!(self, Self::If { .. } | Self::While { .. })
     }
 }
@@ -1148,6 +1196,7 @@ pub enum Item {
     TypeAlias(TypeAlias),
 }
 
+/// Represents a kind of top level item.
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum ItemKind {
     Enum,
@@ -1307,19 +1356,26 @@ pub struct Module<'workspace> {
     pub docstring: Option<String>,
 }
 
-#[derive(Debug, PartialEq, Clone, Copy)]
+/// Represents a visibility qualifier.
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub struct Visibility(Option<Span>);
 
 impl Visibility {
-    pub fn private() -> Self {
+    #[inline]
+    #[must_use]
+    pub const fn private() -> Self {
         Self(None)
     }
 
-    pub fn public(span: Span) -> Self {
+    #[inline]
+    #[must_use]
+    pub const fn public(span: Span) -> Self {
         Self(Some(span))
     }
 
-    pub fn span_of_pub(&self) -> Option<Span> {
+    #[inline]
+    #[must_use]
+    pub const fn span_of_pub(&self) -> Option<Span> {
         self.0
     }
 }

@@ -91,9 +91,8 @@ impl<'workspace> SourceFile<'workspace> {
     /// # Examples
     ///
     /// ```ignore
-    /// use std::path::Path;
-    /// use ry_workspace::file::SourceFile;
-    ///
+    /// # use std::path::Path;
+    /// # use ry_workspace::file::SourceFile;
     /// let source_file = SourceFile::new(
     ///     Path::new("test.ry"),
     ///     "fun main() {
@@ -124,9 +123,8 @@ impl<'workspace> SourceFile<'workspace> {
     /// # Example
     ///
     /// ```
-    /// use std::path::Path;
-    /// use ry_workspace::file::SourceFile;
-    ///
+    /// # use std::path::Path;
+    /// # use ry_workspace::file::SourceFile;
     /// let source_file = SourceFile::new(
     ///     Path::new("test.ry"),
     ///     "fun main() {
@@ -149,9 +147,8 @@ impl<'workspace> SourceFile<'workspace> {
     /// # Example
     ///
     /// ```
-    /// use std::path::Path;
-    /// use ry_workspace::file::SourceFile;
-    ///
+    /// # use std::path::Path;
+    /// # use ry_workspace::file::SourceFile;
     /// let source_file = SourceFile::new(
     ///     Path::new("test.ry"),
     ///     "fun main() {
