@@ -223,8 +223,9 @@ impl Backend {
         self.buffer.shrink_to_fit();
     }
 
+    /// Returns the index of the next symbol.
     fn next_symbol(&self) -> Symbol {
-        Symbol::try_from(self.ends.len()).expect("Interner is overflowed")
+        self.ends.len()
     }
 
     /// Returns the span for the given symbol if any.
