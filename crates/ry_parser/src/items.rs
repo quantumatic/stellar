@@ -478,7 +478,6 @@ impl Parse for ImplParser {
         }
 
         Some(Item::Impl {
-            visibility: self.visibility,
             generic_parameters,
             ty,
             r#trait,
