@@ -942,7 +942,6 @@ impl Serialize for Item {
             } => {
                 serializer.write_node_name("IMPL");
                 serializer.increment_indentation();
-                serializer.serialize_key_value_pair("VISIBILITY", visibility);
                 if let Some(generic_parameters) = generic_parameters {
                     serializer
                         .serialize_key_list_value_pair("GENERIC_PARAMETERS", generic_parameters);
