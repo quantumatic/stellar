@@ -330,23 +330,12 @@ where
         self.dedup.len()
     }
 
-    /// Returns `true` if the string interner has no interned strings/amount of symbols is `0`.
-    ///
-    /// ```
-    /// # use ry_interner::Interner;
-    /// assert!(Interner::default().is_empty());
-    /// ```
-    #[inline]
-    pub fn is_empty(&self) -> bool {
-        self.len() == 0
-    }
-
     /// Returns the symbol for the given string if it is interned.
     ///
     /// # Example
     /// ```
     /// # use ry_interner::Interner;
-    /// let interner = Interner::default();
+    /// let mut interner = Interner::default();
     /// let hello_symbol = interner.get_or_intern("hello");
     /// assert_eq!(Some(hello_symbol), interner.get("hello"));
     /// ```
@@ -423,7 +412,7 @@ where
     /// # Example
     /// ```
     /// # use ry_interner::{Interner, symbols::UINT8};
-    /// let interner = Interner::default();
+    /// let mut interner = Interner::default();
     /// let hello_symbol = interner.get_or_intern("hello");
     ///
     /// assert_eq!(interner.get("hello"), Some(hello_symbol));
