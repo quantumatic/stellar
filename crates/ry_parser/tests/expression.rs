@@ -7,7 +7,7 @@ test!(literal4: "fun test(): bool { false }");
 test!(literal5: "fun test(): float32 { 3.2 }");
 test!(literal6: "fun test(): char { 'a' }");
 test!(list: "fun test(): List[int32] { [1, 2, \"3\".into()] }");
-test!(tuple: "fun test(): #(int32, float32, string) { #(1, 3.2, \"hello\") }");
+test!(tuple: "fun test(): (int32, float32, string) { (1, 3.2, \"hello\") }");
 test!(binary: "fun test(): int32 { 1 + 2 }");
 test!(primitive_cast: "fun test(): float32 { 1 as float32 }");
 test!(call: "fun test(): int32 { 2 * b() + 2 }");
@@ -27,7 +27,7 @@ test!(match2: "fun test(): int32 {
 test!(function: "fun test(): int32 { |a: int32, b: int32|: int32 { a + b } }");
 test!(r#while: "fun test() {
     let x = 0;
-    
+
     while x <= 100 {
         x++;
 

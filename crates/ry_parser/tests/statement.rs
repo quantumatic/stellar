@@ -18,7 +18,7 @@ test!(let3: "fun test(): int32 {
     let (Some(a)) = Some(2);
 }");
 test!(let4: "fun test(): int32 {
-    let #(Some(a), None) = #(Some(2), None);
+    let (Some(a), None) = (Some(2), None);
 }");
 // or
 test!(let5: "fun test(): int32 {
