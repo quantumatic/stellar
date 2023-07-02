@@ -933,7 +933,6 @@ impl Serialize for Item {
             }
             Self::Function(function) => function.serialize(serializer),
             Self::Impl {
-                visibility,
                 generic_parameters,
                 ty: r#type,
                 r#trait,

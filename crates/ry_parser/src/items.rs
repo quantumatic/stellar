@@ -11,9 +11,11 @@ use ry_ast::{
     JustFunctionParameter, SelfParameter, StructField, Token, TraitItem, TupleField, TypeAlias,
     Visibility,
 };
-use ry_diagnostics::parser::ParseDiagnostic::UnnecessaryVisibilityQualifierError;
-use ry_diagnostics::parser::UnnecessaryVisibilityQualifierContext;
-use ry_diagnostics::{expected, parser::ParseDiagnostic, BuildDiagnostic};
+use ry_diagnostics::{
+    expected,
+    parser::{ParseDiagnostic, UnnecessaryVisibilityQualifierContext},
+    BuildDiagnostic,
+};
 use ry_workspace::span::Span;
 
 struct ImportParser {
@@ -49,8 +51,8 @@ struct TraitParser {
 }
 
 struct TraitItemsParser {
-    pub(crate) item_kind: ItemKind,
-    pub(crate) item_span: Span,
+    pub(crate) name_span: Span,
+    pub(crate) type_implementation: bool,
 }
 
 struct ImplParser {
@@ -313,16 +315,17 @@ impl Parse for TraitItemsParser {
             let docstring = state.consume_local_docstring();
 
             if let Some(span) = VisibilityParser.parse(state).span_of_pub() {
-                state.diagnostics.push(
-                    UnnecessaryVisibilityQualifierError {
-                        span,
-                        context: UnnecessaryVisibilityQualifierContext::TraitItem {
-                            item_span: self.item_span,
-                            item_kind: self.item_kind,
-                        },
-                    }
-                    .build(),
-                );
+                if !self.type_implementation {
+                    state.diagnostics.push(
+                        ParseDiagnostic::UnnecessaryVisibilityQualifierError {
+                            span,
+                            context: UnnecessaryVisibilityQualifierContext::TraitItem {
+                                name_span: self.name_span,
+                            },
+                        }
+                        .build(),
+                    );
+                }
             }
 
             items.push(match state.next_token.raw {
@@ -411,8 +414,8 @@ impl Parse for TraitParser {
         state.consume(Token!['{'], "trait declaration")?;
 
         let items = TraitItemsParser {
-            item_kind: ItemKind::Trait,
-            item_span: name.span,
+            name_span: name.span,
+            type_implementation: false,
         }
         .parse(state)?;
 
@@ -440,7 +443,7 @@ impl Parse for ImplParser {
 
         if let Some(span) = self.visibility.span_of_pub() {
             state.diagnostics.push(
-                UnnecessaryVisibilityQualifierError {
+                ParseDiagnostic::UnnecessaryVisibilityQualifierError {
                     span,
                     context: UnnecessaryVisibilityQualifierContext::Impl,
                 }
@@ -465,8 +468,8 @@ impl Parse for ImplParser {
         state.consume(Token!['{'], "type implementation")?;
 
         let items = TraitItemsParser {
-            item_kind: ItemKind::Impl,
-            item_span: impl_span,
+            name_span: impl_span,
+            type_implementation: true,
         }
         .parse(state)?;
 

@@ -1104,7 +1104,6 @@ pub enum Item {
     /// }
     /// ```
     Impl {
-        visibility: Visibility,
         generic_parameters: Option<Vec<GenericParameter>>,
         ty: TypeAst,
         r#trait: Option<TypeAst>,

@@ -46,11 +46,8 @@ pub enum UnnecessaryVisibilityQualifierContext {
     /// }
     /// ```
     TraitItem {
-        /// Location of an item name.
-        item_span: Span,
-
-        /// Item kind.
-        item_kind: ItemKind,
+        /// Location of a trait name.
+        name_span: Span,
     },
 }
 
@@ -174,8 +171,8 @@ impl BuildDiagnostic for ParseDiagnostic {
             Self::UnnecessaryVisibilityQualifierError { span, context } => {
                 let mut labels = vec![span.to_primary_label().with_message("consider removing this `pub`")];
 
-                if let UnnecessaryVisibilityQualifierContext::TraitItem { item_span, item_kind } = context {
-                    labels.push(item_span.to_secondary_label().with_message(format!("happened when analyzing the {}", item_kind.to_string())));
+                if let UnnecessaryVisibilityQualifierContext::TraitItem { name_span } = context {
+                    labels.push(name_span.to_secondary_label().with_message("happened when analyzing the trait definition"));
                 }
 
                 Diagnostic::error()
