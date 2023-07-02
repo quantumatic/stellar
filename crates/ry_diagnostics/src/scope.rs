@@ -24,7 +24,7 @@ impl BuildDiagnostic for ScopeDiagnostic {
         match self {
             Self::SymbolNotFound { symbol, span } => Diagnostic::error()
                 .with_message(format!("symbol `{symbol}` is not found in this scope"))
-                .with_code("E005")
+                .with_code("E004")
                 .with_labels(vec![span.to_primary_label()]),
         }
     }

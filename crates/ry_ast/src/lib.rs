@@ -1167,7 +1167,7 @@ impl AsRef<str> for ItemKind {
             Self::Function => "function",
             Self::Import => "import",
             Self::Trait => "trait",
-            Self::Impl => "impl",
+            Self::Impl => "type implementation",
             Self::Struct => "struct",
             Self::TypeAlias => "type alias",
         }

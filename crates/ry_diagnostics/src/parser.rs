@@ -27,8 +27,35 @@ macro_rules! expected {
     }};
 }
 
+/// Context in which the unnecessary visibility qualifier error is found.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum UnnecessaryVisibilityQualifierContext {
+    /// ```ry
+    /// pub impl A for B {}
+    /// ^^^
+    /// ```
+    Impl,
+
+    /// ```ry
+    /// pub trait F {
+    ///     pub fun t() {}
+    ///     ^^^
+    ///
+    ///     pub type A;
+    ///     ^^^
+    /// }
+    /// ```
+    TraitItem {
+        /// Location of an item name.
+        item_span: Span,
+
+        /// Item kind.
+        item_kind: ItemKind,
+    },
+}
+
 /// An enum which represents diagnostic encountered during parsing stage.
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum ParseDiagnostic {
     /// A lexing error.
     LexError(LexError),
@@ -57,47 +84,22 @@ pub enum ParseDiagnostic {
         span: Span,
     },
 
-    /// Error that suggests adding `;` after expression in statements block.
-    NoSemicolonAfterExpressionError {
-        /// Location of expression which does not have corresponding `;`.
-        expression_span: Span,
-
-        /// Possible span of `;` in the future.
+    /// When unnecessary `pub` is found.
+    UnnecessaryVisibilityQualifierError {
+        /// Location of `pub`.
         span: Span,
-    },
 
-    /// Error that suggests adding `;` after any statement in statements block.
-    NoSemicolonAfterStatementError {
-        /// Location of the statement.
-        statement_span: Span,
-
-        /// Possible span of `;` in the future.
-        span: Span,
-    },
-
-    /// When got EOF instead of close brace at the end of the statements block.
-    EOFInsteadOfCloseBraceForStatementsBlockError {
-        /// Location of `{`.
-        statements_block_start_span: Span,
-
-        /// EOF token span.
-        span: Span,
-    },
-
-    /// When got two semicolons in a row: `;;` or semicolon immediately after `{`
-    /// in the statements block.
-    EmptyStatementWarning {
-        /// The span of the semicolon.
-        span: Span,
+        /// Context in which the error is found.
+        context: UnnecessaryVisibilityQualifierContext,
     },
 
     /// When got EOF instead of close brace at the of the item.
-    EOFInsteadOfCloseBraceForItemError {
+    EOFInsteadOfCloseBrace {
         /// Type of item in which error occurred.
         item_kind: ItemKind,
 
         /// Location of item name.
-        item_name_span: Span,
+        item_span: Span,
 
         /// EOF token span.
         span: Span,
@@ -163,57 +165,43 @@ impl BuildDiagnostic for ParseDiagnostic {
                     .with_message("unexpected float overflow".to_owned())
                     .with_code("E003")
                     .with_labels(vec![span.to_primary_label()
-                        .with_message("error appeared when parsing this float literal")])
-                        .with_notes(vec![
-                            "note: float literal cannot exceed the maximum value of `f64` (f64.max() == 1.7976931348623157E+308)".to_owned(),
-                            "note: you can use exponent to do so, but be careful, especially when working with floats!".to_owned()
-                        ]),
-            Self::NoSemicolonAfterExpressionError { expression_span, span } =>
-                Diagnostic::error()
-                    .with_message("it seems that you forgot to put `;` after the expression")
-                    .with_code("E004")
-                    .with_labels(vec![
-                        span.to_secondary_label()
-                            .with_message("add `;` here"),
-                        expression_span.to_primary_label()
-                            .with_message("happened when parsing this expression")
-                    ]),
-            Self::NoSemicolonAfterStatementError { statement_span, span } =>
-                Diagnostic::error()
-                    .with_message("it seems that you forgot to put `;` after the statement")
-                        .with_code("E004")
-                    .with_labels(vec![
-                        span.to_secondary_label()
-                            .with_message("add `;` here"),
-                        statement_span.to_primary_label()
-                            .with_message("happened when parsing this statement")
-                    ]),
-            Self::EOFInsteadOfCloseBraceForStatementsBlockError { statements_block_start_span, span } =>
-                Diagnostic::error()
-                    .with_message("unexpected end of file".to_owned())
-                    .with_code("E001")
-                    .with_labels(vec![
-                        statements_block_start_span.to_primary_label()
-                            .with_message("happened when parsing this statements block"),
-                        span.to_secondary_label()
-                            .with_message("consider adding `}`".to_owned())
-                    ]),
-            Self::EmptyStatementWarning { span } =>
-                Diagnostic::warning()
-                    .with_message("found empty statement".to_owned())
-                    .with_labels(vec![
-                        span.to_primary_label()
-                            .with_message("consider removing this `;`".to_owned())
+                        .with_message("error appeared when parsing this float literal")
                     ])
                     .with_notes(vec![
-                        "note: empty statements do not have syntactic meaning.".to_owned()
+                        "note: float literal cannot exceed the maximum value of `f64` (f64.max() == 1.7976931348623157E+308)".to_owned(),
+                        "note: you can use exponent to do so, but be careful, especially when working with floats!".to_owned()
                     ]),
-            Self::EOFInsteadOfCloseBraceForItemError { item_kind, item_name_span, span } =>
+            Self::UnnecessaryVisibilityQualifierError { span, context } => {
+                let mut labels = vec![span.to_primary_label().with_message("consider removing this `pub`")];
+
+                if let UnnecessaryVisibilityQualifierContext::TraitItem { item_span, item_kind } = context {
+                    labels.push(item_span.to_secondary_label().with_message(format!("happened when analyzing the {}", item_kind.to_string())));
+                }
+
+                Diagnostic::error()
+                    .with_message("unnecessary visibility qualifier".to_owned())
+                    .with_code("E003")
+                    .with_labels(labels)
+                    .with_notes(
+                        match context {
+                            UnnecessaryVisibilityQualifierContext::Impl => {
+                                vec!["note: using `pub` will not make the type implementation public".to_owned()]
+                            }
+                            UnnecessaryVisibilityQualifierContext::TraitItem { .. } => {
+                                vec![
+                                    "note: using `pub` for trait item will not make the item public".to_owned(),
+                                    "note: all trait items are public by default".to_owned(),
+                                ]
+                            }
+                        }
+                    )
+                }
+            Self::EOFInsteadOfCloseBrace { item_kind, item_span, span } =>
                 Diagnostic::error()
                     .with_message("unexpected end of file".to_owned())
                     .with_code("E001")
                     .with_labels(vec![
-                        item_name_span.to_primary_label()
+                        item_span.to_primary_label()
                             .with_message(format!("happened when parsing this {}", item_kind.to_string())),
                         span.to_secondary_label()
                             .with_message("consider adding `}`".to_owned())

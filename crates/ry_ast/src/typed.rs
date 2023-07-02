@@ -3,6 +3,7 @@ use std::sync::Arc;
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Type {
+    Unit,
     Constructor {
         path: Vec<Symbol>,
         generic_arguments: Vec<Arc<Self>>,

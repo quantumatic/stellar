@@ -2,8 +2,7 @@ use crate::{
     expression::ExpressionParser, pattern::PatternParser, r#type::TypeParser, Parse, ParseState,
 };
 use ry_ast::{token::RawToken, Statement, StatementsBlock, Token};
-use ry_diagnostics::{parser::ParseDiagnostic, BuildDiagnostic};
-use ry_workspace::span::Span;
+use ry_diagnostics::{expected, parser::ParseDiagnostic, BuildDiagnostic};
 
 struct StatementParser;
 
@@ -21,10 +20,6 @@ impl Parse for StatementParser {
     fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
         let mut last_statement_in_block = false;
         let mut must_have_semicolon_at_the_end = true;
-
-        let mut no_semicolon_after_expression_error_emitted = false;
-
-        let start = state.next_token.span.start();
 
         let statement = match state.next_token.raw {
             Token![return] => ReturnStatementParser.parse(state)?,
@@ -57,19 +52,15 @@ impl Parse for StatementParser {
                         }
                     }
                     _ => {
-                        no_semicolon_after_expression_error_emitted = true;
-
                         state.diagnostics.push(
-                            ParseDiagnostic::NoSemicolonAfterExpressionError {
-                                expression_span: expression.span(),
-                                span: Span::new(
-                                    expression.span().end() - 1,
-                                    expression.span().end(),
-                                    state.file_id,
-                                ),
+                            ParseDiagnostic::UnexpectedTokenError {
+                                got: state.next_token,
+                                expected: expected!(";"),
+                                node: "expression statement".to_owned(),
                             }
                             .build(),
                         );
+                        return None;
                     }
                 }
 
@@ -87,23 +78,8 @@ impl Parse for StatementParser {
             }
         };
 
-        let end = state.current_token.span.end();
-
-        if !last_statement_in_block
-            && must_have_semicolon_at_the_end
-            && !no_semicolon_after_expression_error_emitted
-        {
-            if state.next_token.raw == Token![;] {
-                state.advance();
-            } else {
-                state.diagnostics.push(
-                    ParseDiagnostic::NoSemicolonAfterStatementError {
-                        statement_span: Span::new(start, end - 1, state.file_id),
-                        span: Span::new(end, end, state.file_id),
-                    }
-                    .build(),
-                );
-            }
+        if !last_statement_in_block && must_have_semicolon_at_the_end {
+            state.consume(Token![;], "statement")?;
         }
 
         Some((statement, last_statement_in_block))
@@ -115,7 +91,6 @@ impl Parse for StatementsBlockParser {
 
     fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
         state.consume(Token!['{'], "statements block")?;
-        let start = state.current_token.span.start();
 
         let mut block = vec![];
 
@@ -124,9 +99,10 @@ impl Parse for StatementsBlockParser {
                 Token!['}'] => break,
                 RawToken::EndOfFile => {
                     state.diagnostics.push(
-                        ParseDiagnostic::EOFInsteadOfCloseBraceForStatementsBlockError {
-                            statements_block_start_span: Span::new(start, start + 1, state.file_id),
-                            span: state.current_token.span,
+                        ParseDiagnostic::UnexpectedTokenError {
+                            got: state.next_token,
+                            expected: expected!("}"),
+                            node: "statements block".to_owned(),
                         }
                         .build(),
                     );
@@ -134,15 +110,9 @@ impl Parse for StatementsBlockParser {
                     return None;
                 }
                 Token![;] => {
-                    state.diagnostics.push(
-                        ParseDiagnostic::EmptyStatementWarning {
-                            span: state.next_token.span,
-                        }
-                        .build(),
-                    );
+                    // Skip
+                    state.advance();
 
-                    // Recover
-                    state.advance(); // `;`
                     continue;
                 }
                 _ => {}

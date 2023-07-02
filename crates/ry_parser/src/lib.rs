@@ -75,7 +75,7 @@ mod r#type;
 
 use ry_ast::{
     token::{LexError, RawToken, Token},
-    Docstring, IdentifierAst,
+    Docstring, IdentifierAst, Token, Visibility,
 };
 use ry_diagnostics::{expected, parser::ParseDiagnostic, BuildDiagnostic, CompilerDiagnostic};
 use ry_interner::Interner;
@@ -319,6 +319,22 @@ impl<'workspace, 'diagnostics, 'interner> ParseState<'workspace, 'diagnostics, '
             }
 
             self.advance();
+        }
+    }
+}
+
+pub(crate) struct VisibilityParser;
+
+impl Parse for VisibilityParser {
+    type Output = Visibility;
+
+    fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
+        if state.next_token.raw == Token![pub] {
+            state.advance();
+
+            Visibility::public(state.current_token.span)
+        } else {
+            Visibility::private()
         }
     }
 }

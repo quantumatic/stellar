@@ -4,13 +4,15 @@ use crate::{
     path::PathParser,
     r#type::{GenericParametersParser, TypeBoundsParser, TypeParser, WhereClauseParser},
     statement::StatementsBlockParser,
-    OptionalParser, Parse, ParseState,
+    OptionalParser, Parse, ParseState, VisibilityParser,
 };
 use ry_ast::{
     token::RawToken, Docstring, Documented, EnumItem, Function, FunctionParameter, IdentifierAst,
     Item, ItemKind, Items, JustFunctionParameter, SelfParameter, StructField, Token, TraitItem,
     TupleField, TypeAlias, Visibility, WithDocComment,
 };
+use ry_diagnostics::parser::ParseDiagnostic::UnnecessaryVisibilityQualifierError;
+use ry_diagnostics::parser::UnnecessaryVisibilityQualifierContext;
 use ry_diagnostics::{expected, parser::ParseDiagnostic, BuildDiagnostic};
 use ry_workspace::span::Span;
 
@@ -41,8 +43,8 @@ struct TraitItemParser {
 }
 
 struct TraitItemsParser {
-    pub(crate) name_span: Span,
     pub(crate) item_kind: ItemKind,
+    pub(crate) item_span: Span,
 }
 
 struct ImplItemParser {
@@ -89,12 +91,7 @@ impl Parse for StructFieldParser {
     type Output = Option<StructField>;
 
     fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
-        let visibility = if state.next_token.raw == Token![pub] {
-            state.advance();
-            Visibility::public(state.current_token.span)
-        } else {
-            Visibility::private()
-        };
+        let visibility = VisibilityParser.parse(state);
 
         let name = state.consume_identifier("struct field")?;
 
@@ -300,33 +297,38 @@ impl Parse for TraitItemsParser {
         while state.next_token.raw != Token!['}'] {
             let doc = state.consume_docstring();
 
-            let visibility = if state.next_token.raw == Token![pub] {
-                state.advance();
-                Visibility::public(state.current_token.span)
-            } else {
-                Visibility::private()
-            };
+            if let Some(span) = VisibilityParser.parse(state).span_of_pub() {
+                state.diagnostics.push(
+                    UnnecessaryVisibilityQualifierError {
+                        span,
+                        context: UnnecessaryVisibilityQualifierContext::TraitItem {
+                            item_span: self.item_span,
+                            item_kind: self.item_kind,
+                        },
+                    }
+                    .build(),
+                );
+            }
 
             items.push(match state.next_token.raw {
                 Token![fun] => Some(
-                    TraitItem::AssociatedFunction(FunctionParser { visibility }.parse(state)?)
-                        .with_doc_comment(doc),
+                    TraitItem::AssociatedFunction(
+                        FunctionParser {
+                            visibility: Visibility::private(),
+                        }
+                        .parse(state)?,
+                    )
+                    .with_doc_comment(doc),
                 ),
                 Token![type] => Some(
-                    TraitItem::TypeAlias(TypeAliasParser { visibility }.parse(state)?)
-                        .with_doc_comment(doc),
-                ),
-                RawToken::EndOfFile => {
-                    state.diagnostics.push(
-                        ParseDiagnostic::EOFInsteadOfCloseBraceForItemError {
-                            item_kind: self.item_kind,
-                            item_name_span: self.name_span,
-                            span: state.current_token.span,
+                    TraitItem::TypeAlias(
+                        TypeAliasParser {
+                            visibility: Visibility::private(),
                         }
-                        .build(),
-                    );
-                    return Some((items, true));
-                }
+                        .parse(state)?,
+                    )
+                    .with_doc_comment(doc),
+                ),
                 _ => {
                     state.diagnostics.push(
                         ParseDiagnostic::UnexpectedTokenError {
@@ -397,8 +399,8 @@ impl Parse for TraitItemParser {
         state.consume(Token!['{'], "trait declaration")?;
 
         let items = TraitItemsParser {
-            name_span: name.span,
             item_kind: ItemKind::Trait,
+            item_span: name.span,
         }
         .parse(state)?;
 
@@ -423,6 +425,16 @@ impl Parse for ImplItemParser {
         state.advance();
         let impl_span = state.current_token.span;
 
+        if let Some(span) = self.visibility.span_of_pub() {
+            state.diagnostics.push(
+                UnnecessaryVisibilityQualifierError {
+                    span,
+                    context: UnnecessaryVisibilityQualifierContext::Impl,
+                }
+                .build(),
+            );
+        }
+
         let generic_parameters = GenericParametersParser.optionally_parse(state)?;
 
         let mut ty = TypeParser.parse(state)?;
@@ -440,8 +452,8 @@ impl Parse for ImplItemParser {
         state.consume(Token!['{'], "type implementation")?;
 
         let items = TraitItemsParser {
-            name_span: impl_span,
             item_kind: ItemKind::Impl,
+            item_span: impl_span,
         }
         .parse(state)?;
 
@@ -536,12 +548,7 @@ impl Parse for ItemTupleParser {
             Token![')'],
             {
                 Some(TupleField {
-                    visibility: if state.next_token.raw == Token![pub] {
-                        state.advance();
-                        Visibility::public(state.current_token.span)
-                    } else {
-                        Visibility::private()
-                    },
+                    visibility: VisibilityParser.parse(state),
                     ty: TypeParser.parse(state)?,
                 })
             }
@@ -605,12 +612,7 @@ impl Parse for ItemParser {
     type Output = Option<Item>;
 
     fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
-        let mut visibility = Visibility::private();
-
-        if state.next_token.raw == Token![pub] {
-            visibility = Visibility::public(state.next_token.span);
-            state.advance();
-        }
+        let visibility = VisibilityParser.parse(state);
 
         Some(match state.next_token.raw {
             Token![enum] => {
