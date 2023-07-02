@@ -131,7 +131,7 @@ impl<'workspace> DiagnosticsEmitter<'workspace> {
 
     /// Set the stream in which diagnostics is reported into.
     #[must_use]
-    #[allow(clippy::missing_const_for_fn)] // clippy issue
+    #[allow(clippy::missing_const_for_fn)] // false-positive clippy lint
     pub fn with_diagnostics_writer(mut self, writer: StandardStream) -> Self {
         self.writer = writer;
         self
@@ -139,7 +139,7 @@ impl<'workspace> DiagnosticsEmitter<'workspace> {
 
     /// Set the config for diagnostics reporting.
     #[must_use]
-    #[allow(clippy::missing_const_for_fn)] // clippy issue
+    #[allow(clippy::missing_const_for_fn)] // false-positive clippy lint
     pub fn with_diagnostics_config(mut self, config: Config) -> Self {
         self.config = config;
         self

@@ -326,6 +326,7 @@ where
 
     /// Returns the number of symbols/strings interned by the interner.
     #[inline]
+    #[allow(clippy::len_without_is_empty)] // interner is never empty
     pub fn len(&self) -> usize {
         self.dedup.len()
     }
