@@ -1,7 +1,7 @@
 use crate::{literal::LiteralParser, macros::parse_list, path::PathParser, Parse, ParseState};
 use ry_ast::{token::RawToken, Path, Pattern, StructFieldPattern, Token};
 use ry_diagnostics::{expected, parser::ParseDiagnostic, BuildDiagnostic};
-use ry_workspace::span::Span;
+use ry_workspace::span::{Span, SpanIndex};
 
 pub(crate) struct PatternParser;
 
@@ -9,9 +9,7 @@ struct PatternExceptOrParser;
 
 struct ArrayPatternParser;
 
-struct GroupedPatternParser;
-
-struct TuplePatternParser;
+struct GroupedOrTuplePatternParser;
 
 struct StructPatternParser {
     pub(crate) path: Path,
@@ -106,8 +104,7 @@ impl Parse for PatternExceptOrParser {
                     span: state.next_token.span,
                 })
             }
-            Token!['('] => GroupedPatternParser.parse(state),
-            Token![#] => TuplePatternParser.parse(state),
+            Token!['('] => GroupedOrTuplePatternParser.parse(state),
             _ => {
                 state.diagnostics.push(
                     ParseDiagnostic::UnexpectedTokenError {
@@ -118,7 +115,6 @@ impl Parse for PatternExceptOrParser {
                             "string literal",
                             "char literal",
                             "boolean literal",
-                            Token![#],
                             Token!['['],
                             "identifier",
                             Token![if],
@@ -203,28 +199,6 @@ impl Parse for ArrayPatternParser {
     }
 }
 
-impl Parse for TuplePatternParser {
-    type Output = Option<Pattern>;
-
-    fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
-        let start = state.next_token.span.start();
-        state.advance(); // `#`
-
-        state.consume(Token!['('], "tuple pattern")?;
-
-        let inner_patterns = parse_list!(state, "tuple pattern", Token![')'], {
-            PatternParser.parse(state)
-        });
-
-        state.advance(); // `)`
-
-        Some(Pattern::Tuple {
-            span: Span::new(start, state.current_token.span.end(), state.file_id),
-            inner_patterns,
-        })
-    }
-}
-
 impl Parse for TupleLikePatternParser {
     type Output = Option<Pattern>;
 
@@ -249,20 +223,67 @@ impl Parse for TupleLikePatternParser {
     }
 }
 
-impl Parse for GroupedPatternParser {
+impl Parse for GroupedOrTuplePatternParser {
     type Output = Option<Pattern>;
 
     fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
         let start = state.next_token.span.start();
-        state.advance(); // `(`
+        state.advance();
 
-        let inner = Box::new(PatternParser.parse(state)?);
+        let elements = parse_list!(state, "parenthesized or tuple pattern", Token![')'], {
+            PatternParser.parse(state)
+        });
 
-        state.consume(Token![')'], "grouped pattern")?;
+        state.advance(); // `)`
 
-        Some(Pattern::Grouped {
-            span: Span::new(start, state.current_token.span.end(), state.file_id),
-            inner,
-        })
+        let span = Span::new(
+            start,
+            state.current_token.span.end(),
+            state.current_token.span.file_id(),
+        );
+
+        let mut elements = elements.into_iter();
+
+        match (elements.next(), elements.next()) {
+            (Some(element), None) => {
+                if state
+                    .source_file
+                    .source()
+                    .index(Span::new(
+                        element.span().end(),
+                        state.current_token.span.end(),
+                        state.current_token.span.file_id(),
+                    ))
+                    .contains(',')
+                {
+                    Some(Pattern::Tuple {
+                        span,
+                        elements: vec![element],
+                    })
+                } else {
+                    Some(Pattern::Grouped {
+                        span,
+                        inner: Box::from(element),
+                    })
+                }
+            }
+            (None, None) => Some(Pattern::Tuple {
+                span,
+                elements: vec![],
+            }),
+            (Some(previous), Some(next)) => {
+                let mut new_elements = vec![];
+                new_elements.push(previous);
+                new_elements.push(next);
+
+                new_elements.append(&mut elements.collect::<Vec<_>>());
+
+                Some(Pattern::Tuple {
+                    span,
+                    elements: new_elements,
+                })
+            }
+            _ => unreachable!(),
+        }
     }
 }

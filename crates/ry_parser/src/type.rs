@@ -4,7 +4,7 @@ use ry_ast::{
     TypePathSegment, WhereClause, WhereClauseItem,
 };
 use ry_diagnostics::{expected, parser::ParseDiagnostic, BuildDiagnostic};
-use ry_workspace::span::Span;
+use ry_workspace::span::{Span, SpanIndex};
 
 pub(crate) struct TypeBoundsParser;
 
@@ -14,13 +14,11 @@ struct TypeWithQualifiedPathParser;
 
 struct TraitObjectTypeParser;
 
-struct ParenthesizedTypeParser;
+struct ParenthesizedOrTupleTypeParser;
 
 struct TypePathParser;
 
 struct TypePathSegmentParser;
-
-struct TupleTypeParser;
 
 struct FunctionTypeParser;
 
@@ -52,9 +50,8 @@ impl Parse for TypeParser {
 
     fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
         match state.next_token.raw {
-            Token!['('] => ParenthesizedTypeParser.parse(state),
+            Token!['('] => ParenthesizedOrTupleTypeParser.parse(state),
             RawToken::Identifier => TypePathParser.parse(state).map(TypeAst::Path),
-            Token![#] => TupleTypeParser.parse(state),
             Token![Fun] => FunctionTypeParser.parse(state),
             Token![dyn] => TraitObjectTypeParser.parse(state),
             Token!['['] => TypeWithQualifiedPathParser.parse(state),
@@ -121,43 +118,68 @@ impl Parse for TraitObjectTypeParser {
     }
 }
 
-impl Parse for TupleTypeParser {
-    type Output = Option<TypeAst>;
-
-    fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
-        let start = state.next_token.span.start();
-        state.advance(); // `#`
-
-        state.consume(Token!['('], "tuple type")?;
-
-        let element_types = parse_list!(state, "tuple type", Token![')'], {
-            TypeParser.parse(state)
-        });
-
-        state.advance(); // `)`
-
-        Some(TypeAst::Tuple {
-            span: Span::new(start, state.current_token.span.end(), state.file_id),
-            element_types,
-        })
-    }
-}
-
-impl Parse for ParenthesizedTypeParser {
+impl Parse for ParenthesizedOrTupleTypeParser {
     type Output = Option<TypeAst>;
 
     fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
         let start = state.next_token.span.start();
         state.advance(); // `(`
 
-        let inner = Box::new(TypeParser.parse(state)?);
+        let element_types = parse_list!(state, "parenthesized or tuple type", Token![')'], {
+            TypeParser.parse(state)
+        });
 
-        state.consume(Token![')'], "parenthesized type")?;
+        state.advance(); // `)`
 
-        Some(TypeAst::Parenthesized {
-            span: Span::new(start, state.current_token.span.end(), state.file_id),
-            inner,
-        })
+        let span = Span::new(
+            start,
+            state.current_token.span.end(),
+            state.current_token.span.file_id(),
+        );
+
+        let mut element_types = element_types.into_iter();
+
+        match (element_types.next(), element_types.next()) {
+            (Some(element), None) => {
+                if state
+                    .source_file
+                    .source()
+                    .index(Span::new(
+                        element.span().end(),
+                        state.current_token.span.end(),
+                        state.current_token.span.file_id(),
+                    ))
+                    .contains(',')
+                {
+                    Some(TypeAst::Tuple {
+                        span,
+                        element_types: vec![element],
+                    })
+                } else {
+                    Some(TypeAst::Parenthesized {
+                        span,
+                        inner: Box::from(element),
+                    })
+                }
+            }
+            (None, None) => Some(TypeAst::Tuple {
+                span,
+                element_types: vec![],
+            }),
+            (Some(previous), Some(next)) => {
+                let mut new_element_types = vec![];
+                new_element_types.push(previous);
+                new_element_types.push(next);
+
+                new_element_types.append(&mut element_types.collect::<Vec<_>>());
+
+                Some(TypeAst::Tuple {
+                    span,
+                    element_types: new_element_types,
+                })
+            }
+            _ => unreachable!(),
+        }
     }
 }
 

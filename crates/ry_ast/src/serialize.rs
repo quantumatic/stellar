@@ -402,11 +402,11 @@ impl Serialize for Pattern {
             }
             Self::Tuple {
                 span,
-                inner_patterns,
+                elements,
             } => {
                 serializer.write_node_name_with_span("TUPLE_PATTERN", *span);
                 serializer.increment_indentation();
-                serializer.serialize_key_list_value_pair("INNER_PATTERNS", inner_patterns);
+                serializer.serialize_key_list_value_pair("ELEMENTS", elements);
                 serializer.decrement_indentation();
             }
             Self::TupleLike {
@@ -530,9 +530,11 @@ impl Serialize for UntypedExpression {
                 serializer.write_node_name_with_span("FUNCTION_EXPRESSION", *span);
                 serializer.increment_indentation();
                 serializer.serialize_key_list_value_pair("PARAMETERS", parameters);
+
                 if let Some(return_type) = return_type {
                     serializer.serialize_key_value_pair("RETURN_TYPE", return_type);
                 }
+
                 serializer.serialize_key_list_value_pair("STATEMENTS_BLOCK", block);
                 serializer.decrement_indentation();
             }
@@ -791,16 +793,25 @@ impl Serialize for Function {
         serializer.increment_indentation();
         serializer.serialize_key_value_pair("VISIBILITY", &self.visibility);
         serializer.serialize_key_value_pair("NAME", &self.name);
+
         if let Some(generic_parameters) = &self.generic_parameters {
             serializer.serialize_key_list_value_pair("GENERIC_PARAMETERS", generic_parameters);
         }
+
         serializer.serialize_key_list_value_pair("PARAMETERS", &self.parameters);
+
         if let Some(return_type) = &self.return_type {
             serializer.serialize_key_value_pair("RETURN_TYPE", return_type);
         }
+
         if let Some(where_clause) = &self.where_clause {
             serializer.serialize_key_list_value_pair("WHERE_CLAUSE", where_clause);
         }
+
+        if let Some(body) = &self.body {
+            serializer.serialize_key_list_value_pair("BODY", body);
+        }
+
         serializer.decrement_indentation();
     }
 }

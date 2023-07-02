@@ -1,0 +1,15 @@
+fun main() {
+    let a: (uint32, uint32) = (1, 2);
+    let b: (uint8,) = (1,);
+    let c: (uint16) = (1);
+    let d: () = (); // () == Unit type
+
+    match a {
+        (1, ..) => {
+            println("starts with 1");
+        }
+        .. => {
+            println("doesn't start with 1");
+        }
+    }
+}

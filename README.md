@@ -14,13 +14,13 @@ Pattern matching is supported!
 
 ```
 match tuple {
-    #(1, ..) => {
+    (1, ..) => {
         println("First element is 1");
     }
-    #(.., 'b', true) | #(.., 'a', true) => {
+    (.., 'b', true) | (.., 'a', true) => {
         println("Second element is 'b' or 'a', and third element is true");
     }
-    #(.., false) => {
+    (.., false) => {
         println("Third element is false");
     }
     .. => {
@@ -62,7 +62,7 @@ trait Foo {
 impl Foo for Bar {
     fun foo() {
         println("foo");
-    }   
+    }
 }
 ```
 
@@ -87,25 +87,27 @@ type HashMapItem[K, V] = [HashMap[K, V] as IntoIterator].Item;
 Ry also supports super traits:
 
 ```
-trait DebugAndDefault: Debug + Default {}
+trait MyNumeric: Numeric {}
+
+impl MyNumeric for Complex { ... }
 ```
 
 and negative trait bounds:
 
 ```
-trait NotDefault: Not[Default] {}
+fun not_default[T](n: T) where T: Not[Default] {
+    ...
+}
+
+fun main() {
+    not_default(3); // error (numbers implement Default trait)
+}
 ```
 
-The language supports where clause in top level items:
+Ry supports function types:
 
 ```
-fun foo[S](s: S) where S: ToString + Default { ... }
-```
-
-And function types:
-
-```
-fun do_stuff_with(a: uint32, b: uint32, fn: Fun (uint32, uint32): Unit) {
+fun do_stuff_with(a: uint32, b: uint32, fn: (uint32, uint32): ()) {
     fn(a, b)
 }
 ```
@@ -160,6 +162,7 @@ trait T2 {
 impl T2 for S {}
 
 fun main() {
+    S.f(); // S
     [S as T1].f(); // T1 f
     [S as T2].f(); // T2 f
 }

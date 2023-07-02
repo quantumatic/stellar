@@ -13,7 +13,7 @@ use ry_ast::{
     StructExpressionItem, Token, UntypedExpression,
 };
 use ry_diagnostics::{expected, parser::ParseDiagnostic, BuildDiagnostic};
-use ry_workspace::span::Span;
+use ry_workspace::span::{Span, SpanIndex};
 
 #[derive(Default)]
 pub(crate) struct ExpressionParser {
@@ -59,7 +59,7 @@ struct CastExpressionParser {
 
 struct IfExpressionParser;
 
-struct ParenthesizedExpressionParser;
+struct ParenthesizedOrTupleExpressionParser;
 
 struct CallExpressionParser {
     pub(crate) start: usize,
@@ -73,8 +73,6 @@ struct BinaryExpressionParser {
 }
 
 struct ListExpressionParser;
-
-struct TupleExpressionParser;
 
 struct StructExpressionParser {
     pub(crate) start: usize,
@@ -226,11 +224,10 @@ impl Parse for PrimaryExpressionParser {
                     symbol,
                 }))
             }
-            Token!['('] => ParenthesizedExpressionParser.parse(state),
+            Token!['('] => ParenthesizedOrTupleExpressionParser.parse(state),
             Token!['['] => ListExpressionParser.parse(state),
             Token!['{'] => StatementsBlockExpressionParser.parse(state),
             Token![|] => FunctionExpressionParser.parse(state),
-            Token![#] => TupleExpressionParser.parse(state),
             Token![if] => IfExpressionParser.parse(state),
             Token![match] => MatchExpressionParser.parse(state),
             Token![while] => WhileExpressionParser.parse(state),
@@ -250,7 +247,6 @@ impl Parse for PrimaryExpressionParser {
                             "string literal",
                             "char literal",
                             "boolean literal",
-                            Token![#],
                             Token![|],
                             Token!['('],
                             Token!['{'],
@@ -346,25 +342,68 @@ impl Parse for PostfixExpressionParser {
     }
 }
 
-impl Parse for ParenthesizedExpressionParser {
+impl Parse for ParenthesizedOrTupleExpressionParser {
     type Output = Option<UntypedExpression>;
 
     fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
         let start = state.next_token.span.start();
         state.advance();
 
-        let inner = ExpressionParser {
-            precedence: Precedence::Lowest,
-            ignore_struct: false,
+        let elements = parse_list!(state, "parenthesized or tuple expression", Token![')'], {
+            ExpressionParser::default().parse(state)
+        });
+
+        state.advance(); // `)`
+
+        let span = Span::new(
+            start,
+            state.current_token.span.end(),
+            state.current_token.span.file_id(),
+        );
+
+        let mut elements = elements.into_iter();
+
+        match (elements.next(), elements.next()) {
+            (Some(element), None) => {
+                if state
+                    .source_file
+                    .source()
+                    .index(Span::new(
+                        element.span().end(),
+                        state.current_token.span.end(),
+                        state.current_token.span.file_id(),
+                    ))
+                    .contains(',')
+                {
+                    Some(UntypedExpression::Tuple {
+                        span,
+                        elements: vec![element],
+                    })
+                } else {
+                    Some(UntypedExpression::Parenthesized {
+                        span,
+                        inner: Box::from(element),
+                    })
+                }
+            }
+            (None, None) => Some(UntypedExpression::Tuple {
+                span,
+                elements: vec![],
+            }),
+            (Some(previous), Some(next)) => {
+                let mut new_elements = vec![];
+                new_elements.push(previous);
+                new_elements.push(next);
+
+                new_elements.append(&mut elements.collect::<Vec<_>>());
+
+                Some(UntypedExpression::Tuple {
+                    span,
+                    elements: new_elements,
+                })
+            }
+            _ => unreachable!(),
         }
-        .parse(state)?;
-
-        state.consume(Token![')'], "parenthesized expression")?;
-
-        Some(UntypedExpression::Parenthesized {
-            span: Span::new(start, inner.span().end(), state.file_id),
-            inner: Box::new(inner),
-        })
     }
 }
 
@@ -494,28 +533,6 @@ impl Parse for ListExpressionParser {
         state.advance();
 
         Some(UntypedExpression::List {
-            span: Span::new(start, state.current_token.span.end(), state.file_id),
-            elements,
-        })
-    }
-}
-
-impl Parse for TupleExpressionParser {
-    type Output = Option<UntypedExpression>;
-
-    fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
-        let start = state.next_token.span.start();
-        state.advance(); // `#`
-
-        state.consume(Token!['('], "tuple expression")?;
-
-        let elements = parse_list!(state, "tuple expression", Token![')'], {
-            ExpressionParser::default().parse(state)
-        });
-
-        state.advance(); // `)`
-
-        Some(UntypedExpression::Tuple {
             span: Span::new(start, state.current_token.span.end(), state.file_id),
             elements,
         })

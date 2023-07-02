@@ -194,16 +194,13 @@ pub enum Pattern {
     /// # Example
     /// ```txt
     /// match x {
-    ///     #(a, "hello", c @ [3, ..]) => { println(a); }
+    ///     (a, "hello", c @ [3, ..]) => { println(a); }
     ///     ^^^^^^^^^^^^^^^^^^^^^^^^^^ tuple pattern
     ///
     ///     .. => { println(":("); }
     /// }
     /// ```
-    Tuple {
-        span: Span,
-        inner_patterns: Vec<Self>,
-    },
+    Tuple { span: Span, elements: Vec<Self> },
 
     /// A path pattern.
     ///
@@ -357,7 +354,7 @@ pub type TypeBounds = Vec<TypePath>;
 ///
 /// # Example
 /// ```txt
-/// let a: #(List[uint32], String, uint32) = #(a, "hello", 3);
+/// let a: (List[uint32], String, uint32) = (a, "hello", 3);
 ///        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type node
 /// ```
 #[derive(Debug, PartialEq, Clone)]
@@ -375,7 +372,7 @@ pub enum TypeAst {
     /// A tuple type.
     ///
     /// ```txt
-    /// #(String, uint32)
+    /// (String, uint32)
     /// ```
     Tuple {
         span: Span,
@@ -477,7 +474,7 @@ pub struct TypeAlias {
 /// A where clause item.
 ///
 /// ```txt
-/// impl[T, M] ToString for #(T, M) where T: Into[String], M = dyn Into[String] { ... }
+/// impl[T, M] ToString for (T, M) where T: Into[String], M = dyn Into[String] { ... }
 ///                                       ^^^^^^^^^^^^^^^ where clause item #1
 ///                                                        ^^^^^^^^^^^^^^^^^^^^ where clause item #2
 /// ```
@@ -639,7 +636,8 @@ pub enum UntypedExpression {
     /// Tuple expression.
     ///
     /// ```txt
-    /// #(a, "hello", 3)
+    /// (a, "hello", 3)
+    /// (a,)
     /// ```
     Tuple { span: Span, elements: Vec<Self> },
 
