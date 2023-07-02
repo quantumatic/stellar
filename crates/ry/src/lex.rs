@@ -22,7 +22,7 @@ pub fn command(filepath: &str, show_locations: bool) {
                             current_token_index,
                             token.raw,
                             token.span.start(),
-                            token.span.end()
+                            token.span.end(),
                         );
                     } else {
                         println!("{:08}: [{}]", current_token_index, token.raw);

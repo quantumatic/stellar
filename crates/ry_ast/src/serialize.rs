@@ -400,10 +400,7 @@ impl Serialize for Pattern {
                 serializer.serialize_key_list_value_pair("FIELDS", fields);
                 serializer.decrement_indentation();
             }
-            Self::Tuple {
-                span,
-                elements,
-            } => {
+            Self::Tuple { span, elements } => {
                 serializer.write_node_name_with_span("TUPLE_PATTERN", *span);
                 serializer.increment_indentation();
                 serializer.serialize_key_list_value_pair("ELEMENTS", elements);
