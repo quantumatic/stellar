@@ -22,12 +22,10 @@ pub fn parse_module<'workspace>(
 pub fn parse_module_using<'workspace>(
     mut state: ParseState<'workspace, '_, '_>,
 ) -> Module<'workspace> {
-    let (global_docstring, first_docstring) = state.consume_module_and_first_item_docstrings();
-
     Module {
         source_file: state.source_file,
         file_id: state.file_id,
-        docstring: global_docstring,
-        items: ItemsParser { first_docstring }.parse(&mut state),
+        docstring: state.consume_module_docstring(),
+        items: ItemsParser.parse(&mut state),
     }
 }

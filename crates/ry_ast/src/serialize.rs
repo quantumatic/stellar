@@ -1,6 +1,6 @@
 use crate::{
-    token::RawToken, BinaryOperator, Documented, EnumItem, Function, FunctionParameter,
-    GenericArgument, GenericParameter, IdentifierAst, Item, JustFunctionParameter, Literal,
+    token::RawToken, BinaryOperator, EnumItem, Function, FunctionParameter, GenericArgument,
+    GenericParameter, IdentifierAst, ImportPath, Item, JustFunctionParameter, Literal,
     MatchExpressionItem, Module, Path, Pattern, PostfixOperator, PrefixOperator, Statement,
     StructExpressionItem, StructField, StructFieldPattern, TraitItem, TupleField, TypeAlias,
     TypeAst, TypePath, TypePathSegment, UntypedExpression, Visibility, WhereClauseItem,
@@ -834,32 +834,23 @@ impl Serialize for TupleField {
     }
 }
 
-impl<S> Serialize for Documented<S>
-where
-    S: Serialize,
-{
-    fn serialize(&self, serializer: &mut Serializer<'_>) {
-        self.value.serialize(serializer);
-    }
-}
-
 impl Serialize for EnumItem {
     fn serialize(&self, serializer: &mut Serializer<'_>) {
         match self {
-            Self::Just(identifier) => {
+            Self::Just { name, .. } => {
                 serializer.write_node_name("EMPTY_ENUM_ITEM");
                 serializer.increment_indentation();
-                serializer.serialize_key_value_pair("ITEM_NAME", identifier);
+                serializer.serialize_key_value_pair("ITEM_NAME", name);
                 serializer.decrement_indentation();
             }
-            Self::Struct { name, fields } => {
+            Self::Struct { name, fields, .. } => {
                 serializer.write_node_name("STRUCT_ENUM_ITEM");
                 serializer.increment_indentation();
                 serializer.serialize_key_value_pair("NAME", name);
                 serializer.serialize_key_list_value_pair("FIELDS", fields);
                 serializer.decrement_indentation();
             }
-            Self::Tuple { name, fields } => {
+            Self::Tuple { name, fields, .. } => {
                 serializer.write_node_name("TUPLE_ENUM_ITEM");
                 serializer.increment_indentation();
                 serializer.serialize_key_value_pair("NAME", name);
@@ -897,6 +888,24 @@ impl Serialize for TraitItem {
     }
 }
 
+impl Serialize for ImportPath {
+    fn serialize(&self, serializer: &mut Serializer<'_>) {
+        serializer.write_node_name("IMPORT_PATH");
+        serializer.increment_indentation();
+        serializer.serialize_key_value_pair("PATH", &self.left);
+
+        if let Some(r#as) = &self.r#as {
+            serializer.serialize_key_value_pair("AS", r#as);
+        }
+
+        if let Some(star_span) = self.star_span {
+            serializer.serialize_key_value_pair("STAR_SPAN", &star_span);
+        }
+
+        serializer.decrement_indentation();
+    }
+}
+
 impl Serialize for Item {
     fn serialize(&self, serializer: &mut Serializer<'_>) {
         match self {
@@ -906,6 +915,7 @@ impl Serialize for Item {
                 generic_parameters,
                 where_clause,
                 items,
+                ..
             } => {
                 serializer.write_node_name("ENUM");
                 serializer.increment_indentation();
@@ -929,6 +939,7 @@ impl Serialize for Item {
                 r#trait,
                 where_clause,
                 items,
+                ..
             } => {
                 serializer.write_node_name("IMPL");
                 serializer.increment_indentation();
@@ -953,6 +964,7 @@ impl Serialize for Item {
                 generic_parameters,
                 where_clause,
                 fields,
+                ..
             } => {
                 serializer.write_node_name("STRUCT");
                 serializer.increment_indentation();
@@ -974,6 +986,7 @@ impl Serialize for Item {
                 generic_parameters,
                 where_clause,
                 items,
+                ..
             } => {
                 serializer.write_node_name("TRAIT");
                 serializer.increment_indentation();
@@ -995,6 +1008,7 @@ impl Serialize for Item {
                 generic_parameters,
                 where_clause,
                 fields,
+                ..
             } => {
                 serializer.write_node_name("TUPLE_LIKE_STRUCT");
                 serializer.increment_indentation();
@@ -1011,11 +1025,11 @@ impl Serialize for Item {
                 serializer.decrement_indentation();
             }
             Self::TypeAlias(alias) => alias.serialize(serializer),
-            Self::Use { visibility, path } => {
+            Self::Import { visibility, path } => {
                 serializer.write_node_name("USE");
                 serializer.increment_indentation();
                 serializer.serialize_key_value_pair("VISIBILITY", visibility);
-                serializer.serialize_key_value_pair("PATH", path);
+                serializer.serialize_key_value_pair("IMPORT_PATH", path);
                 serializer.decrement_indentation();
             }
         }

@@ -73,9 +73,10 @@ mod pattern;
 mod statement;
 mod r#type;
 
+pub use module::{parse_module, parse_module_using};
 use ry_ast::{
     token::{LexError, RawToken, Token},
-    Docstring, IdentifierAst, Token, Visibility,
+    IdentifierAst, Token, Visibility,
 };
 use ry_diagnostics::{expected, parser::ParseDiagnostic, BuildDiagnostic, CompilerDiagnostic};
 use ry_interner::Interner;
@@ -86,19 +87,23 @@ use ry_workspace::{
     workspace::FileID,
 };
 
-pub use module::{parse_module, parse_module_using};
-
 #[macro_use]
 mod macros;
 
 /// Represents a parse state.
 #[derive(Debug)]
 pub struct ParseState<'workspace, 'diagnostics, 'interner> {
+    /// Source file, that is being parsed.
     source_file: &'workspace SourceFile<'workspace>,
+    /// Id of the file in the global workspace.
     file_id: usize,
+    /// Lexer that is used for parsing.
     lexer: Lexer<'workspace, 'interner>,
+    /// Current token.
     current_token: Token,
+    /// Next token.
     next_token: Token,
+    /// Diagnostics that is emitted during parsing.
     diagnostics: &'diagnostics mut Vec<CompilerDiagnostic>,
 }
 
@@ -236,6 +241,7 @@ impl<'workspace, 'diagnostics, 'interner> ParseState<'workspace, 'diagnostics, '
         }
     }
 
+    /// Checks if the next token is [`expected`] and advances the parse state.
     fn consume<N>(&mut self, expected: RawToken, node: N) -> Option<()>
     where
         N: Into<String>,
@@ -245,6 +251,8 @@ impl<'workspace, 'diagnostics, 'interner> ParseState<'workspace, 'diagnostics, '
         Some(())
     }
 
+    /// Checks if the next token is identifiers, advances the parse state and if
+    /// everything is ok, returns the identifier symbol.
     fn consume_identifier<N>(&mut self, node: N) -> Option<IdentifierAst>
     where
         N: Into<String>,
@@ -271,54 +279,53 @@ impl<'workspace, 'diagnostics, 'interner> ParseState<'workspace, 'diagnostics, '
         Some(spanned_symbol)
     }
 
-    /// Consumes the docstrings for the module and the first item in the module, if present.
-    pub(crate) fn consume_module_and_first_item_docstrings(&mut self) -> (Docstring, Docstring) {
-        let (mut module_docstring, mut local_docstring) = (vec![], vec![]);
-
-        loop {
-            match self.next_token.raw {
-                RawToken::GlobalDocComment => {
-                    module_docstring.push(
-                        self.source_file
-                            .source()
-                            .index(self.next_token.span)
-                            .to_owned(),
-                    );
-                }
-                RawToken::LocalDocComment => {
-                    local_docstring.push(
-                        self.source_file
-                            .source()
-                            .index(self.next_token.span)
-                            .to_owned(),
-                    );
-                }
-                _ => return (module_docstring, local_docstring),
-            }
+    /// Consumes the identifiers and if the next token is not identifier than panics.
+    pub(crate) fn consume_identifier_or_panic(&mut self) -> IdentifierAst {
+        if self.next_token.raw == RawToken::Identifier {
+            let identifier = IdentifierAst {
+                span: self.next_token.span,
+                symbol: self.lexer.identifier(),
+            };
 
             self.advance();
+
+            identifier
+        } else {
+            unreachable!()
         }
     }
 
-    /// Consumes the docstring for a local item (i.e., anything that is not the module docstring
-    /// or the first item in the module (because it will be already consumed in
-    /// [`ParseState::consume_module_and_first_item_docstrings()`])).
-    pub(crate) fn consume_docstring(&mut self) -> Docstring {
-        let mut result = vec![];
+    /// Consumes the docstring for a module.
+    pub(crate) fn consume_module_docstring(&mut self) -> Option<String> {
+        if self.next_token.raw == RawToken::GlobalDocComment {
+            let mut module_string = String::new();
 
-        loop {
-            if self.next_token.raw == RawToken::LocalDocComment {
-                result.push(
-                    self.source_file
-                        .source()
-                        .index(self.next_token.span)
-                        .to_owned(),
-                );
-            } else {
-                return result;
+            while self.next_token.raw == RawToken::GlobalDocComment {
+                self.advance();
+
+                module_string.push_str(self.source_file.source().index(self.current_token.span));
             }
 
-            self.advance();
+            Some(module_string)
+        } else {
+            None
+        }
+    }
+
+    /// Consumes the docstring for a local item.
+    pub(crate) fn consume_local_docstring(&mut self) -> Option<String> {
+        if self.next_token.raw == RawToken::LocalDocComment {
+            let mut local_string = String::new();
+
+            while self.next_token.raw == RawToken::LocalDocComment {
+                self.advance();
+
+                local_string.push_str(self.source_file.source().index(self.current_token.span));
+            }
+
+            Some(local_string)
+        } else {
+            None
         }
     }
 }

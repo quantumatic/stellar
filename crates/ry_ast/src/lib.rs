@@ -84,6 +84,20 @@ pub struct Path {
     pub identifiers: Vec<IdentifierAst>,
 }
 
+/// AST Node corresponding to an import path.
+///
+/// # Example
+/// ```txt
+/// import std.io.*;
+/// import std.io as myio;
+/// ```
+#[derive(Debug, PartialEq, Clone)]
+pub struct ImportPath {
+    pub left: Path,
+    pub r#as: Option<IdentifierAst>,
+    pub star_span: Option<Span>, // span of `*`
+}
+
 /// AST Node for a type path.
 ///
 /// ```txt
@@ -469,6 +483,7 @@ pub struct TypeAlias {
     pub generic_parameters: Option<Vec<GenericParameter>>,
     pub bounds: Option<TypeBounds>,
     pub value: Option<TypeAst>,
+    pub docstring: Option<String>,
 }
 
 /// A where clause item.
@@ -1017,29 +1032,6 @@ pub enum Statement {
 /// ```
 pub type StatementsBlock = Vec<Statement>;
 
-/// Represents a docstring.
-pub type Docstring = Vec<String>;
-
-#[derive(Debug, PartialEq, Clone)]
-pub struct Documented<T> {
-    value: T,
-    docstring: Docstring,
-}
-
-pub trait WithDocComment {
-    fn with_doc_comment(self, docstring: Docstring) -> Documented<Self>
-    where
-        Self: Sized,
-    {
-        Documented {
-            value: self,
-            docstring,
-        }
-    }
-}
-
-impl<T: Sized> WithDocComment for T {}
-
 /// Represents an item.
 #[derive(Debug, PartialEq, Clone)]
 pub enum Item {
@@ -1061,7 +1053,8 @@ pub enum Item {
         name: IdentifierAst,
         generic_parameters: Option<Vec<GenericParameter>>,
         where_clause: Option<WhereClause>,
-        items: Vec<Documented<EnumItem>>,
+        items: Vec<EnumItem>,
+        docstring: Option<String>,
     },
 
     /// Function item.
@@ -1073,12 +1066,15 @@ pub enum Item {
     /// ```
     Function(Function),
 
-    /// Use item.
+    /// Import item.
     ///
     /// ```txt
-    /// use std.io;
+    /// import std.io;
     /// ```
-    Use { visibility: Visibility, path: Path },
+    Import {
+        visibility: Visibility,
+        path: ImportPath,
+    },
 
     /// Trait item.
     ///
@@ -1092,7 +1088,8 @@ pub enum Item {
         name: IdentifierAst,
         generic_parameters: Option<Vec<GenericParameter>>,
         where_clause: Option<WhereClause>,
-        items: Vec<Documented<TraitItem>>,
+        items: Vec<TraitItem>,
+        docstring: Option<String>,
     },
 
     /// Impl item.
@@ -1112,7 +1109,8 @@ pub enum Item {
         ty: TypeAst,
         r#trait: Option<TypeAst>,
         where_clause: Option<WhereClause>,
-        items: Vec<Documented<TraitItem>>,
+        items: Vec<TraitItem>,
+        docstring: Option<String>,
     },
 
     /// Struct item.
@@ -1129,7 +1127,8 @@ pub enum Item {
         name: IdentifierAst,
         generic_parameters: Option<Vec<GenericParameter>>,
         where_clause: Option<WhereClause>,
-        fields: Vec<Documented<StructField>>,
+        fields: Vec<StructField>,
+        docstring: Option<String>,
     },
 
     /// Tuple-like struct item.
@@ -1143,6 +1142,7 @@ pub enum Item {
         generic_parameters: Option<Vec<GenericParameter>>,
         where_clause: Option<WhereClause>,
         fields: Vec<TupleField>,
+        docstring: Option<String>,
     },
 
     /// Type alias item.
@@ -1196,14 +1196,19 @@ impl ToString for ItemKind {
 /// ```
 #[derive(Debug, PartialEq, Clone)]
 pub enum EnumItem {
-    Just(IdentifierAst),
+    Just {
+        name: IdentifierAst,
+        docstring: Option<String>,
+    },
     Tuple {
         name: IdentifierAst,
         fields: Vec<TupleField>,
+        docstring: Option<String>,
     },
     Struct {
         name: IdentifierAst,
-        fields: Vec<Documented<StructField>>,
+        fields: Vec<StructField>,
+        docstring: Option<String>,
     },
 }
 
@@ -1233,6 +1238,7 @@ pub struct StructField {
     pub visibility: Visibility,
     pub name: IdentifierAst,
     pub ty: TypeAst,
+    pub docstring: Option<String>,
 }
 
 /// Represents a trait item.
@@ -1256,6 +1262,7 @@ pub struct Function {
     pub return_type: Option<TypeAst>,
     pub where_clause: Option<WhereClause>,
     pub body: Option<StatementsBlock>,
+    pub docstring: Option<String>,
 }
 
 /// Represents a function parameter.
@@ -1297,11 +1304,9 @@ pub struct JustFunctionParameter {
 pub struct Module<'workspace> {
     pub file_id: FileID,
     pub source_file: &'workspace SourceFile<'workspace>,
-    pub docstring: Docstring,
-    pub items: Items,
+    pub items: Vec<Item>,
+    pub docstring: Option<String>,
 }
-
-pub type Items = Vec<Documented<Item>>;
 
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub struct Visibility(Option<Span>);

@@ -1,45 +1,51 @@
 use crate::{
     expression::ExpressionParser,
     macros::parse_list,
-    path::PathParser,
+    path::ImportPathParser,
     r#type::{GenericParametersParser, TypeBoundsParser, TypeParser, WhereClauseParser},
     statement::StatementsBlockParser,
     OptionalParser, Parse, ParseState, VisibilityParser,
 };
 use ry_ast::{
-    token::RawToken, Docstring, Documented, EnumItem, Function, FunctionParameter, IdentifierAst,
-    Item, ItemKind, Items, JustFunctionParameter, SelfParameter, StructField, Token, TraitItem,
-    TupleField, TypeAlias, Visibility, WithDocComment,
+    token::RawToken, EnumItem, Function, FunctionParameter, IdentifierAst, Item, ItemKind,
+    JustFunctionParameter, SelfParameter, StructField, Token, TraitItem, TupleField, TypeAlias,
+    Visibility,
 };
 use ry_diagnostics::parser::ParseDiagnostic::UnnecessaryVisibilityQualifierError;
 use ry_diagnostics::parser::UnnecessaryVisibilityQualifierContext;
 use ry_diagnostics::{expected, parser::ParseDiagnostic, BuildDiagnostic};
 use ry_workspace::span::Span;
 
-struct UseItemParser {
+struct ImportParser {
     pub(crate) visibility: Visibility,
 }
 
-struct StructItemParser {
+struct StructParser {
     pub(crate) visibility: Visibility,
+    pub(crate) docstring: Option<String>,
 }
 
 struct StructFieldsParser;
 
-struct StructFieldParser;
+struct StructFieldParser {
+    pub(crate) docstring: Option<String>,
+}
 
 struct FunctionParser {
     pub(crate) visibility: Visibility,
+    pub(crate) docstring: Option<String>,
 }
 
 pub(crate) struct FunctionParameterParser;
 
 struct TypeAliasParser {
     pub(crate) visibility: Visibility,
+    pub(crate) docstring: Option<String>,
 }
 
-struct TraitItemParser {
+struct TraitParser {
     pub(crate) visibility: Visibility,
+    pub(crate) docstring: Option<String>,
 }
 
 struct TraitItemsParser {
@@ -47,40 +53,41 @@ struct TraitItemsParser {
     pub(crate) item_span: Span,
 }
 
-struct ImplItemParser {
+struct ImplParser {
     pub(crate) visibility: Visibility,
+    pub(crate) docstring: Option<String>,
 }
 
 struct EnumParser {
     pub(crate) visibility: Visibility,
+    pub(crate) docstring: Option<String>,
 }
 
 struct EnumItemParser;
 
-struct ItemTupleParser {
+struct TupleFieldsParser {
     pub(crate) context: ItemKind,
 }
 
 struct EnumItemStructParser {
     pub(crate) name: IdentifierAst,
-}
-
-pub(crate) struct ItemsParser {
-    pub(crate) first_docstring: Docstring,
+    pub(crate) docstring: Option<String>,
 }
 
 pub(crate) struct ItemParser;
 
-impl Parse for UseItemParser {
+pub(crate) struct ItemsParser;
+
+impl Parse for ImportParser {
     type Output = Option<Item>;
 
     fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
         state.advance();
 
-        let path = PathParser.parse(state)?;
+        let path = ImportPathParser.parse(state)?;
         state.consume(Token![;], "import")?;
 
-        Some(Item::Use {
+        Some(Item::Import {
             visibility: self.visibility,
             path,
         })
@@ -103,19 +110,24 @@ impl Parse for StructFieldParser {
             visibility,
             name,
             ty,
+            docstring: self.docstring,
         })
     }
 }
 
 impl Parse for StructFieldsParser {
-    type Output = Option<Vec<Documented<StructField>>>;
+    type Output = Option<Vec<StructField>>;
 
     fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
         state.consume(Token!['{'], "struct fields")?;
 
         let fields = parse_list!(state, "struct fields", Token!['}'], {
-            let docstring = state.consume_docstring();
-            Some(StructFieldParser.parse(state)?.with_doc_comment(docstring))
+            Some(
+                StructFieldParser {
+                    docstring: state.consume_local_docstring(),
+                }
+                .parse(state)?,
+            )
         });
 
         state.advance(); // `}`
@@ -124,7 +136,7 @@ impl Parse for StructFieldsParser {
     }
 }
 
-impl Parse for StructItemParser {
+impl Parse for StructParser {
     type Output = Option<Item>;
 
     fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
@@ -144,9 +156,10 @@ impl Parse for StructItemParser {
                 generic_parameters,
                 where_clause,
                 fields,
+                docstring: self.docstring,
             })
         } else if state.next_token.raw == Token!['('] {
-            let fields = ItemTupleParser {
+            let fields = TupleFieldsParser {
                 context: ItemKind::Struct,
             }
             .parse(state)?;
@@ -170,6 +183,7 @@ impl Parse for StructItemParser {
                 generic_parameters,
                 where_clause,
                 fields,
+                docstring: self.docstring,
             })
         } else {
             state.diagnostics.push(
@@ -284,18 +298,19 @@ impl Parse for FunctionParser {
                     None
                 }
             },
+            docstring: self.docstring,
         })
     }
 }
 
 impl Parse for TraitItemsParser {
-    type Output = Option<(Vec<Documented<TraitItem>>, bool)>;
+    type Output = Option<(Vec<TraitItem>, bool)>;
 
     fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
         let mut items = vec![];
 
         while state.next_token.raw != Token!['}'] {
-            let doc = state.consume_docstring();
+            let docstring = state.consume_local_docstring();
 
             if let Some(span) = VisibilityParser.parse(state).span_of_pub() {
                 state.diagnostics.push(
@@ -311,24 +326,20 @@ impl Parse for TraitItemsParser {
             }
 
             items.push(match state.next_token.raw {
-                Token![fun] => Some(
-                    TraitItem::AssociatedFunction(
-                        FunctionParser {
-                            visibility: Visibility::private(),
-                        }
-                        .parse(state)?,
-                    )
-                    .with_doc_comment(doc),
-                ),
-                Token![type] => Some(
-                    TraitItem::TypeAlias(
-                        TypeAliasParser {
-                            visibility: Visibility::private(),
-                        }
-                        .parse(state)?,
-                    )
-                    .with_doc_comment(doc),
-                ),
+                Token![fun] => Some(TraitItem::AssociatedFunction(
+                    FunctionParser {
+                        visibility: Visibility::private(),
+                        docstring,
+                    }
+                    .parse(state)?,
+                )),
+                Token![type] => Some(TraitItem::TypeAlias(
+                    TypeAliasParser {
+                        visibility: Visibility::private(),
+                        docstring,
+                    }
+                    .parse(state)?,
+                )),
                 _ => {
                     state.diagnostics.push(
                         ParseDiagnostic::UnexpectedTokenError {
@@ -380,11 +391,12 @@ impl Parse for TypeAliasParser {
             generic_parameters,
             bounds,
             value,
+            docstring: self.docstring,
         })
     }
 }
 
-impl Parse for TraitItemParser {
+impl Parse for TraitParser {
     type Output = Option<Item>;
 
     fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
@@ -414,11 +426,12 @@ impl Parse for TraitItemParser {
             generic_parameters,
             where_clause,
             items: items.0,
+            docstring: self.docstring,
         })
     }
 }
 
-impl Parse for ImplItemParser {
+impl Parse for ImplParser {
     type Output = Option<Item>;
 
     fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
@@ -468,6 +481,7 @@ impl Parse for ImplItemParser {
             r#trait,
             where_clause,
             items: items.0,
+            docstring: self.docstring,
         })
     }
 }
@@ -485,8 +499,7 @@ impl Parse for EnumParser {
         state.consume(Token!['{'], "enum")?;
 
         let items = parse_list!(state, "enum items", Token!['}'], {
-            let doc = state.consume_docstring();
-            Some(EnumItemParser.parse(state)?.with_doc_comment(doc))
+            Some(EnumItemParser.parse(state)?)
         });
 
         state.advance(); // `}`
@@ -499,6 +512,7 @@ impl Parse for EnumParser {
             generic_parameters,
             where_clause,
             items,
+            docstring: self.docstring,
         })
     }
 }
@@ -507,18 +521,20 @@ impl Parse for EnumItemParser {
     type Output = Option<EnumItem>;
 
     fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
+        let docstring = state.consume_local_docstring();
         let name = state.consume_identifier("enum item")?;
 
         match state.next_token.raw {
-            Token!['{'] => EnumItemStructParser { name }.parse(state),
+            Token!['{'] => EnumItemStructParser { name, docstring }.parse(state),
             Token!['('] => Some(EnumItem::Tuple {
                 name,
-                fields: ItemTupleParser {
+                fields: TupleFieldsParser {
                     context: ItemKind::Enum,
                 }
                 .parse(state)?,
+                docstring,
             }),
-            _ => Some(EnumItem::Just(name)),
+            _ => Some(EnumItem::Just { name, docstring }),
         }
     }
 }
@@ -532,11 +548,12 @@ impl Parse for EnumItemStructParser {
         Some(EnumItem::Struct {
             name: self.name,
             fields,
+            docstring: self.docstring,
         })
     }
 }
 
-impl Parse for ItemTupleParser {
+impl Parse for TupleFieldsParser {
     type Output = Option<Vec<TupleField>>;
 
     fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
@@ -561,18 +578,15 @@ impl Parse for ItemTupleParser {
 }
 
 impl Parse for ItemsParser {
-    type Output = Items;
+    type Output = Vec<Item>;
 
     fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
         let mut items = vec![];
-        let mut docstring = self.first_docstring;
 
         while state.next_token.raw != RawToken::EndOfFile {
             if let Some(item) = ItemParser.parse(state) {
-                items.push(item.with_doc_comment(docstring));
+                items.push(item);
             }
-
-            docstring = state.consume_docstring();
         }
 
         items
@@ -584,7 +598,7 @@ impl ItemParser {
         loop {
             match state.next_token.raw {
                 Token![enum]
-                | Token![use]
+                | Token![import]
                 | Token![struct]
                 | Token![trait]
                 | Token![fun]
@@ -612,38 +626,75 @@ impl Parse for ItemParser {
     type Output = Option<Item>;
 
     fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
+        let docstring = state.consume_local_docstring();
         let visibility = VisibilityParser.parse(state);
 
         Some(match state.next_token.raw {
             Token![enum] => {
-                go_to_next_valid_item!(state, EnumParser { visibility }.parse(state))
+                go_to_next_valid_item!(
+                    state,
+                    EnumParser {
+                        visibility,
+                        docstring
+                    }
+                    .parse(state)
+                )
             }
-            Token![use] => {
-                go_to_next_valid_item!(state, UseItemParser { visibility }.parse(state))
+            Token![import] => {
+                go_to_next_valid_item!(state, ImportParser { visibility }.parse(state))
             }
             Token![struct] => {
-                go_to_next_valid_item!(state, StructItemParser { visibility }.parse(state))
+                go_to_next_valid_item!(
+                    state,
+                    StructParser {
+                        visibility,
+                        docstring
+                    }
+                    .parse(state)
+                )
             }
             Token![trait] => {
-                go_to_next_valid_item!(state, TraitItemParser { visibility }.parse(state))
+                go_to_next_valid_item!(
+                    state,
+                    TraitParser {
+                        visibility,
+                        docstring
+                    }
+                    .parse(state)
+                )
             }
             Token![fun] => Item::Function(go_to_next_valid_item!(
                 state,
-                FunctionParser { visibility }.parse(state)
+                FunctionParser {
+                    visibility,
+                    docstring
+                }
+                .parse(state)
             )),
             Token![impl] => {
-                go_to_next_valid_item!(state, ImplItemParser { visibility }.parse(state))
+                go_to_next_valid_item!(
+                    state,
+                    ImplParser {
+                        visibility,
+                        docstring
+                    }
+                    .parse(state)
+                )
             }
             Token![type] => Item::TypeAlias(go_to_next_valid_item!(
                 state,
-                TypeAliasParser { visibility }.parse(state)
+                TypeAliasParser {
+                    visibility,
+                    docstring
+                }
+                .parse(state)
             )),
             _ => {
                 state.diagnostics.push(
                     ParseDiagnostic::UnexpectedTokenError {
                         got: state.next_token,
                         expected: expected!(
-                            Token![use],
+                            Token![import],
                             Token![fun],
                             Token![trait],
                             Token![enum],
@@ -660,7 +711,7 @@ impl Parse for ItemParser {
                 loop {
                     match state.next_token.raw {
                         Token![enum]
-                        | Token![use]
+                        | Token![import]
                         | Token![struct]
                         | Token![trait]
                         | Token![fun]

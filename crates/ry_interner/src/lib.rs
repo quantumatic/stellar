@@ -111,6 +111,65 @@ use hashbrown::{
 /// Represents unique symbol corresponding to some interned string.
 pub type Symbol = u32;
 
+/// Defines all primitive symbols that are interned by default.
+pub mod symbols {
+    use crate::Symbol;
+
+    /// `_` symbol.
+    pub const UNDERSCORE: Symbol = 0;
+
+    /// `int8` symbol.
+    pub const INT8: Symbol = 1;
+
+    /// `int16` symbol.
+    pub const INT16: Symbol = 2;
+
+    /// `int32` symbol.
+    pub const INT32: Symbol = 3;
+
+    /// `int64` symbol.
+    pub const INT64: Symbol = 4;
+
+    /// `uint8` symbol.
+    pub const UINT8: Symbol = 5;
+
+    /// `uint16` symbol.
+    pub const UINT16: Symbol = 6;
+
+    /// `uint32` symbol.
+    pub const UINT32: Symbol = 7;
+
+    /// `uint64` symbol.
+    pub const UINT64: Symbol = 8;
+
+    /// `float32` symbol.
+    pub const FLOAT32: Symbol = 9;
+
+    /// `float64` symbol.
+    pub const FLOAT64: Symbol = 10;
+
+    /// `isize` symbol.
+    pub const ISIZE: Symbol = 11;
+
+    /// `usize` symbol.
+    pub const USIZE: Symbol = 12;
+
+    /// `bool` symbol.
+    pub const BOOL: Symbol = 13;
+
+    /// `String` symbol.
+    pub const STRING: Symbol = 14;
+
+    /// `List` symbol.
+    pub const LIST: Symbol = 15;
+
+    /// `Unit` symbol.
+    pub const UNIT: Symbol = 16;
+
+    /// `char` symbol.
+    pub const CHAR: Symbol = 17;
+}
+
 /// Data structure that allows to resolve/intern strings.
 ///
 /// See:
@@ -232,65 +291,6 @@ impl Backend {
 
         symbol
     }
-}
-
-/// Defines symbols interned by default.
-pub mod symbols {
-    use super::Symbol;
-
-    /// `_` symbol.
-    pub const UNDERSCORE: Symbol = 0;
-
-    /// `int8` symbol.
-    pub const INT8: Symbol = 1;
-
-    /// `int16` symbol.
-    pub const INT16: Symbol = 2;
-
-    /// `int32` symbol.
-    pub const INT32: Symbol = 3;
-
-    /// `int64` symbol.
-    pub const INT64: Symbol = 4;
-
-    /// `uint8` symbol.
-    pub const UINT8: Symbol = 5;
-
-    /// `uint16` symbol.
-    pub const UINT16: Symbol = 6;
-
-    /// `uint32` symbol.
-    pub const UINT32: Symbol = 7;
-
-    /// `uint64` symbol.
-    pub const UINT64: Symbol = 8;
-
-    /// `float32` symbol.
-    pub const FLOAT32: Symbol = 9;
-
-    /// `float64` symbol.
-    pub const FLOAT64: Symbol = 10;
-
-    /// `isize` symbol.
-    pub const ISIZE: Symbol = 11;
-
-    /// `usize` symbol.
-    pub const USIZE: Symbol = 12;
-
-    /// `bool` symbol.
-    pub const BOOL: Symbol = 13;
-
-    /// `String` symbol.
-    pub const STRING: Symbol = 14;
-
-    /// `List` symbol.
-    pub const LIST: Symbol = 15;
-
-    /// `Unit` symbol.
-    pub const UNIT: Symbol = 16;
-
-    /// `char` symbol.
-    pub const CHAR: Symbol = 17;
 }
 
 macro_rules! intern_primitive_symbols {

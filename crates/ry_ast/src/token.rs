@@ -128,7 +128,7 @@ pub enum Keyword {
     Where,
     While,
     Match,
-    Use,
+    Import,
     Self_,
     Break,
     Continue,
@@ -155,7 +155,7 @@ impl AsRef<str> for Keyword {
             Self::Where => "`where`",
             Self::Let => "`let`",
             Self::Match => "`match`",
-            Self::Use => "`use`",
+            Self::Import => "`import`",
             Self::Self_ => "`self`",
             Self::Break => "`break`",
             Self::Continue => "`continue`",
@@ -479,7 +479,7 @@ pub struct Token {
 /// assert_eq!(Token![@], RawToken::Punctuator(Punctuator::AtSign));
 ///
 /// // Same for keywords
-/// assert_eq!(Token![use], RawToken::Keyword(Keyword::Use));
+/// assert_eq!(Token![import], RawToken::Keyword(Keyword::Import));
 ///
 /// // For parenthesis and brackets use quotes.
 /// assert_eq!(
@@ -538,7 +538,7 @@ macro_rules! Token {
     [=>] =>                 {$crate::token::RawToken::Punctuator($crate::token::Punctuator::Arrow)};
     [true] =>               {$crate::token::RawToken::TrueBoolLiteral};
     [false] =>              {$crate::token::RawToken::FalseBoolLiteral};
-    [use] =>                {$crate::token::RawToken::Keyword($crate::token::Keyword::Use)};
+    [import] =>             {$crate::token::RawToken::Keyword($crate::token::Keyword::Import)};
     [pub] =>                {$crate::token::RawToken::Keyword($crate::token::Keyword::Pub)};
     [fun] =>                {$crate::token::RawToken::Keyword($crate::token::Keyword::Fun)};
     [struct] =>             {$crate::token::RawToken::Keyword($crate::token::Keyword::Struct)};
@@ -566,7 +566,7 @@ macro_rules! Token {
 pub static RESERVED: phf::Map<&'static str, RawToken> = phf_map! {
     "true" => RawToken::TrueBoolLiteral,
     "false" => RawToken::FalseBoolLiteral,
-    "use" => Token![use],
+    "import" => Token![import],
     "pub" => Token![pub],
     "fun" => Token![fun],
     "struct" => Token![struct],
