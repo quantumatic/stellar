@@ -71,13 +71,13 @@
 
 #[inline]
 #[cold]
-fn cold() {}
+const fn cold() {}
 
 /// The function allows to tell the compiler that the condition is likely to be
 /// `true`.
 #[inline]
 #[must_use]
-pub fn likely(b: bool) -> bool {
+pub const fn likely(b: bool) -> bool {
     // If `b` is `false`, it calls the `cold()` function. The purpose of calling `cold()`
     // in this case is to potentially hint to the compiler that the code path
     // where `b` is false is unlikely to be taken frequently. After that, the
@@ -93,7 +93,7 @@ pub fn likely(b: bool) -> bool {
 /// `true`.
 #[inline]
 #[must_use]
-pub fn unlikely(b: bool) -> bool {
+pub const fn unlikely(b: bool) -> bool {
     // It checks if `b` is true instead. If b is true, it calls the `cold()` function.
     // Again, the purpose is to potentially hint to the compiler that the code path
     // where `b` is `true` is unlikely to be taken frequently.
