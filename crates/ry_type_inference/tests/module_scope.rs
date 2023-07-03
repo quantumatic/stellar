@@ -10,8 +10,15 @@ pub fn parse_module_path() {
         interner.get_or_intern("C"),
     );
 
+    #[cfg(target_os = "windows")]
     assert_eq!(
         parse_module_path_using_project_root("C:\\A\\B\\C.ry", "C:\\A", &mut interner).ok(),
         Some(Path::new(vec![a, b, c])) // A.B.C
     );
+
+    #[cfg(not(target_os = "windows"))]
+    assert_eq!(
+        parse_module_path_using_project_root("/A/B/C.ry", "/A", &mut interner).ok(),
+        Some(Path::new(vec![a, b, c])) // A.B.C
+    )
 }
