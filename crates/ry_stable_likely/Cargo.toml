@@ -2,5 +2,8 @@
 name = "ry_stable_likely"
 version = "0.1.0"
 edition = "2021"
-license = "Apache-2.0"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/ry-lang/ry"
 authors = ["Adi Salimgereyev <adisalimgereev@gmail.com>"]
+readme = "../../README.md"
+description = "Stable version of likely and unlikely from intrinsics."
