@@ -168,7 +168,7 @@ struct Backend {
 }
 
 impl Default for Interner {
-    /// Creates a new empty [`Interner`] which doesn’t store any data.
+    /// Creates a new empty [`Interner`], that only contains builtin symbols.
     #[inline]
     fn default() -> Self {
         Self::new()
@@ -274,7 +274,7 @@ impl<H> Interner<H>
 where
     H: BuildHasher + Default,
 {
-    /// Creates a new empty [`Interner`] which doesn't store any data.
+    /// Creates a new empty [`Interner`], that only contains builtin symbols.
     #[must_use]
     #[inline]
     fn new() -> Self {
