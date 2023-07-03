@@ -65,4 +65,3 @@
 pub mod local_scope;
 pub mod module_scope;
 pub mod project_scope;
-pub mod scope;
