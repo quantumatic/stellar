@@ -83,8 +83,9 @@ pub fn likely(b: bool) -> bool {
     // where `b` is false is unlikely to be taken frequently. After that, the
     // function returns the value of `b`.
     if !b {
-        cold()
+        cold();
     }
+
     b
 }
 
@@ -97,7 +98,8 @@ pub fn unlikely(b: bool) -> bool {
     // Again, the purpose is to potentially hint to the compiler that the code path
     // where `b` is `true` is unlikely to be taken frequently.
     if b {
-        cold()
+        cold();
     }
+
     b
 }
