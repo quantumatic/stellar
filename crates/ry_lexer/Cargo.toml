@@ -10,3 +10,4 @@ ry_ast = { path = "../ry_ast" }
 unicode-xid = "0.2.4"
 ry_interner = { path = "../ry_interner" }
 ry_workspace = { path = "../ry_workspace" }
+ry_stable_likely = { path = "../ry_stable_likely" }

@@ -71,6 +71,7 @@ use ry_ast::{
     Token,
 };
 use ry_interner::{Interner, Symbol};
+use ry_stable_likely::unlikely;
 use ry_workspace::span::Span;
 use std::{mem, str::Chars, string::String};
 
@@ -638,12 +639,14 @@ impl<'workspace, 'interner> Lexer<'workspace, 'interner> {
     pub fn next_token(&mut self) -> Token {
         self.eat_whitespaces();
 
-        match (self.current, self.next) {
-            ('\0', _) => Token {
+        if unlikely(self.current == '\0') {
+            return Token {
                 raw: RawToken::EndOfFile,
                 span: Span::new(self.location, self.location + 1, self.file_id),
-            },
+            };
+        }
 
+        match (self.current, self.next) {
             (':', _) => self.advance_with(Token![:]),
             ('@', _) => self.advance_with(Token![@]),
 
