@@ -28,7 +28,22 @@ impl<'workspace> Workspace<'workspace> {
     }
 
     /// Adds a new file to the [`Workspace`] and returns its ID.
-    pub fn add_file(&mut self, file: &'workspace SourceFile<'workspace>) -> usize {
+    ///
+    /// # Note
+    /// File IDs start from `1`.
+    ///
+    /// ```
+    /// # use std::path::Path;
+    /// # use ry_workspace::{workspace::Workspace, file::SourceFile, span::Span};
+    /// let mut workspace = Workspace::new();
+    /// let source_file = SourceFile::new(
+    ///     Path::new("test.ry"),
+    ///     "fun main() { println(\"Hello, world!\"); }"
+    /// );
+    ///
+    /// assert_eq!(workspace.add_file(&source_file), 1);
+    /// ```
+    pub fn add_file(&mut self, file: &'workspace SourceFile<'workspace>) -> FileID {
         self.files.push(file);
         self.files.len()
     }
@@ -54,9 +69,8 @@ impl<'workspace> Workspace<'workspace> {
     /// at the given span if it is valid.
     ///
     /// # Panics
-    /// - If the span is out of bounds ([`crate::span::Span::start`] and
-    /// [`crate::span::Span::end`]).
-    /// - If the file with the given [`crate::span::Span::file_id`] does not exist.
+    /// - If the span is out of bounds ([`start`] and [`end`]).
+    /// - If the file with the given [`file_id`] does not exist.
     ///
     /// # Examples
     ///
@@ -74,6 +88,10 @@ impl<'workspace> Workspace<'workspace> {
     ///
     /// assert_eq!(workspace.resolve_span_or_panic(span), "\"Hello, world!\"");
     /// ```
+    ///
+    /// [`start`]: crate::span::Span::start
+    /// [`end`]: crate::span::Span::end
+    /// [`file_id`]: crate::span::Span::file_id
     #[must_use]
     pub fn resolve_span_or_panic(&self, span: Span) -> &'workspace str {
         self.get_file_by_id(span.file_id())

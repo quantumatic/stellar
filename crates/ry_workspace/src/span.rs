@@ -18,9 +18,23 @@ pub struct Span {
 
 /// Dummy span - span that is used as a placeholder in tests.
 ///
-/// Note: using dummy span in code except in tests is not recommended,
+/// # Note
+/// Using dummy span in code except in tests is not recommended,
 /// because this can result in undefined behavior with diagnostics and
-/// debug information.
+/// debug information, because firstly diagnostics cannot be emitted correctly
+/// when start and end positions are equal, and secondly `file_id` is always starting
+/// from `1` in the [`Workspace`] (see [`add_file`] for more details).
+///
+/// ```
+/// # use ry_workspace::span::DUMMY_SPAN;
+/// assert_eq!(DUMMY_SPAN.start(), 0);
+/// assert_eq!(DUMMY_SPAN.end(), 0);
+/// assert_eq!(DUMMY_SPAN.file_id(), 0);
+/// ```
+///
+/// [`file_id`]: crate::span::Span::file_id
+/// [`Workspace`]: crate::workspace::Workspace
+/// [`add_file`]: crate::workspace::Workspace::add_file
 pub const DUMMY_SPAN: Span = Span::new(0, 0, 0);
 
 impl Display for Span {
@@ -99,8 +113,10 @@ pub trait SpanIndex {
     /// assert_eq!("test".index(span), "tes");
     /// ```
     ///
-    /// **Note**: use [`crate::workspace::Workspace::resolve_span()`] and
-    /// [`crate::workspace::Workspace::resolve_span_or_panic()`] instead.
+    /// **Note**: use [`resolve_span()`] and [`resolve_span_or_panic()`] instead.
+    ///
+    /// [`resolve_span()`]: crate::workspace::Workspace::resolve_span
+    /// [`resolve_span_or_panic()`]: crate::workspace::Workspace::resolve_span_or_panic
     fn index(&self, span: Span) -> &Self::Output;
 }
 
