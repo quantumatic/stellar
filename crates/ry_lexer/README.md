@@ -41,7 +41,7 @@ let mut lexer = Lexer::new(0, "١", &mut interner);
 assert_eq!(lexer.next_token().unwrap(), &Error(LexError::UnexpectedChar));
 ```
 
-## Progress:
+## Progress
 
 - [x] Parse identifiers.
 - [x] Support for identifier interning.

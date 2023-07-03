@@ -113,6 +113,7 @@ pub struct IdentifierAst {
 /// by `.`.
 ///
 /// # Example
+///
 /// Here is an example of it is used in the use item:
 ///
 /// ```txt
@@ -128,6 +129,7 @@ pub struct Path {
 /// Represents an import path.
 ///
 /// # Example
+///
 /// ```txt
 /// import std.io.*;
 /// import std.io as myio;
@@ -166,6 +168,7 @@ pub struct TypePathSegment {
 /// Represents a pattern AST node.
 ///
 /// # Example
+///
 /// Here is an example of it is used in the match expression:
 /// ```txt
 /// match x {
@@ -180,6 +183,7 @@ pub enum Pattern {
     /// A literal pattern.
     ///
     /// # Example
+    ///
     /// ```txt
     /// match x {
     ///     3 => { println("x is 3!"); }

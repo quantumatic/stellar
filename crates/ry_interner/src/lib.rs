@@ -138,7 +138,8 @@ pub mod symbols {
     pub const CHAR: Symbol = 17;
 }
 
-/// # Identifier Interner.
+/// # Identifier Interner
+///
 /// Data structure that allows to resolve/intern strings.
 ///
 /// Interning is a process of storing only a single copy of a particular

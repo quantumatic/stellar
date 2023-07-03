@@ -1,4 +1,4 @@
-//! # Source Files Managment.
+//! # Source Files Managment
 //!
 //! This crate provides utilities for working with Ry source files.
 //!

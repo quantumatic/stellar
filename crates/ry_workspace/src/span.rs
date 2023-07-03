@@ -92,7 +92,7 @@ pub trait SpanIndex {
 
     /// Index a string using a given span (ignoring [`Span::file_id`]).
     ///
-    /// # Example:
+    /// # Example
     /// ```
     /// # use ry_workspace::span::{Span, SpanIndex};
     /// let span = Span::new(0, 3, 1);
