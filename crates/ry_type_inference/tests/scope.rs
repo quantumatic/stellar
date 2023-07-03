@@ -3,7 +3,7 @@ use ry_interner::{
     symbols::{STRING, UINT8},
     Interner,
 };
-use ry_type_inference::scope::{LocalScope, SymbolData};
+use ry_type_inference::local_scope::{LocalScope, SymbolData};
 use ry_workspace::span::DUMMY_SPAN;
 use std::sync::Arc;
 
