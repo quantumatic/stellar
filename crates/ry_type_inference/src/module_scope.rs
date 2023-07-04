@@ -1,3 +1,6 @@
+//! Defines [`ModuleScope`] to work with scopes that belong to a particular
+//! Ry source file.
+
 use pathdiff::diff_paths;
 use ry_interner::{Interner, Symbol};
 use ry_workspace::{file::SourceFile, span::Span, workspace::FileID};
@@ -5,16 +8,28 @@ use std::{
     ffi::OsString,
     path::{self, Component, PathBuf},
 };
+use std::path::{self, Component};
 
+/// Information that compiler has about a particular module.
 #[derive(Debug, Clone)]
 pub struct ModuleScope<'workspace> {
+    /// Source file corresponding to the module.
     source_file: &'workspace SourceFile<'workspace>,
+
+    /// File ID in the global workspace.
     file_id: FileID,
+
+    /// Path to the module relative to the project root
+    ///
+    /// See [`Path`] for more details.
     module_path: Path,
+
+    /// Imports inside the module.
     imports: Vec<Import>,
 }
 
 impl<'workspace> ModuleScope<'workspace> {
+    /// Creates a new [`ModuleScope`].
     #[inline]
     #[must_use]
     pub const fn new(
@@ -52,60 +67,78 @@ impl<'workspace> ModuleScope<'workspace> {
         ))
     }
 
+    /// Returns the imports used by the module.
     #[inline]
     #[must_use]
     pub fn imports(&self) -> &[Import] {
         &self.imports
     }
 
+    /// Returns the file ID of the module.
     #[inline]
     #[must_use]
     pub const fn file_id(&self) -> FileID {
         self.file_id
     }
 
+    /// Returns the module's source file.
     #[inline]
     #[must_use]
     pub const fn source_file(&self) -> &'workspace SourceFile<'workspace> {
         self.source_file
     }
 
+    /// Returns the path to the module relative to the project root.
     #[inline]
     #[must_use]
-    pub const fn absolute_path(&self) -> &Path {
+    pub const fn module_path(&self) -> &Path {
         &self.module_path
     }
 
+    /// Adds an import to the module.
     #[inline]
     pub fn add_import(&mut self, import: Import) {
         self.imports.push(import);
     }
 }
 
+/// Used to store name information in global scopes, because the
+/// compiler needs to deal with namespaces.
+///
+/// This is why [`Path`] is not just a wrapper over [`Symbol`], but over a
+/// list of [`Symbol`].
+///
+/// Also [`Path`] is analogous to [`ry_ast::Path`], but without storing
+/// source locations for each symbol.
 #[derive(Debug, Clone, PartialEq, Eq, Default, Hash)]
 pub struct Path {
+    /// Symbols in the path.
     symbols: Vec<Symbol>,
 }
 
 impl Path {
+    /// Creates a new [`Path`] instance.
     #[inline]
     #[must_use]
     pub const fn new(symbols: Vec<Symbol>) -> Self {
         Self { symbols }
     }
 
+    /// Returns the symbols in the path.
     #[inline]
     #[must_use]
     pub fn symbols(&self) -> &[Symbol] {
         &self.symbols
     }
 
+    /// Returns the number of symbols in the path.
     #[inline]
     #[must_use]
     pub fn len(&self) -> usize {
         self.symbols.len()
     }
 
+    /// Returns `true` if the path is empty (there are no symbols in it).
     #[inline]
     #[must_use]
     pub fn is_empty(&self) -> bool {
@@ -113,44 +146,73 @@ impl Path {
     }
 }
 
+/// Used to store information about imports in global scopes.
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Import {
+    /// Span of the entire import path (not including `import` keyword).
     span: Span,
+
+    /// A regular path (left part of the import path).
+    ///
+    /// ```txt
+    /// import std.io.*;
+    ///        ^^^^^^
+    ///
+    /// import std.io as myio;
+    ///        ^^^^^^
+    /// ```
     path: Path,
-    all: Option<Span>,
+
+    /// Span of the `*` symbol.
+    star: Option<Span>,
+
+    /// Span of the `as` right-hand side (not including `as` keyword).
     r#as: Option<Span>,
 }
 
 impl Import {
+    /// Creates a new [`Import`] instance.
     #[inline]
     #[must_use]
-    pub const fn new(span: Span, path: Path, all: Option<Span>, r#as: Option<Span>) -> Self {
+    pub const fn new(span: Span, path: Path, star: Option<Span>, r#as: Option<Span>) -> Self {
         Self {
             span,
             path,
-            all,
+            star,
             r#as,
         }
     }
 
+    /// Returns the span of the entire import path (not including `import` keyword).
     #[inline]
     #[must_use]
     pub const fn span(&self) -> Span {
         self.span
     }
 
+    /// Returns a left/regular part of the import path.
+    ///
+    /// ```txt
+    /// import std.io.*;
+    ///        ^^^^^^
+    ///
+    /// import std.io as myio;
+    ///        ^^^^^^
+    /// ```
     #[inline]
     #[must_use]
     pub const fn path(&self) -> &Path {
         &self.path
     }
 
+    /// Returns the span of the `*` symbol.
     #[inline]
     #[must_use]
-    pub const fn all(&self) -> Option<Span> {
-        self.all
+    pub const fn star(&self) -> Option<Span> {
+        self.star
     }
 
+    /// Returns the span of the `as` right-hand side (not including `as` keyword).
     #[inline]
     #[must_use]
     pub const fn r#as(&self) -> Option<Span> {
@@ -304,6 +366,8 @@ pub enum ExtractProjectNameError {
 }
 
 fn extract_project_name_from_path<P>(
+/// Gets the project name from a its root path.
+pub fn get_project_name_from_path<P>(
     path: P,
     interner: &mut Interner,
 ) -> Result<Symbol, ExtractProjectNameError>
