@@ -1,3 +1,3 @@
-pub struct MyStringWrapper(String)
+pub struct MyStringWrapper(String);
 
 pub fun main() {}
