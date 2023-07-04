@@ -42,11 +42,7 @@ impl<'workspace> ModuleScope<'workspace> {
     }
 
     /// Creates a new [`ModuleScope`] from a [`SourceFile`] and a project root path.
-    ///
-    /// # Errors
-    ///
-    /// Errors are the same as when calling [`parse_module_path_using_project_root()`],
-    /// because the method uses it to get a module path and then constructs a new [`ModuleScope`].
+    #[allow(clippy::missing_errors_doc)]
     pub fn new_from_project_root<P>(
         source_file: &'workspace SourceFile<'workspace>,
         file_id: FileID,
@@ -257,6 +253,7 @@ impl From<GetProjectNameError> for ParseModulePathError {
 
 /// Returns the module path from an absolute source file path corresponding to
 /// the module.
+#[allow(clippy::missing_errors_doc)]
 pub fn parse_module_path<F, P>(
     file_path: F,
     project_root: P,
@@ -331,6 +328,7 @@ pub enum GetProjectNameError {
 }
 
 /// Gets the project name from a its root path.
+#[allow(clippy::missing_errors_doc)]
 pub fn get_project_name_from_path<P>(
     path: P,
     interner: &mut Interner,
