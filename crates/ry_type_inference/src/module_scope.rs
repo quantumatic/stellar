@@ -82,6 +82,82 @@ impl<'workspace> ModuleScope<'workspace> {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Default, Hash)]
+pub struct Path {
+    symbols: Vec<Symbol>,
+}
+
+impl Path {
+    #[inline]
+    #[must_use]
+    pub const fn new(symbols: Vec<Symbol>) -> Self {
+        Self { symbols }
+    }
+
+    #[inline]
+    #[must_use]
+    pub fn symbols(&self) -> &[Symbol] {
+        &self.symbols
+    }
+
+    #[inline]
+    #[must_use]
+    pub fn len(&self) -> usize {
+        self.symbols.len()
+    }
+
+    #[inline]
+    #[must_use]
+    pub fn is_empty(&self) -> bool {
+        self.symbols.is_empty()
+    }
+}
+
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub struct Import {
+    span: Span,
+    path: Path,
+    all: Option<Span>,
+    r#as: Option<Span>,
+}
+
+impl Import {
+    #[inline]
+    #[must_use]
+    pub const fn new(span: Span, path: Path, all: Option<Span>, r#as: Option<Span>) -> Self {
+        Self {
+            span,
+            path,
+            all,
+            r#as,
+        }
+    }
+
+    #[inline]
+    #[must_use]
+    pub const fn span(&self) -> Span {
+        self.span
+    }
+
+    #[inline]
+    #[must_use]
+    pub const fn path(&self) -> &Path {
+        &self.path
+    }
+
+    #[inline]
+    #[must_use]
+    pub const fn all(&self) -> Option<Span> {
+        self.all
+    }
+
+    #[inline]
+    #[must_use]
+    pub const fn r#as(&self) -> Option<Span> {
+        self.r#as
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ParseModulePathUsingProjectRootError {
     GotRelativeInsteadOfAbsolutePath,
@@ -253,81 +329,5 @@ where
         ),
         Some(Component::ParentDir) => Err(ExtractProjectNameError::ParentDirComponentIsNotAllowed),
         None => Err(ExtractProjectNameError::EmptyPath),
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Default, Hash)]
-pub struct Path {
-    symbols: Vec<Symbol>,
-}
-
-impl Path {
-    #[inline]
-    #[must_use]
-    pub const fn new(symbols: Vec<Symbol>) -> Self {
-        Self { symbols }
-    }
-
-    #[inline]
-    #[must_use]
-    pub fn symbols(&self) -> &[Symbol] {
-        &self.symbols
-    }
-
-    #[inline]
-    #[must_use]
-    pub fn len(&self) -> usize {
-        self.symbols.len()
-    }
-
-    #[inline]
-    #[must_use]
-    pub fn is_empty(&self) -> bool {
-        self.symbols.is_empty()
-    }
-}
-
-#[derive(Debug, PartialEq, Eq, Clone)]
-pub struct Import {
-    span: Span,
-    path: Path,
-    all: Option<Span>,
-    r#as: Option<Span>,
-}
-
-impl Import {
-    #[inline]
-    #[must_use]
-    pub const fn new(span: Span, path: Path, all: Option<Span>, r#as: Option<Span>) -> Self {
-        Self {
-            span,
-            path,
-            all,
-            r#as,
-        }
-    }
-
-    #[inline]
-    #[must_use]
-    pub const fn span(&self) -> Span {
-        self.span
-    }
-
-    #[inline]
-    #[must_use]
-    pub const fn path(&self) -> &Path {
-        &self.path
-    }
-
-    #[inline]
-    #[must_use]
-    pub const fn all(&self) -> Option<Span> {
-        self.all
-    }
-
-    #[inline]
-    #[must_use]
-    pub const fn r#as(&self) -> Option<Span> {
-        self.r#as
     }
 }
