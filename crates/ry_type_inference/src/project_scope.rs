@@ -18,6 +18,4 @@ pub struct ProjectInterface<'path> {
 pub struct ProjectMetadata {
     /// Names (interned symbols) of other projects that the project depends on.
     depedencies: Vec<Symbol>,
-
-    // TODO
 }
