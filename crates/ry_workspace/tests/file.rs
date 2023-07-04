@@ -9,7 +9,7 @@ fn line_starts() {
     let file = SourceFile::new(Path::new("test.ry"), TEST_SOURCE);
 
     assert_eq!(
-        file.line_starts(),
+        file.line_starts,
         &[
             0,  // "foo\n"
             4,  // "bar\r\n"
@@ -26,7 +26,7 @@ fn line_span_sources() {
     let line_sources = (0..4)
         .map(|line| {
             let line_range = file.line_range_by_index(line).unwrap();
-            &file.source()[line_range]
+            &file.source[line_range]
         })
         .collect::<Vec<_>>();
 

@@ -9,7 +9,7 @@ use std::path::{Path, PathBuf};
 #[derive(Debug, Clone)]
 pub struct ProjectPathResolver<'workspace> {
     /// The project root path.
-    root: &'workspace Path,
+    pub root: &'workspace Path,
 }
 
 impl<'workspace> ProjectPathResolver<'workspace> {
@@ -18,13 +18,6 @@ impl<'workspace> ProjectPathResolver<'workspace> {
     #[must_use]
     pub const fn new(root: &'workspace Path) -> Self {
         Self { root }
-    }
-
-    /// Returns the project root path.
-    #[inline]
-    #[must_use]
-    pub const fn root(&self) -> &'workspace Path {
-        self.root
     }
 
     /// Returns the path of the project configuration file.

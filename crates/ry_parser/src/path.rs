@@ -1,7 +1,6 @@
 use crate::{Parse, ParseState};
 use ry_ast::{token::RawToken, ImportPath, Path, Token};
 use ry_diagnostics::{expected, parser::ParseDiagnostic, BuildDiagnostic};
-use ry_workspace::span::Span;
 
 pub(crate) struct PathParser;
 
@@ -13,7 +12,7 @@ impl Parse for PathParser {
         let first_identifier = state.consume_identifier("path")?;
         identifiers.push(first_identifier);
 
-        let start = first_identifier.span.start();
+        let start = first_identifier.span.start;
 
         while state.next_token.raw == Token![.] {
             state.advance();
@@ -21,7 +20,7 @@ impl Parse for PathParser {
         }
 
         Some(Path {
-            span: Span::new(start, state.current_token.span.end(), state.file_id),
+            span: state.span_to_current_from(start),
             identifiers,
         })
     }
@@ -38,7 +37,7 @@ impl Parse for ImportPathParser {
         let first_identifier = state.consume_identifier("import path")?;
         identifiers.push(first_identifier);
 
-        let start = first_identifier.span.start();
+        let start = first_identifier.span.start;
 
         while state.next_token.raw == Token![.] {
             state.advance();
@@ -66,7 +65,7 @@ impl Parse for ImportPathParser {
         }
 
         let identifiers = Path {
-            span: Span::new(start, state.current_token.span.end(), state.file_id),
+            span: state.span_to_current_from(start),
             identifiers,
         };
 

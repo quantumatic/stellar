@@ -84,7 +84,7 @@ impl<'workspace> Workspace<'workspace> {
     /// );
     ///
     /// let file_id = workspace.add_file(&source_file);
-    /// let span = Span::new(21, 36, file_id);
+    /// let span = Span { start: 21, end: 36, file_id };
     ///
     /// assert_eq!(workspace.resolve_span_or_panic(span), "\"Hello, world!\"");
     /// ```
@@ -94,10 +94,10 @@ impl<'workspace> Workspace<'workspace> {
     /// [`file_id`]: crate::span::Span::file_id
     #[must_use]
     pub fn resolve_span_or_panic(&self, span: Span) -> &'workspace str {
-        self.get_file_by_id(span.file_id())
+        self.get_file_by_id(span.file_id)
             .expect("File does not exist")
-            .source()
-            .get(span.start()..span.end())
+            .source
+            .get(span.start..span.end)
             .expect("Span is out of bounds")
     }
 
@@ -121,25 +121,25 @@ impl<'workspace> Workspace<'workspace> {
     ///
     /// assert_eq!(
     ///     workspace.resolve_span(
-    ///         Span::new(21, 36, file_id)
+    ///         Span { start: 21, end: 36, file_id }
     ///     ),
     ///     Some("\"Hello, world!\"")
     /// );
     /// assert_eq!(
     ///     // file does not exist
-    ///     workspace.resolve_span(Span::new(0, 0, file_id + 1)),
+    ///     workspace.resolve_span(Span { start: 0, end: 0, file_id: file_id + 1 }),
     ///     None
     /// );
     /// assert_eq!(
     ///     // out of bounds
-    ///     workspace.resolve_span(Span::new(99, 100, file_id)),
+    ///     workspace.resolve_span(Span { start: 99, end: 100, file_id }),
     ///     None
     /// );
     #[must_use]
     pub fn resolve_span(&self, span: Span) -> Option<&'workspace str> {
-        self.get_file_by_id(span.file_id())?
-            .source()
-            .get(span.start()..span.end())
+        self.get_file_by_id(span.file_id)?
+            .source
+            .get(span.start..span.end)
     }
 }
 
@@ -150,13 +150,13 @@ impl<'workspace> Files<'workspace> for Workspace<'workspace> {
 
     fn name(&self, file_id: FileID) -> Result<Self::Name, Error> {
         self.get_file_by_id(file_id)
-            .map(SourceFile::path_str)
+            .map(|f| f.path_str)
             .ok_or(Error::FileMissing)
     }
 
     fn source(&self, file_id: FileID) -> Result<Self::Source, Error> {
         self.get_file_by_id(file_id)
-            .map(SourceFile::source)
+            .map(|f| f.source)
             .ok_or(Error::FileMissing)
     }
 

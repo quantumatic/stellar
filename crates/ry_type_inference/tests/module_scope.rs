@@ -13,7 +13,9 @@ fn parse_module_path_windows_only() {
 
     assert_eq!(
         parse_module_path("C:\\A\\B\\C.ry", "C:\\A", &mut interner).ok(),
-        Some(Path::new(vec![a, b, c])) // A.B.C
+        Some(Path {
+            symbols: vec![a, b, c]
+        }) // A.B.C
     );
 }
 
@@ -29,6 +31,8 @@ fn parse_module_path_on_unix_only() {
 
     assert_eq!(
         parse_module_path("/A/B/C.ry", "/A", &mut interner).ok(),
-        Some(Path::new(vec![a, b, c])) // A.B.C
+        Some(Path {
+            symbols: vec![a, b, c]
+        }) // A.B.C
     )
 }

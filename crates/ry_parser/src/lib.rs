@@ -153,7 +153,7 @@ impl<'workspace, 'diagnostics, 'interner> ParseState<'workspace, 'diagnostics, '
         diagnostics: &'diagnostics mut Vec<CompilerDiagnostic>,
         interner: &'interner mut Interner,
     ) -> Self {
-        let mut lexer = Lexer::new(file_id, source_file.source(), interner);
+        let mut lexer = Lexer::new(file_id, source_file.source, interner);
 
         let current = lexer.next_no_comments();
         let next = current;
@@ -198,20 +198,6 @@ impl<'workspace, 'diagnostics, 'interner> ParseState<'workspace, 'diagnostics, '
         self.resolve_span(self.current_token.span)
     }
 
-    /// Returns a lexer instance used for parsing.
-    #[inline]
-    #[must_use]
-    pub const fn lexer(&self) -> &Lexer<'workspace, 'interner> {
-        &self.lexer
-    }
-
-    /// Returns an interner used for parsing.
-    #[inline]
-    #[must_use]
-    pub const fn interner(&self) -> &Interner {
-        self.lexer.interner()
-    }
-
     /// Advances the iter to the next token (skips comment tokens).
     fn advance(&mut self) {
         self.current_token = self.next_token;
@@ -250,6 +236,25 @@ impl<'workspace, 'diagnostics, 'interner> ParseState<'workspace, 'diagnostics, '
         Some(())
     }
 
+    /// Creates a new span with the state's file id.
+    pub(crate) const fn new_span(&self, start: usize, end: usize) -> Span {
+        Span {
+            start,
+            end,
+            file_id: self.file_id,
+        }
+    }
+
+    /// Creates a new span with the state's file id and
+    /// ending with a current token span's end byte location.
+    pub(crate) const fn span_to_current_from(&self, start: usize) -> Span {
+        Span {
+            start,
+            end: self.current_token.span.end,
+            file_id: self.file_id,
+        }
+    }
+
     /// Checks if the next token is identifiers, advances the parse state and if
     /// everything is ok, returns the identifier symbol.
     fn consume_identifier<N>(&mut self, node: N) -> Option<IdentifierAst>
@@ -259,7 +264,7 @@ impl<'workspace, 'diagnostics, 'interner> ParseState<'workspace, 'diagnostics, '
         let spanned_symbol = if self.next_token.raw == RawToken::Identifier {
             IdentifierAst {
                 span: self.next_token.span,
-                symbol: self.lexer.identifier(),
+                symbol: self.lexer.scanned_identifier,
             }
         } else {
             self.diagnostics.push(
@@ -283,7 +288,7 @@ impl<'workspace, 'diagnostics, 'interner> ParseState<'workspace, 'diagnostics, '
         if self.next_token.raw == RawToken::Identifier {
             let identifier = IdentifierAst {
                 span: self.next_token.span,
-                symbol: self.lexer.identifier(),
+                symbol: self.lexer.scanned_identifier,
             };
 
             self.advance();
@@ -302,7 +307,7 @@ impl<'workspace, 'diagnostics, 'interner> ParseState<'workspace, 'diagnostics, '
             while self.next_token.raw == RawToken::GlobalDocComment {
                 self.advance();
 
-                module_string.push_str(self.source_file.source().index(self.current_token.span));
+                module_string.push_str(self.source_file.source.index(self.current_token.span));
             }
 
             Some(module_string)
@@ -319,7 +324,7 @@ impl<'workspace, 'diagnostics, 'interner> ParseState<'workspace, 'diagnostics, '
             while self.next_token.raw == RawToken::LocalDocComment {
                 self.advance();
 
-                local_string.push_str(self.source_file.source().index(self.current_token.span));
+                local_string.push_str(self.source_file.source.index(self.current_token.span));
             }
 
             Some(local_string)

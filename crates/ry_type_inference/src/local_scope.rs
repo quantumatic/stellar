@@ -10,33 +10,10 @@ use std::{collections::HashMap, sync::Arc};
 #[derive(Debug, Clone, PartialEq)]
 pub struct SymbolData {
     /// Span where the symbol was defined.
-    span: Span,
+    pub span: Span,
 
     /// Type of the symbol.
-    ty: Arc<Type>,
-}
-
-impl SymbolData {
-    ///
-    #[inline]
-    #[must_use]
-    pub const fn new(span: Span, ty: Arc<Type>) -> Self {
-        Self { span, ty }
-    }
-
-    /// Returns the span where the symbol was defined.
-    #[inline]
-    #[must_use]
-    pub const fn span(&self) -> Span {
-        self.span
-    }
-
-    /// Returns the type of the symbol.
-    #[inline]
-    #[must_use]
-    pub fn ty(&self) -> Arc<Type> {
-        self.ty.clone()
-    }
+    pub ty: Arc<Type>,
 }
 
 /// Represents a local scope (a scope that is not a global).
@@ -46,7 +23,7 @@ pub struct LocalScope<'local_scope> {
     symbols: HashMap<Symbol, SymbolData>,
 
     /// Parent scope.
-    parent: Option<&'local_scope LocalScope<'local_scope>>,
+    pub parent: Option<&'local_scope LocalScope<'local_scope>>,
 }
 
 impl<'scope> LocalScope<'scope> {
@@ -58,32 +35,6 @@ impl<'scope> LocalScope<'scope> {
             symbols: HashMap::new(),
             parent,
         }
-    }
-
-    /// Returns the parent scope.
-    #[inline]
-    #[must_use]
-    pub const fn parent(&self) -> Option<&'scope LocalScope<'scope>> {
-        self.parent
-    }
-
-    /// Returns symbols in this scope (not the ones contained in the parent scopes).
-    #[inline]
-    #[must_use]
-    pub const fn symbols(&self) -> &HashMap<Symbol, SymbolData> {
-        &self.symbols
-    }
-
-    /// Returns symbols in this scope and all of its parent scopes.
-    #[must_use]
-    pub fn all_symbols(&self) -> HashMap<Symbol, SymbolData> {
-        let mut symbols = self.symbols.clone();
-
-        if let Some(parent) = self.parent() {
-            symbols.extend(parent.all_symbols());
-        }
-
-        symbols
     }
 
     /// Adds a symbol to this scope.
@@ -101,7 +52,7 @@ impl<'scope> LocalScope<'scope> {
     pub fn lookup(&self, symbol: Symbol) -> Option<&SymbolData> {
         if let data @ Some(..) = self.symbols.get(&symbol) {
             data
-        } else if let Some(parent) = self.parent() {
+        } else if let Some(parent) = self.parent {
             parent.lookup(symbol)
         } else {
             None
@@ -125,7 +76,7 @@ impl<'scope> LocalScope<'scope> {
     ) -> Option<&SymbolData> {
         if let data @ Some(..) = self.lookup(symbol) {
             data
-        } else if let Some(parent) = self.parent() {
+        } else if let Some(parent) = self.parent {
             parent.lookup_or_save_diagnostic(symbol, span, interner, diagnostics)
         } else {
             diagnostics.push(

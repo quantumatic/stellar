@@ -10,19 +10,19 @@ use std::path::Path;
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct SourceFile<'workspace> {
     /// The path of the source file.
-    path: &'workspace Path,
+    pub path: &'workspace Path,
 
     /// The path of the source file as a string slice.
-    path_str: &'workspace str,
+    pub path_str: &'workspace str,
 
     /// The source content of the file.
-    source: &'workspace str,
+    pub source: &'workspace str,
 
     /// The length of the source content (in bytes).
-    source_len: usize,
+    pub source_len: usize,
 
     /// The array of line starting byte indices in the [`SourceFile::source`].
-    line_starts: Vec<usize>,
+    pub line_starts: Vec<usize>,
 }
 
 impl<'workspace> SourceFile<'workspace> {
@@ -39,41 +39,6 @@ impl<'workspace> SourceFile<'workspace> {
                 .chain(source.match_indices('\n').map(|(i, _)| i + 1))
                 .collect(),
         }
-    }
-
-    /// Returns the path of the source file.
-    #[inline]
-    #[must_use]
-    pub const fn path(&self) -> &'workspace Path {
-        self.path
-    }
-
-    /// Returns the path of the source file as a string slice.
-    #[inline]
-    #[must_use]
-    pub const fn path_str(&self) -> &'workspace str {
-        self.path_str
-    }
-
-    /// Returns the source content of the file.
-    #[inline]
-    #[must_use]
-    pub const fn source(&self) -> &'workspace str {
-        self.source
-    }
-
-    /// Returns the length of the source content (in bytes).
-    #[inline]
-    #[must_use]
-    pub const fn source_len(&self) -> usize {
-        self.source_len
-    }
-
-    /// Returns the array of line starting byte indices in the [`SourceFile::source`].
-    #[inline]
-    #[must_use]
-    pub const fn line_starts(&self) -> &Vec<usize> {
-        &self.line_starts
     }
 
     /// Returns the string slice corresponding to the given location.
@@ -178,7 +143,7 @@ impl<'workspace> Files<'workspace> for SourceFile<'workspace> {
     type Source = &'workspace str;
 
     fn name(&'workspace self, _: ()) -> Result<Self::Name, Error> {
-        Ok(self.path_str())
+        Ok(self.path_str)
     }
 
     fn source(&'workspace self, _: ()) -> Result<Self::Source, Error> {

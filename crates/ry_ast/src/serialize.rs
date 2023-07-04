@@ -155,9 +155,11 @@ impl<'interner> Serializer<'interner> {
     #[inline]
     #[must_use]
     const fn new_span(start: usize, end: usize) -> Span {
-        Span::new(
-            start, end, 0, // serializer doesn't care about invalid file IDs
-        )
+        Span {
+            start,
+            end,
+            file_id: 0, // serializer doesn't care about invalid file IDs
+        }
     }
 
     /// Returns the output string produced.
@@ -190,10 +192,10 @@ impl Serialize for Span {
     fn serialize(&self, serializer: &mut Serializer<'_>) {
         match self {
             &DUMMY_SPAN => serializer.write("DUMMY"),
-            _ => serializer.write(if self.start() >= self.end() {
+            _ => serializer.write(if self.start >= self.end {
                 "INVALID".to_owned()
             } else {
-                format!("{}..{}", self.start(), self.end())
+                format!("{}..{}", self.start, self.end)
             }),
         }
     }
@@ -261,7 +263,7 @@ impl Serialize for GenericArgument {
             Self::AssociatedType { name, value } => {
                 serializer.write_node_name_with_span(
                     "NAMED_GENERIC_ARGUMENT",
-                    Serializer::new_span(name.span.start(), value.span().end()),
+                    Serializer::new_span(name.span.start, value.span().end),
                 );
                 serializer.increment_indentation();
                 serializer.serialize_key_value_pair("NAME", name);
@@ -1050,7 +1052,7 @@ impl Serialize for Module<'_> {
     fn serialize(&self, serializer: &mut Serializer<'_>) {
         serializer.write_node_name("MODULE");
         serializer.increment_indentation();
-        serializer.serialize_key_value_pair("FILEPATH", &self.source_file.path_str());
+        serializer.serialize_key_value_pair("FILEPATH", &self.source_file.path_str);
         serializer.serialize_key_list_value_pair("ITEMS", &self.items);
         serializer.decrement_indentation();
     }

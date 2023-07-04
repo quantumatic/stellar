@@ -9,11 +9,11 @@ use crate::workspace::FileID;
 #[derive(Copy, Clone, Hash, Debug, Default, PartialEq, Eq)]
 pub struct Span {
     /// Offset of starting byte in the source text.
-    start: usize,
+    pub start: usize,
     /// Offset of ending byte in the source text.
-    end: usize,
+    pub end: usize,
     /// Id of the file containing the span.
-    file_id: FileID,
+    pub file_id: FileID,
 }
 
 /// Dummy span - span that is used as a placeholder in tests.
@@ -25,17 +25,14 @@ pub struct Span {
 /// when start and end positions are equal, and secondly `file_id` is always starting
 /// from `1` in the [`Workspace`] (see [`add_file`] for more details).
 ///
-/// ```
-/// # use ry_workspace::span::DUMMY_SPAN;
-/// assert_eq!(DUMMY_SPAN.start(), 0);
-/// assert_eq!(DUMMY_SPAN.end(), 0);
-/// assert_eq!(DUMMY_SPAN.file_id(), 0);
-/// ```
-///
 /// [`file_id`]: crate::span::Span::file_id
 /// [`Workspace`]: crate::workspace::Workspace
 /// [`add_file`]: crate::workspace::Workspace::add_file
-pub const DUMMY_SPAN: Span = Span::new(0, 0, 0);
+pub const DUMMY_SPAN: Span = Span {
+    start: 0,
+    end: 0,
+    file_id: 0,
+};
 
 impl Display for Span {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -44,44 +41,12 @@ impl Display for Span {
 }
 
 impl Span {
-    /// Creates a new span.
-    #[inline]
-    #[must_use]
-    pub const fn new(start: usize, end: usize, file_id: FileID) -> Self {
-        Self {
-            start,
-            end,
-            file_id,
-        }
-    }
-
-    /// Returns the offset of starting byte in the source text.
-    #[inline]
-    #[must_use]
-    pub const fn start(&self) -> usize {
-        self.start
-    }
-
-    /// Returns the offset of ending byte in the source text.
-    #[inline]
-    #[must_use]
-    pub const fn end(&self) -> usize {
-        self.end
-    }
-
-    /// Returns the id of the file containing the span.
-    #[inline]
-    #[must_use]
-    pub const fn file_id(&self) -> FileID {
-        self.file_id
-    }
-
     /// Gets primary diagnostics label ([`Label<FileID>`] from [`codespan_reporting`])
     /// in the span.
     #[inline]
     #[must_use]
     pub fn to_primary_label(self) -> Label<FileID> {
-        Label::primary(self.file_id(), self)
+        Label::primary(self.file_id, self)
     }
 
     /// Gets secondary diagnostics label ([`Label<FileID>`] from [`codespan_reporting`])
@@ -89,7 +54,7 @@ impl Span {
     #[inline]
     #[must_use]
     pub fn to_secondary_label(self) -> Label<FileID> {
-        Label::secondary(self.file_id(), self)
+        Label::secondary(self.file_id, self)
     }
 }
 
@@ -109,7 +74,7 @@ pub trait SpanIndex {
     /// # Example
     /// ```
     /// # use ry_workspace::span::{Span, SpanIndex};
-    /// let span = Span::new(0, 3, 1);
+    /// let span = Span { start: 0, end: 3, file_id: 1 };
     /// assert_eq!("test".index(span), "tes");
     /// ```
     ///

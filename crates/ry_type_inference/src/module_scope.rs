@@ -2,33 +2,41 @@
 //! Ry source file.
 
 use pathdiff::diff_paths;
+use ry_ast::typed::Type;
 use ry_interner::{Interner, Symbol};
 use ry_workspace::{file::SourceFile, span::Span, workspace::FileID};
-use std::path::{self, Component};
+use std::{
+    collections::HashMap,
+    path::{self, Component},
+    sync::Arc,
+};
 
 /// Information that compiler has about a particular module.
 #[derive(Debug, Clone)]
 pub struct ModuleScope<'workspace> {
     /// Source file corresponding to the module.
-    source_file: &'workspace SourceFile<'workspace>,
+    pub source_file: &'workspace SourceFile<'workspace>,
 
     /// File ID in the global workspace.
-    file_id: FileID,
+    pub file_id: FileID,
 
     /// Path to the module relative to the project root
     ///
     /// See [`Path`] for more details.
-    module_path: Path,
+    pub module_path: Path,
 
     /// Imports inside the module.
-    imports: Vec<Import>,
+    imports: Vec<ImportData>,
+
+    /// Symbols in the module.
+    symbols: HashMap<Symbol, ModuleSymbolData>,
 }
 
 impl<'workspace> ModuleScope<'workspace> {
     /// Creates a new [`ModuleScope`].
     #[inline]
     #[must_use]
-    pub const fn new(
+    pub fn new(
         source_file: &'workspace SourceFile<'workspace>,
         file_id: FileID,
         module_path: Path,
@@ -38,6 +46,7 @@ impl<'workspace> ModuleScope<'workspace> {
             file_id,
             module_path,
             imports: vec![],
+            symbols: HashMap::new(),
         }
     }
 
@@ -55,43 +64,110 @@ impl<'workspace> ModuleScope<'workspace> {
         Ok(Self::new(
             source_file,
             file_id,
-            parse_module_path(source_file.path(), project_root, interner)?,
+            parse_module_path(source_file.path, project_root, interner)?,
         ))
     }
 
     /// Returns the imports used by the module.
     #[inline]
     #[must_use]
-    pub fn imports(&self) -> &[Import] {
+    pub fn imports(&self) -> &[ImportData] {
         &self.imports
-    }
-
-    /// Returns the file ID of the module.
-    #[inline]
-    #[must_use]
-    pub const fn file_id(&self) -> FileID {
-        self.file_id
-    }
-
-    /// Returns the module's source file.
-    #[inline]
-    #[must_use]
-    pub const fn source_file(&self) -> &'workspace SourceFile<'workspace> {
-        self.source_file
-    }
-
-    /// Returns the path to the module relative to the project root.
-    #[inline]
-    #[must_use]
-    pub const fn module_path(&self) -> &Path {
-        &self.module_path
     }
 
     /// Adds an import to the module.
     #[inline]
-    pub fn add_import(&mut self, import: Import) {
+    pub fn add_import(&mut self, import: ImportData) {
         self.imports.push(import);
     }
+
+    #[inline]
+    #[must_use]
+    pub fn resolve(&self, symbol: Symbol) -> Option<&ModuleSymbolData> {
+        self.symbols.get(&symbol)
+    }
+}
+
+#[derive(Debug, Clone)]
+pub enum ModuleSymbolData {
+    Function(FunctionData),
+    Struct {
+        span: Span,
+        fields: StructFieldsData,
+    },
+    TypeAlias {
+        span: Span,
+        value: Arc<Type>,
+    },
+    Enum {
+        span: Span,
+        variants: Vec<EnumVariantData>,
+    },
+    Trait {
+        span: Span,
+        items: Vec<TraitItemData>,
+    },
+}
+
+#[derive(Debug, Clone)]
+pub enum TraitItemData {
+    Function(FunctionData),
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub struct FunctionData {
+    pub span: Span,
+    pub generics: Vec<Symbol>,
+    pub parameters: Vec<(Symbol, Arc<Type>)>,
+    pub return_type: Arc<Type>,
+    pub bounds: Vec<(Arc<Type>, TraitBounds)>,
+}
+
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub struct TraitBounds {
+    pub span: Span,
+    pub bounds: Vec<Symbol>,
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub enum EnumVariantData {
+    Just {
+        span: Span,
+        name: Symbol,
+    },
+    TupleLike {
+        span: Span,
+        fields: Vec<TupleLikeStructFieldData>,
+    },
+    Struct {
+        span: Span,
+        fields: StructFieldsData,
+    },
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub enum StructFieldsData {
+    TupleLikeStructFieldsData {
+        span: Span,
+        fields: Vec<TupleLikeStructFieldData>,
+    },
+    StructFieldsData {
+        span: Span,
+        fields: Vec<StructFieldData>,
+    },
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub struct TupleLikeStructFieldData {
+    pub span: Span,
+    pub ty: Arc<Type>,
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub struct StructFieldData {
+    pub span: Span,
+    pub name: Symbol,
+    pub ty: Arc<Type>,
 }
 
 /// Used to store name information in global scopes, because the
@@ -105,44 +181,14 @@ impl<'workspace> ModuleScope<'workspace> {
 #[derive(Debug, Clone, PartialEq, Eq, Default, Hash)]
 pub struct Path {
     /// Symbols in the path.
-    symbols: Vec<Symbol>,
-}
-
-impl Path {
-    /// Creates a new [`Path`] instance.
-    #[inline]
-    #[must_use]
-    pub const fn new(symbols: Vec<Symbol>) -> Self {
-        Self { symbols }
-    }
-
-    /// Returns the symbols in the path.
-    #[inline]
-    #[must_use]
-    pub fn symbols(&self) -> &[Symbol] {
-        &self.symbols
-    }
-
-    /// Returns the number of symbols in the path.
-    #[inline]
-    #[must_use]
-    pub fn len(&self) -> usize {
-        self.symbols.len()
-    }
-
-    /// Returns `true` if the path is empty (there are no symbols in it).
-    #[inline]
-    #[must_use]
-    pub fn is_empty(&self) -> bool {
-        self.symbols.is_empty()
-    }
+    pub symbols: Vec<Symbol>,
 }
 
 /// Used to store information about imports in global scopes.
 #[derive(Debug, PartialEq, Eq, Clone)]
-pub struct Import {
+pub struct ImportData {
     /// Span of the entire import path (not including `import` keyword).
-    span: Span,
+    pub span: Span,
 
     /// A regular path (left part of the import path).
     ///
@@ -153,63 +199,13 @@ pub struct Import {
     /// import std.io as myio;
     ///        ^^^^^^
     /// ```
-    path: Path,
+    pub path: Path,
 
     /// Span of the `*` symbol.
-    star: Option<Span>,
+    pub star: Option<Span>,
 
     /// Span of the `as` right-hand side (not including `as` keyword).
-    r#as: Option<Span>,
-}
-
-impl Import {
-    /// Creates a new [`Import`] instance.
-    #[inline]
-    #[must_use]
-    pub const fn new(span: Span, path: Path, star: Option<Span>, r#as: Option<Span>) -> Self {
-        Self {
-            span,
-            path,
-            star,
-            r#as,
-        }
-    }
-
-    /// Returns the span of the entire import path (not including `import` keyword).
-    #[inline]
-    #[must_use]
-    pub const fn span(&self) -> Span {
-        self.span
-    }
-
-    /// Returns a left/regular part of the import path.
-    ///
-    /// ```txt
-    /// import std.io.*;
-    ///        ^^^^^^
-    ///
-    /// import std.io as myio;
-    ///        ^^^^^^
-    /// ```
-    #[inline]
-    #[must_use]
-    pub const fn path(&self) -> &Path {
-        &self.path
-    }
-
-    /// Returns the span of the `*` symbol.
-    #[inline]
-    #[must_use]
-    pub const fn star(&self) -> Option<Span> {
-        self.star
-    }
-
-    /// Returns the span of the `as` right-hand side (not including `as` keyword).
-    #[inline]
-    #[must_use]
-    pub const fn r#as(&self) -> Option<Span> {
-        self.r#as
-    }
+    pub r#as: Option<Span>,
 }
 
 /// The error occurs when trying to parse a module path.
@@ -311,7 +307,9 @@ where
         }
     }
 
-    Ok(Path::new(module_path_symbols))
+    Ok(Path {
+        symbols: module_path_symbols,
+    })
 }
 
 /// The error occurs, when trying to get project name out of its

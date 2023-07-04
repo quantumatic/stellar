@@ -19,10 +19,7 @@ pub fn command(filepath: &str, show_locations: bool) {
                     if show_locations {
                         println!(
                             "{:08}: [{}]@{}..{}",
-                            current_token_index,
-                            token.raw,
-                            token.span.start(),
-                            token.span.end(),
+                            current_token_index, token.raw, token.span.start, token.span.end,
                         );
                     } else {
                         println!("{:08}: [{}]", current_token_index, token.raw);

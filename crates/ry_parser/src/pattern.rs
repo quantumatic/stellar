@@ -1,7 +1,7 @@
 use crate::{literal::LiteralParser, macros::parse_list, path::PathParser, Parse, ParseState};
 use ry_ast::{token::RawToken, Path, Pattern, StructFieldPattern, Token};
 use ry_diagnostics::{expected, parser::ParseDiagnostic, BuildDiagnostic};
-use ry_workspace::span::{Span, SpanIndex};
+use ry_workspace::span::SpanIndex;
 
 pub(crate) struct PatternParser;
 
@@ -31,7 +31,7 @@ impl Parse for PatternParser {
             let right = Self.parse(state)?;
 
             Some(Pattern::Or {
-                span: Span::new(left.span().start(), right.span().end(), state.file_id),
+                span: state.new_span(left.span().start, right.span().end),
                 left: Box::new(left),
                 right: Box::new(right),
             })
@@ -79,13 +79,12 @@ impl Parse for PatternExceptOrParser {
                     };
 
                     Some(Pattern::Identifier {
-                        span: Span::new(
-                            path.span.start(),
+                        span: state.new_span(
+                            path.span.start,
                             match pattern {
-                                Some(ref pattern) => pattern.span().end(),
-                                None => path.span.end(),
+                                Some(ref pattern) => pattern.span().end,
+                                None => path.span.end,
                             },
-                            state.file_id,
                         ),
                         identifier: *identifier,
                         pattern,
@@ -154,11 +153,7 @@ impl Parse for StructPatternParser {
                 };
 
                 Some(StructFieldPattern::NotRest {
-                    span: Span::new(
-                        field_name.span.start(),
-                        state.current_token.span.end(),
-                        state.file_id,
-                    ),
+                    span: state.span_to_current_from(field_name.span.start),
                     field_name,
                     value_pattern,
                 })
@@ -168,11 +163,7 @@ impl Parse for StructPatternParser {
         state.advance();
 
         Some(Pattern::Struct {
-            span: Span::new(
-                self.path.span.start(),
-                state.current_token.span.end(),
-                state.file_id,
-            ),
+            span: state.span_to_current_from(self.path.span.start),
             path: self.path,
             fields,
         })
@@ -183,7 +174,7 @@ impl Parse for ArrayPatternParser {
     type Output = Option<Pattern>;
 
     fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
-        let start = state.next_token.span.start();
+        let start = state.next_token.span.start;
         state.advance(); // `[`
 
         let inner_patterns = parse_list!(state, "array pattern", Token![']'], {
@@ -193,7 +184,7 @@ impl Parse for ArrayPatternParser {
         state.advance(); // `]`
 
         Some(Pattern::List {
-            span: Span::new(start, state.current_token.span.end(), state.file_id),
+            span: state.span_to_current_from(start),
             inner_patterns,
         })
     }
@@ -212,11 +203,7 @@ impl Parse for TupleLikePatternParser {
         state.advance(); // `)`
 
         Some(Pattern::TupleLike {
-            span: Span::new(
-                self.path.span.start(),
-                state.current_token.span.end(),
-                state.file_id,
-            ),
+            span: state.span_to_current_from(self.path.span.start),
             path: self.path,
             inner_patterns,
         })
@@ -227,7 +214,7 @@ impl Parse for GroupedOrTuplePatternParser {
     type Output = Option<Pattern>;
 
     fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
-        let start = state.next_token.span.start();
+        let start = state.next_token.span.start;
         state.advance();
 
         let elements = parse_list!(state, "parenthesized or tuple pattern", Token![')'], {
@@ -236,11 +223,7 @@ impl Parse for GroupedOrTuplePatternParser {
 
         state.advance(); // `)`
 
-        let span = Span::new(
-            start,
-            state.current_token.span.end(),
-            state.current_token.span.file_id(),
-        );
+        let span = state.span_to_current_from(start);
 
         let mut elements = elements.into_iter();
 
@@ -248,12 +231,8 @@ impl Parse for GroupedOrTuplePatternParser {
             (Some(element), None) => {
                 if state
                     .source_file
-                    .source()
-                    .index(Span::new(
-                        element.span().end(),
-                        state.current_token.span.end(),
-                        state.current_token.span.file_id(),
-                    ))
+                    .source
+                    .index(state.span_to_current_from(element.span().end))
                     .contains(',')
                 {
                     Some(Pattern::Tuple {

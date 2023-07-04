@@ -53,7 +53,7 @@ impl Parse for LiteralParser {
             RawToken::CharLiteral => {
                 state.advance();
                 Some(Literal::Character {
-                    value: state.lexer.scanned_char(),
+                    value: state.lexer.scanned_char,
                     span: state.current_token.span,
                 })
             }

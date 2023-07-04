@@ -4,7 +4,7 @@ use ry_ast::{
     TypePathSegment, WhereClause, WhereClauseItem,
 };
 use ry_diagnostics::{expected, parser::ParseDiagnostic, BuildDiagnostic};
-use ry_workspace::span::{Span, SpanIndex};
+use ry_workspace::span::SpanIndex;
 
 pub(crate) struct TypeBoundsParser;
 
@@ -72,7 +72,7 @@ impl Parse for TypeWithQualifiedPathParser {
     type Output = Option<TypeAst>;
 
     fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
-        let start = state.next_token.span.start();
+        let start = state.next_token.span.start;
         state.advance(); // `[`
 
         let left = Box::new(TypeParser.parse(state)?);
@@ -92,7 +92,7 @@ impl Parse for TypeWithQualifiedPathParser {
         }
 
         Some(TypeAst::WithQualifiedPath {
-            span: Span::new(start, state.current_token.span.end(), state.file_id),
+            span: state.span_to_current_from(start),
             left,
             right,
             segments,
@@ -104,13 +104,13 @@ impl Parse for TraitObjectTypeParser {
     type Output = Option<TypeAst>;
 
     fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
-        let start = state.next_token.span.start();
+        let start = state.next_token.span.start;
 
         state.advance(); // `dyn`
 
         Some(TypeAst::TraitObject {
             bounds: TypeBoundsParser.parse(state)?,
-            span: Span::new(start, state.current_token.span.end(), state.file_id),
+            span: state.span_to_current_from(start),
         })
     }
 }
@@ -119,7 +119,7 @@ impl Parse for ParenthesizedTupleOrFunctionTypeParser {
     type Output = Option<TypeAst>;
 
     fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
-        let start = state.next_token.span.start();
+        let start = state.next_token.span.start;
         state.advance(); // `(`
 
         let element_types = parse_list!(state, "parenthesized or tuple type", Token![')'], {
@@ -134,21 +134,13 @@ impl Parse for ParenthesizedTupleOrFunctionTypeParser {
             let return_type = Box::new(TypeParser.parse(state)?);
 
             return Some(TypeAst::Function {
-                span: Span::new(
-                    start,
-                    state.current_token.span.end(),
-                    state.current_token.span.file_id(),
-                ),
+                span: state.span_to_current_from(start),
                 parameter_types: element_types,
                 return_type,
             });
         }
 
-        let span = Span::new(
-            start,
-            state.current_token.span.end(),
-            state.current_token.span.file_id(),
-        );
+        let span = state.span_to_current_from(start);
 
         let mut element_types = element_types.into_iter();
 
@@ -156,12 +148,8 @@ impl Parse for ParenthesizedTupleOrFunctionTypeParser {
             (Some(element), None) => {
                 if state
                     .source_file
-                    .source()
-                    .index(Span::new(
-                        element.span().end(),
-                        state.current_token.span.end(),
-                        state.current_token.span.file_id(),
-                    ))
+                    .source
+                    .index(state.span_to_current_from(element.span().end))
                     .contains(',')
                 {
                     Some(TypeAst::Tuple {
@@ -236,7 +224,7 @@ impl Parse for TypePathParser {
     type Output = Option<TypePath>;
 
     fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
-        let start = state.next_token.span.start();
+        let start = state.next_token.span.start;
 
         let mut segments = vec![];
         segments.push(TypePathSegmentParser.parse(state)?);
@@ -248,7 +236,7 @@ impl Parse for TypePathParser {
         }
 
         Some(TypePath {
-            span: Span::new(start, state.current_token.span.end(), state.file_id),
+            span: state.span_to_current_from(start),
             segments,
         })
     }
@@ -262,11 +250,7 @@ impl Parse for TypePathSegmentParser {
         let generic_arguments = GenericArgumentsParser.optionally_parse(state)?;
 
         Some(TypePathSegment {
-            span: Span::new(
-                path.span.start(),
-                state.current_token.span.end(),
-                state.file_id,
-            ),
+            span: state.span_to_current_from(path.span.start),
             path,
             generic_arguments,
         })

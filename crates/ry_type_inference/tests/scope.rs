@@ -19,15 +19,18 @@ fn single_scope_lookup() {
     let mut scope = LocalScope::new(None);
     scope.add_symbol(
         a,
-        SymbolData::new(DUMMY_SPAN, Arc::new(primitive_constructor(UINT8))),
+        SymbolData {
+            span: DUMMY_SPAN,
+            ty: Arc::new(primitive_constructor(UINT8)),
+        },
     );
 
     assert_eq!(
         scope.lookup(a),
-        Some(&SymbolData::new(
-            DUMMY_SPAN,
-            Arc::new(primitive_constructor(UINT8))
-        ))
+        Some(&SymbolData {
+            span: DUMMY_SPAN,
+            ty: Arc::new(primitive_constructor(UINT8))
+        })
     );
     assert_eq!(scope.lookup(b), None);
 }
@@ -46,28 +49,34 @@ fn single_scope_shadowed_variable_lookup() {
 
     scope.add_symbol(
         a,
-        SymbolData::new(DUMMY_SPAN, Arc::new(primitive_constructor(UINT8))),
+        SymbolData {
+            span: DUMMY_SPAN,
+            ty: Arc::new(primitive_constructor(UINT8)),
+        },
     );
 
     assert_eq!(
         scope.lookup(a),
-        Some(&SymbolData::new(
-            DUMMY_SPAN,
-            Arc::new(primitive_constructor(UINT8))
-        ))
+        Some(&SymbolData {
+            span: DUMMY_SPAN,
+            ty: Arc::new(primitive_constructor(UINT8))
+        })
     );
 
     scope.add_symbol(
         a,
-        SymbolData::new(DUMMY_SPAN, Arc::new(primitive_constructor(STRING))),
+        SymbolData {
+            span: DUMMY_SPAN,
+            ty: Arc::new(primitive_constructor(STRING)),
+        },
     );
 
     assert_eq!(
         scope.lookup(a),
-        Some(&SymbolData::new(
-            DUMMY_SPAN,
-            Arc::new(primitive_constructor(STRING))
-        ))
+        Some(&SymbolData {
+            span: DUMMY_SPAN,
+            ty: Arc::new(primitive_constructor(STRING))
+        })
     );
 }
 
@@ -88,28 +97,34 @@ fn inherited_scope_lookup() {
     let mut parent_scope = LocalScope::new(None);
     parent_scope.add_symbol(
         a,
-        SymbolData::new(DUMMY_SPAN, Arc::new(primitive_constructor(STRING))),
+        SymbolData {
+            span: DUMMY_SPAN,
+            ty: Arc::new(primitive_constructor(STRING)),
+        },
     );
 
     let mut inner_scope = LocalScope::new(Some(&parent_scope));
     inner_scope.add_symbol(
         b,
-        SymbolData::new(DUMMY_SPAN, Arc::new(primitive_constructor(UINT8))),
+        SymbolData {
+            span: DUMMY_SPAN,
+            ty: Arc::new(primitive_constructor(UINT8)),
+        },
     );
 
     assert_eq!(
         inner_scope.lookup(a),
-        Some(&SymbolData::new(
-            DUMMY_SPAN,
-            Arc::new(primitive_constructor(STRING))
-        ))
+        Some(&SymbolData {
+            span: DUMMY_SPAN,
+            ty: Arc::new(primitive_constructor(STRING))
+        })
     );
     assert_eq!(
         inner_scope.lookup(b),
-        Some(&SymbolData::new(
-            DUMMY_SPAN,
-            Arc::new(primitive_constructor(UINT8))
-        ))
+        Some(&SymbolData {
+            span: DUMMY_SPAN,
+            ty: Arc::new(primitive_constructor(UINT8))
+        })
     );
 
     assert_eq!(parent_scope.lookup(b), None);
@@ -132,27 +147,33 @@ fn inherited_scope_shadowed_variable_lookup() {
 
     parent_scope.add_symbol(
         a,
-        SymbolData::new(DUMMY_SPAN, Arc::new(primitive_constructor(UINT8))),
+        SymbolData {
+            span: DUMMY_SPAN,
+            ty: Arc::new(primitive_constructor(UINT8)),
+        },
     );
 
     let mut inner_scope = LocalScope::new(Some(&parent_scope));
     inner_scope.add_symbol(
         a,
-        SymbolData::new(DUMMY_SPAN, Arc::new(primitive_constructor(STRING))),
+        SymbolData {
+            span: DUMMY_SPAN,
+            ty: Arc::new(primitive_constructor(STRING)),
+        },
     );
 
     assert_eq!(
         inner_scope.lookup(a),
-        Some(&SymbolData::new(
-            DUMMY_SPAN,
-            Arc::new(primitive_constructor(STRING))
-        ))
+        Some(&SymbolData {
+            span: DUMMY_SPAN,
+            ty: Arc::new(primitive_constructor(STRING))
+        })
     );
     assert_eq!(
         parent_scope.lookup(a),
-        Some(&SymbolData::new(
-            DUMMY_SPAN,
-            Arc::new(primitive_constructor(UINT8))
-        ))
+        Some(&SymbolData {
+            span: DUMMY_SPAN,
+            ty: Arc::new(primitive_constructor(UINT8))
+        })
     );
 }

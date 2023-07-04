@@ -1,6 +1,5 @@
 use crate::{is_id_start, Lexer};
 use ry_ast::token::{NumberKind, RawLexError, RawToken, Token};
-use ry_workspace::span::Span;
 use std::char::from_u32;
 
 /// True if `c` is a valid decimal digit.
@@ -120,7 +119,7 @@ impl Lexer<'_, '_> {
                 if prefix == 'o' || prefix == 'b' || prefix == 'x' {
                     return Token {
                         raw: RawToken::Error(RawLexError::InvalidRadixPoint),
-                        span: Span::new(start_location, self.location, self.file_id),
+                        span: self.span_from(start_location),
                     };
                 }
 
@@ -130,7 +129,7 @@ impl Lexer<'_, '_> {
             if digit_separator & 1 == 0 {
                 return Token {
                     raw: RawToken::Error(RawLexError::HasNoDigits),
-                    span: Span::new(start_location, self.location, self.file_id),
+                    span: self.span_from(start_location),
                 };
             }
         }
@@ -140,7 +139,7 @@ impl Lexer<'_, '_> {
             if prefix != '\0' && prefix != '0' {
                 return Token {
                     raw: RawToken::Error(RawLexError::ExponentRequiresDecimalMantissa),
-                    span: Span::new(start_location, self.location, self.file_id),
+                    span: self.span_from(start_location),
                 };
             }
 
@@ -159,7 +158,7 @@ impl Lexer<'_, '_> {
             if ds & 1 == 0 {
                 return Token {
                     raw: RawToken::Error(RawLexError::ExponentHasNoDigits),
-                    span: Span::new(start_location, self.location, self.file_id),
+                    span: self.span_from(start_location),
                 };
             }
         }
@@ -170,7 +169,7 @@ impl Lexer<'_, '_> {
             if number_kind == NumberKind::Int {
                 return Token {
                     raw: RawToken::Error(RawLexError::InvalidDigit),
-                    span: Span::new(location, location + 1, self.file_id),
+                    span: self.new_span(location, location + 1),
                 };
             }
         }
@@ -182,18 +181,18 @@ impl Lexer<'_, '_> {
                 TryInto::<usize>::try_into(s).expect("Invalid separator in Lexer::eat_number");
             return Token {
                 raw: RawToken::Error(RawLexError::UnderscoreMustSeparateSuccessiveDigits),
-                span: Span::new(separator_location, separator_location + 1, self.file_id),
+                span: self.new_span(separator_location, separator_location + 1),
             };
         }
 
         match number_kind {
             NumberKind::Int => Token {
                 raw: RawToken::IntegerLiteral,
-                span: Span::new(start_location, self.location, self.file_id),
+                span: self.span_from(start_location),
             },
             NumberKind::Float => Token {
                 raw: RawToken::FloatLiteral,
-                span: Span::new(start_location, self.location, self.file_id),
+                span: self.span_from(start_location),
             },
             NumberKind::Invalid => {
                 unreachable!()
