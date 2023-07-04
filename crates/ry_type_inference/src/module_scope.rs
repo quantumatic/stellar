@@ -4,10 +4,6 @@
 use pathdiff::diff_paths;
 use ry_interner::{Interner, Symbol};
 use ry_workspace::{file::SourceFile, span::Span, workspace::FileID};
-use std::{
-    ffi::OsString,
-    path::{self, Component, PathBuf},
-};
 use std::path::{self, Component};
 
 /// Information that compiler has about a particular module.
@@ -56,14 +52,14 @@ impl<'workspace> ModuleScope<'workspace> {
         file_id: FileID,
         project_root: P,
         interner: &mut Interner,
-    ) -> Result<Self, ParseModulePathUsingProjectRootError>
+    ) -> Result<Self, ParseModulePathError>
     where
         P: AsRef<path::Path>,
     {
         Ok(Self::new(
             source_file,
             file_id,
-            parse_module_path_using_project_root(source_file.path(), project_root, interner)?,
+            parse_module_path(source_file.path(), project_root, interner)?,
         ))
     }
 
@@ -220,113 +216,80 @@ impl Import {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum ParseModulePathUsingProjectRootError {
-    GotRelativeInsteadOfAbsolutePath,
-    CannotGetRelativePath,
-    ParseModulePathError(ParseModulePathError),
-    ExtractProjectNameError(ExtractProjectNameError),
+/// The error occurs when trying to parse a module path.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ParseModulePathError {
+    /// When the module's source file path is not relative to the project
+    /// root path.
+    ModuleDoesNotBelongToProject,
+
+    /// When project's path is not canonical.
+    ///
+    /// [`fs::canonicalize`] must be used to prevent the error.
+    ProjectPathIsNotCanonical,
+
+    /// When project's path is not valid UTF-8.
+    ProjectPathIsNotValidUtf8,
+
+    /// When the path of the source file corresponding to the module
+    /// is not canonical.
+    ///
+    /// [`fs::canonicalize`] must be used to prevent the error.
+    SourceFilePathIsNotCanonical,
+
+    /// When the path of the source file corresponding to the module
+    /// is not valid UTF-8.
+    SourceFilePathIsNotValidUtf8,
+
+    /// When the path of the source file corresponding to the module
+    /// does not end with `.ry`.
+    SourceFileDoesNotHaveRyExtension,
 }
 
-impl From<ParseModulePathError> for ParseModulePathUsingProjectRootError {
-    fn from(error: ParseModulePathError) -> Self {
-        Self::ParseModulePathError(error)
-    }
-}
-
-impl From<ExtractProjectNameError> for ParseModulePathUsingProjectRootError {
-    fn from(error: ExtractProjectNameError) -> Self {
-        Self::ExtractProjectNameError(error)
+impl From<GetProjectNameError> for ParseModulePathError {
+    fn from(error: GetProjectNameError) -> Self {
+        match error {
+            GetProjectNameError::ProjectPathIsNotCanonical => Self::ProjectPathIsNotCanonical,
+            GetProjectNameError::ProjectPathIsNotValidUtf8 => Self::ProjectPathIsNotValidUtf8,
+        }
     }
 }
 
 /// Returns the module path from an absolute source file path corresponding to
 /// the module.
-///
-/// # Errors
-///
-/// * [`CannotGetRelativePath`] - when module path is not relative to the
-/// project root.
-/// * [`ExtractProjectNameError`] - when project project name cannot be extracted
-/// from the project root absolute path.
-/// * [`ParseModulePathError`] - when module path cannot be parsed, due to other reasons.
-/// See the enum documentation for more details.
-///
-/// [`CannotGetRelativePath`]: ParseModulePathUsingProjectRootError::CannotGetRelativePath
-/// [`ParseModulePathError`]: ParseModulePathUsingProjectRootError::ParseModulePathError
-/// [`ExtractProjectNameError`]: ParseModulePathUsingProjectRootError::ExtractProjectNameError
-pub fn parse_module_path_using_project_root<F, P>(
+pub fn parse_module_path<F, P>(
     file_path: F,
     project_root: P,
     interner: &mut Interner,
-) -> Result<Path, ParseModulePathUsingProjectRootError>
+) -> Result<Path, ParseModulePathError>
 where
     F: AsRef<path::Path>,
     P: AsRef<path::Path>,
 {
-    if !file_path.as_ref().is_absolute() || !project_root.as_ref().is_absolute() {
-        return Err(ParseModulePathUsingProjectRootError::GotRelativeInsteadOfAbsolutePath);
-    }
-
     let Some(relative_path) = diff_paths(file_path, project_root.as_ref()) else {
-        return Err(ParseModulePathUsingProjectRootError::CannotGetRelativePath);
+        return Err(ParseModulePathError::ModuleDoesNotBelongToProject);
     };
 
-    let project_name_symbol = match extract_project_name_from_path(project_root.as_ref(), interner)
-    {
+    let project_name_symbol = match get_project_name_from_path(project_root.as_ref(), interner) {
         Ok(project_name_symbol) => project_name_symbol,
-        Err(error) => {
-            return Err(ParseModulePathUsingProjectRootError::ExtractProjectNameError(error))
-        }
+        Err(error) => return Err(ParseModulePathError::from(error)),
     };
 
-    match extract_module_path_using_relative_file_path(relative_path, project_name_symbol, interner)
-    {
-        Ok(path) => Ok(path),
-        Err(error) => Err(ParseModulePathUsingProjectRootError::ParseModulePathError(
-            error,
-        )),
-    }
-}
+    let mut module_path_symbols = vec![project_name_symbol];
 
-#[derive(Debug, PartialEq, Eq, Clone)]
-pub enum ParseModulePathError {
-    RootDirComponentIsNotAllowed,
-    PrefixComponentIsNotAllowed(OsString),
-    ParentDirComponentIsNotAllowed,
-    InvalidUTF8PathComponent(OsString),
-    InvalidFileExtensionOrFolder(String),
-}
-
-fn extract_module_path_using_relative_file_path<P>(
-    module_relative_path: P,
-    project_name_symbol: Symbol,
-    interner: &mut Interner,
-) -> Result<Path, ParseModulePathError>
-where
-    P: AsRef<path::Path>,
-{
-    let mut path_symbols = vec![project_name_symbol];
-
-    let mut components = module_relative_path.as_ref().components().peekable();
+    let mut components = relative_path.components().peekable();
 
     while let Some(component) = components.next() {
         match component {
-            Component::CurDir => continue,
-            Component::Prefix(prefix) => {
-                return Err(ParseModulePathError::PrefixComponentIsNotAllowed(
-                    prefix.as_os_str().to_owned(),
-                ));
-            }
-            Component::RootDir => {
-                return Err(ParseModulePathError::RootDirComponentIsNotAllowed);
-            }
-            Component::ParentDir => {
-                return Err(ParseModulePathError::ParentDirComponentIsNotAllowed);
+            Component::CurDir
+            | Component::Prefix(..)
+            | Component::RootDir
+            | Component::ParentDir => {
+                return Err(ParseModulePathError::SourceFilePathIsNotCanonical);
             }
             Component::Normal(component) => {
                 let Some(component_str) = component.to_str() else {
-                        return Err(ParseModulePathError::InvalidUTF8PathComponent(component.to_owned()));
+                        return Err(ParseModulePathError::SourceFilePathIsNotValidUtf8);
                     };
 
                 // last file
@@ -335,9 +298,7 @@ where
                         .extension()
                         .map_or(false, |ext| ext.eq_ignore_ascii_case("ry"))
                     {
-                        return Err(ParseModulePathError::InvalidFileExtensionOrFolder(
-                            component_str.to_owned(),
-                        ));
+                        return Err(ParseModulePathError::SourceFileDoesNotHaveRyExtension);
                     }
 
                     let mut component = component_str.to_owned();
@@ -345,53 +306,49 @@ where
                         component.remove(component.len() - 1);
                     }
 
-                    path_symbols.push(interner.get_or_intern(component));
+                    module_path_symbols.push(interner.get_or_intern(component));
                 } else {
-                    path_symbols.push(interner.get_or_intern(component_str));
+                    module_path_symbols.push(interner.get_or_intern(component_str));
                 }
             }
         }
     }
 
-    Ok(Path::new(path_symbols))
+    Ok(Path::new(module_path_symbols))
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum ExtractProjectNameError {
-    RootDirComponentIsNotAllowed,
-    PrefixComponentIsNotAllowed(OsString),
-    ParentDirComponentIsNotAllowed,
-    InvalidUTF8PathComponent(OsString),
-    EmptyPath,
+/// The error occurs, when trying to get project name out of its
+/// canonical path.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum GetProjectNameError {
+    /// When project's path is not canonical.
+    ///
+    /// [`fs::canonicalize`] must be used to prevent the error.
+    ProjectPathIsNotCanonical,
+
+    /// When project's path is not valid UTF-8.
+    ProjectPathIsNotValidUtf8,
 }
 
-fn extract_project_name_from_path<P>(
 /// Gets the project name from a its root path.
 pub fn get_project_name_from_path<P>(
     path: P,
     interner: &mut Interner,
-) -> Result<Symbol, ExtractProjectNameError>
+) -> Result<Symbol, GetProjectNameError>
 where
     P: AsRef<path::Path>,
 {
     match path.as_ref().components().last() {
-        Some(Component::CurDir) => {
-            let mut path_buf = PathBuf::from(path.as_ref());
-            path_buf.pop();
-            extract_project_name_from_path(path_buf, interner)
-        }
         Some(Component::Normal(name)) => {
             let Some(name) = name.to_str() else {
-                return Err(ExtractProjectNameError::InvalidUTF8PathComponent(name.to_owned()));
+                return Err(GetProjectNameError::ProjectPathIsNotValidUtf8);
             };
 
             Ok(interner.get_or_intern(name))
         }
-        Some(Component::RootDir) => Err(ExtractProjectNameError::RootDirComponentIsNotAllowed),
-        Some(Component::Prefix(prefix)) => Err(
-            ExtractProjectNameError::PrefixComponentIsNotAllowed(prefix.as_os_str().to_owned()),
-        ),
-        Some(Component::ParentDir) => Err(ExtractProjectNameError::ParentDirComponentIsNotAllowed),
-        None => Err(ExtractProjectNameError::EmptyPath),
+        Some(
+            Component::RootDir | Component::Prefix(..) | Component::ParentDir | Component::CurDir,
+        )
+        | None => Err(GetProjectNameError::ProjectPathIsNotCanonical),
     }
 }
