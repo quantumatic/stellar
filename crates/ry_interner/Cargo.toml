@@ -9,4 +9,4 @@ readme = "../../README.md"
 description = "Implements identifier interner for the Ry programming language."
 
 [dependencies]
-hashbrown = "0.13.2"
+hashbrown = "0.14.0"
