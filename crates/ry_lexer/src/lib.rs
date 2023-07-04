@@ -242,6 +242,7 @@ impl<'workspace, 'interner> Lexer<'workspace, 'interner> {
         self.new_span(self.location, self.location + 1)
     }
 
+    /// Returns a span ending with the current character's location.
     const fn span_from(&self, start_location: usize) -> Span {
         self.new_span(start_location, self.location)
     }
