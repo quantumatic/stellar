@@ -8,7 +8,6 @@ test!(impl1: "impl[T] NotOption for T {}");
 test!(impl2: "impl[T] Into[Option[M]] for Tuple[T, M] where M: Into[T] {}");
 test!(import1: "import test;");
 test!(import2: "import test2.test;");
-test!(import3: "import std.io.*;");
 test!(import4: "import std.io as myio;");
 test!(empty_struct: "struct test {}");
 test!(struct1: "struct Point[T: Numeric] { pub x: T, pub y: T }");

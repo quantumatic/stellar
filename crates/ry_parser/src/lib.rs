@@ -287,22 +287,6 @@ impl<'storage, 'diagnostics, 'interner> ParseState<'storage, 'diagnostics, 'inte
         Some(spanned_symbol)
     }
 
-    /// Consumes the identifiers and if the next token is not identifier than panics.
-    pub(crate) fn consume_identifier_or_panic(&mut self) -> IdentifierAst {
-        if self.next_token.raw == RawToken::Identifier {
-            let identifier = IdentifierAst {
-                span: self.next_token.span,
-                symbol: self.lexer.scanned_identifier,
-            };
-
-            self.advance();
-
-            identifier
-        } else {
-            unreachable!()
-        }
-    }
-
     /// Consumes the docstring for a module.
     pub(crate) fn consume_module_docstring(&mut self) -> Option<Docstring> {
         if self.next_token.raw == RawToken::GlobalDocComment {

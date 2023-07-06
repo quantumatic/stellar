@@ -131,14 +131,13 @@ pub struct Path {
 /// # Example
 ///
 /// ```txt
-/// import std.io.*;
+/// import std.io;
 /// import std.io as myio;
 /// ```
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct ImportPath {
     pub left: Path,
     pub r#as: Option<IdentifierAst>,
-    pub star_span: Option<Span>, // span of `*`
 }
 
 /// Represents a type path.

@@ -906,10 +906,6 @@ impl Serialize for ImportPath {
             serializer.serialize_key_value_pair("AS", r#as);
         }
 
-        if let Some(star_span) = self.star_span {
-            serializer.serialize_key_value_pair("STAR_SPAN", &star_span);
-        }
-
         serializer.decrement_indentation();
     }
 }
