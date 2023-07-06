@@ -1,4 +1,4 @@
-//! Defines [`LocalScope`] to work with local scopes in statement blocks.
+//! Defines [`Scope`] to work with scopes in statement blocks.
 
 use ry_ast::typed::Type;
 use ry_diagnostics::{scope::ScopeDiagnostic, BuildDiagnostic, CompilerDiagnostic};
@@ -8,9 +8,9 @@ use std::{collections::HashMap, sync::Arc};
 
 /// Information that compiler has about a particular symbol.
 #[derive(Debug, Clone, PartialEq)]
-pub struct SymbolData {
+pub struct ValueConstructor {
     /// Span where the symbol was defined.
-    pub span: Span,
+    pub origin: Span,
 
     /// Type of the symbol.
     pub ty: Arc<Type>,
@@ -18,39 +18,39 @@ pub struct SymbolData {
 
 /// Represents a local scope (a scope that is not a global).
 #[derive(Debug)]
-pub struct LocalScope<'local_scope> {
+pub struct Scope<'scope> {
     /// Symbols in this scope (not the ones contained in the parent scopes).
-    symbols: HashMap<Symbol, SymbolData>,
+    entities: HashMap<Symbol, ValueConstructor>,
 
     /// Parent scope.
-    pub parent: Option<&'local_scope LocalScope<'local_scope>>,
+    pub parent: Option<&'scope Scope<'scope>>,
 }
 
-impl<'scope> LocalScope<'scope> {
+impl<'scope> Scope<'scope> {
     /// Creates a new [`LocalScope`] instance.
     #[inline]
     #[must_use]
-    pub fn new(parent: Option<&'scope LocalScope<'scope>>) -> Self {
+    pub fn new(parent: Option<&'scope Scope<'scope>>) -> Self {
         Self {
-            symbols: HashMap::new(),
+            entities: HashMap::new(),
             parent,
         }
     }
 
     /// Adds a symbol to this scope.
-    pub fn add_symbol(&mut self, symbol: Symbol, data: SymbolData) {
+    pub fn add_symbol(&mut self, symbol: Symbol, data: ValueConstructor) {
         // shadowing
-        if self.symbols.contains_key(&symbol) {
-            self.symbols.remove(&symbol);
+        if self.entities.contains_key(&symbol) {
+            self.entities.remove(&symbol);
         }
 
-        self.symbols.insert(symbol, data);
+        self.entities.insert(symbol, data);
     }
 
     /// Returns the symbol data for the given symbol. If the symbol is not in this scope, `None` is returned.
     #[must_use]
-    pub fn lookup(&self, symbol: Symbol) -> Option<&SymbolData> {
-        if let data @ Some(..) = self.symbols.get(&symbol) {
+    pub fn lookup(&self, symbol: Symbol) -> Option<&ValueConstructor> {
+        if let data @ Some(..) = self.entities.get(&symbol) {
             data
         } else if let Some(parent) = self.parent {
             parent.lookup(symbol)
@@ -73,7 +73,7 @@ impl<'scope> LocalScope<'scope> {
         span: Span,
         interner: &Interner,
         diagnostics: &mut Vec<CompilerDiagnostic>,
-    ) -> Option<&SymbolData> {
+    ) -> Option<&ValueConstructor> {
         if let data @ Some(..) = self.lookup(symbol) {
             data
         } else if let Some(parent) = self.parent {

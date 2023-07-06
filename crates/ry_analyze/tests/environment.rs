@@ -1,4 +1,4 @@
-use ry_analyze::module_scope::{parse_module_path, Path};
+use ry_analyze::environment::{parse_module_path, Path};
 use ry_interner::Interner;
 
 #[cfg(target_family = "windows")]

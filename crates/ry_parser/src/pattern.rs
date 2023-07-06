@@ -31,7 +31,7 @@ impl Parse for PatternParser {
             let right = Self.parse(state)?;
 
             Some(Pattern::Or {
-                span: state.new_span(left.span().start, right.span().end),
+                span: state.make_span(left.span().start, right.span().end),
                 left: Box::new(left),
                 right: Box::new(right),
             })
@@ -79,7 +79,7 @@ impl Parse for PatternExceptOrParser {
                     };
 
                     Some(Pattern::Identifier {
-                        span: state.new_span(
+                        span: state.make_span(
                             path.span.start,
                             match pattern {
                                 Some(ref pattern) => pattern.span().end,
@@ -153,7 +153,7 @@ impl Parse for StructPatternParser {
                 };
 
                 Some(StructFieldPattern::NotRest {
-                    span: state.span_to_current_from(field_name.span.start),
+                    span: state.span_from(field_name.span.start),
                     field_name,
                     value_pattern,
                 })
@@ -163,7 +163,7 @@ impl Parse for StructPatternParser {
         state.advance();
 
         Some(Pattern::Struct {
-            span: state.span_to_current_from(self.path.span.start),
+            span: state.span_from(self.path.span.start),
             path: self.path,
             fields,
         })
@@ -184,7 +184,7 @@ impl Parse for ArrayPatternParser {
         state.advance(); // `]`
 
         Some(Pattern::List {
-            span: state.span_to_current_from(start),
+            span: state.span_from(start),
             inner_patterns,
         })
     }
@@ -203,7 +203,7 @@ impl Parse for TupleLikePatternParser {
         state.advance(); // `)`
 
         Some(Pattern::TupleLike {
-            span: state.span_to_current_from(self.path.span.start),
+            span: state.span_from(self.path.span.start),
             path: self.path,
             inner_patterns,
         })
@@ -223,7 +223,7 @@ impl Parse for GroupedOrTuplePatternParser {
 
         state.advance(); // `)`
 
-        let span = state.span_to_current_from(start);
+        let span = state.span_from(start);
 
         let mut elements = elements.into_iter();
 
@@ -232,7 +232,7 @@ impl Parse for GroupedOrTuplePatternParser {
                 if state
                     .source_file
                     .source
-                    .index(state.span_to_current_from(element.span().end))
+                    .index(state.span_from(element.span().end))
                     .contains(',')
                 {
                     Some(Pattern::Tuple {

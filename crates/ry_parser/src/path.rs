@@ -20,7 +20,7 @@ impl Parse for PathParser {
         }
 
         Some(Path {
-            span: state.span_to_current_from(start),
+            span: state.span_from(start),
             identifiers,
         })
     }
@@ -65,7 +65,7 @@ impl Parse for ImportPathParser {
         }
 
         let identifiers = Path {
-            span: state.span_to_current_from(start),
+            span: state.span_from(start),
             identifiers,
         };
 

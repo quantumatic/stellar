@@ -62,6 +62,6 @@
     clippy::unnested_or_patterns
 )]
 
-pub mod local_scope;
-pub mod module_scope;
-pub mod project_scope;
+pub mod environment;
+pub mod project_interface;
+pub mod scope;

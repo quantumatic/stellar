@@ -228,7 +228,7 @@ impl<'workspace, 'interner> Lexer<'workspace, 'interner> {
 
     /// Creates a new [`Span`] with the current file id.
     #[inline]
-    const fn new_span(&self, start: usize, end: usize) -> Span {
+    const fn make_span(&self, start: usize, end: usize) -> Span {
         Span {
             start,
             end,
@@ -239,12 +239,12 @@ impl<'workspace, 'interner> Lexer<'workspace, 'interner> {
     /// Returns a span of the current character.
     #[inline]
     const fn current_char_span(&self) -> Span {
-        self.new_span(self.location, self.location + 1)
+        self.make_span(self.location, self.location + 1)
     }
 
     /// Returns a span ending with the current character's location.
     const fn span_from(&self, start_location: usize) -> Span {
-        self.new_span(start_location, self.location)
+        self.make_span(start_location, self.location)
     }
 
     /// Advances the lexer state to the next 2 characters, and returns the token
@@ -414,7 +414,7 @@ impl<'workspace, 'interner> Lexer<'workspace, 'interner> {
                     Some(c) => Ok(c),
                     None => Err(LexError {
                         raw: RawLexError::InvalidByteEscapeSequence,
-                        span: self.new_span(self.location - 4, self.location),
+                        span: self.make_span(self.location - 4, self.location),
                     }),
                 }
             }

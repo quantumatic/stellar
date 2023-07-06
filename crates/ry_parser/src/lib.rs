@@ -78,7 +78,7 @@ mod r#type;
 pub use module::{parse_module, parse_module_using};
 use ry_ast::{
     token::{LexError, RawToken, Token},
-    IdentifierAst, Token, Visibility,
+    Docstring, IdentifierAst, Token, Visibility,
 };
 use ry_diagnostics::{expected, parser::ParseDiagnostic, BuildDiagnostic, CompilerDiagnostic};
 use ry_interner::Interner;
@@ -156,6 +156,7 @@ impl<'workspace, 'diagnostics, 'interner> ParseState<'workspace, 'diagnostics, '
         let mut lexer = Lexer::new(file_id, source_file.source, interner);
 
         let current = lexer.next_no_comments();
+
         let next = current;
 
         let mut state = Self {
@@ -202,6 +203,7 @@ impl<'workspace, 'diagnostics, 'interner> ParseState<'workspace, 'diagnostics, '
     fn advance(&mut self) {
         self.current_token = self.next_token;
         self.next_token = self.lexer.next_no_comments();
+
         self.check_next_token();
     }
 
@@ -237,7 +239,7 @@ impl<'workspace, 'diagnostics, 'interner> ParseState<'workspace, 'diagnostics, '
     }
 
     /// Creates a new span with the state's file id.
-    pub(crate) const fn new_span(&self, start: usize, end: usize) -> Span {
+    pub(crate) const fn make_span(&self, start: usize, end: usize) -> Span {
         Span {
             start,
             end,
@@ -247,7 +249,7 @@ impl<'workspace, 'diagnostics, 'interner> ParseState<'workspace, 'diagnostics, '
 
     /// Creates a new span with the state's file id and
     /// ending with a current token span's end byte location.
-    pub(crate) const fn span_to_current_from(&self, start: usize) -> Span {
+    pub(crate) const fn span_from(&self, start: usize) -> Span {
         Span {
             start,
             end: self.current_token.span.end,
@@ -300,34 +302,42 @@ impl<'workspace, 'diagnostics, 'interner> ParseState<'workspace, 'diagnostics, '
     }
 
     /// Consumes the docstring for a module.
-    pub(crate) fn consume_module_docstring(&mut self) -> Option<String> {
+    pub(crate) fn consume_module_docstring(&mut self) -> Option<Docstring> {
         if self.next_token.raw == RawToken::GlobalDocComment {
-            let mut module_string = String::new();
+            let start = self.next_token.span.start;
+            let mut module_docstring = String::new();
 
             while self.next_token.raw == RawToken::GlobalDocComment {
                 self.advance();
 
-                module_string.push_str(self.source_file.source.index(self.current_token.span));
+                module_docstring.push_str(self.source_file.source.index(self.current_token.span));
             }
 
-            Some(module_string)
+            Some(Docstring {
+                span: self.span_from(start),
+                value: module_docstring,
+            })
         } else {
             None
         }
     }
 
     /// Consumes the docstring for a local item.
-    pub(crate) fn consume_local_docstring(&mut self) -> Option<String> {
+    pub(crate) fn consume_local_docstring(&mut self) -> Option<Docstring> {
         if self.next_token.raw == RawToken::LocalDocComment {
-            let mut local_string = String::new();
+            let start = self.next_token.span.start;
+            let mut local_docstring = String::new();
 
             while self.next_token.raw == RawToken::LocalDocComment {
                 self.advance();
 
-                local_string.push_str(self.source_file.source.index(self.current_token.span));
+                local_docstring.push_str(self.source_file.source.index(self.current_token.span));
             }
 
-            Some(local_string)
+            Some(Docstring {
+                span: self.span_from(start),
+                value: local_docstring,
+            })
         } else {
             None
         }

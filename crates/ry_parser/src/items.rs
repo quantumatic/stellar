@@ -7,9 +7,9 @@ use crate::{
     OptionalParser, Parse, ParseState, VisibilityParser,
 };
 use ry_ast::{
-    token::RawToken, EnumItem, Function, FunctionParameter, IdentifierAst, Item, ItemKind,
-    JustFunctionParameter, SelfParameter, StructField, Token, TraitItem, TupleField, TypeAlias,
-    Visibility,
+    token::RawToken, Docstring, EnumItem, Function, FunctionParameter, IdentifierAst, Item,
+    ItemKind, JustFunctionParameter, SelfParameter, StructField, Token, TraitItem, TupleField,
+    TypeAlias, Visibility,
 };
 use ry_diagnostics::{
     expected,
@@ -24,30 +24,30 @@ struct ImportParser {
 
 struct StructParser {
     pub(crate) visibility: Visibility,
-    pub(crate) docstring: Option<String>,
+    pub(crate) docstring: Option<Docstring>,
 }
 
 struct StructFieldsParser;
 
 struct StructFieldParser {
-    pub(crate) docstring: Option<String>,
+    pub(crate) docstring: Option<Docstring>,
 }
 
 struct FunctionParser {
     pub(crate) visibility: Visibility,
-    pub(crate) docstring: Option<String>,
+    pub(crate) docstring: Option<Docstring>,
 }
 
 pub(crate) struct FunctionParameterParser;
 
 struct TypeAliasParser {
     pub(crate) visibility: Visibility,
-    pub(crate) docstring: Option<String>,
+    pub(crate) docstring: Option<Docstring>,
 }
 
 struct TraitParser {
     pub(crate) visibility: Visibility,
-    pub(crate) docstring: Option<String>,
+    pub(crate) docstring: Option<Docstring>,
 }
 
 struct TraitItemsParser {
@@ -57,12 +57,12 @@ struct TraitItemsParser {
 
 struct ImplParser {
     pub(crate) visibility: Visibility,
-    pub(crate) docstring: Option<String>,
+    pub(crate) docstring: Option<Docstring>,
 }
 
 struct EnumParser {
     pub(crate) visibility: Visibility,
-    pub(crate) docstring: Option<String>,
+    pub(crate) docstring: Option<Docstring>,
 }
 
 struct EnumItemParser;
@@ -73,7 +73,7 @@ struct TupleFieldsParser {
 
 struct EnumItemStructParser {
     pub(crate) name: IdentifierAst,
-    pub(crate) docstring: Option<String>,
+    pub(crate) docstring: Option<Docstring>,
 }
 
 pub(crate) struct ItemParser;

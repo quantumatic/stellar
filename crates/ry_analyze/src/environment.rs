@@ -1,42 +1,26 @@
-//! Defines [`ModuleScope`] to work with scopes that belong to a particular
-//! Ry source file.
-
 use pathdiff::diff_paths;
-use ry_ast::typed::Type;
 use ry_interner::{Interner, Symbol};
-use ry_workspace::{file::SourceFile, span::Span, workspace::FileID};
-use std::{
-    collections::HashMap,
-    path::{self, Component},
-    sync::Arc,
-};
+use ry_workspace::{file::SourceFile, workspace::FileID};
+use std::path::{self, Component};
 
-/// Information that compiler has about a particular module.
-#[derive(Debug, Clone)]
-pub struct ModuleScope<'workspace> {
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Environment<'workspace> {
     /// Source file corresponding to the module.
-    pub source_file: &'workspace SourceFile<'workspace>,
+    source_file: &'workspace SourceFile<'workspace>,
 
     /// File ID in the global workspace.
-    pub file_id: FileID,
+    file_id: FileID,
 
     /// Path to the module relative to the project root
     ///
     /// See [`Path`] for more details.
-    pub module_path: Path,
-
-    /// Imports inside the module.
-    imports: Vec<ImportData>,
-
-    /// Symbols in the module.
-    symbols: HashMap<Symbol, ModuleSymbolData>,
+    module_path: Path,
 }
 
-impl<'workspace> ModuleScope<'workspace> {
-    /// Creates a new [`ModuleScope`].
+impl<'workspace> Environment<'workspace> {
     #[inline]
     #[must_use]
-    pub fn new(
+    pub const fn new(
         source_file: &'workspace SourceFile<'workspace>,
         file_id: FileID,
         module_path: Path,
@@ -45,136 +29,15 @@ impl<'workspace> ModuleScope<'workspace> {
             source_file,
             file_id,
             module_path,
-            imports: vec![],
-            symbols: HashMap::new(),
         }
     }
-
-    /// Creates a new [`ModuleScope`] from a [`SourceFile`] and a project root path.
-    #[allow(clippy::missing_errors_doc)]
-    pub fn new_from_project_root<P>(
-        source_file: &'workspace SourceFile<'workspace>,
-        file_id: FileID,
-        project_root: P,
-        interner: &mut Interner,
-    ) -> Result<Self, ParseModulePathError>
-    where
-        P: AsRef<path::Path>,
-    {
-        Ok(Self::new(
-            source_file,
-            file_id,
-            parse_module_path(source_file.path, project_root, interner)?,
-        ))
-    }
-
-    /// Returns the imports used by the module.
-    #[inline]
-    #[must_use]
-    pub fn imports(&self) -> &[ImportData] {
-        &self.imports
-    }
-
-    /// Adds an import to the module.
-    #[inline]
-    pub fn add_import(&mut self, import: ImportData) {
-        self.imports.push(import);
-    }
-
-    #[inline]
-    #[must_use]
-    pub fn resolve(&self, symbol: Symbol) -> Option<&ModuleSymbolData> {
-        self.symbols.get(&symbol)
-    }
-}
-
-#[derive(Debug, Clone)]
-pub enum ModuleSymbolData {
-    Function(FunctionData),
-    Struct {
-        span: Span,
-        fields: StructFieldsData,
-    },
-    TypeAlias {
-        span: Span,
-        value: Arc<Type>,
-    },
-    Enum {
-        span: Span,
-        variants: Vec<EnumVariantData>,
-    },
-    Trait {
-        span: Span,
-        items: Vec<TraitItemData>,
-    },
-}
-
-#[derive(Debug, Clone)]
-pub enum TraitItemData {
-    Function(FunctionData),
-}
-
-#[derive(Debug, PartialEq, Clone)]
-pub struct FunctionData {
-    pub span: Span,
-    pub generics: Vec<Symbol>,
-    pub parameters: Vec<(Symbol, Arc<Type>)>,
-    pub return_type: Arc<Type>,
-    pub bounds: Vec<(Arc<Type>, TraitBounds)>,
-}
-
-#[derive(Debug, PartialEq, Eq, Clone)]
-pub struct TraitBounds {
-    pub span: Span,
-    pub bounds: Vec<Symbol>,
-}
-
-#[derive(Debug, PartialEq, Clone)]
-pub enum EnumVariantData {
-    Just {
-        span: Span,
-        name: Symbol,
-    },
-    TupleLike {
-        span: Span,
-        fields: Vec<TupleLikeStructFieldData>,
-    },
-    Struct {
-        span: Span,
-        fields: StructFieldsData,
-    },
-}
-
-#[derive(Debug, PartialEq, Clone)]
-pub enum StructFieldsData {
-    TupleLikeStructFieldsData {
-        span: Span,
-        fields: Vec<TupleLikeStructFieldData>,
-    },
-    StructFieldsData {
-        span: Span,
-        fields: Vec<StructFieldData>,
-    },
-}
-
-#[derive(Debug, PartialEq, Clone)]
-pub struct TupleLikeStructFieldData {
-    pub span: Span,
-    pub ty: Arc<Type>,
-}
-
-#[derive(Debug, PartialEq, Clone)]
-pub struct StructFieldData {
-    pub span: Span,
-    pub name: Symbol,
-    pub ty: Arc<Type>,
 }
 
 /// Used to store name information in global scopes, because the
 /// compiler needs to deal with namespaces.
 ///
 /// This is why [`Path`] is not just a wrapper over [`Symbol`], but over a
-/// list of [`Symbol`].
+/// list of [`Symbol`]s.
 ///
 /// Also [`Path`] is analogous to [`ry_ast::Path`], but without storing
 /// source locations for each symbol.
@@ -182,30 +45,6 @@ pub struct StructFieldData {
 pub struct Path {
     /// Symbols in the path.
     pub symbols: Vec<Symbol>,
-}
-
-/// Used to store information about imports in global scopes.
-#[derive(Debug, PartialEq, Eq, Clone)]
-pub struct ImportData {
-    /// Span of the entire import path (not including `import` keyword).
-    pub span: Span,
-
-    /// A regular path (left part of the import path).
-    ///
-    /// ```txt
-    /// import std.io.*;
-    ///        ^^^^^^
-    ///
-    /// import std.io as myio;
-    ///        ^^^^^^
-    /// ```
-    pub path: Path,
-
-    /// Span of the `*` symbol.
-    pub star: Option<Span>,
-
-    /// Span of the `as` right-hand side (not including `as` keyword).
-    pub r#as: Option<Span>,
 }
 
 /// The error occurs when trying to parse a module path.

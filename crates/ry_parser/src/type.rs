@@ -92,7 +92,7 @@ impl Parse for TypeWithQualifiedPathParser {
         }
 
         Some(TypeAst::WithQualifiedPath {
-            span: state.span_to_current_from(start),
+            span: state.span_from(start),
             left,
             right,
             segments,
@@ -110,7 +110,7 @@ impl Parse for TraitObjectTypeParser {
 
         Some(TypeAst::TraitObject {
             bounds: TypeBoundsParser.parse(state)?,
-            span: state.span_to_current_from(start),
+            span: state.span_from(start),
         })
     }
 }
@@ -134,13 +134,13 @@ impl Parse for ParenthesizedTupleOrFunctionTypeParser {
             let return_type = Box::new(TypeParser.parse(state)?);
 
             return Some(TypeAst::Function {
-                span: state.span_to_current_from(start),
+                span: state.span_from(start),
                 parameter_types: element_types,
                 return_type,
             });
         }
 
-        let span = state.span_to_current_from(start);
+        let span = state.span_from(start);
 
         let mut element_types = element_types.into_iter();
 
@@ -149,7 +149,7 @@ impl Parse for ParenthesizedTupleOrFunctionTypeParser {
                 if state
                     .source_file
                     .source
-                    .index(state.span_to_current_from(element.span().end))
+                    .index(state.span_from(element.span().end))
                     .contains(',')
                 {
                     Some(TypeAst::Tuple {
@@ -236,7 +236,7 @@ impl Parse for TypePathParser {
         }
 
         Some(TypePath {
-            span: state.span_to_current_from(start),
+            span: state.span_from(start),
             segments,
         })
     }
@@ -250,7 +250,7 @@ impl Parse for TypePathSegmentParser {
         let generic_arguments = GenericArgumentsParser.optionally_parse(state)?;
 
         Some(TypePathSegment {
-            span: state.span_to_current_from(path.span.start),
+            span: state.span_from(path.span.start),
             path,
             generic_arguments,
         })

@@ -70,7 +70,7 @@ use core::{
 
 extern crate alloc;
 
-use self::alloc::{string::String, vec::Vec};
+use alloc::{string::String, vec::Vec};
 use hashbrown::{
     hash_map::{DefaultHashBuilder, RawEntryMut},
     HashMap,
@@ -131,11 +131,8 @@ pub mod symbols {
     /// `List` symbol.
     pub const LIST: Symbol = 15;
 
-    /// `Unit` symbol.
-    pub const UNIT: Symbol = 16;
-
     /// `char` symbol.
-    pub const CHAR: Symbol = 17;
+    pub const CHAR: Symbol = 16;
 }
 
 /// # Identifier Interner
@@ -200,12 +197,6 @@ impl Backend {
         self.push(string)
     }
 
-    /// Interns the given static string and returns corresponding symbol.
-    #[inline]
-    fn intern_static(&mut self, string: &'static str) -> Symbol {
-        self.intern(string)
-    }
-
     /// Resolves the given symbol to its original string.
     #[inline]
     fn resolve(&self, symbol: Symbol) -> Option<&str> {
@@ -265,7 +256,7 @@ impl Backend {
 macro_rules! intern_primitive_symbols {
     ($interner:ident, $($name:ident),*) => {
         $(
-            $interner.get_or_intern_static(stringify!($name));
+            $interner.get_or_intern(stringify!($name));
         )*
     }
 }
@@ -284,7 +275,7 @@ where
             backend: Backend::default(),
         };
 
-        interner.get_or_intern_static("_");
+        interner.get_or_intern("_");
 
         intern_primitive_symbols!(
             interner, int8, int16, int32, int64, uint8, uint16, uint32, uint64, float32, float64,
@@ -397,11 +388,6 @@ where
         T: AsRef<str>,
     {
         self.get_or_intern_using(string.as_ref(), Backend::intern)
-    }
-
-    /// Interns the given `'static` string and returns a corresponding symbol.
-    pub fn get_or_intern_static(&mut self, string: &'static str) -> Symbol {
-        self.get_or_intern_using(string.as_ref(), Backend::intern_static)
     }
 
     /// Shrink backend capacity to fit the interned strings exactly.

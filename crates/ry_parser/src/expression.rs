@@ -145,7 +145,7 @@ impl Parse for WhileExpressionParser {
         let body = StatementsBlockParser.parse(state)?;
 
         Some(UntypedExpression::While {
-            span: state.span_to_current_from(start),
+            span: state.span_from(start),
             condition: Box::new(condition),
             body,
         })
@@ -168,7 +168,7 @@ impl Parse for MatchExpressionParser {
         let block = MatchExpressionBlockParser.parse(state)?;
 
         Some(UntypedExpression::Match {
-            span: state.span_to_current_from(start),
+            span: state.span_from(start),
             expression: Box::new(expression),
             block,
         })
@@ -273,7 +273,7 @@ impl Parse for GenericArgumentsExpressionParser {
         let generic_arguments = GenericArgumentsParser.parse(state)?;
 
         Some(UntypedExpression::GenericArguments {
-            span: state.span_to_current_from(self.start),
+            span: state.span_from(self.start),
             left: Box::new(self.left),
             generic_arguments,
         })
@@ -287,7 +287,7 @@ impl Parse for PropertyAccessExpressionParser {
         state.advance(); // `.`
 
         Some(UntypedExpression::FieldAccess {
-            span: state.span_to_current_from(self.start),
+            span: state.span_from(self.start),
             left: Box::new(self.left),
             right: state.consume_identifier("property")?,
         })
@@ -312,7 +312,7 @@ impl Parse for PrefixExpressionParser {
         .parse(state)?;
 
         Some(UntypedExpression::Prefix {
-            span: state.new_span(operator_token.span.start, inner.span().end),
+            span: state.make_span(operator_token.span.start, inner.span().end),
             inner: Box::new(inner),
             operator,
         })
@@ -331,7 +331,7 @@ impl Parse for PostfixExpressionParser {
         };
 
         Some(UntypedExpression::Postfix {
-            span: state.span_to_current_from(self.start),
+            span: state.span_from(self.start),
             inner: Box::new(self.left),
             operator,
         })
@@ -351,7 +351,7 @@ impl Parse for ParenthesizedOrTupleExpressionParser {
 
         state.advance(); // `)`
 
-        let span = state.span_to_current_from(start);
+        let span = state.span_from(start);
 
         let mut elements = elements.into_iter();
 
@@ -360,7 +360,7 @@ impl Parse for ParenthesizedOrTupleExpressionParser {
                 if state
                     .source_file
                     .source
-                    .index(state.span_to_current_from(element.span().end))
+                    .index(state.span_from(element.span().end))
                     .contains(',')
                 {
                     Some(UntypedExpression::Tuple {
@@ -435,7 +435,7 @@ impl Parse for IfExpressionParser {
         }
 
         Some(UntypedExpression::If {
-            span: state.span_to_current_from(start),
+            span: state.span_from(start),
             if_blocks,
             r#else,
         })
@@ -451,7 +451,7 @@ impl Parse for CastExpressionParser {
         let right = TypeParser.parse(state)?;
 
         Some(UntypedExpression::As {
-            span: state.span_to_current_from(self.start),
+            span: state.span_from(self.start),
             left: Box::new(self.left),
             right,
         })
@@ -471,7 +471,7 @@ impl Parse for CallExpressionParser {
         state.advance();
 
         Some(UntypedExpression::Call {
-            span: state.span_to_current_from(self.start),
+            span: state.span_from(self.start),
             left: Box::new(self.left),
             arguments,
         })
@@ -498,7 +498,7 @@ impl Parse for BinaryExpressionParser {
         .parse(state)?;
 
         Some(UntypedExpression::Binary {
-            span: state.span_to_current_from(self.start),
+            span: state.span_from(self.start),
             left: Box::new(self.left),
             right: Box::new(right),
             operator,
@@ -521,7 +521,7 @@ impl Parse for ListExpressionParser {
         state.advance();
 
         Some(UntypedExpression::List {
-            span: state.span_to_current_from(start),
+            span: state.span_from(start),
             elements,
         })
     }
@@ -540,7 +540,7 @@ impl Parse for StructExpressionParser {
         state.advance(); // `}`
 
         Some(UntypedExpression::Struct {
-            span: state.span_to_current_from(self.start),
+            span: state.span_from(self.start),
             left: Box::new(self.left),
             fields,
         })
@@ -572,7 +572,7 @@ impl Parse for StatementsBlockExpressionParser {
         let block = StatementsBlockParser.parse(state)?;
 
         Some(UntypedExpression::StatementsBlock {
-            span: state.span_to_current_from(start),
+            span: state.span_from(start),
             block,
         })
     }
@@ -602,7 +602,7 @@ impl Parse for FunctionExpressionParser {
         let block = StatementsBlockParser.parse(state)?;
 
         Some(UntypedExpression::Function {
-            span: state.span_to_current_from(start),
+            span: state.span_from(start),
             parameters,
             return_type,
             block,
