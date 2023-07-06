@@ -1,6 +1,6 @@
-use crate::Parse;
+use crate::{diagnostics::ParseDiagnostic, Parse};
 use ry_ast::{token::RawToken, Literal, Token};
-use ry_diagnostics::{parser::ParseDiagnostic, BuildDiagnostic};
+use ry_diagnostics::BuildDiagnostic;
 
 pub(crate) struct LiteralParser;
 

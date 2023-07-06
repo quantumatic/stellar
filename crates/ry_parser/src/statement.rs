@@ -1,8 +1,9 @@
 use crate::{
-    expression::ExpressionParser, pattern::PatternParser, r#type::TypeParser, Parse, ParseState,
+    diagnostics::ParseDiagnostic, expected, expression::ExpressionParser, pattern::PatternParser,
+    r#type::TypeParser, Parse, ParseState,
 };
 use ry_ast::{token::RawToken, Statement, StatementsBlock, Token};
-use ry_diagnostics::{expected, parser::ParseDiagnostic, BuildDiagnostic};
+use ry_diagnostics::BuildDiagnostic;
 
 struct StatementParser;
 

@@ -66,6 +66,7 @@
     clippy::unnested_or_patterns
 )]
 
+pub mod diagnostics;
 mod expression;
 mod items;
 mod literal;
@@ -75,12 +76,13 @@ mod pattern;
 mod statement;
 mod r#type;
 
+use diagnostics::ParseDiagnostic;
 pub use module::{parse_module, parse_module_using};
 use ry_ast::{
     token::{LexError, RawToken, Token},
     Docstring, IdentifierAst, Token, Visibility,
 };
-use ry_diagnostics::{expected, parser::ParseDiagnostic, BuildDiagnostic, CompilerDiagnostic};
+use ry_diagnostics::{BuildDiagnostic, CompilerDiagnostic};
 use ry_interner::Interner;
 use ry_lexer::Lexer;
 use ry_span::{

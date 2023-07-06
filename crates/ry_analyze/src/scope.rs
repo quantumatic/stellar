@@ -1,10 +1,12 @@
 //! Defines [`Scope`] to work with scopes in statement blocks.
 
 use ry_ast::typed::Type;
-use ry_diagnostics::{scope::ScopeDiagnostic, BuildDiagnostic, CompilerDiagnostic};
+use ry_diagnostics::{BuildDiagnostic, CompilerDiagnostic};
 use ry_interner::{Interner, Symbol};
 use ry_span::span::Span;
 use std::{collections::HashMap, sync::Arc};
+
+use crate::diagnostics::ScopeDiagnostic;
 
 /// Information that compiler has about a particular symbol.
 #[derive(Debug, Clone, PartialEq)]
@@ -80,7 +82,7 @@ impl<'scope> Scope<'scope> {
             parent.lookup_or_save_diagnostic(symbol, span, interner, diagnostics)
         } else {
             diagnostics.push(
-                ScopeDiagnostic::SymbolNotFound {
+                ScopeDiagnostic::NotFound {
                     symbol: interner
                         .resolve(symbol)
                         .unwrap_or_else(|| panic!("Symbol {symbol} cannot be resolved"))

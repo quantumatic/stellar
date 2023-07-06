@@ -1,4 +1,6 @@
 use crate::{
+    diagnostics::ParseDiagnostic,
+    expected,
     items::FunctionParameterParser,
     literal::LiteralParser,
     macros::parse_list,
@@ -12,7 +14,7 @@ use ry_ast::{
     PostfixOperator, PrefixOperator, RawBinaryOperator, RawPostfixOperator, RawPrefixOperator,
     StructExpressionItem, Token, UntypedExpression,
 };
-use ry_diagnostics::{expected, parser::ParseDiagnostic, BuildDiagnostic};
+use ry_diagnostics::BuildDiagnostic;
 use ry_span::span::SpanIndex;
 
 #[derive(Default)]

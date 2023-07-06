@@ -1,6 +1,6 @@
-use crate::{Parse, ParseState};
+use crate::{diagnostics::ParseDiagnostic, Parse, ParseState, expected};
 use ry_ast::{token::RawToken, ImportPath, Path, Token};
-use ry_diagnostics::{expected, parser::ParseDiagnostic, BuildDiagnostic};
+use ry_diagnostics::BuildDiagnostic;
 
 pub(crate) struct PathParser;
 

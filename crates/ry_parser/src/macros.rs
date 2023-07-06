@@ -17,7 +17,7 @@ macro_rules! parse_list {
                             $state.diagnostics.push(
                                 ParseDiagnostic::UnexpectedTokenError {
                                     got: $state.next_token.clone(),
-                                    expected: expected!($closing_token, Token![,]),
+                                    expected: $crate::expected!($closing_token, Token![,]),
                                     node: $node_name.to_owned(),
                                 }
                                 .build(),
@@ -61,7 +61,7 @@ macro_rules! parse_list {
                             $state.diagnostics.push(
                                 ParseDiagnostic::UnexpectedTokenError {
                                     got: $state.next_token.clone(),
-                                    expected: expected!($closing_token1, $closing_token2, Token![,]),
+                                    expected: $crate::expected!($closing_token1, $closing_token2, Token![,]),
                                     node: $node_name.to_owned(),
                                 }
                                 .build(),
