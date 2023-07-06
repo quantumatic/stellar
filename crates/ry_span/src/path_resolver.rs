@@ -4,19 +4,19 @@
 
 use std::path::{Path, PathBuf};
 
-/// Allows to resolve basic paths like config files and build directories for a given
+/// Allows to resolve basic paths like config storage and build directories for a given
 /// project path.
 #[derive(Debug, Clone)]
-pub struct ProjectPathResolver<'workspace> {
+pub struct ProjectPathResolver<'storage> {
     /// The project root path.
-    pub root: &'workspace Path,
+    pub root: &'storage Path,
 }
 
-impl<'workspace> ProjectPathResolver<'workspace> {
+impl<'storage> ProjectPathResolver<'storage> {
     /// Creates a new project path resolver instance for the given project root path.
     #[inline]
     #[must_use]
-    pub const fn new(root: &'workspace Path) -> Self {
+    pub const fn new(root: &'storage Path) -> Self {
         Self { root }
     }
 

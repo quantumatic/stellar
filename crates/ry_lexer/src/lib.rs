@@ -71,8 +71,8 @@ use ry_ast::{
     Token,
 };
 use ry_interner::{Interner, Symbol};
+use ry_span::span::Span;
 use ry_stable_likely::unlikely;
-use ry_workspace::span::Span;
 use std::{mem, str::Chars, string::String};
 
 mod number;
@@ -84,7 +84,7 @@ mod number;
 /// # use ry_lexer::Lexer;
 /// # use ry_ast::token::{Token, RawToken::EndOfFile};
 /// # use ry_interner::Interner;
-/// # use ry_workspace::span::Span;
+/// # use ry_span::span::Span;
 /// let mut interner = Interner::default();
 /// let mut lexer = Lexer::new(0, "", &mut interner);
 ///
@@ -117,11 +117,11 @@ mod number;
 /// [`EndOfFile`]: ry_ast::token::RawToken::EndOfFile
 /// [`Error`]: ry_ast::token::RawToken::Error
 #[derive(Debug)]
-pub struct Lexer<'workspace, 'interner> {
+pub struct Lexer<'storage, 'interner> {
     /// Id of the file being scanned.
     file_id: usize,
     /// Content of the file being scanned.
-    source: &'workspace str,
+    source: &'storage str,
 
     /// Identifier interner.
     interner: &'interner mut Interner,
@@ -132,7 +132,7 @@ pub struct Lexer<'workspace, 'interner> {
     next: char,
 
     /// Iterator through source text characters.
-    chars: Chars<'workspace>,
+    chars: Chars<'storage>,
 
     /// Location of the current character being processed.
     location: usize,
@@ -145,10 +145,10 @@ pub struct Lexer<'workspace, 'interner> {
     scanned_string: String,
 }
 
-impl<'workspace, 'interner> Lexer<'workspace, 'interner> {
+impl<'storage, 'interner> Lexer<'storage, 'interner> {
     /// Creates a new [`Lexer`] instance.
     #[must_use]
-    pub fn new(file_id: usize, source: &'workspace str, interner: &'interner mut Interner) -> Self {
+    pub fn new(file_id: usize, source: &'storage str, interner: &'interner mut Interner) -> Self {
         let mut chars = source.chars();
 
         let current = chars.next().unwrap_or('\0');
@@ -268,7 +268,7 @@ impl<'workspace, 'interner> Lexer<'workspace, 'interner> {
     /// Returns the string slice of source text between `start_location`
     /// and `self.location` when `f` returns `false` OR `self.eof() == true`.
     #[inline]
-    fn advance_while<F>(&mut self, start_location: usize, mut f: F) -> &'workspace str
+    fn advance_while<F>(&mut self, start_location: usize, mut f: F) -> &'storage str
     where
         F: FnMut(char, char) -> bool,
     {

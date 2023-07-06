@@ -1,12 +1,12 @@
 use std::path::Path;
 
-use ry_workspace::file::SourceFile;
+use ry_span::file::InMemoryFile;
 
 const TEST_SOURCE: &str = "foo\nbar\r\n\nbaz";
 
 #[test]
 fn line_starts() {
-    let file = SourceFile::new(Path::new("test.ry"), TEST_SOURCE);
+    let file = InMemoryFile::new(Path::new("test.ry"), TEST_SOURCE);
 
     assert_eq!(
         file.line_starts,
@@ -21,7 +21,7 @@ fn line_starts() {
 
 #[test]
 fn line_span_sources() {
-    let file = SourceFile::new(Path::new("test.ry"), TEST_SOURCE);
+    let file = InMemoryFile::new(Path::new("test.ry"), TEST_SOURCE);
 
     let line_sources = (0..4)
         .map(|line| {

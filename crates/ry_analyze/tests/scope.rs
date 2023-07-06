@@ -4,7 +4,7 @@ use ry_interner::{
     symbols::{STRING, UINT8},
     Interner,
 };
-use ry_workspace::span::DUMMY_SPAN;
+use ry_span::span::DUMMY_SPAN;
 use std::sync::Arc;
 
 // ```

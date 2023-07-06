@@ -1,24 +1,24 @@
 //! # Source Files Managment
 //!
-//! This crate provides utilities for working with Ry source files.
+//! This crate provides utilities for working with Ry source storage.
 //!
-//! ## [`Workspace`] and [`SourceFile`]
+//! ## [`InMemoryFileStorage`] and [`InMemoryFile`]
 //!
-//! - [`Workspace`] is a helper struct for working with Ry source files and also provides implementation for
+//! - [`InMemoryFileStorage`] is a helper struct for working with Ry source storage and also provides implementation for
 //! [`Files`] in [`codespan_reporting`] for proper error reporting. It is important to make
-//! sure that you added your source file into the [`Workspace`], because it would not
+//! sure that you added your source file into the [`InMemoryFileStorage`], because it would not
 //! report diagnostics properly with ID being out of bonds.
 //!
-//! - [`SourceFile`] is an interface for working with Ry source files.
+//! - [`InMemoryFile`] is an interface for working with Ry source storage.
 //!
 //! ## [`Span`]
 //!
 //! [`Span`] is an interface for working with source code locations.
 //!
-//! [`Workspace`]: crate::workspace::Workspace
-//! [`SourceFile`]: crate::file::SourceFile
+//! [`InMemoryFileStorage`]: crate::storage::InMemoryFileStorage
+//! [`InMemoryFile`]: crate::file::InMemoryFile
 //! [`Span`]: crate::span::Span
-//! [`Files`]: codespan_reporting::files::Files
+//! [`Files`]: codespan_reporting::storage::Files
 
 #![doc(
     html_logo_url = "https://raw.githubusercontent.com/abs0luty/Ry/main/additional/icon/ry.png",
@@ -82,4 +82,4 @@
 pub mod file;
 pub mod path_resolver;
 pub mod span;
-pub mod workspace;
+pub mod storage;

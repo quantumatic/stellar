@@ -16,7 +16,7 @@ use ry_diagnostics::{
     parser::{ParseDiagnostic, UnnecessaryVisibilityQualifierContext},
     BuildDiagnostic,
 };
-use ry_workspace::span::Span;
+use ry_span::span::Span;
 
 struct ImportParser {
     pub(crate) visibility: Visibility,

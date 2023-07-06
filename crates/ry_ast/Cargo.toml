@@ -11,4 +11,4 @@ description = "Defines AST for the Ry programming language."
 [dependencies]
 phf = { version = "0.11.1", features = ["macros"] }
 ry_interner = { path = "../ry_interner" }
-ry_workspace = { path = "../ry_workspace" }
+ry_span = { path = "../ry_span" }

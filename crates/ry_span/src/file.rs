@@ -1,4 +1,4 @@
-//! Defines a [`SourceFile`] to represent a Ry source file and provides some utilities.
+//! Defines a [`InMemoryFile`] to represent a Ry source file and provides some utilities.
 
 use crate::span::{Span, SpanIndex};
 use codespan_reporting::files::{Error, Files};
@@ -8,28 +8,28 @@ use std::path::Path;
 
 /// A Ry source file.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct SourceFile<'workspace> {
+pub struct InMemoryFile<'storage> {
     /// The path of the source file.
-    pub path: &'workspace Path,
+    pub path: &'storage Path,
 
     /// The path of the source file as a string slice.
-    pub path_str: &'workspace str,
+    pub path_str: &'storage str,
 
     /// The source content of the file.
-    pub source: &'workspace str,
+    pub source: &'storage str,
 
     /// The length of the source content (in bytes).
     pub source_len: usize,
 
-    /// The array of line starting byte indices in the [`SourceFile::source`].
+    /// The array of line starting byte indices in the [`InMemoryFile::source`].
     pub line_starts: Vec<usize>,
 }
 
-impl<'workspace> SourceFile<'workspace> {
-    /// Creates a new [`SourceFile`].
+impl<'storage> InMemoryFile<'storage> {
+    /// Creates a new [`InMemoryFile`].
     #[inline]
     #[must_use]
-    pub fn new(path: &'workspace Path, source: &'workspace str) -> Self {
+    pub fn new(path: &'storage Path, source: &'storage str) -> Self {
         Self {
             path,
             path_str: path.to_str().expect("Invalid UTF-8 data in path"),
@@ -57,16 +57,16 @@ impl<'workspace> SourceFile<'workspace> {
     ///
     /// ```ignore
     /// # use std::path::Path;
-    /// # use ry_workspace::file::SourceFile;
-    /// let source_file = SourceFile::new(
+    /// # use ry_span::file::InMemoryFile;
+    /// let file = InMemoryFile::new(
     ///     Path::new("test.ry"),
     ///     "fun main() {
     ///     println(\"Hello, world!\");
     /// }",
     /// );
     ///
-    /// assert_eq!(source_file.get_line_start_by_index(0), 0);
-    /// assert_eq!(source_file.get_line_start_by_index(1), 13);
+    /// assert_eq!(file.get_line_start_by_index(0), 0);
+    /// assert_eq!(file.get_line_start_by_index(1), 13);
     /// ```
     pub(crate) fn get_line_start_by_index(&self, line_index: usize) -> Result<usize, Error> {
         match line_index.cmp(&self.line_starts.len()) {
@@ -89,16 +89,16 @@ impl<'workspace> SourceFile<'workspace> {
     ///
     /// ```
     /// # use std::path::Path;
-    /// # use ry_workspace::file::SourceFile;
-    /// let source_file = SourceFile::new(
+    /// # use ry_span::file::InMemoryFile;
+    /// let file = InMemoryFile::new(
     ///     Path::new("test.ry"),
     ///     "fun main() {
     ///     println(\"Hello, world!\");
     /// }",
     /// );
     ///
-    /// assert_eq!(source_file.get_line_index_by_byte_index(0), 0);
-    /// assert_eq!(source_file.get_line_index_by_byte_index(13), 1);
+    /// assert_eq!(file.get_line_index_by_byte_index(0), 0);
+    /// assert_eq!(file.get_line_index_by_byte_index(13), 1);
     /// ```
     #[must_use]
     pub fn get_line_index_by_byte_index(&self, byte_index: usize) -> usize {
@@ -113,17 +113,17 @@ impl<'workspace> SourceFile<'workspace> {
     ///
     /// ```
     /// # use std::path::Path;
-    /// # use ry_workspace::file::SourceFile;
-    /// let source_file = SourceFile::new(
+    /// # use ry_span::file::InMemoryFile;
+    /// let file = InMemoryFile::new(
     ///     Path::new("test.ry"),
     ///     "fun main() {
     ///     println(\"Hello, world!\");
     /// }",
     /// );
     ///
-    /// assert_eq!(source_file.line_range_by_index(0), Some(0..13));
-    /// assert_eq!(source_file.line_range_by_index(1), Some(13..43));
-    /// assert_eq!(source_file.line_range_by_index(2), Some(43..44));
+    /// assert_eq!(file.line_range_by_index(0), Some(0..13));
+    /// assert_eq!(file.line_range_by_index(1), Some(13..43));
+    /// assert_eq!(file.line_range_by_index(2), Some(43..44));
     /// ```
     #[must_use]
     pub fn line_range_by_index(&self, line_index: usize) -> Option<Range<usize>> {
@@ -135,26 +135,26 @@ impl<'workspace> SourceFile<'workspace> {
 }
 
 // For proper error reporting
-impl<'workspace> Files<'workspace> for SourceFile<'workspace> {
+impl<'storage> Files<'storage> for InMemoryFile<'storage> {
     // we don't care about file IDs, because we have only one individual file here
     type FileId = ();
 
-    type Name = &'workspace str;
-    type Source = &'workspace str;
+    type Name = &'storage str;
+    type Source = &'storage str;
 
-    fn name(&'workspace self, _: ()) -> Result<Self::Name, Error> {
+    fn name(&'storage self, _: ()) -> Result<Self::Name, Error> {
         Ok(self.path_str)
     }
 
-    fn source(&'workspace self, _: ()) -> Result<Self::Source, Error> {
+    fn source(&'storage self, _: ()) -> Result<Self::Source, Error> {
         Ok(self.source)
     }
 
-    fn line_index(&'workspace self, _: (), byte_index: usize) -> Result<usize, Error> {
+    fn line_index(&'storage self, _: (), byte_index: usize) -> Result<usize, Error> {
         Ok(self.get_line_index_by_byte_index(byte_index))
     }
 
-    fn line_range(&'workspace self, _: (), line_index: usize) -> Result<Range<usize>, Error> {
+    fn line_range(&'storage self, _: (), line_index: usize) -> Result<Range<usize>, Error> {
         let line_start = self.get_line_start_by_index(line_index)?;
         let next_line_start = self.get_line_start_by_index(line_index + 1)?;
 

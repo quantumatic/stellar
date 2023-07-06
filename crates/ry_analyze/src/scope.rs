@@ -3,7 +3,7 @@
 use ry_ast::typed::Type;
 use ry_diagnostics::{scope::ScopeDiagnostic, BuildDiagnostic, CompilerDiagnostic};
 use ry_interner::{Interner, Symbol};
-use ry_workspace::span::Span;
+use ry_span::span::Span;
 use std::{collections::HashMap, sync::Arc};
 
 /// Information that compiler has about a particular symbol.

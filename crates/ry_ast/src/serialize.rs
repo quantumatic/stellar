@@ -8,7 +8,7 @@ use crate::{
     TypeAst, TypePath, TypePathSegment, UntypedExpression, Visibility, WhereClauseItem,
 };
 use ry_interner::{Interner, Symbol};
-use ry_workspace::span::{Span, DUMMY_SPAN};
+use ry_span::span::{Span, DUMMY_SPAN};
 
 /// A struct that allows to serialize a Ry module into a string, for debug purposes.
 #[derive(Debug)]
@@ -1052,7 +1052,7 @@ impl Serialize for Module<'_> {
     fn serialize(&self, serializer: &mut Serializer<'_>) {
         serializer.write_node_name("MODULE");
         serializer.increment_indentation();
-        serializer.serialize_key_value_pair("FILEPATH", &self.source_file.path_str);
+        serializer.serialize_key_value_pair("FILEPATH", &self.file.path_str);
         serializer.serialize_key_list_value_pair("ITEMS", &self.items);
         serializer.decrement_indentation();
     }

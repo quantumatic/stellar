@@ -1,7 +1,7 @@
 //! Defines [`Token`] which represents grammatical unit of Ry source text.
 use crate::precedence::Precedence;
 use phf::phf_map;
-use ry_workspace::span::Span;
+use ry_span::span::Span;
 use std::fmt::Display;
 
 /// Represents error that scanning process can fail with.

@@ -83,10 +83,10 @@ use ry_ast::{
 use ry_diagnostics::{expected, parser::ParseDiagnostic, BuildDiagnostic, CompilerDiagnostic};
 use ry_interner::Interner;
 use ry_lexer::Lexer;
-use ry_workspace::{
-    file::SourceFile,
+use ry_span::{
+    file::InMemoryFile,
     span::{Span, SpanIndex},
-    workspace::FileID,
+    storage::FileID,
 };
 
 #[macro_use]
@@ -94,13 +94,13 @@ mod macros;
 
 /// Represents a parse state.
 #[derive(Debug)]
-pub struct ParseState<'workspace, 'diagnostics, 'interner> {
+pub struct ParseState<'storage, 'diagnostics, 'interner> {
     /// Source file, that is being parsed.
-    source_file: &'workspace SourceFile<'workspace>,
-    /// Id of the file in the global workspace.
+    file: &'storage InMemoryFile<'storage>,
+    /// Id of the file in the global storage.
     file_id: usize,
     /// Lexer that is used for parsing.
-    lexer: Lexer<'workspace, 'interner>,
+    lexer: Lexer<'storage, 'interner>,
     /// Current token.
     current_token: Token,
     /// Next token.
@@ -144,23 +144,23 @@ where
     fn optionally_parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output;
 }
 
-impl<'workspace, 'diagnostics, 'interner> ParseState<'workspace, 'diagnostics, 'interner> {
+impl<'storage, 'diagnostics, 'interner> ParseState<'storage, 'diagnostics, 'interner> {
     /// Creates an initial parse state.
     #[must_use]
     pub fn new(
         file_id: FileID,
-        source_file: &'workspace SourceFile<'workspace>,
+        file: &'storage InMemoryFile<'storage>,
         diagnostics: &'diagnostics mut Vec<CompilerDiagnostic>,
         interner: &'interner mut Interner,
     ) -> Self {
-        let mut lexer = Lexer::new(file_id, source_file.source, interner);
+        let mut lexer = Lexer::new(file_id, file.source, interner);
 
         let current = lexer.next_no_comments();
 
         let next = current;
 
         let mut state = Self {
-            source_file,
+            file,
             file_id,
             lexer,
             current_token: current,
@@ -189,7 +189,7 @@ impl<'workspace, 'diagnostics, 'interner> ParseState<'workspace, 'diagnostics, '
     #[inline]
     #[must_use]
     fn resolve_span(&self, span: Span) -> &str {
-        self.source_file.resolve_span(span)
+        self.file.resolve_span(span)
     }
 
     /// Returns string slice corresponding to the current token's location.
@@ -310,7 +310,7 @@ impl<'workspace, 'diagnostics, 'interner> ParseState<'workspace, 'diagnostics, '
             while self.next_token.raw == RawToken::GlobalDocComment {
                 self.advance();
 
-                module_docstring.push_str(self.source_file.source.index(self.current_token.span));
+                module_docstring.push_str(self.file.source.index(self.current_token.span));
             }
 
             Some(Docstring {
@@ -331,7 +331,7 @@ impl<'workspace, 'diagnostics, 'interner> ParseState<'workspace, 'diagnostics, '
             while self.next_token.raw == RawToken::LocalDocComment {
                 self.advance();
 
-                local_docstring.push_str(self.source_file.source.index(self.current_token.span));
+                local_docstring.push_str(self.file.source.index(self.current_token.span));
             }
 
             Some(Docstring {

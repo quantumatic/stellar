@@ -13,7 +13,7 @@ use ry_ast::{
     StructExpressionItem, Token, UntypedExpression,
 };
 use ry_diagnostics::{expected, parser::ParseDiagnostic, BuildDiagnostic};
-use ry_workspace::span::SpanIndex;
+use ry_span::span::SpanIndex;
 
 #[derive(Default)]
 pub(crate) struct ExpressionParser {
@@ -358,7 +358,7 @@ impl Parse for ParenthesizedOrTupleExpressionParser {
         match (elements.next(), elements.next()) {
             (Some(element), None) => {
                 if state
-                    .source_file
+                    .file
                     .source
                     .index(state.span_from(element.span().end))
                     .contains(',')

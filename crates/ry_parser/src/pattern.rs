@@ -1,7 +1,7 @@
 use crate::{literal::LiteralParser, macros::parse_list, path::PathParser, Parse, ParseState};
 use ry_ast::{token::RawToken, Path, Pattern, StructFieldPattern, Token};
 use ry_diagnostics::{expected, parser::ParseDiagnostic, BuildDiagnostic};
-use ry_workspace::span::SpanIndex;
+use ry_span::span::SpanIndex;
 
 pub(crate) struct PatternParser;
 
@@ -230,7 +230,7 @@ impl Parse for GroupedOrTuplePatternParser {
         match (elements.next(), elements.next()) {
             (Some(element), None) => {
                 if state
-                    .source_file
+                    .file
                     .source
                     .index(state.span_from(element.span().end))
                     .contains(',')

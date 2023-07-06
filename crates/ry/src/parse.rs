@@ -3,15 +3,15 @@ use ry_ast::serialize::serialize_ast;
 use ry_diagnostics::{is_fatal, DiagnosticsEmitter};
 use ry_interner::Interner;
 use ry_parser::parse_module;
-use ry_workspace::{file::SourceFile, workspace::Workspace};
+use ry_span::{file::InMemoryFile, storage::InMemoryFileStorage};
 use std::{fs, io::Write, path::Path, process::exit, time::Instant};
 
 pub fn command(filepath: &str) {
     match fs::read_to_string(filepath) {
         Ok(source) => {
-            let mut workspace = Workspace::new();
-            let file = SourceFile::new(Path::new(filepath), &source);
-            let file_id = workspace.add_file(&file);
+            let mut storage = InMemoryFileStorage::new();
+            let file = InMemoryFile::new(Path::new(filepath), &source);
+            let file_id = storage.add_file(&file);
 
             log_with_left_padded_prefix("Parsing", filepath);
 
@@ -22,7 +22,7 @@ pub fn command(filepath: &str) {
             let ast = parse_module(file_id, &file, &mut diagnostics, &mut interner);
             let parsing_time = now.elapsed().as_secs_f64();
 
-            DiagnosticsEmitter::new(&workspace).emit_diagnostics(&diagnostics);
+            DiagnosticsEmitter::new(&storage).emit_diagnostics(&diagnostics);
 
             if !is_fatal(&diagnostics) {
                 log_with_left_padded_prefix("Parsed", format!("in {}s", parsing_time));

@@ -67,34 +67,34 @@ use codespan_reporting::{
         Config,
     },
 };
-use ry_workspace::workspace::{FileID, Workspace};
+use ry_span::storage::{FileID, InMemoryFileStorage};
 
 pub mod parser;
 pub mod scope;
 
 /// Stores basic `codespan_reporting` structs for reporting diagnostics.
 #[derive(Debug)]
-pub struct DiagnosticsEmitter<'workspace> {
+pub struct DiagnosticsEmitter<'storage> {
     /// The stream in which diagnostics is reported into.
     pub writer: StandardStream,
 
     /// The config for diagnostics reporting.
     pub config: Config,
 
-    /// The workspace in which diagnostics are reported.
-    pub workspace: &'workspace Workspace<'workspace>,
+    /// The storage in which diagnostics are reported.
+    pub storage: &'storage InMemoryFileStorage<'storage>,
 }
 
 /// A diagnostic.
 pub type CompilerDiagnostic = Diagnostic<FileID>;
 
-impl<'workspace> DiagnosticsEmitter<'workspace> {
+impl<'storage> DiagnosticsEmitter<'storage> {
     /// Emit the error not related to a conrete file.
     pub fn emit_global_error(&self, msg: &str) {
         term::emit(
             &mut self.writer.lock(),
             &self.config,
-            self.workspace,
+            self.storage,
             &Diagnostic::error().with_message(msg),
         )
         .expect("emit_global_diagnostic() failed");
@@ -105,7 +105,7 @@ impl<'workspace> DiagnosticsEmitter<'workspace> {
         term::emit(
             &mut self.writer.lock(),
             &self.config,
-            self.workspace,
+            self.storage,
             diagnostic,
         )
         .expect("emit_diagnostic() failed");
@@ -121,11 +121,11 @@ impl<'workspace> DiagnosticsEmitter<'workspace> {
     /// Create a new [`DiagnosticsEmitter`] instance.
     #[must_use]
     #[inline]
-    pub fn new(workspace: &'workspace Workspace<'workspace>) -> Self {
+    pub fn new(storage: &'storage InMemoryFileStorage<'storage>) -> Self {
         Self {
             writer: StandardStream::stderr(ColorChoice::Always),
             config: Config::default(),
-            workspace,
+            storage,
         }
     }
 

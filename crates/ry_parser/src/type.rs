@@ -4,7 +4,7 @@ use ry_ast::{
     TypePathSegment, WhereClause, WhereClauseItem,
 };
 use ry_diagnostics::{expected, parser::ParseDiagnostic, BuildDiagnostic};
-use ry_workspace::span::SpanIndex;
+use ry_span::span::SpanIndex;
 
 pub(crate) struct TypeBoundsParser;
 
@@ -147,7 +147,7 @@ impl Parse for ParenthesizedTupleOrFunctionTypeParser {
         match (element_types.next(), element_types.next()) {
             (Some(element), None) => {
                 if state
-                    .source_file
+                    .file
                     .source
                     .index(state.span_from(element.span().end))
                     .contains(',')

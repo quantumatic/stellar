@@ -1,58 +1,60 @@
-//! Defines a [`Workspace`] for diagnostics reporting and advanced file management.
+//! Defines a [`InMemoryFileStorage`] for diagnostics reporting and advanced file management.
 
-use crate::{file::SourceFile, span::Span};
+use crate::{file::InMemoryFile, span::Span};
 use codespan_reporting::files::{Error, Files};
 use std::ops::Range;
 
-/// A source file manager.
+/// Sotrage for in memory storage.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct Workspace<'workspace> {
-    files: Vec<&'workspace SourceFile<'workspace>>,
+pub struct InMemoryFileStorage<'storage> {
+    storage: Vec<&'storage InMemoryFile<'storage>>,
 }
 
-impl Default for Workspace<'_> {
+impl Default for InMemoryFileStorage<'_> {
     fn default() -> Self {
         Self::new()
     }
 }
 
-/// An ID used to refer to files in [`Workspace`].
+/// An ID used to refer to storage in [`InMemoryFileStorage`].
 pub type FileID = usize;
 
-impl<'workspace> Workspace<'workspace> {
-    /// Creates a new empty [`Workspace`].
+impl<'storage> InMemoryFileStorage<'storage> {
+    /// Creates a new empty [`InMemoryFileStorage`].
     #[inline]
     #[must_use]
     pub const fn new() -> Self {
-        Self { files: Vec::new() }
+        Self {
+            storage: Vec::new(),
+        }
     }
 
-    /// Adds a new file to the [`Workspace`] and returns its ID.
+    /// Adds a new file to the [`InMemoryFileStorage`] and returns its ID.
     ///
     /// # Note
     /// File IDs start from `1`.
     ///
     /// ```
     /// # use std::path::Path;
-    /// # use ry_workspace::{workspace::Workspace, file::SourceFile, span::Span};
-    /// let mut workspace = Workspace::new();
-    /// let source_file = SourceFile::new(
+    /// # use ry_span::{storage::InMemoryFileStorage, file::InMemoryFile, span::Span};
+    /// let mut storage = InMemoryFileStorage::new();
+    /// let file = InMemoryFile::new(
     ///     Path::new("test.ry"),
     ///     "fun main() { println(\"Hello, world!\"); }"
     /// );
     ///
-    /// assert_eq!(workspace.add_file(&source_file), 1);
+    /// assert_eq!(storage.add_file(&file), 1);
     /// ```
-    pub fn add_file(&mut self, file: &'workspace SourceFile<'workspace>) -> FileID {
-        self.files.push(file);
-        self.files.len()
+    pub fn add_file(&mut self, file: &'storage InMemoryFile<'storage>) -> FileID {
+        self.storage.push(file);
+        self.storage.len()
     }
 
     /// Returns the file with the given ID.
     #[inline]
     #[must_use]
-    pub fn get_file_by_id(&self, file_id: FileID) -> Option<&'workspace SourceFile<'workspace>> {
-        self.files.get(file_id - 1).copied()
+    pub fn get_file_by_id(&self, file_id: FileID) -> Option<&'storage InMemoryFile<'storage>> {
+        self.storage.get(file_id - 1).copied()
     }
 
     /// Returns the file with the given ID, without doing bounds checking.
@@ -61,8 +63,8 @@ impl<'workspace> Workspace<'workspace> {
     /// Calling this method with an out-of-bounds index is undefined behavior even if the resulting reference is not used.
     #[inline]
     #[must_use]
-    pub unsafe fn get_file_by_id_unchecked(&self, file_id: FileID) -> &SourceFile<'workspace> {
-        unsafe { self.files.get_unchecked(file_id - 1) }
+    pub unsafe fn get_file_by_id_unchecked(&self, file_id: FileID) -> &InMemoryFile<'storage> {
+        unsafe { self.storage.get_unchecked(file_id - 1) }
     }
 
     /// Returns the content of the part of the source code situated
@@ -76,24 +78,24 @@ impl<'workspace> Workspace<'workspace> {
     ///
     /// ```
     /// # use std::path::Path;
-    /// # use ry_workspace::{workspace::Workspace, file::SourceFile, span::Span};
-    /// let mut workspace = Workspace::new();
-    /// let source_file = SourceFile::new(
+    /// # use ry_span::{storage::InMemoryFileStorage, file::InMemoryFile, span::Span};
+    /// let mut storage = InMemoryFileStorage::new();
+    /// let file = InMemoryFile::new(
     ///     Path::new("test.ry"),
     ///     "fun main() { println(\"Hello, world!\"); }"
     /// );
     ///
-    /// let file_id = workspace.add_file(&source_file);
+    /// let file_id = storage.add_file(&file);
     /// let span = Span { start: 21, end: 36, file_id };
     ///
-    /// assert_eq!(workspace.resolve_span_or_panic(span), "\"Hello, world!\"");
+    /// assert_eq!(storage.resolve_span_or_panic(span), "\"Hello, world!\"");
     /// ```
     ///
     /// [`start`]: crate::span::Span::start
     /// [`end`]: crate::span::Span::end
     /// [`file_id`]: crate::span::Span::file_id
     #[must_use]
-    pub fn resolve_span_or_panic(&self, span: Span) -> &'workspace str {
+    pub fn resolve_span_or_panic(&self, span: Span) -> &'storage str {
         self.get_file_by_id(span.file_id)
             .expect("File does not exist")
             .source
@@ -104,49 +106,49 @@ impl<'workspace> Workspace<'workspace> {
     /// Returns the content of the part of the source code situated
     /// at the given span.
     ///
-    /// Instead of panicking in the situation when [`Workspace::resolve_span_or_panic()`] does,
+    /// Instead of panicking in the situation when [`InMemoryFileStorage::resolve_span_or_panic()`] does,
     /// the function returns [`None`].
     ///
     /// # Examples
     ///
     /// ```
     /// # use std::path::Path;
-    /// # use ry_workspace::{workspace::Workspace, span::Span, file::SourceFile};
-    /// let mut workspace = Workspace::new();
-    /// let source_file = SourceFile::new(
+    /// # use ry_span::{storage::InMemoryFileStorage, span::Span, file::InMemoryFile};
+    /// let mut storage = InMemoryFileStorage::new();
+    /// let file = InMemoryFile::new(
     ///     Path::new("test.ry"),
     ///     "fun main() { println(\"Hello, world!\"); }"
     /// );
-    /// let file_id = workspace.add_file(&source_file);
+    /// let file_id = storage.add_file(&file);
     ///
     /// assert_eq!(
-    ///     workspace.resolve_span(
+    ///     storage.resolve_span(
     ///         Span { start: 21, end: 36, file_id }
     ///     ),
     ///     Some("\"Hello, world!\"")
     /// );
     /// assert_eq!(
     ///     // file does not exist
-    ///     workspace.resolve_span(Span { start: 0, end: 0, file_id: file_id + 1 }),
+    ///     storage.resolve_span(Span { start: 0, end: 0, file_id: file_id + 1 }),
     ///     None
     /// );
     /// assert_eq!(
     ///     // out of bounds
-    ///     workspace.resolve_span(Span { start: 99, end: 100, file_id }),
+    ///     storage.resolve_span(Span { start: 99, end: 100, file_id }),
     ///     None
     /// );
     #[must_use]
-    pub fn resolve_span(&self, span: Span) -> Option<&'workspace str> {
+    pub fn resolve_span(&self, span: Span) -> Option<&'storage str> {
         self.get_file_by_id(span.file_id)?
             .source
             .get(span.start..span.end)
     }
 }
 
-impl<'workspace> Files<'workspace> for Workspace<'workspace> {
+impl<'storage> Files<'storage> for InMemoryFileStorage<'storage> {
     type FileId = FileID;
-    type Name = &'workspace str;
-    type Source = &'workspace str;
+    type Name = &'storage str;
+    type Source = &'storage str;
 
     fn name(&self, file_id: FileID) -> Result<Self::Name, Error> {
         self.get_file_by_id(file_id)

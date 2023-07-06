@@ -1,14 +1,14 @@
 use pathdiff::diff_paths;
 use ry_interner::{Interner, Symbol};
-use ry_workspace::{file::SourceFile, workspace::FileID};
+use ry_span::{file::InMemoryFile, storage::FileID};
 use std::path::{self, Component};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Environment<'workspace> {
+pub struct Environment<'storage> {
     /// Source file corresponding to the module.
-    source_file: &'workspace SourceFile<'workspace>,
+    file: &'storage InMemoryFile<'storage>,
 
-    /// File ID in the global workspace.
+    /// File ID in the global storage.
     file_id: FileID,
 
     /// Path to the module relative to the project root
@@ -17,16 +17,16 @@ pub struct Environment<'workspace> {
     module_path: Path,
 }
 
-impl<'workspace> Environment<'workspace> {
+impl<'storage> Environment<'storage> {
     #[inline]
     #[must_use]
     pub const fn new(
-        source_file: &'workspace SourceFile<'workspace>,
+        file: &'storage InMemoryFile<'storage>,
         file_id: FileID,
         module_path: Path,
     ) -> Self {
         Self {
-            source_file,
+            file,
             file_id,
             module_path,
         }
@@ -117,11 +117,11 @@ where
             | Component::Prefix(..)
             | Component::RootDir
             | Component::ParentDir => {
-                return Err(ParseModulePathError::SourceFilePathIsNotCanonical);
+                return Err(ParseModulePathError::ProjectPathIsNotCanonical);
             }
             Component::Normal(component) => {
                 let Some(component_str) = component.to_str() else {
-                        return Err(ParseModulePathError::SourceFilePathIsNotValidUtf8);
+                        return Err(ParseModulePathError::ProjectPathIsNotValidUtf8);
                     };
 
                 // last file

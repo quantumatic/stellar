@@ -3,7 +3,7 @@
 use codespan_reporting::diagnostic::Label;
 use std::{fmt::Display, ops::Range};
 
-use crate::workspace::FileID;
+use crate::storage::FileID;
 
 /// Represents location in the source text.
 #[derive(Copy, Clone, Hash, Debug, Default, PartialEq, Eq)]
@@ -23,11 +23,11 @@ pub struct Span {
 /// because this can result in undefined behavior with diagnostics and
 /// debug information, because firstly diagnostics cannot be emitted correctly
 /// when start and end positions are equal, and secondly `file_id` is always starting
-/// from `1` in the [`Workspace`] (see [`add_file`] for more details).
+/// from `1` in the [`InMemoryFileStorage`] (see [`add_file`] for more details).
 ///
 /// [`file_id`]: crate::span::Span::file_id
-/// [`Workspace`]: crate::workspace::Workspace
-/// [`add_file`]: crate::workspace::Workspace::add_file
+/// [`InMemoryFileStorage`]: crate::storage::InMemoryFileStorage
+/// [`add_file`]: crate::storage::InMemoryFileStorage::add_file
 pub const DUMMY_SPAN: Span = Span {
     start: 0,
     end: 0,
@@ -73,15 +73,15 @@ pub trait SpanIndex {
     ///
     /// # Example
     /// ```
-    /// # use ry_workspace::span::{Span, SpanIndex};
+    /// # use ry_span::span::{Span, SpanIndex};
     /// let span = Span { start: 0, end: 3, file_id: 1 };
     /// assert_eq!("test".index(span), "tes");
     /// ```
     ///
     /// **Note**: use [`resolve_span()`] and [`resolve_span_or_panic()`] instead.
     ///
-    /// [`resolve_span()`]: crate::workspace::Workspace::resolve_span
-    /// [`resolve_span_or_panic()`]: crate::workspace::Workspace::resolve_span_or_panic
+    /// [`resolve_span()`]: crate::storage::InMemoryFileStorage::resolve_span
+    /// [`resolve_span_or_panic()`]: crate::storage::InMemoryFileStorage::resolve_span_or_panic
     fn index(&self, span: Span) -> &Self::Output;
 }
 

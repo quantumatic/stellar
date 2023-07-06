@@ -13,4 +13,4 @@ ry_ast = { path = "../ry_ast" }
 ry_lexer = { path = "../ry_lexer" }
 ry_diagnostics = { path = "../ry_diagnostics" }
 ry_interner = { path = "../ry_interner" }
-ry_workspace = { path = "../ry_workspace" }
+ry_span = { path = "../ry_span" }

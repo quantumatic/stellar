@@ -1,7 +1,7 @@
 //! Defines diagnostics related to scopes.
 
 use codespan_reporting::diagnostic::Diagnostic;
-use ry_workspace::span::Span;
+use ry_span::span::Span;
 
 use crate::{BuildDiagnostic, CompilerDiagnostic};
 

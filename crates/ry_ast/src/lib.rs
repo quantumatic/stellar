@@ -84,7 +84,7 @@
 )]
 
 use ry_interner::Symbol;
-use ry_workspace::{file::SourceFile, span::Span, workspace::FileID};
+use ry_span::{file::InMemoryFile, span::Span, storage::FileID};
 use token::RawToken;
 
 pub mod precedence;
@@ -1371,9 +1371,9 @@ pub struct JustFunctionParameter {
 
 /// Represents Ry source file.
 #[derive(Debug, PartialEq, Clone)]
-pub struct Module<'workspace> {
+pub struct Module<'storage> {
     pub file_id: FileID,
-    pub source_file: &'workspace SourceFile<'workspace>,
+    pub file: &'storage InMemoryFile<'storage>,
     pub items: Vec<Item>,
     pub docstring: Option<Docstring>,
 }
