@@ -1,9 +1,12 @@
-use crate::{macros::parse_list, path::PathParser, OptionalParser, Parse, ParseState};
+use crate::{
+    diagnostics::ParseDiagnostic, expected, macros::parse_list, path::PathParser, OptionalParser,
+    Parse, ParseState,
+};
 use ry_ast::{
     token::RawToken, GenericArgument, GenericParameter, Path, Token, TypeAst, TypeBounds, TypePath,
     TypePathSegment, WhereClause, WhereClauseItem,
 };
-use ry_diagnostics::{expected, parser::ParseDiagnostic, BuildDiagnostic};
+use ry_diagnostics::BuildDiagnostic;
 use ry_span::span::SpanIndex;
 
 pub(crate) struct TypeBoundsParser;

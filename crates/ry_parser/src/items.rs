@@ -1,4 +1,6 @@
 use crate::{
+    diagnostics::{ParseDiagnostic, UnnecessaryVisibilityQualifierContext},
+    expected,
     expression::ExpressionParser,
     macros::parse_list,
     path::ImportPathParser,
@@ -11,11 +13,7 @@ use ry_ast::{
     ItemKind, JustFunctionParameter, SelfParameter, StructField, Token, TraitItem, TupleField,
     TypeAlias, Visibility,
 };
-use ry_diagnostics::{
-    expected,
-    parser::{ParseDiagnostic, UnnecessaryVisibilityQualifierContext},
-    BuildDiagnostic,
-};
+use ry_diagnostics::BuildDiagnostic;
 use ry_span::span::Span;
 
 struct ImportParser {

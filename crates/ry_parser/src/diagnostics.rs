@@ -1,11 +1,11 @@
 //! Defines diagnostics for parser.
 
-use crate::{BuildDiagnostic, CompilerDiagnostic};
 use codespan_reporting::diagnostic::Diagnostic;
 use ry_ast::{
     token::{LexError, Token},
     ItemKind,
 };
+use ry_diagnostics::{BuildDiagnostic, CompilerDiagnostic};
 use ry_span::span::Span;
 use std::fmt::Display;
 
@@ -16,14 +16,14 @@ pub struct Expected(pub Vec<String>);
 /// Allows to construct [`Expected`] object shorter:
 ///
 /// ```
-/// use ry_diagnostics::{expected, parser::Expected};
+/// use ry_parser::{expected, diagnostics::Expected};
 ///
 /// assert_eq!(expected!("a", "b"), Expected(vec!["a".to_owned(), "b".to_owned()]));
 /// ```
 #[macro_export]
 macro_rules! expected {
     ($($e:expr),*) => {{
-        $crate::parser::Expected(vec![$($e.to_string()),*])
+        $crate::diagnostics::Expected(vec![$($e.to_string()),*])
     }};
 }
 

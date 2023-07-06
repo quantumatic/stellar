@@ -69,9 +69,6 @@ use codespan_reporting::{
 };
 use ry_span::storage::{FileID, InMemoryFileStorage};
 
-pub mod parser;
-pub mod scope;
-
 /// Stores basic `codespan_reporting` structs for reporting diagnostics.
 #[derive(Debug)]
 pub struct DiagnosticsEmitter<'storage> {
