@@ -1,9 +1,9 @@
+use ry_analyze::local_scope::{LocalScope, SymbolData};
 use ry_ast::typed::primitive_constructor;
 use ry_interner::{
     symbols::{STRING, UINT8},
     Interner,
 };
-use ry_type_inference::local_scope::{LocalScope, SymbolData};
 use ry_workspace::span::DUMMY_SPAN;
 use std::sync::Arc;
 

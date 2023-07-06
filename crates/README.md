@@ -12,4 +12,4 @@ Ry source code is divided into several crates:
 - `ry_workspace` - Implements some utility functions for easier work with the source code.
 - `ry_interner` - Implements the identifier interner.
 - `ry_diagnostics` - Implements the diagnostics.
-- `ry_type_inference` - Implements the type inference.
+- `ry_analyze` - Implements the type inference.

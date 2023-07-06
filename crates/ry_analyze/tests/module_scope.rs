@@ -1,5 +1,5 @@
+use ry_analyze::module_scope::{parse_module_path, Path};
 use ry_interner::Interner;
-use ry_type_inference::module_scope::{parse_module_path, Path};
 
 #[cfg(target_family = "windows")]
 #[test]
