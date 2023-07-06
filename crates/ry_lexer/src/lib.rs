@@ -119,12 +119,12 @@ mod number;
 #[derive(Debug)]
 pub struct Lexer<'workspace, 'interner> {
     /// Id of the file being scanned.
-    pub file_id: usize,
+    file_id: usize,
     /// Content of the file being scanned.
-    pub source: &'workspace str,
+    source: &'workspace str,
 
     /// Identifier interner.
-    pub interner: &'interner mut Interner,
+    interner: &'interner mut Interner,
 
     /// Current character.
     current: char,
