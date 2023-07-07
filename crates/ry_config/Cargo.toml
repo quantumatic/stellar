@@ -1,14 +1,13 @@
 [package]
-name = "ry_ast"
+name = "ry_config"
 version = "0.1.0"
 edition = "2021"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/ry-lang/ry"
 authors = ["Adi Salimgereyev <adisalimgereev@gmail.com>"]
 readme = "../../README.md"
-description = "Defines AST for the Ry programming language."
+description = "Parses and processes Ry projects' configuration files."
 
 [dependencies]
-phf = { version = "0.11.1", features = ["macros"] }
-ry_filesystem = { path = "../ry_filesystem" }
-ry_interner = { path = "../ry_interner" }
+serde = { version = "1.0.167", features = ["derive"] }
+toml = "0.7.6"

@@ -111,6 +111,34 @@ jobs:
           command: fmt
           args: --all -- --check
 
+  sort-deps:
+    name: sort-deps
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      - name: Install Rust toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+          default: true
+          profile: minimal
+
+      - name: Install cargo-sort
+        uses: actions-rs/cargo@v1
+        with:
+          command: install
+          args: sort
+
+      - name: Check sorting
+        uses: actions-rs/cargo@v1
+        with:
+          command: sort
+          args: --check --workspace
+
+
   validate-deps:
     name: validate-deps
     runs-on: ubuntu-latest

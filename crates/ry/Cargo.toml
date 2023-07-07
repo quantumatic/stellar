@@ -9,15 +9,15 @@ readme = "../../README.md"
 description = "Implements CLI for the Ry programming language."
 
 [dependencies]
-ry_parser = {path = "../ry_parser"}
-ry_lexer = {path = "../ry_lexer"}
-ry_diagnostics = {path = "../ry_diagnostics"}
-ry_ast = {path = "../ry_ast"}
-ry_interner = {path = "../ry_interner"}
-ry_filesystem = {path = "../ry_filesystem"}
+clap = { version = "4.1.4", features = ["derive"] }
 codespan-reporting = "0.11.1"
-clap = {version = "4.1.4", features = ["derive"]}
+leftpad-str = "9.9.9"
+ry_ast = { path = "../ry_ast" }
+ry_diagnostics = { path = "../ry_diagnostics" }
+ry_filesystem = { path = "../ry_filesystem" }
+ry_interner = { path = "../ry_interner" }
+ry_lexer = { path = "../ry_lexer" }
+ry_parser = { path = "../ry_parser" }
 serde = { version = "1.0.160", features = ["derive"] }
 serde_json = "1.0.96"
 termcolor = "1.2.0"
-leftpad-str = "9.9.9"

@@ -10,7 +10,7 @@ description = "Lexer for the Ry programming language."
 
 [dependencies]
 ry_ast = { path = "../ry_ast" }
-unicode-xid = "0.2.4"
-ry_interner = { path = "../ry_interner" }
 ry_filesystem = { path = "../ry_filesystem" }
+ry_interner = { path = "../ry_interner" }
 ry_stable_likely = { path = "../ry_stable_likely" }
+unicode-xid = "0.2.4"

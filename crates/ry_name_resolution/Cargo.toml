@@ -9,5 +9,5 @@ readme = "../../README.md"
 description = "Implements name resolution compilation stage for the Ry programming language."
 
 [dependencies]
-ry_interner = { path = "../ry_interner" }
 ry_ast = { path = "../ry_ast" }
+ry_interner = { path = "../ry_interner" }
