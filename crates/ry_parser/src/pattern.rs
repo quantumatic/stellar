@@ -34,7 +34,10 @@ impl Parse for PatternParser {
             let right = Self.parse(state)?;
 
             Some(Pattern::Or {
-                span: Span { start: left.span().start, end: right.span().end },
+                span: Span {
+                    start: left.span().start,
+                    end: right.span().end,
+                },
                 left: Box::new(left),
                 right: Box::new(right),
             })

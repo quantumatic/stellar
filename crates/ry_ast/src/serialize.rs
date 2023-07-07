@@ -252,7 +252,10 @@ impl Serialize for GenericArgument {
             Self::AssociatedType { name, value } => {
                 serializer.write_node_name_with_span(
                     "NAMED_GENERIC_ARGUMENT",
-                    Span {start: name.span.start, end: value.span().end },
+                    Span {
+                        start: name.span.start,
+                        end: value.span().end,
+                    },
                 );
                 serializer.increment_indentation();
                 serializer.serialize_key_value_pair("NAME", name);

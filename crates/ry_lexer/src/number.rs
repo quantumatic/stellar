@@ -170,7 +170,10 @@ impl Lexer<'_, '_> {
             if number_kind == NumberKind::Int {
                 return Token {
                     raw: RawToken::Error(RawLexError::InvalidDigit),
-                    span: Span { start: location, end: location + 1 },
+                    span: Span {
+                        start: location,
+                        end: location + 1,
+                    },
                 };
             }
         }
@@ -182,7 +185,10 @@ impl Lexer<'_, '_> {
                 TryInto::<usize>::try_into(s).expect("Invalid separator in Lexer::eat_number");
             return Token {
                 raw: RawToken::Error(RawLexError::UnderscoreMustSeparateSuccessiveDigits),
-                span: Span { start: separator_location, end: separator_location + 1 },
+                span: Span {
+                    start: separator_location,
+                    end: separator_location + 1,
+                },
             };
         }
 

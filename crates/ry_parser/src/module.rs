@@ -18,7 +18,11 @@ pub fn parse_module(
     diagnostics: &mut Vec<RyDiagnostic>,
     interner: &mut Interner,
 ) -> Result<Module, io::Error> {
-    Ok(parse_module_using(ParseState::new(&fs::read_to_string(file_path)?, diagnostics, interner)))
+    Ok(parse_module_using(ParseState::new(
+        &fs::read_to_string(file_path)?,
+        diagnostics,
+        interner,
+    )))
 }
 
 /// Parse a Ry module using a given parse state.

@@ -154,8 +154,7 @@ impl Files<'_> for EmptyDiagnosticsManager {
 
 impl DiagnosticsEmitter {
     /// Emit the diagnostic not associated with a file.
-    pub fn emit_context_free_diagnostic(&self, diagnostic: &RyDiagnostic)
-    {
+    pub fn emit_context_free_diagnostic(&self, diagnostic: &RyDiagnostic) {
         term::emit(
             &mut self.writer.lock(),
             &self.config,

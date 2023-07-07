@@ -77,17 +77,13 @@ mod statement;
 mod r#type;
 
 use diagnostics::ParseDiagnostic;
-pub use module::{
-    parse_module, parse_module_using,
-};
+pub use module::{parse_module, parse_module_using};
 use ry_ast::{
     token::{LexError, RawToken, Token},
     Docstring, IdentifierAst, Token, Visibility,
 };
 use ry_diagnostics::{BuildDiagnostic, RyDiagnostic};
-use ry_filesystem::{
-    span::{Span, SpanIndex},
-};
+use ry_filesystem::span::{Span, SpanIndex};
 use ry_interner::Interner;
 use ry_lexer::Lexer;
 

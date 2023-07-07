@@ -19,10 +19,7 @@ pub struct Span {
 /// because this can result in undefined behavior with diagnostics and
 /// debug information, because firstly diagnostics cannot be emitted correctly
 /// when start and end positions are equal
-pub const DUMMY_SPAN: Span = Span {
-    start: 0,
-    end: 0,
-};
+pub const DUMMY_SPAN: Span = Span { start: 0, end: 0 };
 
 impl Display for Span {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {

@@ -226,12 +226,18 @@ impl<'source, 'interner> Lexer<'source, 'interner> {
     /// Returns a span of the current character.
     #[inline]
     const fn current_char_span(&self) -> Span {
-        Span {start: self.location, end: self.location + 1 }
+        Span {
+            start: self.location,
+            end: self.location + 1,
+        }
     }
 
     /// Returns a span ending with the current character's location.
     const fn span_from(&self, start_location: usize) -> Span {
-        Span {start: start_location, end: self.location }
+        Span {
+            start: start_location,
+            end: self.location,
+        }
     }
 
     /// Advances the lexer state to the next 2 characters, and returns the token
@@ -400,7 +406,10 @@ impl<'source, 'interner> Lexer<'source, 'interner> {
                     Some(c) => Ok(c),
                     None => Err(LexError {
                         raw: RawLexError::InvalidByteEscapeSequence,
-                        span: Span {start: self.location - 4, end: self.location },
+                        span: Span {
+                            start: self.location - 4,
+                            end: self.location,
+                        },
                     }),
                 }
             }

@@ -314,7 +314,10 @@ impl Parse for PrefixExpressionParser {
         .parse(state)?;
 
         Some(UntypedExpression::Prefix {
-            span: Span {start: operator_token.span.start, end: inner.span().end },
+            span: Span {
+                start: operator_token.span.start,
+                end: inner.span().end,
+            },
             inner: Box::new(inner),
             operator,
         })

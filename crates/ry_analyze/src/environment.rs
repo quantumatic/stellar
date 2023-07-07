@@ -14,9 +14,7 @@ impl Environment {
     #[inline]
     #[must_use]
     pub const fn new(module_path: Path) -> Self {
-        Self {
-            module_path,
-        }
+        Self { module_path }
     }
 }
 
