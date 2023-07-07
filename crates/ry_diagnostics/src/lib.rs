@@ -119,25 +119,17 @@ impl<'a> GlobalDiagnostics<'a> {
     }
 
     /// Adds a diagnostic to a file.
-    pub fn add_file_diagnostic(
-        &mut self,
-        path: &'a Path,
-        diagnostic: RyDiagnostic,
-    ) {
+    pub fn add_file_diagnostic(&mut self, path: &'a Path, diagnostic: RyDiagnostic) {
         match self.file_diagnostics.get_mut(path) {
             Some(diagnostics_mut) => diagnostics_mut.push(diagnostic),
             None => {
                 self.file_diagnostics.insert(path, vec![diagnostic]);
-            },
+            }
         }
     }
 
     /// Adds diagnostics to a file.
-    pub fn add_file_diagnostics(
-        &mut self,
-        path: &'a Path,
-        diagnostics: Vec<RyDiagnostic>,
-    ) {
+    pub fn add_file_diagnostics(&mut self, path: &'a Path, diagnostics: Vec<RyDiagnostic>) {
         match self.file_diagnostics.get_mut(path) {
             Some(diagnostics_mut) => diagnostics_mut.extend(diagnostics),
             None => {
