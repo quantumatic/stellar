@@ -3,7 +3,7 @@ use std::{fs, io};
 use crate::{items::ItemsParser, Parse, ParseState};
 use ry_ast::Module;
 use ry_diagnostics::FileDiagnostic;
-use ry_filesystem::path_resolver::{FileID, PathResolver};
+use ry_filesystem::path_resolver::{FileID, FilePathResolver};
 use ry_interner::Interner;
 
 /// Error occurs when trying to initialize parse state, but something
@@ -25,7 +25,7 @@ pub enum InitializeParseStateError {
 #[must_use]
 pub fn parse_module_or_panic(
     file_id: FileID,
-    path_resolver: &PathResolver<'_>,
+    path_resolver: &FilePathResolver<'_>,
     diagnostics: &mut Vec<FileDiagnostic>,
     interner: &mut Interner,
 ) -> Module {
@@ -43,7 +43,7 @@ pub fn parse_module_or_panic(
 #[inline]
 pub fn parse_module(
     file_id: FileID,
-    path_resolver: &PathResolver<'_>,
+    path_resolver: &FilePathResolver<'_>,
     diagnostics: &mut Vec<FileDiagnostic>,
     interner: &mut Interner,
 ) -> Result<Module, InitializeParseStateError> {

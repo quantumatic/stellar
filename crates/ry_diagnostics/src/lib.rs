@@ -73,7 +73,7 @@ use codespan_reporting::{
 };
 use ry_filesystem::{
     file::InMemoryFile,
-    path_resolver::{FileID, PathResolver},
+    path_resolver::{FileID, FilePathResolver},
 };
 
 /// Stores basic `codespan_reporting` structs for reporting diagnostics.
@@ -86,7 +86,7 @@ pub struct DiagnosticsEmitter<'path_resolver> {
     config: Config,
 
     /// The path resolver.
-    path_resolver: &'path_resolver PathResolver<'path_resolver>,
+    path_resolver: &'path_resolver FilePathResolver<'path_resolver>,
 }
 
 /// Diagnostics associated with a file.
@@ -184,7 +184,7 @@ impl<'path_resolver> DiagnosticsEmitter<'path_resolver> {
     /// Create a new [`DiagnosticsEmitter`] instance.
     #[must_use]
     #[inline]
-    pub fn new(path_resolver: &'path_resolver PathResolver<'_>) -> Self {
+    pub fn new(path_resolver: &'path_resolver FilePathResolver<'_>) -> Self {
         Self {
             writer: StandardStream::stderr(ColorChoice::Always),
             config: Config::default(),

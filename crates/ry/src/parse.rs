@@ -1,13 +1,13 @@
 use crate::{prefix::log_with_left_padded_prefix, unique_file::create_unique_file};
 use ry_ast::serialize::serialize_ast;
 use ry_diagnostics::{check_file_diagnostics, DiagnosticsEmitter, DiagnosticsStatus};
-use ry_filesystem::path_resolver::PathResolver;
+use ry_filesystem::path_resolver::FilePathResolver;
 use ry_interner::Interner;
 use ry_parser::{parse_module, InitializeParseStateError};
 use std::{io::Write, path::Path, time::Instant};
 
 pub fn command(filepath: &str) {
-    let mut path_resolver = PathResolver::new();
+    let mut path_resolver = FilePathResolver::new();
     let file_id = path_resolver.add_path(Path::new(filepath));
 
     let diagnostics_emitter = DiagnosticsEmitter::new(&path_resolver);

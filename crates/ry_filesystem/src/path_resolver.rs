@@ -6,35 +6,37 @@ use std::path::{Path, PathBuf};
 
 /// Allows to resolve pathes by their file ID.
 #[derive(Debug, Clone)]
-pub struct PathResolver<'resolver> {
-    /// The pathes inside the project.
-    pub pathes: Vec<&'resolver Path>,
+pub struct FilePathResolver<'resolver> {
+    /// The file path storage.
+    pub path_storage: Vec<&'resolver Path>,
 }
 
 /// An ID used to refer to storage in [`ProjectPathResolver`].
 pub type FileID = usize;
 
-impl<'resolver> PathResolver<'resolver> {
+impl<'resolver> FilePathResolver<'resolver> {
     /// Creates a new project path resolver instance for the given project root path.
     #[inline]
     #[must_use]
     pub const fn new() -> Self {
-        Self { pathes: vec![] }
+        Self {
+            path_storage: vec![],
+        }
     }
 
     /// Adds a path into the path resolver.
     #[inline]
     #[must_use]
     pub fn add_path(&mut self, path: &'resolver Path) -> FileID {
-        self.pathes.push(path);
-        self.pathes.len()
+        self.path_storage.push(path);
+        self.path_storage.len()
     }
 
     /// Resolves a path by its file ID.
     #[inline]
     #[must_use]
     pub fn resolve_path(&self, id: FileID) -> Option<&'resolver Path> {
-        self.pathes.get(id - 1).copied()
+        self.path_storage.get(id - 1).copied()
     }
 
     /// Resolves a path by its file ID, and panics if the ID is invalid.
