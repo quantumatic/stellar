@@ -130,7 +130,7 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: install
-          args: sort
+          args: cargo-sort
 
       - name: Check sorting
         uses: actions-rs/cargo@v1
