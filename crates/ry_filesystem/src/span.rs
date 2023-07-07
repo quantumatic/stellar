@@ -3,7 +3,7 @@
 use codespan_reporting::diagnostic::Label;
 use std::{fmt::Display, ops::Range};
 
-use crate::storage::FileID;
+use crate::path_resolver::FileID;
 
 /// Represents location in the source text.
 #[derive(Copy, Clone, Hash, Debug, Default, PartialEq, Eq)]
@@ -41,20 +41,20 @@ impl Display for Span {
 }
 
 impl Span {
-    /// Gets primary diagnostics label ([`Label<FileID>`] from [`codespan_reporting`])
+    /// Gets primary diagnostics label ([`Label<()>`] from [`codespan_reporting`])
     /// in the span.
     #[inline]
     #[must_use]
-    pub fn to_primary_label(self) -> Label<FileID> {
-        Label::primary(self.file_id, self)
+    pub fn to_primary_label(self) -> Label<()> {
+        Label::primary((), self)
     }
 
-    /// Gets secondary diagnostics label ([`Label<FileID>`] from [`codespan_reporting`])
+    /// Gets secondary diagnostics label ([`Label<()>`] from [`codespan_reporting`])
     /// in the span.
     #[inline]
     #[must_use]
-    pub fn to_secondary_label(self) -> Label<FileID> {
-        Label::secondary(self.file_id, self)
+    pub fn to_secondary_label(self) -> Label<()> {
+        Label::secondary((), self)
     }
 }
 
@@ -73,15 +73,10 @@ pub trait SpanIndex {
     ///
     /// # Example
     /// ```
-    /// # use ry_span::span::{Span, SpanIndex};
+    /// # use ry_filesystem::span::{Span, SpanIndex};
     /// let span = Span { start: 0, end: 3, file_id: 1 };
     /// assert_eq!("test".index(span), "tes");
     /// ```
-    ///
-    /// **Note**: use [`resolve_span()`] and [`resolve_span_or_panic()`] instead.
-    ///
-    /// [`resolve_span()`]: crate::storage::InMemoryFileStorage::resolve_span
-    /// [`resolve_span_or_panic()`]: crate::storage::InMemoryFileStorage::resolve_span_or_panic
     fn index(&self, span: Span) -> &Self::Output;
 }
 

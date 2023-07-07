@@ -1,13 +1,10 @@
 use pathdiff::diff_paths;
+use ry_filesystem::path_resolver::FileID;
 use ry_interner::{Interner, Symbol};
-use ry_span::{file::InMemoryFile, storage::FileID};
 use std::path::{self, Component};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Environment<'storage> {
-    /// Source file corresponding to the module.
-    file: &'storage InMemoryFile<'storage>,
-
+pub struct Environment {
     /// File ID in the global storage.
     file_id: FileID,
 
@@ -17,16 +14,11 @@ pub struct Environment<'storage> {
     module_path: Path,
 }
 
-impl<'storage> Environment<'storage> {
+impl Environment {
     #[inline]
     #[must_use]
-    pub const fn new(
-        file: &'storage InMemoryFile<'storage>,
-        file_id: FileID,
-        module_path: Path,
-    ) -> Self {
+    pub const fn new(file_id: FileID, module_path: Path) -> Self {
         Self {
-            file,
             file_id,
             module_path,
         }

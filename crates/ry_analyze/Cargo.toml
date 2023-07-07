@@ -12,6 +12,6 @@ description = "Implements type inference for the Ry programming language."
 ry_ast = { path = "../ry_ast" }
 ry_diagnostics = { path = "../ry_diagnostics" }
 ry_interner = { path = "../ry_interner" }
-ry_span = { path = "../ry_span" }
+ry_filesystem = { path = "../ry_filesystem" }
 pathdiff = "0.2.1"
 codespan-reporting = "0.11.1"

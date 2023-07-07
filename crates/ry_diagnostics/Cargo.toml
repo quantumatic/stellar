@@ -10,4 +10,4 @@ description = "Implements diagnostics for the Ry programming language."
 
 [dependencies]
 codespan-reporting = "0.11.1"
-ry_span = { path = "../ry_span" }
+ry_filesystem = { path = "../ry_filesystem" }

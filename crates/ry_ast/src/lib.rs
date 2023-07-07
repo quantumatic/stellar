@@ -83,8 +83,8 @@
     clippy::unnested_or_patterns
 )]
 
+use ry_filesystem::{path_resolver::FileID, span::Span};
 use ry_interner::Symbol;
-use ry_span::{file::InMemoryFile, span::Span, storage::FileID};
 use token::RawToken;
 
 pub mod precedence;
@@ -1370,9 +1370,8 @@ pub struct JustFunctionParameter {
 
 /// Represents Ry source file.
 #[derive(Debug, PartialEq, Clone)]
-pub struct Module<'storage> {
+pub struct Module {
     pub file_id: FileID,
-    pub file: &'storage InMemoryFile<'storage>,
     pub items: Vec<Item>,
     pub docstring: Option<Docstring>,
 }

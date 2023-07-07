@@ -82,4 +82,3 @@
 pub mod file;
 pub mod path_resolver;
 pub mod span;
-pub mod storage;

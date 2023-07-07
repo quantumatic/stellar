@@ -77,38 +77,37 @@ mod statement;
 mod r#type;
 
 use diagnostics::ParseDiagnostic;
-pub use module::{parse_module, parse_module_using};
+pub use module::{parse_module, parse_module_or_panic, parse_module_using};
 use ry_ast::{
     token::{LexError, RawToken, Token},
     Docstring, IdentifierAst, Token, Visibility,
 };
-use ry_diagnostics::{BuildDiagnostic, CompilerDiagnostic};
+use ry_diagnostics::{BuildDiagnostic, FileDiagnostic};
+use ry_filesystem::{
+    path_resolver::FileID,
+    span::{Span, SpanIndex},
+};
 use ry_interner::Interner;
 use ry_lexer::Lexer;
-use ry_span::{
-    file::InMemoryFile,
-    span::{Span, SpanIndex},
-    storage::FileID,
-};
 
 #[macro_use]
 mod macros;
 
 /// Represents a parse state.
 #[derive(Debug)]
-pub struct ParseState<'storage, 'diagnostics, 'interner> {
-    /// Source file, that is being parsed.
-    file: &'storage InMemoryFile<'storage>,
+pub struct ParseState<'source, 'diagnostics, 'interner> {
     /// Id of the file in the global storage.
     file_id: usize,
+    /// Source code of the file.
+    source: &'source str,
     /// Lexer that is used for parsing.
-    lexer: Lexer<'storage, 'interner>,
+    lexer: Lexer<'source, 'interner>,
     /// Current token.
     current_token: Token,
     /// Next token.
     next_token: Token,
     /// Diagnostics that is emitted during parsing.
-    diagnostics: &'diagnostics mut Vec<CompilerDiagnostic>,
+    diagnostics: &'diagnostics mut Vec<FileDiagnostic>,
 }
 
 /// Represents AST node that can be parsed.
@@ -146,27 +145,26 @@ where
     fn optionally_parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output;
 }
 
-impl<'storage, 'diagnostics, 'interner> ParseState<'storage, 'diagnostics, 'interner> {
-    /// Creates an initial parse state.
+impl<'source, 'diagnostics, 'interner> ParseState<'source, 'diagnostics, 'interner> {
+    /// Creates an initial parse state from file source.
     #[must_use]
     pub fn new(
         file_id: FileID,
-        file: &'storage InMemoryFile<'storage>,
-        diagnostics: &'diagnostics mut Vec<CompilerDiagnostic>,
+        source: &'source str,
+        diagnostics: &'diagnostics mut Vec<FileDiagnostic>,
         interner: &'interner mut Interner,
     ) -> Self {
-        let mut lexer = Lexer::new(file_id, file.source, interner);
+        let mut lexer = Lexer::new(file_id, source, interner);
 
-        let current = lexer.next_no_comments();
-
-        let next = current;
+        let current_token = lexer.next_no_comments();
+        let next_token = current_token;
 
         let mut state = Self {
-            file,
             file_id,
+            source,
             lexer,
-            current_token: current,
-            next_token: next,
+            current_token,
+            next_token,
             diagnostics,
         };
         state.check_next_token();
@@ -191,7 +189,7 @@ impl<'storage, 'diagnostics, 'interner> ParseState<'storage, 'diagnostics, 'inte
     #[inline]
     #[must_use]
     fn resolve_span(&self, span: Span) -> &str {
-        self.file.resolve_span(span)
+        self.source.index(span)
     }
 
     /// Returns string slice corresponding to the current token's location.
@@ -296,7 +294,7 @@ impl<'storage, 'diagnostics, 'interner> ParseState<'storage, 'diagnostics, 'inte
             while self.next_token.raw == RawToken::GlobalDocComment {
                 self.advance();
 
-                module_docstring.push_str(self.file.source.index(self.current_token.span));
+                module_docstring.push_str(self.resolve_span(self.current_token.span));
             }
 
             Some(Docstring {
@@ -317,7 +315,7 @@ impl<'storage, 'diagnostics, 'interner> ParseState<'storage, 'diagnostics, 'inte
             while self.next_token.raw == RawToken::LocalDocComment {
                 self.advance();
 
-                local_docstring.push_str(self.file.source.index(self.current_token.span));
+                local_docstring.push_str(self.resolve_span(self.current_token.span));
             }
 
             Some(Docstring {

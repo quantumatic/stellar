@@ -14,7 +14,7 @@ use ry_ast::{
     TypeAlias, Visibility,
 };
 use ry_diagnostics::BuildDiagnostic;
-use ry_span::span::Span;
+use ry_filesystem::span::Span;
 
 struct ImportParser {
     pub(crate) visibility: Visibility,

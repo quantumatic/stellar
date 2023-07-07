@@ -3,20 +3,21 @@
 use crate::span::{Span, SpanIndex};
 use codespan_reporting::files::{Error, Files};
 use std::cmp::Ordering;
+use std::io;
 use std::ops::Range;
 use std::path::Path;
 
 /// A Ry source file.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct InMemoryFile<'storage> {
+pub struct InMemoryFile<'file> {
     /// The path of the source file.
-    pub path: &'storage Path,
+    pub path: &'file Path,
 
     /// The path of the source file as a string slice.
-    pub path_str: &'storage str,
+    pub path_str: &'file str,
 
     /// The source content of the file.
-    pub source: &'storage str,
+    pub source: String,
 
     /// The length of the source content (in bytes).
     pub source_len: usize,
@@ -25,19 +26,36 @@ pub struct InMemoryFile<'storage> {
     pub line_starts: Vec<usize>,
 }
 
-impl<'storage> InMemoryFile<'storage> {
+impl<'file> InMemoryFile<'file> {
     /// Creates a new [`InMemoryFile`].
+    ///
+    /// # Errors
+    /// Returns an error if the source of the file cannot be read.
+    #[inline]
+    pub fn new(path: &'file Path) -> Result<Self, io::Error> {
+        Ok(Self::new_from_source(path, std::fs::read_to_string(path)?))
+    }
+
+    /// Creates a new [`InMemoryFile`] and panics if its contents
+    /// cannot be read.
     #[inline]
     #[must_use]
-    pub fn new(path: &'storage Path, source: &'storage str) -> Self {
+    pub fn new_or_panic(path: &'file Path) -> Self {
+        Self::new(path).expect("Invalid UTF-8 data in path")
+    }
+
+    /// Creates a new [`InMemoryFile`] with the given source.
+    #[inline]
+    #[must_use]
+    pub fn new_from_source(path: &'file Path, source: String) -> Self {
         Self {
             path,
             path_str: path.to_str().expect("Invalid UTF-8 data in path"),
-            source,
             source_len: source.len(),
             line_starts: std::iter::once(0)
                 .chain(source.match_indices('\n').map(|(i, _)| i + 1))
                 .collect(),
+            source,
         }
     }
 
@@ -57,7 +75,7 @@ impl<'storage> InMemoryFile<'storage> {
     ///
     /// ```ignore
     /// # use std::path::Path;
-    /// # use ry_span::file::InMemoryFile;
+    /// # use ry_filesystem::file::InMemoryFile;
     /// let file = InMemoryFile::new(
     ///     Path::new("test.ry"),
     ///     "fun main() {
@@ -89,12 +107,12 @@ impl<'storage> InMemoryFile<'storage> {
     ///
     /// ```
     /// # use std::path::Path;
-    /// # use ry_span::file::InMemoryFile;
-    /// let file = InMemoryFile::new(
+    /// # use ry_filesystem::file::InMemoryFile;
+    /// let file = InMemoryFile::new_from_source(
     ///     Path::new("test.ry"),
     ///     "fun main() {
     ///     println(\"Hello, world!\");
-    /// }",
+    /// }".to_owned(),
     /// );
     ///
     /// assert_eq!(file.get_line_index_by_byte_index(0), 0);
@@ -113,12 +131,12 @@ impl<'storage> InMemoryFile<'storage> {
     ///
     /// ```
     /// # use std::path::Path;
-    /// # use ry_span::file::InMemoryFile;
-    /// let file = InMemoryFile::new(
+    /// # use ry_filesystem::file::InMemoryFile;
+    /// let file = InMemoryFile::new_from_source(
     ///     Path::new("test.ry"),
     ///     "fun main() {
     ///     println(\"Hello, world!\");
-    /// }",
+    /// }".to_owned(),
     /// );
     ///
     /// assert_eq!(file.line_range_by_index(0), Some(0..13));
@@ -135,26 +153,26 @@ impl<'storage> InMemoryFile<'storage> {
 }
 
 // For proper error reporting
-impl<'storage> Files<'storage> for InMemoryFile<'storage> {
+impl<'file> Files<'file> for InMemoryFile<'file> {
     // we don't care about file IDs, because we have only one individual file here
     type FileId = ();
 
-    type Name = &'storage str;
-    type Source = &'storage str;
+    type Name = &'file str;
+    type Source = &'file str;
 
-    fn name(&'storage self, _: ()) -> Result<Self::Name, Error> {
+    fn name(&'file self, _: ()) -> Result<Self::Name, Error> {
         Ok(self.path_str)
     }
 
-    fn source(&'storage self, _: ()) -> Result<Self::Source, Error> {
-        Ok(self.source)
+    fn source(&'file self, _: ()) -> Result<Self::Source, Error> {
+        Ok(&self.source)
     }
 
-    fn line_index(&'storage self, _: (), byte_index: usize) -> Result<usize, Error> {
+    fn line_index(&'file self, _: (), byte_index: usize) -> Result<usize, Error> {
         Ok(self.get_line_index_by_byte_index(byte_index))
     }
 
-    fn line_range(&'storage self, _: (), line_index: usize) -> Result<Range<usize>, Error> {
+    fn line_range(&'file self, _: (), line_index: usize) -> Result<Range<usize>, Error> {
         let line_start = self.get_line_start_by_index(line_index)?;
         let next_line_start = self.get_line_start_by_index(line_index + 1)?;
 

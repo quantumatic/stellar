@@ -1,10 +1,10 @@
 use ry_analyze::scope::{Scope, ValueConstructor};
 use ry_ast::typed::primitive_constructor;
+use ry_filesystem::span::DUMMY_SPAN;
 use ry_interner::{
     symbols::{STRING, UINT8},
     Interner,
 };
-use ry_span::span::DUMMY_SPAN;
 use std::sync::Arc;
 
 // ```

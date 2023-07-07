@@ -4,11 +4,10 @@ macro_rules! test {
         #[test]
         #[allow(unused_qualifications)]
         fn $name() {
-            let file = ry_span::file::InMemoryFile::new(std::path::Path::new("test.ry"), $source);
-
             let mut diagnostics = vec![];
             let mut interner = ry_interner::Interner::default();
-            let _ = ry_parser::parse_module(0, &file, &mut diagnostics, &mut interner);
+            let state = ry_parser::ParseState::new(0, &$source, &mut diagnostics, &mut interner);
+            let _ = ry_parser::parse_module_using(state);
 
             assert!(diagnostics.is_empty());
         }

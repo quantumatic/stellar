@@ -1,14 +1,13 @@
 [package]
-name = "ry_ast"
+name = "ry_name_resolution"
 version = "0.1.0"
 edition = "2021"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/ry-lang/ry"
 authors = ["Adi Salimgereyev <adisalimgereev@gmail.com>"]
 readme = "../../README.md"
-description = "Defines AST for the Ry programming language."
+description = "Implements name resolution compilation stage for the Ry programming language."
 
 [dependencies]
-phf = { version = "0.11.1", features = ["macros"] }
 ry_interner = { path = "../ry_interner" }
-ry_filesystem = { path = "../ry_filesystem" }
+ry_ast = { path = "../ry_ast" }

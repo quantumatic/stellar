@@ -7,8 +7,8 @@ use crate::{
     StructExpressionItem, StructField, StructFieldPattern, TraitItem, TupleField, TypeAlias,
     TypeAst, TypePath, TypePathSegment, UntypedExpression, Visibility, WhereClauseItem,
 };
+use ry_filesystem::span::{Span, DUMMY_SPAN};
 use ry_interner::{Interner, Symbol};
-use ry_span::span::{Span, DUMMY_SPAN};
 
 /// A struct that allows to serialize a Ry module into a string, for debug purposes.
 #[derive(Debug)]
@@ -1028,7 +1028,7 @@ impl Serialize for Item {
             }
             Self::TypeAlias(alias) => alias.serialize(serializer),
             Self::Import { visibility, path } => {
-                serializer.write_node_name("USE");
+                serializer.write_node_name("IMPORT");
                 serializer.increment_indentation();
                 serializer.serialize_key_value_pair("VISIBILITY", visibility);
                 serializer.serialize_key_value_pair("IMPORT_PATH", path);
@@ -1044,11 +1044,10 @@ impl Serialize for &str {
     }
 }
 
-impl Serialize for Module<'_> {
+impl Serialize for Module {
     fn serialize(&self, serializer: &mut Serializer<'_>) {
         serializer.write_node_name("MODULE");
         serializer.increment_indentation();
-        serializer.serialize_key_value_pair("FILEPATH", &self.file.path_str);
         serializer.serialize_key_list_value_pair("ITEMS", &self.items);
         serializer.decrement_indentation();
     }
@@ -1056,7 +1055,7 @@ impl Serialize for Module<'_> {
 
 /// Serialize a module AST into a string.
 #[must_use]
-pub fn serialize_ast(module: &Module<'_>, interner: &Interner) -> String {
+pub fn serialize_ast(module: &Module, interner: &Interner) -> String {
     let mut serializer = Serializer::new(interner);
     module.serialize(&mut serializer);
     serializer.take_output()
