@@ -102,6 +102,51 @@ pub struct GlobalDiagnostics<'a> {
     pub context_free_diagnostics: Vec<RyDiagnostic>,
 }
 
+impl Default for GlobalDiagnostics<'_> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl<'a> GlobalDiagnostics<'a> {
+    /// Creates a new instance of [`GlobalDiagnostics`].
+    #[must_use]
+    pub fn new() -> Self {
+        Self {
+            file_diagnostics: HashMap::new(),
+            context_free_diagnostics: Vec::new(),
+        }
+    }
+
+    /// Adds a diagnostic to a file.
+    pub fn add_file_diagnostic(
+        &mut self,
+        path: &'a Path,
+        diagnostic: RyDiagnostic,
+    ) {
+        match self.file_diagnostics.get_mut(path) {
+            Some(diagnostics_mut) => diagnostics_mut.push(diagnostic),
+            None => {
+                self.file_diagnostics.insert(path, vec![diagnostic]);
+            },
+        }
+    }
+
+    /// Adds diagnostics to a file.
+    pub fn add_file_diagnostics(
+        &mut self,
+        path: &'a Path,
+        diagnostics: Vec<RyDiagnostic>,
+    ) {
+        match self.file_diagnostics.get_mut(path) {
+            Some(diagnostics_mut) => diagnostics_mut.extend(diagnostics),
+            None => {
+                self.file_diagnostics.insert(path, diagnostics);
+            }
+        }
+    }
+}
+
 /// Empty diagnostics manager (implements [`Files`]).
 ///
 /// [`Files`]: codespan_reporting::files::Files
