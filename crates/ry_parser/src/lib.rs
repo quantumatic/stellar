@@ -77,7 +77,9 @@ mod statement;
 mod r#type;
 
 use diagnostics::ParseDiagnostic;
-pub use module::{parse_module, parse_module_or_panic, parse_module_using};
+pub use module::{
+    parse_module, parse_module_or_panic, parse_module_using, InitializeParseStateError,
+};
 use ry_ast::{
     token::{LexError, RawToken, Token},
     Docstring, IdentifierAst, Token, Visibility,

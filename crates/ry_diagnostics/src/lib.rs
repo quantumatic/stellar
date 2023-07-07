@@ -147,12 +147,15 @@ impl Files<'_> for EmptyDiagnosticsManager {
 
 impl<'path_resolver> DiagnosticsEmitter<'path_resolver> {
     /// Emit the error not related to a conrete file.
-    pub fn emit_global_error(&self, msg: &str) {
+    pub fn emit_global_error<S>(&self, message: S)
+    where
+        S: AsRef<str>,
+    {
         term::emit(
             &mut self.writer.lock(),
             &self.config,
             &EmptyDiagnosticsManager,
-            &Diagnostic::error().with_message(msg),
+            &Diagnostic::error().with_message(message.as_ref()),
         )
         .expect("emit_global_diagnostic() failed");
     }
