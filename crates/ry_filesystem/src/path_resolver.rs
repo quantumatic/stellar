@@ -34,7 +34,7 @@ impl<'resolver> PathResolver<'resolver> {
     #[inline]
     #[must_use]
     pub fn resolve_path(&self, id: FileID) -> Option<&'resolver Path> {
-        self.pathes.get(id).copied()
+        self.pathes.get(id - 1).copied()
     }
 
     /// Resolves a path by its file ID, and panics if the ID is invalid.
