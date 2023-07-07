@@ -1,7 +1,7 @@
 //! Defines [`Scope`] to work with scopes in statement blocks.
 
 use ry_ast::typed::Type;
-use ry_diagnostics::{BuildDiagnostic, FileDiagnostic};
+use ry_diagnostics::{BuildDiagnostic, RyDiagnostic};
 use ry_filesystem::span::Span;
 use ry_interner::{Interner, Symbol};
 use std::{collections::HashMap, sync::Arc};
@@ -74,7 +74,7 @@ impl<'scope> Scope<'scope> {
         symbol: Symbol,
         span: Span,
         interner: &Interner,
-        diagnostics: &mut Vec<FileDiagnostic>,
+        diagnostics: &mut Vec<RyDiagnostic>,
     ) -> Option<&ValueConstructor> {
         if let data @ Some(..) = self.lookup(symbol) {
             data

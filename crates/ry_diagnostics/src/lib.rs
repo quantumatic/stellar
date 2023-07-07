@@ -60,7 +60,7 @@
 )]
 
 use core::fmt;
-use std::{collections::HashMap, fmt::Display};
+use std::{collections::HashMap, fmt::Display, path::Path};
 
 use codespan_reporting::{
     diagnostic::{Diagnostic, Severity},
@@ -71,29 +71,36 @@ use codespan_reporting::{
         Config,
     },
 };
-use ry_filesystem::{
-    file::InMemoryFile,
-    path_resolver::{FileID, FilePathResolver},
-};
+use ry_filesystem::file::InMemoryFile;
 
 /// Stores basic `codespan_reporting` structs for reporting diagnostics.
 #[derive(Debug)]
-pub struct DiagnosticsEmitter<'path_resolver> {
+pub struct DiagnosticsEmitter {
     /// The stream in which diagnostics is reported into.
     writer: StandardStream,
 
     /// The config for diagnostics reporting.
     config: Config,
-
-    /// The path resolver.
-    path_resolver: &'path_resolver FilePathResolver<'path_resolver>,
 }
 
-/// Diagnostics associated with a file.
-pub type FileDiagnostic = Diagnostic<()>;
+impl Default for DiagnosticsEmitter {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+/// Diagnostics type alias.
+pub type RyDiagnostic = Diagnostic<()>;
 
 /// Global diagnostics.
-pub type GlobalDiagnostics = HashMap<FileID, Vec<FileDiagnostic>>;
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct GlobalDiagnostics<'a> {
+    /// Diagnostics associated with concrete files.
+    pub file_diagnostics: HashMap<&'a Path, Vec<RyDiagnostic>>,
+
+    /// Context free diagnostics.
+    pub context_free_diagnostics: Vec<RyDiagnostic>,
+}
 
 /// Empty diagnostics manager (implements [`Files`]).
 ///
@@ -145,28 +152,29 @@ impl Files<'_> for EmptyDiagnosticsManager {
     }
 }
 
-impl<'path_resolver> DiagnosticsEmitter<'path_resolver> {
-    /// Emit the error not related to a conrete file.
-    pub fn emit_global_error<S>(&self, message: S)
-    where
-        S: AsRef<str>,
+impl DiagnosticsEmitter {
+    /// Emit the diagnostic not associated with a file.
+    pub fn emit_context_free_diagnostic(&self, diagnostic: &RyDiagnostic)
     {
         term::emit(
             &mut self.writer.lock(),
             &self.config,
             &EmptyDiagnosticsManager,
-            &Diagnostic::error().with_message(message.as_ref()),
+            diagnostic,
         )
         .expect("emit_global_diagnostic() failed");
     }
 
+    /// Emit diagnostics not associated with a particular file.
+    pub fn emit_context_free_diagnostics(&self, diagnostics: &[RyDiagnostic]) {
+        for diagnostic in diagnostics {
+            self.emit_context_free_diagnostic(diagnostic);
+        }
+    }
+
     /// Emit diagnostics associated with a particular file.
-    pub fn emit_file_diagnostics(&self, file_id: FileID, file_diagnostics: &[FileDiagnostic]) {
-        let path = self
-            .path_resolver
-            .resolve_path(file_id)
-            .expect("Cannot resolve the path needed to emit the diagnostic");
-        let file = InMemoryFile::new(path).expect("Cannot open file needed to emit the diagnostic");
+    pub fn emit_file_diagnostics(&self, path: &Path, file_diagnostics: &[RyDiagnostic]) {
+        let file = InMemoryFile::new_or_panic(path);
 
         for diagnostic in file_diagnostics {
             term::emit(&mut self.writer.lock(), &self.config, &file, diagnostic)
@@ -175,20 +183,19 @@ impl<'path_resolver> DiagnosticsEmitter<'path_resolver> {
     }
 
     /// Emit a list of diagnostic.
-    pub fn emit_global_diagnostics(&self, diagnostics: &HashMap<FileID, Vec<FileDiagnostic>>) {
+    pub fn emit_global_diagnostics(&self, diagnostics: &HashMap<&Path, Vec<RyDiagnostic>>) {
         for diagnostic in diagnostics {
-            self.emit_file_diagnostics(*diagnostic.0, diagnostic.1);
+            self.emit_file_diagnostics(diagnostic.0, diagnostic.1);
         }
     }
 
     /// Create a new [`DiagnosticsEmitter`] instance.
     #[must_use]
     #[inline]
-    pub fn new(path_resolver: &'path_resolver FilePathResolver<'_>) -> Self {
+    pub fn new() -> Self {
         Self {
             writer: StandardStream::stderr(ColorChoice::Always),
             config: Config::default(),
-            path_resolver,
         }
     }
 
@@ -223,7 +230,7 @@ pub enum DiagnosticsStatus {
 ///
 /// Note: ID is not required.
 #[must_use]
-pub fn check_file_diagnostics(file_diagnostics: &[FileDiagnostic]) -> DiagnosticsStatus {
+pub fn check_file_diagnostics(file_diagnostics: &[RyDiagnostic]) -> DiagnosticsStatus {
     for diagnostic in file_diagnostics {
         if matches!(diagnostic.severity, Severity::Error | Severity::Bug) {
             return DiagnosticsStatus::Fatal;
@@ -235,8 +242,8 @@ pub fn check_file_diagnostics(file_diagnostics: &[FileDiagnostic]) -> Diagnostic
 
 /// Check if diagnostics are fatal.
 #[must_use]
-pub fn check_global_diagnostics(diagnostics: &GlobalDiagnostics) -> DiagnosticsStatus {
-    for diagnostic in diagnostics {
+pub fn check_global_diagnostics(diagnostics: &GlobalDiagnostics<'_>) -> DiagnosticsStatus {
+    for diagnostic in &diagnostics.file_diagnostics {
         if check_file_diagnostics(diagnostic.1) == DiagnosticsStatus::Fatal {
             return DiagnosticsStatus::Fatal;
         }
@@ -248,5 +255,5 @@ pub fn check_global_diagnostics(diagnostics: &GlobalDiagnostics) -> DiagnosticsS
 /// Anything that can be reported using [`DiagnosticsEmitter`].
 pub trait BuildDiagnostic {
     /// Convert [`self`] into [`CompilerDiagnostic`].
-    fn build(&self) -> FileDiagnostic;
+    fn build(&self) -> RyDiagnostic;
 }

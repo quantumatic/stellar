@@ -4,6 +4,7 @@ use crate::{
 };
 use ry_ast::{token::RawToken, Path, Pattern, StructFieldPattern, Token};
 use ry_diagnostics::BuildDiagnostic;
+use ry_filesystem::span::Span;
 
 pub(crate) struct PatternParser;
 
@@ -33,7 +34,7 @@ impl Parse for PatternParser {
             let right = Self.parse(state)?;
 
             Some(Pattern::Or {
-                span: state.make_span(left.span().start, right.span().end),
+                span: Span { start: left.span().start, end: right.span().end },
                 left: Box::new(left),
                 right: Box::new(right),
             })
@@ -81,13 +82,13 @@ impl Parse for PatternExceptOrParser {
                     };
 
                     Some(Pattern::Identifier {
-                        span: state.make_span(
-                            path.span.start,
-                            match pattern {
+                        span: Span {
+                            start: path.span.start,
+                            end: match pattern {
                                 Some(ref pattern) => pattern.span().end,
                                 None => path.span.end,
                             },
-                        ),
+                        },
                         identifier: *identifier,
                         pattern,
                     })

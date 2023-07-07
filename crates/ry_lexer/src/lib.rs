@@ -86,13 +86,13 @@ mod number;
 /// # use ry_interner::Interner;
 /// # use ry_filesystem::span::Span;
 /// let mut interner = Interner::default();
-/// let mut lexer = Lexer::new(0, "", &mut interner);
+/// let mut lexer = Lexer::new("", &mut interner);
 ///
 /// assert_eq!(
 ///     lexer.next_token(),
 ///     Token {
 ///         raw: EndOfFile,
-///         span: Span { start: 0, end: 1, file_id: 0 }
+///         span: Span { start: 0, end: 1 }
 ///     }
 /// );
 /// ```
@@ -104,7 +104,7 @@ mod number;
 /// # use ry_ast::token::{RawLexError, RawToken::Error};
 /// # use ry_interner::Interner;
 /// let mut interner = Interner::default();
-/// let mut lexer = Lexer::new(0, "١", &mut interner);
+/// let mut lexer = Lexer::new("١", &mut interner);
 ///
 /// assert_eq!(lexer.next_token().raw, Error(RawLexError::UnexpectedChar));
 /// ```
@@ -118,8 +118,6 @@ mod number;
 /// [`Error`]: ry_ast::token::RawToken::Error
 #[derive(Debug)]
 pub struct Lexer<'source, 'interner> {
-    /// Id of the file being scanned.
-    file_id: usize,
     /// Content of the file being scanned.
     source: &'source str,
 
@@ -148,14 +146,13 @@ pub struct Lexer<'source, 'interner> {
 impl<'source, 'interner> Lexer<'source, 'interner> {
     /// Creates a new [`Lexer`] instance.
     #[must_use]
-    pub fn new(file_id: usize, source: &'source str, interner: &'interner mut Interner) -> Self {
+    pub fn new(source: &'source str, interner: &'interner mut Interner) -> Self {
         let mut chars = source.chars();
 
         let current = chars.next().unwrap_or('\0');
         let next = chars.next().unwrap_or('\0');
 
         Self {
-            file_id,
             source,
             current,
             next,
@@ -226,25 +223,15 @@ impl<'source, 'interner> Lexer<'source, 'interner> {
         token
     }
 
-    /// Creates a new [`Span`] with the current file id.
-    #[inline]
-    const fn make_span(&self, start: usize, end: usize) -> Span {
-        Span {
-            start,
-            end,
-            file_id: self.file_id,
-        }
-    }
-
     /// Returns a span of the current character.
     #[inline]
     const fn current_char_span(&self) -> Span {
-        self.make_span(self.location, self.location + 1)
+        Span {start: self.location, end: self.location + 1 }
     }
 
     /// Returns a span ending with the current character's location.
     const fn span_from(&self, start_location: usize) -> Span {
-        self.make_span(start_location, self.location)
+        Span {start: start_location, end: self.location }
     }
 
     /// Advances the lexer state to the next 2 characters, and returns the token
@@ -255,7 +242,6 @@ impl<'source, 'interner> Lexer<'source, 'interner> {
             span: Span {
                 start: self.location,
                 end: self.location + 2,
-                file_id: self.file_id,
             },
         };
 
@@ -414,7 +400,7 @@ impl<'source, 'interner> Lexer<'source, 'interner> {
                     Some(c) => Ok(c),
                     None => Err(LexError {
                         raw: RawLexError::InvalidByteEscapeSequence,
-                        span: self.make_span(self.location - 4, self.location),
+                        span: Span {start: self.location - 4, end: self.location },
                     }),
                 }
             }

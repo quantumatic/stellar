@@ -151,17 +151,6 @@ impl<'interner> Serializer<'interner> {
         self.serialize_items(items);
     }
 
-    /// Allows to create spans inside the serializer.
-    #[inline]
-    #[must_use]
-    const fn new_span(start: usize, end: usize) -> Span {
-        Span {
-            start,
-            end,
-            file_id: 0, // serializer doesn't care about invalid file IDs
-        }
-    }
-
     /// Returns the output string produced.
     #[inline]
     #[must_use]
@@ -263,7 +252,7 @@ impl Serialize for GenericArgument {
             Self::AssociatedType { name, value } => {
                 serializer.write_node_name_with_span(
                     "NAMED_GENERIC_ARGUMENT",
-                    Serializer::new_span(name.span.start, value.span().end),
+                    Span {start: name.span.start, end: value.span().end },
                 );
                 serializer.increment_indentation();
                 serializer.serialize_key_value_pair("NAME", name);

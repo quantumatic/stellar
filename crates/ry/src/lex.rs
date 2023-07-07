@@ -7,7 +7,7 @@ pub fn command(filepath: &str, show_locations: bool) {
     match fs::read_to_string(filepath) {
         Ok(source) => {
             let mut interner = Interner::default();
-            let mut lexer = Lexer::new(0, &source, &mut interner);
+            let mut lexer = Lexer::new(&source, &mut interner);
             let mut current_token_index = 0;
 
             loop {

@@ -83,7 +83,7 @@
     clippy::unnested_or_patterns
 )]
 
-use ry_filesystem::{path_resolver::FileID, span::Span};
+use ry_filesystem::span::Span;
 use ry_interner::Symbol;
 use token::RawToken;
 
@@ -1371,7 +1371,6 @@ pub struct JustFunctionParameter {
 /// Represents Ry source file.
 #[derive(Debug, PartialEq, Clone)]
 pub struct Module {
-    pub file_id: FileID,
     pub items: Vec<Item>,
     pub docstring: Option<Docstring>,
 }

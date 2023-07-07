@@ -15,6 +15,7 @@ use ry_ast::{
     StructExpressionItem, Token, UntypedExpression,
 };
 use ry_diagnostics::BuildDiagnostic;
+use ry_filesystem::span::Span;
 
 #[derive(Default)]
 pub(crate) struct ExpressionParser {
@@ -313,7 +314,7 @@ impl Parse for PrefixExpressionParser {
         .parse(state)?;
 
         Some(UntypedExpression::Prefix {
-            span: state.make_span(operator_token.span.start, inner.span().end),
+            span: Span {start: operator_token.span.start, end: inner.span().end },
             inner: Box::new(inner),
             operator,
         })

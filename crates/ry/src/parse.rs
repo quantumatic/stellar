@@ -1,32 +1,30 @@
 use crate::{prefix::log_with_left_padded_prefix, unique_file::create_unique_file};
+use codespan_reporting::diagnostic::Diagnostic;
 use ry_ast::serialize::serialize_ast;
 use ry_diagnostics::{check_file_diagnostics, DiagnosticsEmitter, DiagnosticsStatus};
-use ry_filesystem::path_resolver::FilePathResolver;
 use ry_interner::Interner;
-use ry_parser::{parse_module, InitializeParseStateError};
-use std::{io::Write, path::Path, time::Instant};
+use ry_parser::parse_module;
+use std::{io::Write, time::Instant, path::Path};
 
-pub fn command(filepath: &str) {
-    let mut path_resolver = FilePathResolver::new();
-    let file_id = path_resolver.add_path(Path::new(filepath));
+pub fn command(path_str: &str) {
+    let path = Path::new(path_str);
 
-    let diagnostics_emitter = DiagnosticsEmitter::new(&path_resolver);
+    let diagnostics_emitter = DiagnosticsEmitter::new();
     let mut diagnostics = vec![];
 
     let mut interner = Interner::default();
 
     let now = Instant::now();
 
-    match parse_module(file_id, &path_resolver, &mut diagnostics, &mut interner) {
-        Err(InitializeParseStateError::ReadFileError(..)) => {
-            diagnostics_emitter.emit_global_error(format!("cannot read the file {}", filepath));
+    match parse_module(path, &mut diagnostics, &mut interner) {
+        Err(..) => {
+            diagnostics_emitter.emit_context_free_diagnostic(&Diagnostic::error().with_message(format!("cannot read the file {}", path_str)));
         }
-        Err(InitializeParseStateError::ResolvePathError(..)) => unreachable!(),
         Ok(ast) => {
-            log_with_left_padded_prefix("Parsed", filepath);
+            log_with_left_padded_prefix("Parsed", path_str);
             let parsing_time = now.elapsed().as_secs_f64();
 
-            diagnostics_emitter.emit_file_diagnostics(file_id, &diagnostics);
+            diagnostics_emitter.emit_file_diagnostics(path, &diagnostics);
 
             if check_file_diagnostics(&diagnostics) == DiagnosticsStatus::Ok {
                 log_with_left_padded_prefix("Parsed", format!("in {}s", parsing_time));

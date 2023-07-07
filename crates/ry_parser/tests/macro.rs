@@ -6,7 +6,7 @@ macro_rules! test {
         fn $name() {
             let mut diagnostics = vec![];
             let mut interner = ry_interner::Interner::default();
-            let state = ry_parser::ParseState::new(0, &$source, &mut diagnostics, &mut interner);
+            let state = ry_parser::ParseState::new(&$source, &mut diagnostics, &mut interner);
             let _ = ry_parser::parse_module_using(state);
 
             assert!(diagnostics.is_empty());

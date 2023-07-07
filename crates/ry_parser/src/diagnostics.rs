@@ -5,7 +5,7 @@ use ry_ast::{
     token::{LexError, Token},
     ItemKind,
 };
-use ry_diagnostics::{BuildDiagnostic, FileDiagnostic};
+use ry_diagnostics::{BuildDiagnostic, RyDiagnostic};
 use ry_filesystem::span::Span;
 use std::fmt::Display;
 
@@ -130,7 +130,7 @@ impl Display for Expected {
 }
 
 impl BuildDiagnostic for ParseDiagnostic {
-    fn build(&self) -> FileDiagnostic {
+    fn build(&self) -> RyDiagnostic {
         match self {
             Self::LexError(error) =>
                 Diagnostic::error()

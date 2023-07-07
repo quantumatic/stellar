@@ -3,8 +3,6 @@
 use codespan_reporting::diagnostic::Label;
 use std::{fmt::Display, ops::Range};
 
-use crate::path_resolver::FileID;
-
 /// Represents location in the source text.
 #[derive(Copy, Clone, Hash, Debug, Default, PartialEq, Eq)]
 pub struct Span {
@@ -12,8 +10,6 @@ pub struct Span {
     pub start: usize,
     /// Offset of ending byte in the source text.
     pub end: usize,
-    /// Id of the file containing the span.
-    pub file_id: FileID,
 }
 
 /// Dummy span - span that is used as a placeholder in tests.
@@ -22,16 +18,10 @@ pub struct Span {
 /// Using dummy span in code except in tests is not recommended,
 /// because this can result in undefined behavior with diagnostics and
 /// debug information, because firstly diagnostics cannot be emitted correctly
-/// when start and end positions are equal, and secondly `file_id` is always starting
-/// from `1` in the [`InMemoryFileStorage`] (see [`add_file`] for more details).
-///
-/// [`file_id`]: crate::span::Span::file_id
-/// [`InMemoryFileStorage`]: crate::storage::InMemoryFileStorage
-/// [`add_file`]: crate::storage::InMemoryFileStorage::add_file
+/// when start and end positions are equal
 pub const DUMMY_SPAN: Span = Span {
     start: 0,
     end: 0,
-    file_id: 0,
 };
 
 impl Display for Span {
@@ -74,7 +64,7 @@ pub trait SpanIndex {
     /// # Example
     /// ```
     /// # use ry_filesystem::span::{Span, SpanIndex};
-    /// let span = Span { start: 0, end: 3, file_id: 1 };
+    /// let span = Span { start: 0, end: 3 };
     /// assert_eq!("test".index(span), "tes");
     /// ```
     fn index(&self, span: Span) -> &Self::Output;

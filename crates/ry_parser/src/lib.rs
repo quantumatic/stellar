@@ -78,15 +78,14 @@ mod r#type;
 
 use diagnostics::ParseDiagnostic;
 pub use module::{
-    parse_module, parse_module_or_panic, parse_module_using, InitializeParseStateError,
+    parse_module, parse_module_using,
 };
 use ry_ast::{
     token::{LexError, RawToken, Token},
     Docstring, IdentifierAst, Token, Visibility,
 };
-use ry_diagnostics::{BuildDiagnostic, FileDiagnostic};
+use ry_diagnostics::{BuildDiagnostic, RyDiagnostic};
 use ry_filesystem::{
-    path_resolver::FileID,
     span::{Span, SpanIndex},
 };
 use ry_interner::Interner;
@@ -98,8 +97,6 @@ mod macros;
 /// Represents a parse state.
 #[derive(Debug)]
 pub struct ParseState<'source, 'diagnostics, 'interner> {
-    /// Id of the file in the global storage.
-    file_id: usize,
     /// Source code of the file.
     source: &'source str,
     /// Lexer that is used for parsing.
@@ -109,7 +106,7 @@ pub struct ParseState<'source, 'diagnostics, 'interner> {
     /// Next token.
     next_token: Token,
     /// Diagnostics that is emitted during parsing.
-    diagnostics: &'diagnostics mut Vec<FileDiagnostic>,
+    diagnostics: &'diagnostics mut Vec<RyDiagnostic>,
 }
 
 /// Represents AST node that can be parsed.
@@ -151,18 +148,16 @@ impl<'source, 'diagnostics, 'interner> ParseState<'source, 'diagnostics, 'intern
     /// Creates an initial parse state from file source.
     #[must_use]
     pub fn new(
-        file_id: FileID,
         source: &'source str,
-        diagnostics: &'diagnostics mut Vec<FileDiagnostic>,
+        diagnostics: &'diagnostics mut Vec<RyDiagnostic>,
         interner: &'interner mut Interner,
     ) -> Self {
-        let mut lexer = Lexer::new(file_id, source, interner);
+        let mut lexer = Lexer::new(source, interner);
 
         let current_token = lexer.next_no_comments();
         let next_token = current_token;
 
         let mut state = Self {
-            file_id,
             source,
             lexer,
             current_token,
@@ -240,22 +235,12 @@ impl<'source, 'diagnostics, 'interner> ParseState<'source, 'diagnostics, 'intern
         Some(())
     }
 
-    /// Creates a new span with the state's file id.
-    pub(crate) const fn make_span(&self, start: usize, end: usize) -> Span {
-        Span {
-            start,
-            end,
-            file_id: self.file_id,
-        }
-    }
-
     /// Creates a new span with the state's file id and
     /// ending with a current token span's end byte location.
     pub(crate) const fn span_from(&self, start: usize) -> Span {
         Span {
             start,
             end: self.current_token.span.end,
-            file_id: self.file_id,
         }
     }
 

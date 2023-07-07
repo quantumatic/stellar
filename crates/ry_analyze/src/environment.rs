@@ -1,13 +1,9 @@
 use pathdiff::diff_paths;
-use ry_filesystem::path_resolver::FileID;
 use ry_interner::{Interner, Symbol};
 use std::path::{self, Component};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Environment {
-    /// File ID in the global storage.
-    file_id: FileID,
-
     /// Path to the module relative to the project root
     ///
     /// See [`Path`] for more details.
@@ -17,9 +13,8 @@ pub struct Environment {
 impl Environment {
     #[inline]
     #[must_use]
-    pub const fn new(file_id: FileID, module_path: Path) -> Self {
+    pub const fn new(module_path: Path) -> Self {
         Self {
-            file_id,
             module_path,
         }
     }
