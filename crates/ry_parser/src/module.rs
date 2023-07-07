@@ -30,7 +30,7 @@ pub fn parse_module_or_panic(
     interner: &mut Interner,
 ) -> Module {
     parse_module(file_id, path_resolver, diagnostics, interner)
-        .unwrap_or_else(|err| panic!("failed to parse file {}: {:?}", file_id, err))
+        .unwrap_or_else(|err| panic!("failed to parse file {file_id}: {err:?}"))
 }
 
 /// Parse a Ry module.
