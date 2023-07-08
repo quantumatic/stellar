@@ -88,9 +88,9 @@
 
 use std::collections::BTreeMap;
 
-use serde::{Deserialize, Serialize, de::IntoDeserializer};
-use toml_edit::Document;
+use serde::{de::IntoDeserializer, Deserialize, Serialize};
 use toml as _;
+use toml_edit::Document;
 
 /// Describes the project manifest, which contains information about the project.
 ///

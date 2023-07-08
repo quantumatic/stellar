@@ -1,5 +1,5 @@
 use ry_manifest::TomlDependency;
-use ry_manifest::{parse_manifest, TomlManifest, TomlProject, DetailedTomlDependency};
+use ry_manifest::{parse_manifest, DetailedTomlDependency, TomlManifest, TomlProject};
 use std::collections::BTreeMap;
 
 #[test]
@@ -81,8 +81,22 @@ foo2 = { path = \"../foo\" }";
 
     let mut deps = BTreeMap::new();
     deps.insert("foo".to_owned(), TomlDependency::Simple("1.0".to_owned()));
-    deps.insert("bar".to_owned(), TomlDependency::Detailed(DetailedTomlDependency { version: Some("1.0".to_owned()), author: Some("abs0luty".to_owned()), path: None }));
-    deps.insert("foo2".to_owned(), TomlDependency::Detailed(DetailedTomlDependency { path: Some("../foo".to_owned()), author: None, version: None }));
+    deps.insert(
+        "bar".to_owned(),
+        TomlDependency::Detailed(DetailedTomlDependency {
+            version: Some("1.0".to_owned()),
+            author: Some("abs0luty".to_owned()),
+            path: None,
+        }),
+    );
+    deps.insert(
+        "foo2".to_owned(),
+        TomlDependency::Detailed(DetailedTomlDependency {
+            path: Some("../foo".to_owned()),
+            author: None,
+            version: None,
+        }),
+    );
 
     assert_eq!(
         parse_manifest(manifest, &mut warnings),
