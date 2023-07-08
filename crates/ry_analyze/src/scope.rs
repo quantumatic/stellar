@@ -29,7 +29,7 @@ pub struct Scope<'scope> {
 }
 
 impl<'scope> Scope<'scope> {
-    /// Creates a new [`LocalScope`] instance.
+    /// Creates a new [`Scope`] instance.
     #[inline]
     #[must_use]
     pub fn new(parent: Option<&'scope Scope<'scope>>) -> Self {

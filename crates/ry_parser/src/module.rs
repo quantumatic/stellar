@@ -8,10 +8,7 @@ use ry_interner::Interner;
 /// Parse a Ry module.
 ///
 /// # Errors
-/// Returns an error if:
-/// * the path cannot be resolved by [`FileID`]
-/// * the file contents cannot be read.
-/// See [`InitializeParseStateError`] for more details.
+/// Returns an error if the file contents cannot be read.
 #[inline]
 pub fn parse_module(
     file_path: &Path,

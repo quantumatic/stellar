@@ -41,7 +41,9 @@ pub enum ParseModulePathError {
 
     /// When project's path is not canonical.
     ///
-    /// [`fs::canonicalize`] must be used to prevent the error.
+    /// [`canonicalize`] must be used to prevent the error.
+    ///
+    /// [`canonicalize`]: std::fs::canonicalize
     ProjectPathIsNotCanonical,
 
     /// When project's path is not valid UTF-8.
@@ -50,7 +52,9 @@ pub enum ParseModulePathError {
     /// When the path of the source file corresponding to the module
     /// is not canonical.
     ///
-    /// [`fs::canonicalize`] must be used to prevent the error.
+    /// [`canonicalize`] must be used to prevent the error.
+    ///
+    /// [`canonicalize`]: std::fs::canonicalize
     SourceFilePathIsNotCanonical,
 
     /// When the path of the source file corresponding to the module
@@ -142,7 +146,9 @@ where
 pub enum GetProjectNameError {
     /// When project's path is not canonical.
     ///
-    /// [`fs::canonicalize`] must be used to prevent the error.
+    /// [`canonicalize`] must be used to prevent the error.
+    ///
+    /// [`canonicalize`]: std::fs::canonicalize
     ProjectPathIsNotCanonical,
 
     /// When project's path is not valid UTF-8.
