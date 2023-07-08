@@ -128,7 +128,6 @@ pub enum Keyword {
     While,
     Match,
     Import,
-    Self_,
     Break,
     Continue,
     Dyn,
@@ -155,7 +154,6 @@ impl AsRef<str> for Keyword {
             Self::Let => "`let`",
             Self::Match => "`match`",
             Self::Import => "`import`",
-            Self::Self_ => "`self`",
             Self::Break => "`break`",
             Self::Continue => "`continue`",
             Self::Dyn => "`dyn`",
@@ -557,7 +555,6 @@ macro_rules! Token {
     [for] =>                {$crate::token::RawToken::Keyword($crate::token::Keyword::For)};
     [where] =>              {$crate::token::RawToken::Keyword($crate::token::Keyword::Where)};
     [match] =>              {$crate::token::RawToken::Keyword($crate::token::Keyword::Match)};
-    [self] =>               {$crate::token::RawToken::Keyword($crate::token::Keyword::Self_)};
     [break] =>              {$crate::token::RawToken::Keyword($crate::token::Keyword::Break)};
     [continue] =>           {$crate::token::RawToken::Keyword($crate::token::Keyword::Continue)};
     [dyn] =>                {$crate::token::RawToken::Keyword($crate::token::Keyword::Dyn)};
@@ -585,7 +582,6 @@ pub static RESERVED: phf::Map<&'static str, RawToken> = phf_map! {
     "for" => Token![for],
     "where" => Token![where],
     "match" => Token![match],
-    "self" => Token![self],
     "break" => Token![break],
     "continue" => Token![continue],
     "dyn" => Token![dyn],

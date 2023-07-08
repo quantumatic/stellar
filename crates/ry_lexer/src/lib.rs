@@ -122,7 +122,7 @@ pub struct Lexer<'source, 'interner> {
     source: &'source str,
 
     /// Identifier interner.
-    interner: &'interner mut Interner,
+    pub interner: &'interner mut Interner,
 
     /// Current character.
     current: char,

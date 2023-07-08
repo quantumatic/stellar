@@ -8,7 +8,7 @@ Ry source code is divided into several crates:
 
 - `ry` - CLI.
 - `ry_analyze` - Implements the type inference.
-- `ry_ast` - Defines the AST nodes.
+- `ry_ast` - Defines AST nodes, token struct, implements AST serialization.
 - `ry_diagnostics` - Implements the diagnostics.
 - `ry_filesystem` - Implements some utility functions for easier work with the filesystem.
 - `ry_interner` - Implements the identifier interner.
@@ -18,3 +18,4 @@ Ry source code is divided into several crates:
 - `ry_name_resolution` - Defines the name resolution graph.
 - `ry_parser` - Implements the parser.
 - `ry_stable_likely` - Implements the stable version of likely and unlikely intrinsics.
+- `ry_typed_ast` - Defines typed AST nodes.

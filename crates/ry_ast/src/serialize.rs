@@ -2,10 +2,11 @@
 
 use crate::{
     token::RawToken, BinaryOperator, EnumItem, Function, FunctionParameter, GenericArgument,
-    GenericParameter, IdentifierAst, ImportPath, Item, JustFunctionParameter, Literal,
-    MatchExpressionItem, Module, Path, Pattern, PostfixOperator, PrefixOperator, Statement,
-    StructExpressionItem, StructField, StructFieldPattern, TraitItem, TupleField, TypeAlias,
-    TypeAst, TypePath, TypePathSegment, UntypedExpression, Visibility, WhereClauseItem,
+    GenericParameter, IdentifierAst, ImportPath, Item, JustFunctionParameter,
+    LambdaFunctionParameter, Literal, MatchExpressionItem, Module, Path, Pattern, PostfixOperator,
+    PrefixOperator, Statement, StructExpressionItem, StructField, StructFieldPattern, TraitItem,
+    TupleField, TypeAlias, TypeAst, TypePath, TypePathSegment, UntypedExpression, Visibility,
+    WhereClauseItem,
 };
 use ry_filesystem::span::{Span, DUMMY_SPAN};
 use ry_interner::{Interner, Symbol};
@@ -647,6 +648,21 @@ impl Serialize for UntypedExpression {
     }
 }
 
+impl Serialize for LambdaFunctionParameter {
+    fn serialize(&self, serializer: &mut Serializer<'_>) {
+        serializer.write_node_name("LAMBDA_PARAMETER");
+        serializer.increment_indentation();
+
+        serializer.serialize_key_value_pair("NAME", &self.name);
+
+        if let Some(ty) = &self.ty {
+            serializer.serialize_key_value_pair("TYPE", ty);
+        }
+
+        serializer.decrement_indentation();
+    }
+}
+
 impl Serialize for TypeAst {
     fn serialize(&self, serializer: &mut Serializer<'_>) {
         match self {
@@ -758,9 +774,7 @@ impl Serialize for JustFunctionParameter {
         serializer.increment_indentation();
         serializer.serialize_key_value_pair("NAME", &self.name);
         serializer.serialize_key_value_pair("TYPE", &self.ty);
-        if let Some(default_value) = &self.default_value {
-            serializer.serialize_key_value_pair("DEFAULT_VALUE", default_value);
-        }
+
         serializer.decrement_indentation();
     }
 }

@@ -1,27 +1,20 @@
 pub mod resolution_tree_builder;
 
+use std::collections::HashMap;
+
 use ry_ast::Item;
 use ry_interner::Symbol;
 
-pub struct NameResolutionTree<'ast> {
-    pub projects: Vec<ProjectNode<'ast>>,
+pub struct NameResolutionTree {
+    pub projects: Vec<ProjectNode>,
 }
 
-pub struct Workspace {
-    pub projects: Vec<Symbol>,
-}
+pub type Workspace = HashMap<Symbol, ProjectNode>;
 
-pub struct ProjectNode<'ast> {
-    pub name: Symbol,
-    pub children: Vec<ModuleNode<'ast>>,
-}
+pub type ProjectNode = HashMap<Symbol, ModuleNode>;
 
-pub struct ModuleNode<'ast> {
-    pub name: Symbol,
-    pub children: Vec<ModuleItemNode<'ast>>,
-}
+pub type ModuleNode = HashMap<Symbol, ModuleItem>;
 
-pub struct ModuleItemNode<'ast> {
-    pub name: Symbol,
-    pub ast: &'ast Item,
+pub enum ModuleItem {
+    NotAnalyzed(Item),
 }

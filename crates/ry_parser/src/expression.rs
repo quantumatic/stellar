@@ -1,7 +1,6 @@
 use crate::{
     diagnostics::ParseDiagnostic,
     expected,
-    items::FunctionParameterParser,
     literal::LiteralParser,
     macros::parse_list,
     pattern::PatternParser,
@@ -10,9 +9,10 @@ use crate::{
     Parse, ParseState,
 };
 use ry_ast::{
-    precedence::Precedence, token::RawToken, BinaryOperator, IdentifierAst, MatchExpressionItem,
-    PostfixOperator, PrefixOperator, RawBinaryOperator, RawPostfixOperator, RawPrefixOperator,
-    StructExpressionItem, Token, UntypedExpression,
+    precedence::Precedence, token::RawToken, BinaryOperator, IdentifierAst,
+    LambdaFunctionParameter, MatchExpressionItem, PostfixOperator, PrefixOperator,
+    RawBinaryOperator, RawPostfixOperator, RawPrefixOperator, StructExpressionItem, Token,
+    UntypedExpression,
 };
 use ry_diagnostics::BuildDiagnostic;
 use ry_filesystem::span::Span;
@@ -589,7 +589,17 @@ impl Parse for FunctionExpressionParser {
         state.advance(); // `|`
 
         let parameters = parse_list!(state, "function expression parameters", Token![|], {
-            FunctionParameterParser.parse(state)
+            let name = state.consume_identifier("function parameter name")?;
+
+            let ty = if state.next_token.raw == Token![:] {
+                state.advance();
+
+                Some(TypeParser.parse(state)?)
+            } else {
+                None
+            };
+
+            Some(LambdaFunctionParameter { name, ty })
         });
 
         state.advance();

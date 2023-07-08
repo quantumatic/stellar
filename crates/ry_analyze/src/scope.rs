@@ -1,10 +1,10 @@
 //! Defines [`Scope`] to work with scopes in statement blocks.
 
-use ry_ast::typed::Type;
 use ry_diagnostics::{BuildDiagnostic, SingleContextDiagnostic};
 use ry_filesystem::span::Span;
 use ry_interner::{Interner, Symbol};
-use std::{collections::HashMap, sync::Arc};
+use ry_typed_ast::ty::Type;
+use std::collections::HashMap;
 
 use crate::diagnostics::ScopeDiagnostic;
 
@@ -15,7 +15,7 @@ pub struct ValueConstructor {
     pub origin: Span,
 
     /// Type of the symbol.
-    pub ty: Arc<Type>,
+    pub ty: Type,
 }
 
 /// Represents a local scope (a scope that is not a global).

@@ -133,6 +133,12 @@ pub mod symbols {
 
     /// `char` symbol.
     pub const CHAR: Symbol = 16;
+
+    /// `self` symbol.
+    pub const SMALL_SELF: Symbol = 17;
+
+    /// `Self` symbol.
+    pub const BIG_SELF: Symbol = 18;
 }
 
 /// # Identifier Interner
@@ -279,7 +285,7 @@ where
 
         intern_primitive_symbols!(
             interner, int8, int16, int32, int64, uint8, uint16, uint32, uint64, float32, float64,
-            bool, String, List, char
+            isize, usize, bool, String, List, char, self, Self
         );
 
         interner

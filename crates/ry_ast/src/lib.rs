@@ -90,7 +90,6 @@ use token::RawToken;
 pub mod precedence;
 pub mod serialize;
 pub mod token;
-pub mod typed;
 
 /// Represents a literal.
 #[derive(Debug, PartialEq, Clone)]
@@ -731,15 +730,21 @@ pub enum UntypedExpression {
     /// Function expression.
     ///
     /// ```txt
-    /// let a = |x: uint32|: uint32 { x + 1 };
-    ///         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ function expression
+    /// let a = |x| { x + 1 };
+    ///         ^^^^^^^^^^^^^ function expression
     /// ```
     Function {
         span: Span,
-        parameters: Vec<JustFunctionParameter>,
+        parameters: Vec<LambdaFunctionParameter>,
         return_type: Option<TypeAst>,
         block: Vec<Statement>,
     },
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct LambdaFunctionParameter {
+    pub name: IdentifierAst,
+    pub ty: Option<TypeAst>,
 }
 
 /// Represents a generic argument.
@@ -1365,7 +1370,6 @@ pub struct SelfParameter {
 pub struct JustFunctionParameter {
     pub name: IdentifierAst,
     pub ty: TypeAst,
-    pub default_value: Option<UntypedExpression>,
 }
 
 /// Represents Ry source file.

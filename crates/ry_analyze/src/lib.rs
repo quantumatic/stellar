@@ -63,6 +63,4 @@
 )]
 
 pub mod diagnostics;
-pub mod environment;
-pub mod project_interface;
 pub mod scope;

@@ -1,7 +1,6 @@
 use crate::{
     diagnostics::{ParseDiagnostic, UnnecessaryVisibilityQualifierContext},
     expected,
-    expression::ExpressionParser,
     macros::parse_list,
     path::ImportPathParser,
     r#type::{GenericParametersParser, TypeBoundsParser, TypeParser, WhereClauseParser},
@@ -15,6 +14,7 @@ use ry_ast::{
 };
 use ry_diagnostics::BuildDiagnostic;
 use ry_filesystem::span::Span;
+use ry_interner::symbols;
 
 struct ImportParser {
     pub(crate) visibility: Visibility,
@@ -210,18 +210,7 @@ impl Parse for FunctionParameterParser {
 
         let ty = TypeParser.parse(state)?;
 
-        let default_value = if state.next_token.raw == Token![=] {
-            state.advance();
-            Some(ExpressionParser::default().parse(state)?)
-        } else {
-            None
-        };
-
-        Some(JustFunctionParameter {
-            name,
-            ty,
-            default_value,
-        })
+        Some(JustFunctionParameter { name, ty })
     }
 }
 
@@ -238,7 +227,7 @@ impl Parse for FunctionParser {
         state.consume(Token!['('], "function")?;
 
         let parameters = parse_list!(state, "function parameters", Token![')'], {
-            if state.next_token.raw == Token![self] {
+            if state.lexer.scanned_identifier == symbols::SMALL_SELF {
                 state.advance();
 
                 Some(FunctionParameter::Self_(SelfParameter {
