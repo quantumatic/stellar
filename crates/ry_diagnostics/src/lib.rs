@@ -73,7 +73,7 @@ use codespan_reporting::{
 };
 use ry_filesystem::file::InMemoryFile;
 
-/// Stores basic `codespan_reporting` structs for reporting diagnostics.
+/// Stores basic [`codespan_reporting`] structs for reporting diagnostics.
 #[derive(Debug)]
 pub struct DiagnosticsEmitter {
     /// The stream in which diagnostics is reported into.
@@ -89,17 +89,17 @@ impl Default for DiagnosticsEmitter {
     }
 }
 
-/// Diagnostics type alias.
-pub type RyDiagnostic = Diagnostic<()>;
+/// Diagnostic within a concrete context.
+pub type SingleContextDiagnostic = Diagnostic<()>;
 
 /// Global diagnostics.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GlobalDiagnostics<'a> {
     /// Diagnostics associated with concrete files.
-    pub file_diagnostics: HashMap<&'a Path, Vec<RyDiagnostic>>,
+    pub file_diagnostics: HashMap<&'a Path, Vec<SingleContextDiagnostic>>,
 
     /// Context free diagnostics.
-    pub context_free_diagnostics: Vec<RyDiagnostic>,
+    pub context_free_diagnostics: Vec<SingleContextDiagnostic>,
 }
 
 impl Default for GlobalDiagnostics<'_> {
@@ -119,7 +119,7 @@ impl<'a> GlobalDiagnostics<'a> {
     }
 
     /// Adds a diagnostic to a file.
-    pub fn add_file_diagnostic(&mut self, path: &'a Path, diagnostic: RyDiagnostic) {
+    pub fn add_file_diagnostic(&mut self, path: &'a Path, diagnostic: SingleContextDiagnostic) {
         match self.file_diagnostics.get_mut(path) {
             Some(diagnostics_mut) => diagnostics_mut.push(diagnostic),
             None => {
@@ -129,7 +129,11 @@ impl<'a> GlobalDiagnostics<'a> {
     }
 
     /// Adds diagnostics to a file.
-    pub fn add_file_diagnostics(&mut self, path: &'a Path, diagnostics: Vec<RyDiagnostic>) {
+    pub fn add_file_diagnostics(
+        &mut self,
+        path: &'a Path,
+        diagnostics: Vec<SingleContextDiagnostic>,
+    ) {
         match self.file_diagnostics.get_mut(path) {
             Some(diagnostics_mut) => diagnostics_mut.extend(diagnostics),
             None => {
@@ -140,8 +144,6 @@ impl<'a> GlobalDiagnostics<'a> {
 }
 
 /// Empty diagnostics manager (implements [`Files`]).
-///
-/// [`Files`]: codespan_reporting::files::Files
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Default, Hash)]
 pub struct EmptyDiagnosticsManager;
 
@@ -191,7 +193,7 @@ impl Files<'_> for EmptyDiagnosticsManager {
 
 impl DiagnosticsEmitter {
     /// Emit the diagnostic not associated with a file.
-    pub fn emit_context_free_diagnostic(&self, diagnostic: &RyDiagnostic) {
+    pub fn emit_context_free_diagnostic(&self, diagnostic: &SingleContextDiagnostic) {
         term::emit(
             &mut self.writer.lock(),
             &self.config,
@@ -202,14 +204,14 @@ impl DiagnosticsEmitter {
     }
 
     /// Emit diagnostics not associated with a particular file.
-    pub fn emit_context_free_diagnostics(&self, diagnostics: &[RyDiagnostic]) {
+    pub fn emit_context_free_diagnostics(&self, diagnostics: &[SingleContextDiagnostic]) {
         for diagnostic in diagnostics {
             self.emit_context_free_diagnostic(diagnostic);
         }
     }
 
     /// Emit diagnostics associated with a particular file.
-    pub fn emit_file_diagnostics(&self, path: &Path, file_diagnostics: &[RyDiagnostic]) {
+    pub fn emit_file_diagnostics(&self, path: &Path, file_diagnostics: &[SingleContextDiagnostic]) {
         let file = InMemoryFile::new_or_panic(path);
 
         for diagnostic in file_diagnostics {
@@ -219,7 +221,10 @@ impl DiagnosticsEmitter {
     }
 
     /// Emit a list of diagnostic.
-    pub fn emit_global_diagnostics(&self, diagnostics: &HashMap<&Path, Vec<RyDiagnostic>>) {
+    pub fn emit_global_diagnostics(
+        &self,
+        diagnostics: &HashMap<&Path, Vec<SingleContextDiagnostic>>,
+    ) {
         for diagnostic in diagnostics {
             self.emit_file_diagnostics(diagnostic.0, diagnostic.1);
         }
@@ -266,7 +271,7 @@ pub enum DiagnosticsStatus {
 ///
 /// Note: ID is not required.
 #[must_use]
-pub fn check_file_diagnostics(file_diagnostics: &[RyDiagnostic]) -> DiagnosticsStatus {
+pub fn check_file_diagnostics(file_diagnostics: &[SingleContextDiagnostic]) -> DiagnosticsStatus {
     for diagnostic in file_diagnostics {
         if matches!(diagnostic.severity, Severity::Error | Severity::Bug) {
             return DiagnosticsStatus::Fatal;
@@ -290,6 +295,6 @@ pub fn check_global_diagnostics(diagnostics: &GlobalDiagnostics<'_>) -> Diagnost
 
 /// Anything that can be reported using [`DiagnosticsEmitter`].
 pub trait BuildDiagnostic {
-    /// Convert [`self`] into [`CompilerDiagnostic`].
-    fn build(&self) -> RyDiagnostic;
+    /// Convert [`self`] into [`SingleContextDiagnostic`].
+    fn build(&self) -> SingleContextDiagnostic;
 }

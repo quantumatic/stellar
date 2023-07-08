@@ -82,7 +82,7 @@ use ry_ast::{
     token::{LexError, RawToken, Token},
     Docstring, IdentifierAst, Token, Visibility,
 };
-use ry_diagnostics::{BuildDiagnostic, RyDiagnostic};
+use ry_diagnostics::{BuildDiagnostic, SingleContextDiagnostic};
 use ry_filesystem::span::{Span, SpanIndex};
 use ry_interner::Interner;
 use ry_lexer::Lexer;
@@ -102,7 +102,7 @@ pub struct ParseState<'source, 'diagnostics, 'interner> {
     /// Next token.
     next_token: Token,
     /// Diagnostics that is emitted during parsing.
-    diagnostics: &'diagnostics mut Vec<RyDiagnostic>,
+    diagnostics: &'diagnostics mut Vec<SingleContextDiagnostic>,
 }
 
 /// Represents AST node that can be parsed.
@@ -145,7 +145,7 @@ impl<'source, 'diagnostics, 'interner> ParseState<'source, 'diagnostics, 'intern
     #[must_use]
     pub fn new(
         source: &'source str,
-        diagnostics: &'diagnostics mut Vec<RyDiagnostic>,
+        diagnostics: &'diagnostics mut Vec<SingleContextDiagnostic>,
         interner: &'interner mut Interner,
     ) -> Self {
         let mut lexer = Lexer::new(source, interner);

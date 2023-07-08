@@ -4,6 +4,8 @@ use codespan_reporting::diagnostic::Label;
 use std::{fmt::Display, ops::Range};
 
 /// Represents location in the source text.
+///
+/// Implements [`Copy`], when [`Range<usize>`] does not.
 #[derive(Copy, Clone, Hash, Debug, Default, PartialEq, Eq)]
 pub struct Span {
     /// Offset of starting byte in the source text.
@@ -28,7 +30,7 @@ impl Display for Span {
 }
 
 impl Span {
-    /// Gets primary diagnostics label ([`Label<()>`] from [`codespan_reporting`])
+    /// Gets primary diagnostics label ([`Label`] from [`codespan_reporting`])
     /// in the span.
     #[inline]
     #[must_use]
@@ -36,7 +38,7 @@ impl Span {
         Label::primary((), self)
     }
 
-    /// Gets secondary diagnostics label ([`Label<()>`] from [`codespan_reporting`])
+    /// Gets secondary diagnostics label ([`Label`] from [`codespan_reporting`])
     /// in the span.
     #[inline]
     #[must_use]
@@ -51,12 +53,21 @@ impl From<Span> for Range<usize> {
     }
 }
 
+impl From<Range<usize>> for Span {
+    fn from(value: Range<usize>) -> Self {
+        Self {
+            start: value.start,
+            end: value.end,
+        }
+    }
+}
+
 /// For internal usage only! Used to index a string using a given span.
 pub trait SpanIndex {
     /// Output of the indexing operation.
     type Output: ?Sized;
 
-    /// Index a string using a given span (ignoring [`Span::file_id`]).
+    /// Index a string using a given span.
     ///
     /// # Example
     /// ```

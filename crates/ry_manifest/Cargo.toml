@@ -1,5 +1,5 @@
 [package]
-name = "ry_config"
+name = "ry_manifest"
 version = "0.1.0"
 edition = "2021"
 license = "MIT OR Apache-2.0"
@@ -12,4 +12,6 @@ description = "Parses and processes Ry projects' configuration files."
 ry_diagnostics = { path = "../ry_diagnostics" }
 ry_filesystem = { path = "../ry_filesystem" }
 serde = { version = "1.0.167", features = ["derive"] }
+serde_ignored = "0.1.8"
 toml = "0.7.6"
+toml_edit = "0.19.12"

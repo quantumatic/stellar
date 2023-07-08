@@ -2,7 +2,7 @@ use std::{fs, io, path::Path};
 
 use crate::{items::ItemsParser, Parse, ParseState};
 use ry_ast::Module;
-use ry_diagnostics::RyDiagnostic;
+use ry_diagnostics::SingleContextDiagnostic;
 use ry_interner::Interner;
 
 /// Parse a Ry module.
@@ -15,7 +15,7 @@ use ry_interner::Interner;
 #[inline]
 pub fn parse_module(
     file_path: &Path,
-    diagnostics: &mut Vec<RyDiagnostic>,
+    diagnostics: &mut Vec<SingleContextDiagnostic>,
     interner: &mut Interner,
 ) -> Result<Module, io::Error> {
     Ok(parse_module_using(ParseState::new(

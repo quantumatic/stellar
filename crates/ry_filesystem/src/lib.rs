@@ -1,24 +1,6 @@
 //! # Source Files Managment
 //!
 //! This crate provides utilities for working with Ry source storage.
-//!
-//! ## [`InMemoryFileStorage`] and [`InMemoryFile`]
-//!
-//! - [`InMemoryFileStorage`] is a helper struct for working with Ry source storage and also provides implementation for
-//! [`Files`] in [`codespan_reporting`] for proper error reporting. It is important to make
-//! sure that you added your source file into the [`InMemoryFileStorage`], because it would not
-//! report diagnostics properly with ID being out of bonds.
-//!
-//! - [`InMemoryFile`] is an interface for working with Ry source storage.
-//!
-//! ## [`Span`]
-//!
-//! [`Span`] is an interface for working with source code locations.
-//!
-//! [`InMemoryFileStorage`]: crate::storage::InMemoryFileStorage
-//! [`InMemoryFile`]: crate::file::InMemoryFile
-//! [`Span`]: crate::span::Span
-//! [`Files`]: codespan_reporting::storage::Files
 
 #![doc(
     html_logo_url = "https://raw.githubusercontent.com/abs0luty/Ry/main/additional/icon/ry.png",

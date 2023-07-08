@@ -1,7 +1,7 @@
 //! Defines diagnostics related to scopes.
 
 use codespan_reporting::diagnostic::Diagnostic;
-use ry_diagnostics::{BuildDiagnostic, RyDiagnostic};
+use ry_diagnostics::{BuildDiagnostic, SingleContextDiagnostic};
 use ry_filesystem::span::Span;
 
 /// Diagnostics related to scopes.
@@ -19,7 +19,7 @@ pub enum ScopeDiagnostic {
 }
 
 impl BuildDiagnostic for ScopeDiagnostic {
-    fn build(&self) -> RyDiagnostic {
+    fn build(&self) -> SingleContextDiagnostic {
         match self {
             Self::NotFound { symbol, span } => Diagnostic::error()
                 .with_message(format!("`{symbol}` is not found in this scope"))
