@@ -1,6 +1,6 @@
-use ry_manifest::TomlDependency::Simple;
-use ry_manifest::{parse_manifest, TomlManifest, TomlProject};
-use std::collections::HashMap;
+use ry_manifest::TomlDependency;
+use ry_manifest::{parse_manifest, TomlManifest, TomlProject, DetailedTomlDependency};
+use std::collections::BTreeMap;
 
 #[test]
 fn simple_manifest() {
@@ -17,7 +17,7 @@ version = \"1.0.0\"";
                 keywords: None,
                 categories: None,
                 license: None,
-                authors: None,
+                author: None,
                 repository: None,
             },
             dependencies: None,
@@ -30,7 +30,7 @@ fn full_project_metadata() {
     let manifest = "[project]
 name = \"json\"
 version = \"1.0.0\"
-authors = [\"Adi Salimgereyev\"]
+author = \"abs0luty\"
 repository = \"github.com/ry-lang/ry\"
 license = \"MIT\"
 description = \"Parses and processes json.\"
@@ -45,7 +45,7 @@ keywords = [\"json\", \"config\"]";
                 name: "json".to_owned(),
                 version: "1.0.0".to_owned(),
                 description: Some("Parses and processes json.".to_owned()),
-                authors: Some(vec!["Adi Salimgereyev".to_owned()]),
+                author: Some("abs0luty".to_owned()),
                 repository: Some("github.com/ry-lang/ry".to_owned()),
                 license: Some("MIT".to_owned()),
                 keywords: Some(vec!["json".to_owned(), "config".to_owned()]),
@@ -67,12 +67,17 @@ fn dependencies() {
     let manifest = "[project]
 name = \"json\"
 version = \"1.0.0\"
+author = \"abs0luty\"
 
 [dependencies]
-foo = \"1.0\"";
+foo = \"1.0\"
+bar = { version = \"1.0\", author = \"abs0luty\" }
+foo2 = { path = \"../foo\" }";
 
-    let mut deps = HashMap::new();
-    deps.insert("foo".to_owned(), Simple("1.0".to_owned()));
+    let mut deps = BTreeMap::new();
+    deps.insert("foo".to_owned(), TomlDependency::Simple("1.0".to_owned()));
+    deps.insert("bar".to_owned(), TomlDependency::Detailed(DetailedTomlDependency { version: Some("1.0".to_owned()), author: Some("abs0luty".to_owned()), path: None }));
+    deps.insert("foo2".to_owned(), TomlDependency::Detailed(DetailedTomlDependency { path: Some("../foo".to_owned()), author: None, version: None }));
 
     assert_eq!(
         parse_manifest(manifest),
@@ -80,11 +85,11 @@ foo = \"1.0\"";
             project: TomlProject {
                 name: "json".to_owned(),
                 version: "1.0.0".to_owned(),
+                author: Some("abs0luty".to_owned()),
                 description: None,
                 keywords: None,
                 categories: None,
                 license: None,
-                authors: None,
                 repository: None,
             },
             dependencies: Some(deps),
