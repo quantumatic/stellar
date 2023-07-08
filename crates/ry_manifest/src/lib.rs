@@ -86,7 +86,7 @@
     clippy::unnested_or_patterns
 )]
 
-use std::collections::{BTreeSet, BTreeMap};
+use std::collections::BTreeMap;
 
 use serde::{Deserialize, Serialize, de::IntoDeserializer};
 use toml_edit::Document;
@@ -97,7 +97,7 @@ use toml as _;
 /// See [crate level documentation] for more information.
 ///
 /// [crate level documentation]: crate
-#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 pub struct TomlManifest {
     /// The `[project]` section of the manifest.
     pub project: TomlProject,
@@ -106,7 +106,7 @@ pub struct TomlManifest {
 }
 
 /// Represents data in the `[project]` section of the manifest.
-#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 pub struct TomlProject {
     /// The name of the project.
     pub name: String,
@@ -127,7 +127,7 @@ pub struct TomlProject {
 }
 
 /// Represents dependency (value part of the key-value pair in the `[dependencies]` section of the manifest).
-#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(untagged)]
 pub enum TomlDependency {
     /// In the simple format, only a version is specified, eg.
@@ -148,7 +148,7 @@ pub enum TomlDependency {
 /// Detailed dependency information.
 ///
 /// See [`TomlDependency::Detailed`] for more details.
-#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 pub struct DetailedTomlDependency {
     /// The version of the dependency.
     pub version: Option<String>,
@@ -157,21 +157,26 @@ pub struct DetailedTomlDependency {
     pub path: Option<String>,
 }
 
-pub fn parse_manifest<S>(source: S) -> Result<TomlManifest, String>
+/// # Errors
+///
+/// Error occurs when manifest format is not valid, or the structure itself is also not valid.
+/// See [crate level documentation] for more information.
+///
+/// [crate level documentation]: crate
+pub fn parse_manifest<S>(source: S, warnings: &mut Vec<String>) -> Result<TomlManifest, String>
 where
     S: AsRef<str>,
 {
     let toml = parse_document(source)?;
 
-    let mut unused = BTreeSet::new();
     let manifest: TomlManifest =
         match serde_ignored::deserialize(toml.into_deserializer(), |path| {
             let mut key = String::new();
             stringify(&mut key, &path);
-            unused.insert(key);
+            warnings.push(format!("unused manifest key: {key}"));
         }) {
             Ok(manifest) => manifest,
-            Err(err) => return Err(format!("{}", err)),
+            Err(err) => return Err(format!("{err}")),
         };
 
     Ok(manifest)
@@ -183,7 +188,7 @@ where
 {
     match source.as_ref().parse::<Document>() {
         Ok(table) => Ok(table),
-        Err(err) => Err(format!("{}", err)),
+        Err(err) => Err(format!("{err}")),
     }
 }
 
