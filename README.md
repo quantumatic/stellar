@@ -205,6 +205,51 @@ cargo install --path crates/ry
 
 Then you're good to go coding in Ry!
 
+# Architecture
+
+```mermaid
+flowchart
+	JsonManifest["project.toml"] --> TomlParser["Manifest Analyzer"]
+	CliManifest["project.toml"] --> TomlParser
+	CliMain["main.ry"] --> CacheManager["Cache Manager"]
+	Deserialize["deserialize.ry"] --> CacheManager
+	Serialize["serialize.ry"] --> CacheManager
+	CodeGen["MIR lowering"] --> LLVMIR["LLVM IR"]
+	LLVMIR --> LLVM
+	LLVM --> Objects["Object files"]
+	Objects --> Linker
+	Linker --> Exec["Executable"]
+	subgraph Sources
+		Json["json"] --> Serialize
+		Json --> Deserialize
+		Json --> JsonManifest
+		Cli["cli"] --> CliMain
+		Cli --> CliManifest
+	end
+	subgraph subGraph3["Ry Compiler"]
+		TomlParser --> CacheManager
+		CacheManager --> Parser
+		Parser --> AST["Abstract Syntax Tree"]
+		AST --> NameResolver["Name resolver"]
+		NameResolver --> NameResolutionGraph["Untyped resolution graph"]
+		ScopeManager["Scope manager"] --> NameResolutionGraph
+		NameResolutionGraph --> ItemValidator["Item validator"]
+		TypeInference["Type inference"] --> TypedNameResolutionGraph["Typed resolution graph"]
+		CacheManager --> TypedNameResolutionGraph
+		TypedNameResolutionGraph --> MIRBuilder["MIR Builder"]
+		MIRBuilder --> MIR
+		MIR --> CodeGen
+		subgraph Parsing
+			Parser --> Lexer
+			Lexer --> Parser
+		end
+		subgraph subGraph2["Type inference"]
+			ItemValidator --> TypeInference
+			TypeInference --> ScopeManager
+		end
+	end
+```
+
 # Documentation
 
 > Not made
