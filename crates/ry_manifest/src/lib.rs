@@ -188,6 +188,7 @@ where
     Ok(manifest)
 }
 
+#[inline]
 fn parse_document<S>(source: S) -> Result<Document, String>
 where
     S: AsRef<str>,

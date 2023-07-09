@@ -1,7 +1,8 @@
 //! Defines a [`Span`] for working with source text locations and some utilities.
 
-use codespan_reporting::diagnostic::Label;
 use std::{fmt::Display, ops::Range};
+
+use codespan_reporting::diagnostic::Label;
 
 /// Represents location in the source text.
 ///

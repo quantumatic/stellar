@@ -1,9 +1,10 @@
-use crate::prefix::log_with_prefix;
 use std::{
     fs::{self, File},
     io::Write,
     process::exit,
 };
+
+use crate::prefix::log_with_prefix;
 
 fn check_project_name(name: &str) -> Option<usize> {
     let mut chars = name.chars();

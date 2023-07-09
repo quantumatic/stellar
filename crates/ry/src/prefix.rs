@@ -1,5 +1,6 @@
-use leftpad_str::leftpad;
 use std::io::Write;
+
+use leftpad_str::leftpad;
 use termcolor::{Color, ColorChoice, ColorSpec, StandardStream, WriteColor};
 
 pub(crate) fn log_with_left_padded_prefix<P, M>(prefix: P, message: M)

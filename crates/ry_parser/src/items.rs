@@ -1,3 +1,12 @@
+use ry_ast::{
+    token::RawToken, EnumItem, Function, FunctionParameter, IdentifierAst, Impl, Item, ItemKind,
+    JustFunctionParameter, SelfParameter, StructField, Token, TraitItem, TupleField, TypeAlias,
+    Visibility,
+};
+use ry_diagnostics::BuildDiagnostic;
+use ry_filesystem::span::Span;
+use ry_interner::symbols;
+
 use crate::{
     diagnostics::{ParseDiagnostic, UnnecessaryVisibilityQualifierContext},
     expected,
@@ -7,14 +16,6 @@ use crate::{
     statement::StatementsBlockParser,
     OptionalParser, Parse, ParseState, VisibilityParser,
 };
-use ry_ast::{
-    token::RawToken, EnumItem, Function, FunctionParameter, IdentifierAst, Item, ItemKind,
-    JustFunctionParameter, SelfParameter, StructField, Token, TraitItem, TupleField, TypeAlias,
-    Visibility,
-};
-use ry_diagnostics::BuildDiagnostic;
-use ry_filesystem::span::Span;
-use ry_interner::symbols;
 
 struct ImportParser {
     pub(crate) visibility: Visibility,
@@ -82,15 +83,22 @@ impl Parse for ImportParser {
     type Output = Option<Item>;
 
     fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
+        if let Some(span) = self.visibility.span_of_pub() {
+            state.diagnostics.push(
+                ParseDiagnostic::UnnecessaryVisibilityQualifierError {
+                    span,
+                    context: UnnecessaryVisibilityQualifierContext::Import,
+                }
+                .build(),
+            );
+        }
+
         state.advance();
 
         let path = ImportPathParser.parse(state)?;
         state.consume(Token![;], "import")?;
 
-        Some(Item::Import {
-            visibility: self.visibility,
-            path,
-        })
+        Some(Item::Import { path })
     }
 }
 
@@ -464,14 +472,14 @@ impl Parse for ImplParser {
             state.consume(Token!['}'], "type implementation")?;
         }
 
-        Some(Item::Impl {
+        Some(Item::Impl(Impl {
             generic_parameters,
             ty,
             r#trait,
             where_clause,
             items: items.0,
             docstring: self.docstring,
-        })
+        }))
     }
 }
 

@@ -70,22 +70,27 @@ pub mod diagnostics;
 mod expression;
 mod items;
 mod literal;
-mod module;
 mod path;
 mod pattern;
 mod statement;
 mod r#type;
 
+use std::{fs, io, path::Path};
+
 use diagnostics::ParseDiagnostic;
-pub use module::{parse_module, parse_module_using};
+use expression::ExpressionParser;
+use items::{ItemParser, ItemsParser};
+use pattern::PatternParser;
+use r#type::TypeParser;
 use ry_ast::{
     token::{LexError, RawToken, Token},
-    IdentifierAst, Token, Visibility,
+    Expression, IdentifierAst, Item, Module, Pattern, Statement, Token, Type, Visibility,
 };
 use ry_diagnostics::{BuildDiagnostic, Diagnostic};
 use ry_filesystem::span::{Span, SpanIndex};
 use ry_interner::Interner;
 use ry_lexer::Lexer;
+use statement::StatementParser;
 
 #[macro_use]
 mod macros;
@@ -138,6 +143,152 @@ where
     ///
     /// For more information, see [`OptionalParser`].
     fn optionally_parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output;
+}
+
+/// Read and parse a Ry module.
+///
+/// # Errors
+/// Returns an error if the file contents cannot be read.
+#[inline]
+pub fn read_and_parse_module<P>(
+    file_path: P,
+    diagnostics: &mut Vec<Diagnostic>,
+    interner: &mut Interner,
+) -> Result<Module, io::Error>
+where
+    P: AsRef<Path>,
+{
+    Ok(parse_module_using(ParseState::new(
+        &fs::read_to_string(file_path)?,
+        diagnostics,
+        interner,
+    )))
+}
+
+/// Parse a Ry module.
+#[inline]
+#[must_use]
+pub fn parse_module(
+    source: &str,
+    diagnostics: &mut Vec<Diagnostic>,
+    interner: &mut Interner,
+) -> Module {
+    parse_module_using(ParseState::new(source, diagnostics, interner))
+}
+
+/// Parse a Ry module using a given parse state.
+#[inline]
+#[must_use]
+pub fn parse_module_using(mut state: ParseState<'_, '_, '_>) -> Module {
+    Module {
+        docstring: state.consume_module_docstring(),
+        items: ItemsParser.parse(&mut state),
+    }
+}
+
+/// Parse an item.
+#[inline]
+#[must_use]
+pub fn parse_item<S>(
+    source: S,
+    diagnostics: &mut Vec<Diagnostic>,
+    interner: &mut Interner,
+) -> Option<Item>
+where
+    S: AsRef<str>,
+{
+    parse_item_using(&mut ParseState::new(source.as_ref(), diagnostics, interner))
+}
+
+/// Parse an item.
+#[inline]
+#[must_use]
+pub fn parse_item_using(state: &mut ParseState<'_, '_, '_>) -> Option<Item> {
+    ItemParser.parse(state)
+}
+
+/// Parse an expression.
+#[inline]
+#[must_use]
+pub fn parse_expression<S>(
+    source: S,
+    diagnostics: &mut Vec<Diagnostic>,
+    interner: &mut Interner,
+) -> Option<Expression>
+where
+    S: AsRef<str>,
+{
+    parse_expression_using(&mut ParseState::new(source.as_ref(), diagnostics, interner))
+}
+
+/// Parse an expression.
+#[inline]
+#[must_use]
+pub fn parse_expression_using(state: &mut ParseState<'_, '_, '_>) -> Option<Expression> {
+    ExpressionParser::default().parse(state)
+}
+
+/// Parse a statement.
+#[inline]
+#[must_use]
+pub fn parse_statement<S>(
+    source: S,
+    diagnostics: &mut Vec<Diagnostic>,
+    interner: &mut Interner,
+) -> Option<Statement>
+where
+    S: AsRef<str>,
+{
+    parse_statement_using(&mut ParseState::new(source.as_ref(), diagnostics, interner))
+}
+
+/// Parse a statement.
+#[inline]
+#[must_use]
+pub fn parse_statement_using(state: &mut ParseState<'_, '_, '_>) -> Option<Statement> {
+    StatementParser.parse(state).map(|s| s.0)
+}
+
+/// Parse a type.
+#[inline]
+#[must_use]
+pub fn parse_type<S>(
+    source: S,
+    diagnostics: &mut Vec<Diagnostic>,
+    interner: &mut Interner,
+) -> Option<Type>
+where
+    S: AsRef<str>,
+{
+    parse_type_using(&mut ParseState::new(source.as_ref(), diagnostics, interner))
+}
+
+/// Parse a type.
+#[inline]
+#[must_use]
+pub fn parse_type_using(state: &mut ParseState<'_, '_, '_>) -> Option<Type> {
+    TypeParser.parse(state)
+}
+
+/// Parse a pattern.
+#[inline]
+#[must_use]
+pub fn parse_pattern<S>(
+    source: S,
+    diagnostics: &mut Vec<Diagnostic>,
+    interner: &mut Interner,
+) -> Option<Pattern>
+where
+    S: AsRef<str>,
+{
+    parse_pattern_using(&mut ParseState::new(source.as_ref(), diagnostics, interner))
+}
+
+/// Parse a pattern.
+#[inline]
+#[must_use]
+pub fn parse_pattern_using(state: &mut ParseState<'_, '_, '_>) -> Option<Pattern> {
+    PatternParser.parse(state)
 }
 
 impl<'source, 'diagnostics, 'interner> ParseState<'source, 'diagnostics, 'interner> {

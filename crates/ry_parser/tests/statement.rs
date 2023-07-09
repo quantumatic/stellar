@@ -1,53 +1,84 @@
+use ry_ast::{Expression, IdentifierAst, Literal, Pattern, Statement};
+use ry_filesystem::span::Span;
+use ry_interner::Interner;
+use ry_parser::parse_statement;
+
 mod r#macro;
 
-test!(r#return: "fun test(): int32 { return a()?.b.unwrap_or(0); }");
-test!(let_and_defer: "fun test() {
-    let file = File.open(\"hello.txt\");
-    defer file.close();
-}");
-test!(let1: "fun test(): int32 {
-    let a = 1;
-    let b = 2;
-    a + b
-}");
-test!(let2: "fun test(): int32 {
-    let Some(a) = Some(2);
-}");
-// grouped pattern
-test!(let3: "fun test(): int32 {
-    let (Some(a)) = Some(2);
-}");
-test!(let4: "fun test(): int32 {
-    let (Some(a), None) = (Some(2), None);
-}");
-// or
-test!(let5: "fun test(): int32 {
-    let A(a) | B(a) = A(2);
-}");
-test!(let6: "fun test(): int32 {
-    let a: Option[int32] = Some(2);
-}");
-test!(let7: "fun test(): int32 {
-    let a: Iterator[Item = uint32].Item = 3;
-    a
-}");
-test!(let8: "fun test(): uint32 {
-    let a = [1, 2, 3].into_iter() as dyn Iterator[Item = uint32];
-    a.next()
-}");
+#[test]
+fn defer() {
+    let mut interner = Interner::default();
+    let mut diagnostics = vec![];
 
-// parenthesized type
-test!(let9: "fun main() { let a: (((uint32))) = 2; }");
+    assert_eq!(
+        parse_statement("defer file.close();", &mut diagnostics, &mut interner),
+        Some(Statement::Defer {
+            call: Expression::Call {
+                span: Span { start: 6, end: 18 },
+                left: Box::new(Expression::FieldAccess {
+                    span: Span { start: 6, end: 16 },
+                    left: Box::new(Expression::Identifier(IdentifierAst {
+                        span: Span { start: 6, end: 10 },
+                        symbol: 19
+                    })),
+                    right: IdentifierAst {
+                        span: Span { start: 11, end: 16 },
+                        symbol: 20
+                    }
+                }),
+                arguments: vec![]
+            }
+        })
+    );
+}
 
-test!(let10: "fun main() { let a: [List[uint32] as IntoIterator].Item = 3; }");
+#[test]
+fn r#break() {
+    let mut interner = Interner::default();
+    let mut diagnostics = vec![];
 
-test!(r#break: "fun test() {
-    while true {
-        break;
-    }
-}");
-test!(r#continue: "fun test() {
-    while true {
-        continue;
-    }
-}");
+    assert_eq!(
+        parse_statement("break;", &mut diagnostics, &mut interner),
+        Some(Statement::Break {
+            span: Span { start: 0, end: 5 }
+        })
+    );
+}
+
+#[test]
+fn r#continue() {
+    let mut interner = Interner::default();
+    let mut diagnostics = vec![];
+
+    assert_eq!(
+        parse_statement("continue;", &mut diagnostics, &mut interner),
+        Some(Statement::Continue {
+            span: Span { start: 0, end: 8 }
+        })
+    );
+}
+
+#[test]
+fn r#let() {
+    let mut interner = Interner::default();
+    let mut diagnostics = vec![];
+
+    assert_eq!(
+        parse_statement("let x = 1;", &mut diagnostics, &mut interner),
+        Some(Statement::Let {
+            pattern: Pattern::Identifier {
+                span: Span { start: 4, end: 5 },
+                identifier: IdentifierAst {
+                    span: Span { start: 4, end: 5 },
+                    symbol: 19
+                },
+                pattern: None
+            },
+            value: Expression::Literal(Literal::Integer {
+                value: 1,
+                span: Span { start: 8, end: 9 }
+            }),
+            ty: None
+        })
+    );
+}

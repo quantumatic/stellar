@@ -1,15 +1,16 @@
 //! Defines [`Serializer`] to serialize AST into a string.
 
-use crate::{
-    token::RawToken, BinaryOperator, EnumItem, Function, FunctionParameter, GenericArgument,
-    GenericParameter, IdentifierAst, ImportPath, Item, JustFunctionParameter,
-    LambdaFunctionParameter, Literal, MatchExpressionItem, Module, Path, Pattern, PostfixOperator,
-    PrefixOperator, Statement, StructExpressionItem, StructField, StructFieldPattern, TraitItem,
-    TupleField, TypeAlias, TypeAst, TypePath, TypePathSegment, UntypedExpression, Visibility,
-    WhereClauseItem,
-};
 use ry_filesystem::span::{Span, DUMMY_SPAN};
 use ry_interner::{Interner, Symbol};
+
+use crate::{
+    token::RawToken, BinaryOperator, EnumItem, Expression, Function, FunctionParameter,
+    GenericArgument, GenericParameter, IdentifierAst, Impl, ImportPath, Item,
+    JustFunctionParameter, LambdaFunctionParameter, Literal, MatchExpressionItem, Module, Path,
+    Pattern, PostfixOperator, PrefixOperator, Statement, StructExpressionItem, StructField,
+    StructFieldPattern, TraitItem, TupleField, Type, TypeAlias, TypePath, TypePathSegment,
+    Visibility, WhereClauseItem,
+};
 
 /// A struct that allows to serialize a Ry module into a string, for debug purposes.
 #[derive(Debug)]
@@ -455,7 +456,7 @@ impl Serialize for Statement {
                 serializer.write_node_name("LET_STATEMENT");
                 serializer.increment_indentation();
                 serializer.serialize_key_value_pair("PATTERN", pattern);
-                serializer.serialize_key_value_pair("VALUE", &**value);
+                serializer.serialize_key_value_pair("VALUE", value);
                 if let Some(ty) = ty {
                     serializer.serialize_key_value_pair("TYPE", ty);
                 }
@@ -465,7 +466,7 @@ impl Serialize for Statement {
     }
 }
 
-impl Serialize for (UntypedExpression, Vec<Statement>) {
+impl Serialize for (Expression, Vec<Statement>) {
     fn serialize(&self, serializer: &mut Serializer<'_>) {
         serializer.write_node_name("ELSE_IF_NODE");
         serializer.increment_indentation();
@@ -485,7 +486,7 @@ impl Serialize for MatchExpressionItem {
     }
 }
 
-impl Serialize for UntypedExpression {
+impl Serialize for Expression {
     fn serialize(&self, serializer: &mut Serializer<'_>) {
         match self {
             Self::As { span, left, right } => {
@@ -663,7 +664,7 @@ impl Serialize for LambdaFunctionParameter {
     }
 }
 
-impl Serialize for TypeAst {
+impl Serialize for Type {
     fn serialize(&self, serializer: &mut Serializer<'_>) {
         match self {
             Self::Function {
@@ -942,14 +943,14 @@ impl Serialize for Item {
                 serializer.decrement_indentation();
             }
             Self::Function(function) => function.serialize(serializer),
-            Self::Impl {
+            Self::Impl(Impl {
                 generic_parameters,
                 ty: r#type,
                 r#trait,
                 where_clause,
                 items,
                 ..
-            } => {
+            }) => {
                 serializer.write_node_name("IMPL");
                 serializer.increment_indentation();
                 if let Some(generic_parameters) = generic_parameters {
@@ -1033,10 +1034,9 @@ impl Serialize for Item {
                 serializer.decrement_indentation();
             }
             Self::TypeAlias(alias) => alias.serialize(serializer),
-            Self::Import { visibility, path } => {
+            Self::Import { path } => {
                 serializer.write_node_name("IMPORT");
                 serializer.increment_indentation();
-                serializer.serialize_key_value_pair("VISIBILITY", visibility);
                 serializer.serialize_key_value_pair("IMPORT_PATH", path);
                 serializer.decrement_indentation();
             }

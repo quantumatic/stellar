@@ -66,6 +66,8 @@
     clippy::unnested_or_patterns
 )]
 
+use std::{mem, str::Chars, string::String};
+
 use ry_ast::{
     token::{LexError, RawLexError, RawToken, Token, RESERVED},
     Token,
@@ -73,7 +75,6 @@ use ry_ast::{
 use ry_filesystem::span::Span;
 use ry_interner::{Interner, Symbol};
 use ry_stable_likely::unlikely;
-use std::{mem, str::Chars, string::String};
 
 mod number;
 

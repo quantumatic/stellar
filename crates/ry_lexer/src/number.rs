@@ -1,7 +1,9 @@
-use crate::{is_id_start, Lexer};
+use std::char::from_u32;
+
 use ry_ast::token::{NumberKind, RawLexError, RawToken, Token};
 use ry_filesystem::span::Span;
-use std::char::from_u32;
+
+use crate::{is_id_start, Lexer};
 
 /// True if `c` is a valid decimal digit.
 #[inline]

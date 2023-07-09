@@ -42,7 +42,7 @@ impl ProjectNode {
 
 pub struct ModuleNode {
     pub docstring: Option<String>,
-    pub items: Vec<ModuleItem>,
+    pub items: HashMap<Symbol, ModuleItem>,
 }
 
 pub enum ModuleItem {

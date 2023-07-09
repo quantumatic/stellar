@@ -1,10 +1,12 @@
-use crate::{prefix::log_with_left_padded_prefix, unique_file::create_unique_file};
+use std::{io::Write, path::Path, time::Instant};
+
 use codespan_reporting::diagnostic::Diagnostic;
 use ry_ast::serialize::serialize_ast;
 use ry_diagnostics::{check_file_diagnostics, DiagnosticsEmitter, DiagnosticsStatus};
 use ry_interner::Interner;
-use ry_parser::parse_module;
-use std::{io::Write, path::Path, time::Instant};
+use ry_parser::read_and_parse_module;
+
+use crate::{prefix::log_with_left_padded_prefix, unique_file::create_unique_file};
 
 pub fn command(path_str: &str) {
     let path = Path::new(path_str);
@@ -16,7 +18,7 @@ pub fn command(path_str: &str) {
 
     let now = Instant::now();
 
-    match parse_module(path, &mut diagnostics, &mut interner) {
+    match read_and_parse_module(path, &mut diagnostics, &mut interner) {
         Err(..) => {
             diagnostics_emitter.emit_context_free_diagnostic(
                 &Diagnostic::error().with_message(format!("cannot read the file {}", path_str)),

@@ -1,7 +1,8 @@
 //! Defines [`Type`] for working with types and typed AST nodes.
 
-use ry_interner::{symbols, Symbol};
 use std::sync::Arc;
+
+use ry_interner::{symbols, Symbol};
 
 use crate::{Path, TypePath, TypePathSegment};
 

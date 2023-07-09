@@ -1,5 +1,6 @@
-use crate::{Parse, ParseState};
 use ry_ast::{ImportPath, Path, Token};
+
+use crate::{Parse, ParseState};
 
 pub(crate) struct PathParser;
 

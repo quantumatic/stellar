@@ -1,10 +1,11 @@
 //! Defines [`Scope`] to work with scopes in statement blocks.
 
+use std::collections::HashMap;
+
 use ry_diagnostics::{BuildDiagnostic, Diagnostic};
 use ry_filesystem::span::Span;
 use ry_interner::{Interner, Symbol};
 use ry_typed_ast::ty::Type;
-use std::collections::HashMap;
 
 use crate::diagnostics::ScopeDiagnostic;
 

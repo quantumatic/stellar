@@ -1,12 +1,13 @@
 //! Defines diagnostics for parser.
 
+use std::fmt::Display;
+
 use ry_ast::{
     token::{LexError, Token},
     ItemKind,
 };
 use ry_diagnostics::{BuildDiagnostic, Diagnostic};
 use ry_filesystem::span::Span;
-use std::fmt::Display;
 
 /// Represents list of expected tokens.
 #[derive(Debug, PartialEq, Eq, Clone)]
@@ -48,6 +49,12 @@ pub enum UnnecessaryVisibilityQualifierContext {
         /// Location of a trait name.
         name_span: Span,
     },
+
+    /// ```ry
+    /// pub import ...;
+    /// ^^^
+    /// ```
+    Import,
 }
 
 /// An enum which represents diagnostic encountered during parsing stage.
@@ -188,6 +195,9 @@ impl BuildDiagnostic for ParseDiagnostic {
                                     "note: using `pub` for trait item will not make the item public".to_owned(),
                                     "note: all trait items are public by default".to_owned(),
                                 ]
+                            }
+                            UnnecessaryVisibilityQualifierContext::Import => {
+                                vec!["note: using `pub` will not make the import public.".to_owned()]
                             }
                         }
                     )

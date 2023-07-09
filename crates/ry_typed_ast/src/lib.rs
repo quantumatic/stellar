@@ -344,7 +344,7 @@ pub enum WhereClauseItem {
 
 /// Represents an expression in a typed AST.
 #[derive(Debug, PartialEq, Clone)]
-pub enum TypedExpression {
+pub enum Expression {
     /// List expression.
     ///
     /// ```txt
@@ -579,7 +579,7 @@ pub enum GenericArgument {
 #[derive(Debug, PartialEq, Clone)]
 pub struct MatchExpressionItem {
     pub left: Pattern,
-    pub right: TypedExpression,
+    pub right: Expression,
 }
 
 /// Represents a field initialization in a struct expression (`identifier` and optionally `:` `expression`).
@@ -597,7 +597,7 @@ pub struct MatchExpressionItem {
 #[derive(Debug, PartialEq, Clone)]
 pub struct StructExpressionItem {
     pub name: Symbol,
-    pub value: Option<TypedExpression>,
+    pub value: Option<Expression>,
 }
 
 /// Represents a statement.
@@ -608,7 +608,7 @@ pub enum Statement {
     /// ```txt
     /// defer file.close();
     /// ```
-    Defer { call: TypedExpression },
+    Defer { call: Expression },
 
     /// Expression statement
     ///
@@ -618,7 +618,7 @@ pub enum Statement {
     /// }
     /// ```
     Expression {
-        expression: TypedExpression,
+        expression: Expression,
         has_semicolon: bool,
     },
 
@@ -644,7 +644,7 @@ pub enum Statement {
     ///     return 42;
     /// }
     /// ```
-    Return { expression: TypedExpression },
+    Return { expression: Expression },
 
     /// Let statement
     ///
@@ -653,7 +653,7 @@ pub enum Statement {
     /// ```
     Let {
         pattern: Pattern,
-        value: Box<TypedExpression>,
+        value: Box<Expression>,
         ty: Type,
     },
 }

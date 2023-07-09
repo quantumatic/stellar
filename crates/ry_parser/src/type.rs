@@ -1,12 +1,13 @@
+use ry_ast::{
+    token::RawToken, GenericArgument, GenericParameter, Path, Token, Type, TypeBounds, TypePath,
+    TypePathSegment, WhereClause, WhereClauseItem,
+};
+use ry_diagnostics::BuildDiagnostic;
+
 use crate::{
     diagnostics::ParseDiagnostic, expected, macros::parse_list, path::PathParser, OptionalParser,
     Parse, ParseState,
 };
-use ry_ast::{
-    token::RawToken, GenericArgument, GenericParameter, Path, Token, TypeAst, TypeBounds, TypePath,
-    TypePathSegment, WhereClause, WhereClauseItem,
-};
-use ry_diagnostics::BuildDiagnostic;
 
 pub(crate) struct TypeBoundsParser;
 
@@ -46,12 +47,12 @@ impl Parse for TypeBoundsParser {
 }
 
 impl Parse for TypeParser {
-    type Output = Option<TypeAst>;
+    type Output = Option<Type>;
 
     fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
         match state.next_token.raw {
             Token!['('] => ParenthesizedTupleOrFunctionTypeParser.parse(state),
-            RawToken::Identifier => TypePathParser.parse(state).map(TypeAst::Path),
+            RawToken::Identifier => TypePathParser.parse(state).map(Type::Path),
             Token![dyn] => TraitObjectTypeParser.parse(state),
             Token!['['] => TypeWithQualifiedPathParser.parse(state),
             _ => {
@@ -71,7 +72,7 @@ impl Parse for TypeParser {
 }
 
 impl Parse for TypeWithQualifiedPathParser {
-    type Output = Option<TypeAst>;
+    type Output = Option<Type>;
 
     fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
         let start = state.next_token.span.start;
@@ -93,7 +94,7 @@ impl Parse for TypeWithQualifiedPathParser {
             segments.push(TypePathSegmentParser.parse(state)?);
         }
 
-        Some(TypeAst::WithQualifiedPath {
+        Some(Type::WithQualifiedPath {
             span: state.span_from(start),
             left,
             right,
@@ -103,14 +104,14 @@ impl Parse for TypeWithQualifiedPathParser {
 }
 
 impl Parse for TraitObjectTypeParser {
-    type Output = Option<TypeAst>;
+    type Output = Option<Type>;
 
     fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
         let start = state.next_token.span.start;
 
         state.advance(); // `dyn`
 
-        Some(TypeAst::TraitObject {
+        Some(Type::TraitObject {
             bounds: TypeBoundsParser.parse(state)?,
             span: state.span_from(start),
         })
@@ -118,7 +119,7 @@ impl Parse for TraitObjectTypeParser {
 }
 
 impl Parse for ParenthesizedTupleOrFunctionTypeParser {
-    type Output = Option<TypeAst>;
+    type Output = Option<Type>;
 
     fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
         let start = state.next_token.span.start;
@@ -135,7 +136,7 @@ impl Parse for ParenthesizedTupleOrFunctionTypeParser {
 
             let return_type = Box::new(TypeParser.parse(state)?);
 
-            return Some(TypeAst::Function {
+            return Some(Type::Function {
                 span: state.span_from(start),
                 parameter_types: element_types,
                 return_type,
@@ -152,18 +153,18 @@ impl Parse for ParenthesizedTupleOrFunctionTypeParser {
                     .resolve_span(state.span_from(element.span().end))
                     .contains(',')
                 {
-                    Some(TypeAst::Tuple {
+                    Some(Type::Tuple {
                         span,
                         element_types: vec![element],
                     })
                 } else {
-                    Some(TypeAst::Parenthesized {
+                    Some(Type::Parenthesized {
                         span,
                         inner: Box::from(element),
                     })
                 }
             }
-            (None, None) => Some(TypeAst::Tuple {
+            (None, None) => Some(Type::Tuple {
                 span,
                 element_types: vec![],
             }),
@@ -174,7 +175,7 @@ impl Parse for ParenthesizedTupleOrFunctionTypeParser {
 
                 new_element_types.append(&mut element_types.collect::<Vec<_>>());
 
-                Some(TypeAst::Tuple {
+                Some(Type::Tuple {
                     span,
                     element_types: new_element_types,
                 })
@@ -278,25 +279,23 @@ impl Parse for GenericArgumentsParser {
             let ty = TypeParser.parse(state)?;
 
             match (state.next_token.raw, &ty) {
-                (Token![=], TypeAst::Path(TypePath { segments, .. })) => {
-                    match segments.as_slice() {
-                        [TypePathSegment {
-                            path: Path { identifiers, .. },
-                            generic_arguments: None,
-                            ..
-                        }] if identifiers.len() == 1 => {
-                            state.advance();
-                            let value = TypeParser.parse(state)?;
-                            Some(GenericArgument::AssociatedType {
-                                name: *identifiers
-                                    .first()
-                                    .expect("Cannot get first identifier of type path"),
-                                value,
-                            })
-                        }
-                        _ => None,
+                (Token![=], Type::Path(TypePath { segments, .. })) => match segments.as_slice() {
+                    [TypePathSegment {
+                        path: Path { identifiers, .. },
+                        generic_arguments: None,
+                        ..
+                    }] if identifiers.len() == 1 => {
+                        state.advance();
+                        let value = TypeParser.parse(state)?;
+                        Some(GenericArgument::AssociatedType {
+                            name: *identifiers
+                                .first()
+                                .expect("Cannot get first identifier of type path"),
+                            value,
+                        })
                     }
-                }
+                    _ => None,
+                },
                 _ => Some(GenericArgument::Type(ty)),
             }
         });

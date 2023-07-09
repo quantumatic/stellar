@@ -1,10 +1,11 @@
+use ry_ast::{token::RawToken, Path, Pattern, StructFieldPattern, Token};
+use ry_diagnostics::BuildDiagnostic;
+use ry_filesystem::span::Span;
+
 use crate::{
     diagnostics::ParseDiagnostic, expected, literal::LiteralParser, macros::parse_list,
     path::PathParser, Parse, ParseState,
 };
-use ry_ast::{token::RawToken, Path, Pattern, StructFieldPattern, Token};
-use ry_diagnostics::BuildDiagnostic;
-use ry_filesystem::span::Span;
 
 pub(crate) struct PatternParser;
 

@@ -1,11 +1,13 @@
 //! Defines a [`InMemoryFile`] to represent a Ry source file and provides some utilities.
 
-use crate::span::{Span, SpanIndex};
-use codespan_reporting::files::{Error, Files};
 use std::cmp::Ordering;
 use std::io;
 use std::ops::Range;
 use std::path::Path;
+
+use codespan_reporting::files::{Error, Files};
+
+use crate::span::{Span, SpanIndex};
 
 /// A Ry source file.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]

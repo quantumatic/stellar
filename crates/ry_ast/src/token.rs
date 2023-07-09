@@ -1,8 +1,10 @@
 //! Defines [`Token`] which represents grammatical unit of Ry source text.
-use crate::precedence::Precedence;
+use std::fmt::Display;
+
 use phf::phf_map;
 use ry_filesystem::span::Span;
-use std::fmt::Display;
+
+use crate::precedence::Precedence;
 
 /// Represents error that scanning process can fail with.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]

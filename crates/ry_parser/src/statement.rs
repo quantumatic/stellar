@@ -1,11 +1,12 @@
+use ry_ast::{token::RawToken, Statement, StatementsBlock, Token};
+use ry_diagnostics::BuildDiagnostic;
+
 use crate::{
     diagnostics::ParseDiagnostic, expected, expression::ExpressionParser, pattern::PatternParser,
     r#type::TypeParser, Parse, ParseState,
 };
-use ry_ast::{token::RawToken, Statement, StatementsBlock, Token};
-use ry_diagnostics::BuildDiagnostic;
 
-struct StatementParser;
+pub(crate) struct StatementParser;
 
 pub(crate) struct StatementsBlockParser;
 
@@ -174,7 +175,7 @@ impl Parse for LetStatementParser {
 
         state.consume(Token![=], "let statement")?;
 
-        let value = Box::new(ExpressionParser::default().parse(state)?);
+        let value = ExpressionParser::default().parse(state)?;
 
         Some(Statement::Let { pattern, value, ty })
     }

@@ -1,7 +1,9 @@
-use crate::prefix::log_with_prefix;
+use std::{fs, process::exit};
+
 use ry_interner::Interner;
 use ry_lexer::Lexer;
-use std::{fs, process::exit};
+
+use crate::prefix::log_with_prefix;
 
 pub fn command(filepath: &str, show_locations: bool) {
     match fs::read_to_string(filepath) {

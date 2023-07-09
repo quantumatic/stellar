@@ -417,7 +417,7 @@ pub type TypeBounds = Vec<TypePath>;
 ///        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type node
 /// ```
 #[derive(Debug, PartialEq, Clone)]
-pub enum TypeAst {
+pub enum Type {
     /// A type path.
     ///
     /// ```txt
@@ -479,7 +479,7 @@ pub enum TypeAst {
     },
 }
 
-impl TypeAst {
+impl Type {
     #[inline]
     #[must_use]
     pub const fn span(&self) -> Span {
@@ -506,7 +506,7 @@ impl TypeAst {
 pub struct GenericParameter {
     pub name: IdentifierAst,
     pub bounds: Option<TypeBounds>,
-    pub default_value: Option<TypeAst>,
+    pub default_value: Option<Type>,
 }
 
 /// Represents a where clause.
@@ -527,7 +527,7 @@ pub struct TypeAlias {
     pub name: IdentifierAst,
     pub generic_parameters: Option<Vec<GenericParameter>>,
     pub bounds: Option<TypeBounds>,
-    pub value: Option<TypeAst>,
+    pub value: Option<Type>,
     pub docstring: Option<String>,
 }
 
@@ -540,13 +540,13 @@ pub struct TypeAlias {
 /// ```
 #[derive(Debug, PartialEq, Clone)]
 pub enum WhereClauseItem {
-    Eq { left: TypeAst, right: TypeAst },
-    Satisfies { ty: TypeAst, bounds: TypeBounds },
+    Eq { left: Type, right: Type },
+    Satisfies { ty: Type, bounds: TypeBounds },
 }
 
 /// Represents an expression in an untyped AST.
 #[derive(Debug, PartialEq, Clone)]
-pub enum UntypedExpression {
+pub enum Expression {
     /// List expression.
     ///
     /// ```txt
@@ -562,7 +562,7 @@ pub enum UntypedExpression {
     As {
         span: Span,
         left: Box<Self>,
-        right: TypeAst,
+        right: Type,
     },
 
     /// Binary expression.
@@ -736,7 +736,7 @@ pub enum UntypedExpression {
     Function {
         span: Span,
         parameters: Vec<LambdaFunctionParameter>,
-        return_type: Option<TypeAst>,
+        return_type: Option<Type>,
         block: Vec<Statement>,
     },
 }
@@ -744,17 +744,17 @@ pub enum UntypedExpression {
 #[derive(Debug, Clone, PartialEq)]
 pub struct LambdaFunctionParameter {
     pub name: IdentifierAst,
-    pub ty: Option<TypeAst>,
+    pub ty: Option<Type>,
 }
 
 /// Represents a generic argument.
 #[derive(Debug, PartialEq, Clone)]
 pub enum GenericArgument {
-    Type(TypeAst),
-    AssociatedType { name: IdentifierAst, value: TypeAst },
+    Type(Type),
+    AssociatedType { name: IdentifierAst, value: Type },
 }
 
-impl UntypedExpression {
+impl Expression {
     /// Returns the span of the expression.
     #[inline]
     #[must_use]
@@ -990,7 +990,7 @@ impl From<RawPostfixOperator> for RawToken {
 #[derive(Debug, PartialEq, Clone)]
 pub struct MatchExpressionItem {
     pub left: Pattern,
-    pub right: UntypedExpression,
+    pub right: Expression,
 }
 
 /// Represents a field initialization in a struct expression (`identifier` and optionally `:` `expression`).
@@ -1008,10 +1008,10 @@ pub struct MatchExpressionItem {
 #[derive(Debug, PartialEq, Clone)]
 pub struct StructExpressionItem {
     pub name: IdentifierAst,
-    pub value: Option<UntypedExpression>,
+    pub value: Option<Expression>,
 }
 
-impl UntypedExpression {
+impl Expression {
     /// Returns `true` if this expression has a block in it (except function expressions).
     /// Used to determine if this expression has to have semicolon at the end.
     /// Function expression do have blocks in them, but they must have a semicolon at the end.
@@ -1030,7 +1030,7 @@ pub enum Statement {
     /// ```txt
     /// defer file.close();
     /// ```
-    Defer { call: UntypedExpression },
+    Defer { call: Expression },
 
     /// Expression statement
     ///
@@ -1040,7 +1040,7 @@ pub enum Statement {
     /// }
     /// ```
     Expression {
-        expression: UntypedExpression,
+        expression: Expression,
         has_semicolon: bool,
     },
 
@@ -1066,7 +1066,7 @@ pub enum Statement {
     ///     return 42;
     /// }
     /// ```
-    Return { expression: UntypedExpression },
+    Return { expression: Expression },
 
     /// Let statement
     ///
@@ -1075,8 +1075,8 @@ pub enum Statement {
     /// ```
     Let {
         pattern: Pattern,
-        value: Box<UntypedExpression>,
-        ty: Option<TypeAst>,
+        value: Expression,
+        ty: Option<Type>,
     },
 }
 
@@ -1087,6 +1087,27 @@ pub enum Statement {
 ///            ^^^^^^^^^^^^^^^^^^^^^^ statements block
 /// ```
 pub type StatementsBlock = Vec<Statement>;
+
+/// Type implementation.
+///
+/// ```txt
+/// impl Person {
+///     pub fun new(name: String) -> Self {
+///         Self {
+///             name
+///         }
+///     }
+/// }
+/// ```
+#[derive(Debug, Clone, PartialEq)]
+pub struct Impl {
+    pub generic_parameters: Option<Vec<GenericParameter>>,
+    pub ty: Type,
+    pub r#trait: Option<Type>,
+    pub where_clause: Option<WhereClause>,
+    pub items: Vec<TraitItem>,
+    pub docstring: Option<String>,
+}
 
 /// Represents an item.
 #[derive(Debug, PartialEq, Clone)]
@@ -1127,10 +1148,7 @@ pub enum Item {
     /// ```txt
     /// import std.io;
     /// ```
-    Import {
-        visibility: Visibility,
-        path: ImportPath,
-    },
+    Import { path: ImportPath },
 
     /// Trait item.
     ///
@@ -1159,14 +1177,7 @@ pub enum Item {
     ///     }
     /// }
     /// ```
-    Impl {
-        generic_parameters: Option<Vec<GenericParameter>>,
-        ty: TypeAst,
-        r#trait: Option<TypeAst>,
-        where_clause: Option<WhereClause>,
-        items: Vec<TraitItem>,
-        docstring: Option<String>,
-    },
+    Impl(Impl),
 
     /// Struct item.
     ///
@@ -1276,7 +1287,7 @@ pub enum EnumItem {
 #[derive(Debug, PartialEq, Clone)]
 pub struct TupleField {
     pub visibility: Visibility,
-    pub ty: TypeAst,
+    pub ty: Type,
 }
 
 /// Represents a struct field.
@@ -1293,7 +1304,7 @@ pub struct TupleField {
 pub struct StructField {
     pub visibility: Visibility,
     pub name: IdentifierAst,
-    pub ty: TypeAst,
+    pub ty: Type,
     pub docstring: Option<String>,
 }
 
@@ -1315,7 +1326,7 @@ pub struct Function {
     pub name: IdentifierAst,
     pub generic_parameters: Option<Vec<GenericParameter>>,
     pub parameters: Vec<FunctionParameter>,
-    pub return_type: Option<TypeAst>,
+    pub return_type: Option<Type>,
     pub where_clause: Option<WhereClause>,
     pub body: Option<StatementsBlock>,
     pub docstring: Option<String>,
@@ -1337,7 +1348,7 @@ pub enum FunctionParameter {
 #[derive(Debug, PartialEq, Clone)]
 pub struct SelfParameter {
     pub self_span: Span,
-    pub ty: Option<TypeAst>,
+    pub ty: Option<Type>,
 }
 
 /// Represents a function parameter that is not `self`.
@@ -1351,7 +1362,7 @@ pub struct SelfParameter {
 #[derive(Debug, PartialEq, Clone)]
 pub struct JustFunctionParameter {
     pub name: IdentifierAst,
-    pub ty: TypeAst,
+    pub ty: Type,
 }
 
 /// Represents Ry source file.

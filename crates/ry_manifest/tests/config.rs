@@ -1,7 +1,8 @@
+use std::collections::BTreeMap;
+
 use ry_diagnostics::GlobalDiagnostics;
 use ry_manifest::TomlDependency;
 use ry_manifest::{parse_manifest, DetailedTomlDependency, TomlManifest, TomlProject};
-use std::collections::BTreeMap;
 
 #[test]
 fn simple_manifest() {
