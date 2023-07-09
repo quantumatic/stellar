@@ -292,7 +292,7 @@ where
 
         intern_primitive_symbols!(
             interner, int8, int16, int32, int64, uint8, uint16, uint32, uint64, float32, float64,
-            isize, usize, bool, String, List, char, self, Self, sizeof, STD
+            isize, usize, bool, String, List, char, self, Self, sizeof, std
         );
 
         interner
