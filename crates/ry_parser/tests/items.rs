@@ -5,7 +5,7 @@ use ry_ast::{
     WhereClauseItem,
 };
 use ry_filesystem::span::Span;
-use ry_interner::{symbols, Interner, Symbol};
+use ry_interner::{symbols, Interner};
 use ry_parser::parse_item;
 
 mod r#macro;
@@ -274,7 +274,7 @@ fn import() {
                     identifiers: vec![
                         IdentifierAst {
                             span: Span { start: 7, end: 10 },
-                            symbol: interner.get_or_intern("std")
+                            symbol: symbols::STD
                         },
                         IdentifierAst {
                             span: Span { start: 11, end: 13 },

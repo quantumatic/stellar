@@ -111,7 +111,7 @@ fn generic_argument() {
                 span: Span { start: 0, end: 14 },
                 left: Box::new(Expression::Identifier(IdentifierAst {
                     span: Span { start: 0, end: 6 },
-                    symbol: interner.get_or_intern("sizeof")
+                    symbol: symbols::SIZE_OF
                 })),
                 generic_arguments: vec![GenericArgument::Type(Type::Path(TypePath {
                     span: Span { start: 7, end: 13 },
@@ -121,7 +121,7 @@ fn generic_argument() {
                             span: Span { start: 7, end: 13 },
                             identifiers: vec![IdentifierAst {
                                 span: Span { start: 7, end: 13 },
-                                symbol: interner.get_or_intern("uint32")
+                                symbol: symbols::UINT32
                             }]
                         },
                         generic_arguments: None
@@ -327,7 +327,7 @@ fn r#as() {
                         span: Span { start: 5, end: 12 },
                         identifiers: vec![IdentifierAst {
                             span: Span { start: 5, end: 12 },
-                            symbol: interner.get_or_intern("float32")
+                            symbol: symbols::FLOAT32
                         }]
                     },
                     generic_arguments: None

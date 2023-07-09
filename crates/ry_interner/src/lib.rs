@@ -140,6 +140,12 @@ pub mod symbols {
 
     /// `Self` symbol.
     pub const BIG_SELF: Symbol = 18;
+
+    /// `sizeof` symbol.
+    pub const SIZE_OF: Symbol = 19;
+
+    /// `std` symbol.
+    pub const STD: Symbol = 20;
 }
 
 /// # Identifier Interner
@@ -286,7 +292,7 @@ where
 
         intern_primitive_symbols!(
             interner, int8, int16, int32, int64, uint8, uint16, uint32, uint64, float32, float64,
-            isize, usize, bool, String, List, char, self, Self
+            isize, usize, bool, String, List, char, self, Self, sizeof, STD
         );
 
         interner
