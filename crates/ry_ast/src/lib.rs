@@ -528,7 +528,7 @@ pub struct TypeAlias {
     pub generic_parameters: Option<Vec<GenericParameter>>,
     pub bounds: Option<TypeBounds>,
     pub value: Option<TypeAst>,
-    pub docstring: Option<Docstring>,
+    pub docstring: Option<String>,
 }
 
 /// Represents a where clause item.
@@ -1110,7 +1110,7 @@ pub enum Item {
         generic_parameters: Option<Vec<GenericParameter>>,
         where_clause: Option<WhereClause>,
         items: Vec<EnumItem>,
-        docstring: Option<Docstring>,
+        docstring: Option<String>,
     },
 
     /// Function item.
@@ -1145,7 +1145,7 @@ pub enum Item {
         generic_parameters: Option<Vec<GenericParameter>>,
         where_clause: Option<WhereClause>,
         items: Vec<TraitItem>,
-        docstring: Option<Docstring>,
+        docstring: Option<String>,
     },
 
     /// Impl item.
@@ -1165,7 +1165,7 @@ pub enum Item {
         r#trait: Option<TypeAst>,
         where_clause: Option<WhereClause>,
         items: Vec<TraitItem>,
-        docstring: Option<Docstring>,
+        docstring: Option<String>,
     },
 
     /// Struct item.
@@ -1183,7 +1183,7 @@ pub enum Item {
         generic_parameters: Option<Vec<GenericParameter>>,
         where_clause: Option<WhereClause>,
         fields: Vec<StructField>,
-        docstring: Option<Docstring>,
+        docstring: Option<String>,
     },
 
     /// Tuple-like struct item.
@@ -1197,7 +1197,7 @@ pub enum Item {
         generic_parameters: Option<Vec<GenericParameter>>,
         where_clause: Option<WhereClause>,
         fields: Vec<TupleField>,
-        docstring: Option<Docstring>,
+        docstring: Option<String>,
     },
 
     /// Type alias item.
@@ -1254,17 +1254,17 @@ impl ToString for ItemKind {
 pub enum EnumItem {
     Just {
         name: IdentifierAst,
-        docstring: Option<Docstring>,
+        docstring: Option<String>,
     },
     Tuple {
         name: IdentifierAst,
         fields: Vec<TupleField>,
-        docstring: Option<Docstring>,
+        docstring: Option<String>,
     },
     Struct {
         name: IdentifierAst,
         fields: Vec<StructField>,
-        docstring: Option<Docstring>,
+        docstring: Option<String>,
     },
 }
 
@@ -1294,25 +1294,7 @@ pub struct StructField {
     pub visibility: Visibility,
     pub name: IdentifierAst,
     pub ty: TypeAst,
-    pub docstring: Option<Docstring>,
-}
-
-/// Represents a docstring.
-///
-/// ```txt
-/// //! Module-level docstring
-/// ^^^^^^^^^^^^^^^^^^^^^^^^^^
-///
-/// pub struct Foo {}
-///
-/// /// This is also a docstring
-/// ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-/// pub fun test() {}
-/// ```
-#[derive(Debug, PartialEq, Eq, Clone)]
-pub struct Docstring {
-    pub span: Span,
-    pub value: String,
+    pub docstring: Option<String>,
 }
 
 /// Represents a trait item.
@@ -1336,7 +1318,7 @@ pub struct Function {
     pub return_type: Option<TypeAst>,
     pub where_clause: Option<WhereClause>,
     pub body: Option<StatementsBlock>,
-    pub docstring: Option<Docstring>,
+    pub docstring: Option<String>,
 }
 
 /// Represents a function parameter.
@@ -1376,7 +1358,7 @@ pub struct JustFunctionParameter {
 #[derive(Debug, PartialEq, Clone)]
 pub struct Module {
     pub items: Vec<Item>,
-    pub docstring: Option<Docstring>,
+    pub docstring: Option<String>,
 }
 
 /// Represents a visibility qualifier.

@@ -65,7 +65,7 @@
     clippy::unnested_or_patterns
 )]
 
-use ry_ast::{BinaryOperator, Docstring, PostfixOperator, PrefixOperator};
+use ry_ast::{BinaryOperator, PostfixOperator, PrefixOperator};
 use ry_filesystem::span::Span;
 use ry_interner::Symbol;
 use ty::Type;
@@ -326,7 +326,7 @@ pub struct TypeAlias {
     pub generic_parameters: Option<Vec<GenericParameter>>,
     pub bounds: Option<TypeBounds>,
     pub value: Option<Type>,
-    pub docstring: Option<Docstring>,
+    pub docstring: Option<String>,
 }
 
 /// Represents a where clause item.
@@ -688,7 +688,7 @@ pub enum Item {
         generic_parameters: Option<Vec<GenericParameter>>,
         where_clause: Option<WhereClause>,
         items: Vec<EnumItem>,
-        docstring: Option<Docstring>,
+        docstring: Option<String>,
     },
 
     /// Function item.
@@ -713,7 +713,7 @@ pub enum Item {
         generic_parameters: Option<Vec<GenericParameter>>,
         where_clause: Option<WhereClause>,
         items: Vec<TraitItem>,
-        docstring: Option<Docstring>,
+        docstring: Option<String>,
     },
 
     /// Impl item.
@@ -733,7 +733,7 @@ pub enum Item {
         r#trait: Option<TypePath>,
         where_clause: Option<WhereClause>,
         items: Vec<TraitItem>,
-        docstring: Option<Docstring>,
+        docstring: Option<String>,
     },
 
     /// Struct item.
@@ -752,7 +752,7 @@ pub enum Item {
         generic_parameters: Option<Vec<GenericParameter>>,
         where_clause: Option<WhereClause>,
         fields: Vec<StructField>,
-        docstring: Option<Docstring>,
+        docstring: Option<String>,
     },
 
     /// Tuple-like struct item.
@@ -768,7 +768,7 @@ pub enum Item {
         where_clause: Option<WhereClause>,
         fields_visibility: Visibility,
         fields: Vec<Type>,
-        docstring: Option<Docstring>,
+        docstring: Option<String>,
     },
 
     /// Type alias item.
@@ -794,19 +794,19 @@ pub enum EnumItem {
     Just {
         span: Span,
         name: Symbol,
-        docstring: Option<Docstring>,
+        docstring: Option<String>,
     },
     Tuple {
         span: Span,
         name: Symbol,
         fields: Vec<Type>,
-        docstring: Option<Docstring>,
+        docstring: Option<String>,
     },
     Struct {
         span: Span,
         name: Symbol,
         fields: Vec<StructField>,
-        docstring: Option<Docstring>,
+        docstring: Option<String>,
     },
 }
 
@@ -826,7 +826,7 @@ pub struct StructField {
     pub visibility: Visibility,
     pub name: Symbol,
     pub ty: Type,
-    pub docstring: Option<Docstring>,
+    pub docstring: Option<String>,
 }
 
 /// Represents a trait item.
@@ -850,7 +850,7 @@ pub struct Function {
     pub return_type: Type,
     pub where_clause: Option<WhereClause>,
     pub body: Option<StatementsBlock>,
-    pub docstring: Option<Docstring>,
+    pub docstring: Option<String>,
 }
 
 /// Represents a function parameter.
@@ -890,7 +890,7 @@ pub struct JustFunctionParameter {
 #[derive(Debug, PartialEq, Clone)]
 pub struct Module {
     pub items: Vec<Item>,
-    pub docstring: Option<Docstring>,
+    pub docstring: Option<String>,
 }
 
 /// Represents a visibility qualifier.

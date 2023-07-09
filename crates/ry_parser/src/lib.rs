@@ -80,9 +80,9 @@ use diagnostics::ParseDiagnostic;
 pub use module::{parse_module, parse_module_using};
 use ry_ast::{
     token::{LexError, RawToken, Token},
-    Docstring, IdentifierAst, Token, Visibility,
+    IdentifierAst, Token, Visibility,
 };
-use ry_diagnostics::{BuildDiagnostic, SingleContextDiagnostic};
+use ry_diagnostics::{BuildDiagnostic, Diagnostic};
 use ry_filesystem::span::{Span, SpanIndex};
 use ry_interner::Interner;
 use ry_lexer::Lexer;
@@ -102,7 +102,7 @@ pub struct ParseState<'source, 'diagnostics, 'interner> {
     /// Next token.
     next_token: Token,
     /// Diagnostics that is emitted during parsing.
-    diagnostics: &'diagnostics mut Vec<SingleContextDiagnostic>,
+    diagnostics: &'diagnostics mut Vec<Diagnostic>,
 }
 
 /// Represents AST node that can be parsed.
@@ -145,7 +145,7 @@ impl<'source, 'diagnostics, 'interner> ParseState<'source, 'diagnostics, 'intern
     #[must_use]
     pub fn new(
         source: &'source str,
-        diagnostics: &'diagnostics mut Vec<SingleContextDiagnostic>,
+        diagnostics: &'diagnostics mut Vec<Diagnostic>,
         interner: &'interner mut Interner,
     ) -> Self {
         let mut lexer = Lexer::new(source, interner);
@@ -269,9 +269,8 @@ impl<'source, 'diagnostics, 'interner> ParseState<'source, 'diagnostics, 'intern
     }
 
     /// Consumes the docstring for a module.
-    pub(crate) fn consume_module_docstring(&mut self) -> Option<Docstring> {
+    pub(crate) fn consume_module_docstring(&mut self) -> Option<String> {
         if self.next_token.raw == RawToken::GlobalDocComment {
-            let start = self.next_token.span.start;
             let mut module_docstring = String::new();
 
             while self.next_token.raw == RawToken::GlobalDocComment {
@@ -280,19 +279,15 @@ impl<'source, 'diagnostics, 'interner> ParseState<'source, 'diagnostics, 'intern
                 module_docstring.push_str(self.resolve_span(self.current_token.span));
             }
 
-            Some(Docstring {
-                span: self.span_from(start),
-                value: module_docstring,
-            })
+            Some(module_docstring)
         } else {
             None
         }
     }
 
     /// Consumes the docstring for a local item.
-    pub(crate) fn consume_local_docstring(&mut self) -> Option<Docstring> {
+    pub(crate) fn consume_local_docstring(&mut self) -> Option<String> {
         if self.next_token.raw == RawToken::LocalDocComment {
-            let start = self.next_token.span.start;
             let mut local_docstring = String::new();
 
             while self.next_token.raw == RawToken::LocalDocComment {
@@ -301,10 +296,7 @@ impl<'source, 'diagnostics, 'interner> ParseState<'source, 'diagnostics, 'intern
                 local_docstring.push_str(self.resolve_span(self.current_token.span));
             }
 
-            Some(Docstring {
-                span: self.span_from(start),
-                value: local_docstring,
-            })
+            Some(local_docstring)
         } else {
             None
         }

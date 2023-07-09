@@ -8,9 +8,9 @@ use crate::{
     OptionalParser, Parse, ParseState, VisibilityParser,
 };
 use ry_ast::{
-    token::RawToken, Docstring, EnumItem, Function, FunctionParameter, IdentifierAst, Item,
-    ItemKind, JustFunctionParameter, SelfParameter, StructField, Token, TraitItem, TupleField,
-    TypeAlias, Visibility,
+    token::RawToken, EnumItem, Function, FunctionParameter, IdentifierAst, Item, ItemKind,
+    JustFunctionParameter, SelfParameter, StructField, Token, TraitItem, TupleField, TypeAlias,
+    Visibility,
 };
 use ry_diagnostics::BuildDiagnostic;
 use ry_filesystem::span::Span;
@@ -22,30 +22,30 @@ struct ImportParser {
 
 struct StructParser {
     pub(crate) visibility: Visibility,
-    pub(crate) docstring: Option<Docstring>,
+    pub(crate) docstring: Option<String>,
 }
 
 struct StructFieldsParser;
 
 struct StructFieldParser {
-    pub(crate) docstring: Option<Docstring>,
+    pub(crate) docstring: Option<String>,
 }
 
 struct FunctionParser {
     pub(crate) visibility: Visibility,
-    pub(crate) docstring: Option<Docstring>,
+    pub(crate) docstring: Option<String>,
 }
 
 pub(crate) struct FunctionParameterParser;
 
 struct TypeAliasParser {
     pub(crate) visibility: Visibility,
-    pub(crate) docstring: Option<Docstring>,
+    pub(crate) docstring: Option<String>,
 }
 
 struct TraitParser {
     pub(crate) visibility: Visibility,
-    pub(crate) docstring: Option<Docstring>,
+    pub(crate) docstring: Option<String>,
 }
 
 struct TraitItemsParser {
@@ -55,12 +55,12 @@ struct TraitItemsParser {
 
 struct ImplParser {
     pub(crate) visibility: Visibility,
-    pub(crate) docstring: Option<Docstring>,
+    pub(crate) docstring: Option<String>,
 }
 
 struct EnumParser {
     pub(crate) visibility: Visibility,
-    pub(crate) docstring: Option<Docstring>,
+    pub(crate) docstring: Option<String>,
 }
 
 struct EnumItemParser;
@@ -71,7 +71,7 @@ struct TupleFieldsParser {
 
 struct EnumItemStructParser {
     pub(crate) name: IdentifierAst,
-    pub(crate) docstring: Option<Docstring>,
+    pub(crate) docstring: Option<String>,
 }
 
 pub(crate) struct ItemParser;

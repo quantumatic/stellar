@@ -1,11 +1,10 @@
 //! Defines diagnostics for parser.
 
-use codespan_reporting::diagnostic::Diagnostic;
 use ry_ast::{
     token::{LexError, Token},
     ItemKind,
 };
-use ry_diagnostics::{BuildDiagnostic, SingleContextDiagnostic};
+use ry_diagnostics::{BuildDiagnostic, Diagnostic};
 use ry_filesystem::span::Span;
 use std::fmt::Display;
 
@@ -130,7 +129,7 @@ impl Display for Expected {
 }
 
 impl BuildDiagnostic for ParseDiagnostic {
-    fn build(&self) -> SingleContextDiagnostic {
+    fn build(&self) -> Diagnostic {
         match self {
             Self::LexError(error) =>
                 Diagnostic::error()

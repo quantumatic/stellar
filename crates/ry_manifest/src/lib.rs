@@ -88,6 +88,7 @@
 
 use std::collections::BTreeMap;
 
+use ry_diagnostics::{Diagnostic, GlobalDiagnostics};
 use serde::{de::IntoDeserializer, Deserialize, Serialize};
 use toml as _;
 use toml_edit::Document;
@@ -163,7 +164,10 @@ pub struct DetailedTomlDependency {
 /// See [crate level documentation] for more information.
 ///
 /// [crate level documentation]: crate
-pub fn parse_manifest<S>(source: S, warnings: &mut Vec<String>) -> Result<TomlManifest, String>
+pub fn parse_manifest<S>(
+    source: S,
+    diagnostics: &mut GlobalDiagnostics,
+) -> Result<TomlManifest, String>
 where
     S: AsRef<str>,
 {
@@ -173,7 +177,9 @@ where
         match serde_ignored::deserialize(toml.into_deserializer(), |path| {
             let mut key = String::new();
             stringify(&mut key, &path);
-            warnings.push(format!("unused manifest key: {key}"));
+            diagnostics
+                .context_free_diagnostics
+                .push(Diagnostic::warning());
         }) {
             Ok(manifest) => manifest,
             Err(err) => return Err(format!("{err}")),

@@ -60,10 +60,14 @@
 )]
 
 use core::fmt;
-use std::{collections::HashMap, fmt::Display, path::Path};
+use std::{
+    collections::{BTreeMap, HashMap},
+    fmt::Display,
+    path::{Path, PathBuf},
+};
 
 use codespan_reporting::{
-    diagnostic::{Diagnostic, Severity},
+    diagnostic::{self, Severity},
     files::{self, Files},
     term::{
         self,
@@ -90,54 +94,51 @@ impl Default for DiagnosticsEmitter {
 }
 
 /// Diagnostic within a concrete context.
-pub type SingleContextDiagnostic = Diagnostic<()>;
+pub type Diagnostic = diagnostic::Diagnostic<()>;
 
 /// Global diagnostics.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct GlobalDiagnostics<'a> {
+pub struct GlobalDiagnostics {
     /// Diagnostics associated with concrete files.
-    pub file_diagnostics: HashMap<&'a Path, Vec<SingleContextDiagnostic>>,
+    pub diagnostics_in_files: BTreeMap<PathBuf, Vec<Diagnostic>>,
 
     /// Context free diagnostics.
-    pub context_free_diagnostics: Vec<SingleContextDiagnostic>,
+    pub context_free_diagnostics: Vec<Diagnostic>,
 }
 
-impl Default for GlobalDiagnostics<'_> {
+impl Default for GlobalDiagnostics {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl<'a> GlobalDiagnostics<'a> {
+impl GlobalDiagnostics {
     /// Creates a new instance of [`GlobalDiagnostics`].
+    #[inline]
     #[must_use]
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
-            file_diagnostics: HashMap::new(),
+            diagnostics_in_files: BTreeMap::new(),
             context_free_diagnostics: Vec::new(),
         }
     }
 
     /// Adds a diagnostic to a file.
-    pub fn add_file_diagnostic(&mut self, path: &'a Path, diagnostic: SingleContextDiagnostic) {
-        match self.file_diagnostics.get_mut(path) {
+    pub fn add_file_diagnostic(&mut self, path: PathBuf, diagnostic: Diagnostic) {
+        match self.diagnostics_in_files.get_mut(&path) {
             Some(diagnostics_mut) => diagnostics_mut.push(diagnostic),
             None => {
-                self.file_diagnostics.insert(path, vec![diagnostic]);
+                self.diagnostics_in_files.insert(path, vec![diagnostic]);
             }
         }
     }
 
     /// Adds diagnostics to a file.
-    pub fn add_file_diagnostics(
-        &mut self,
-        path: &'a Path,
-        diagnostics: Vec<SingleContextDiagnostic>,
-    ) {
-        match self.file_diagnostics.get_mut(path) {
+    pub fn add_file_diagnostics(&mut self, path: PathBuf, diagnostics: Vec<Diagnostic>) {
+        match self.diagnostics_in_files.get_mut(&path) {
             Some(diagnostics_mut) => diagnostics_mut.extend(diagnostics),
             None => {
-                self.file_diagnostics.insert(path, diagnostics);
+                self.diagnostics_in_files.insert(path, diagnostics);
             }
         }
     }
@@ -193,7 +194,7 @@ impl Files<'_> for EmptyDiagnosticsManager {
 
 impl DiagnosticsEmitter {
     /// Emit the diagnostic not associated with a file.
-    pub fn emit_context_free_diagnostic(&self, diagnostic: &SingleContextDiagnostic) {
+    pub fn emit_context_free_diagnostic(&self, diagnostic: &Diagnostic) {
         term::emit(
             &mut self.writer.lock(),
             &self.config,
@@ -204,14 +205,14 @@ impl DiagnosticsEmitter {
     }
 
     /// Emit diagnostics not associated with a particular file.
-    pub fn emit_context_free_diagnostics(&self, diagnostics: &[SingleContextDiagnostic]) {
+    pub fn emit_context_free_diagnostics(&self, diagnostics: &[Diagnostic]) {
         for diagnostic in diagnostics {
             self.emit_context_free_diagnostic(diagnostic);
         }
     }
 
     /// Emit diagnostics associated with a particular file.
-    pub fn emit_file_diagnostics(&self, path: &Path, file_diagnostics: &[SingleContextDiagnostic]) {
+    pub fn emit_file_diagnostics(&self, path: &Path, file_diagnostics: &[Diagnostic]) {
         let file = InMemoryFile::new_or_panic(path);
 
         for diagnostic in file_diagnostics {
@@ -221,10 +222,7 @@ impl DiagnosticsEmitter {
     }
 
     /// Emit a list of diagnostic.
-    pub fn emit_global_diagnostics(
-        &self,
-        diagnostics: &HashMap<&Path, Vec<SingleContextDiagnostic>>,
-    ) {
+    pub fn emit_global_diagnostics(&self, diagnostics: &HashMap<&Path, Vec<Diagnostic>>) {
         for diagnostic in diagnostics {
             self.emit_file_diagnostics(diagnostic.0, diagnostic.1);
         }
@@ -271,7 +269,7 @@ pub enum DiagnosticsStatus {
 ///
 /// Note: ID is not required.
 #[must_use]
-pub fn check_file_diagnostics(file_diagnostics: &[SingleContextDiagnostic]) -> DiagnosticsStatus {
+pub fn check_file_diagnostics(file_diagnostics: &[Diagnostic]) -> DiagnosticsStatus {
     for diagnostic in file_diagnostics {
         if matches!(diagnostic.severity, Severity::Error | Severity::Bug) {
             return DiagnosticsStatus::Fatal;
@@ -283,8 +281,8 @@ pub fn check_file_diagnostics(file_diagnostics: &[SingleContextDiagnostic]) -> D
 
 /// Check if diagnostics are fatal.
 #[must_use]
-pub fn check_global_diagnostics(diagnostics: &GlobalDiagnostics<'_>) -> DiagnosticsStatus {
-    for diagnostic in &diagnostics.file_diagnostics {
+pub fn check_global_diagnostics(diagnostics: &GlobalDiagnostics) -> DiagnosticsStatus {
+    for diagnostic in &diagnostics.diagnostics_in_files {
         if check_file_diagnostics(diagnostic.1) == DiagnosticsStatus::Fatal {
             return DiagnosticsStatus::Fatal;
         }
@@ -296,5 +294,5 @@ pub fn check_global_diagnostics(diagnostics: &GlobalDiagnostics<'_>) -> Diagnost
 /// Anything that can be reported using [`DiagnosticsEmitter`].
 pub trait BuildDiagnostic {
     /// Convert [`self`] into [`SingleContextDiagnostic`].
-    fn build(&self) -> SingleContextDiagnostic;
+    fn build(&self) -> Diagnostic;
 }

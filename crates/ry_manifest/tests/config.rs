@@ -1,15 +1,16 @@
+use ry_diagnostics::GlobalDiagnostics;
 use ry_manifest::TomlDependency;
 use ry_manifest::{parse_manifest, DetailedTomlDependency, TomlManifest, TomlProject};
 use std::collections::BTreeMap;
 
 #[test]
 fn simple_manifest() {
-    let mut warnings = vec![];
+    let mut diagnostics = GlobalDiagnostics::new();
     let manifest = "[project]
 name = \"json\"
 version = \"1.0.0\"";
     assert_eq!(
-        parse_manifest(manifest, &mut warnings),
+        parse_manifest(manifest, &mut diagnostics),
         Ok(TomlManifest {
             project: TomlProject {
                 name: "json".to_owned(),
@@ -24,12 +25,12 @@ version = \"1.0.0\"";
             dependencies: None,
         })
     );
-    assert_eq!(warnings.len(), 0);
+    assert_eq!(diagnostics.context_free_diagnostics.len(), 0);
 }
 
 #[test]
 fn full_project_metadata() {
-    let mut warnings = vec![];
+    let mut diagnostics = GlobalDiagnostics::new();
     let manifest = "[project]
 name = \"json\"
 version = \"1.0.0\"
@@ -42,7 +43,7 @@ categories = [\"json\", \"parser\", \"serialization\", \"deserialization\",
 keywords = [\"json\", \"config\"]";
 
     assert_eq!(
-        parse_manifest(manifest, &mut warnings),
+        parse_manifest(manifest, &mut diagnostics),
         Ok(TomlManifest {
             project: TomlProject {
                 name: "json".to_owned(),
@@ -63,12 +64,13 @@ keywords = [\"json\", \"config\"]";
             dependencies: None,
         })
     );
-    assert_eq!(warnings.len(), 0);
+
+    assert_eq!(diagnostics.context_free_diagnostics.len(), 0);
 }
 
 #[test]
 fn dependencies() {
-    let mut warnings = vec![];
+    let mut diagnostics = GlobalDiagnostics::new();
     let manifest = "[project]
 name = \"json\"
 version = \"1.0.0\"
@@ -99,7 +101,7 @@ foo2 = { path = \"../foo\" }";
     );
 
     assert_eq!(
-        parse_manifest(manifest, &mut warnings),
+        parse_manifest(manifest, &mut diagnostics),
         Ok(TomlManifest {
             project: TomlProject {
                 name: "json".to_owned(),
@@ -114,5 +116,6 @@ foo2 = { path = \"../foo\" }";
             dependencies: Some(deps),
         })
     );
-    assert_eq!(warnings.len(), 0);
+
+    assert_eq!(diagnostics.context_free_diagnostics.len(), 0);
 }

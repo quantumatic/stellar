@@ -23,7 +23,7 @@ impl ProjectPathResolver<'_> {
     /// Returns the path of the project configuration file.
     #[inline]
     #[must_use]
-    pub fn config(&self) -> PathBuf {
+    pub fn manifest(&self) -> PathBuf {
         self.root.join("project.toml")
     }
 

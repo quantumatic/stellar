@@ -1,20 +1,52 @@
-pub mod resolution_tree_builder;
+pub mod build_resolution_tree;
 
 use std::collections::HashMap;
 
-use ry_ast::Item;
 use ry_interner::Symbol;
 
-pub struct NameResolutionTree {
-    pub projects: Vec<ProjectNode>,
+pub struct ResolutionTree {
+    pub projects: HashMap<Symbol, ProjectNode>,
 }
 
-pub type Workspace = HashMap<Symbol, ProjectNode>;
+impl Default for ResolutionTree {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
-pub type ProjectNode = HashMap<Symbol, ModuleNode>;
+impl ResolutionTree {
+    pub fn new() -> Self {
+        Self {
+            projects: HashMap::new(),
+        }
+    }
+}
 
-pub type ModuleNode = HashMap<Symbol, ModuleItem>;
+pub struct ProjectNode {
+    pub modules: HashMap<Symbol, ModuleNode>,
+}
+
+impl Default for ProjectNode {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl ProjectNode {
+    pub fn new() -> Self {
+        Self {
+            modules: HashMap::new(),
+        }
+    }
+}
+
+pub struct ModuleNode {
+    pub docstring: Option<String>,
+    pub items: Vec<ModuleItem>,
+}
 
 pub enum ModuleItem {
-    NotAnalyzed(Item),
+    NotAnalyzedItem(ry_ast::Item),
+    AnalyzedItem(ry_typed_ast::Item),
+    Module(ModuleNode),
 }

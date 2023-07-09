@@ -10,4 +10,9 @@ description = "Implements name resolution compilation stage for the Ry programmi
 
 [dependencies]
 ry_ast = { path = "../ry_ast" }
+ry_diagnostics = { path = "../ry_diagnostics" }
+ry_filesystem = { path = "../ry_filesystem" }
 ry_interner = { path = "../ry_interner" }
+ry_manifest = { path = "../ry_manifest" }
+ry_parser = { path = "../ry_parser" }
+ry_typed_ast = { path = "../ry_typed_ast" }
