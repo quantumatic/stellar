@@ -5,7 +5,7 @@ use ry_ast::{
     TypePathSegment,
 };
 use ry_filesystem::span::Span;
-use ry_interner::Interner;
+use ry_interner::{symbols, Interner};
 use ry_parser::parse_expression;
 
 mod r#macro;
@@ -429,7 +429,7 @@ fn r#while() {
                         span: Span { start: 13, end: 19 },
                         left: Box::new(Expression::Identifier(IdentifierAst {
                             span: Span { start: 13, end: 17 },
-                            symbol: 19
+                            symbol: interner.get_or_intern("code")
                         })),
                         arguments: vec![]
                     },
@@ -440,7 +440,7 @@ fn r#while() {
                         span: Span { start: 21, end: 26 },
                         left: Box::new(Expression::Identifier(IdentifierAst {
                             span: Span { start: 21, end: 24 },
-                            symbol: 20
+                            symbol: interner.get_or_intern("eat")
                         })),
                         arguments: vec![]
                     },
@@ -451,7 +451,7 @@ fn r#while() {
                         span: Span { start: 28, end: 35 },
                         left: Box::new(Expression::Identifier(IdentifierAst {
                             span: Span { start: 28, end: 33 },
-                            symbol: 21
+                            symbol: interner.get_or_intern("sleep")
                         })),
                         arguments: vec![]
                     },
@@ -475,14 +475,14 @@ fn lambda() {
                 LambdaFunctionParameter {
                     name: IdentifierAst {
                         span: Span { start: 1, end: 2 },
-                        symbol: 19
+                        symbol: interner.get_or_intern("a")
                     },
                     ty: None
                 },
                 LambdaFunctionParameter {
                     name: IdentifierAst {
                         span: Span { start: 4, end: 5 },
-                        symbol: 20
+                        symbol: interner.get_or_intern("b")
                     },
                     ty: Some(Type::Path(TypePath {
                         span: Span { start: 7, end: 13 },
@@ -492,7 +492,7 @@ fn lambda() {
                                 span: Span { start: 7, end: 13 },
                                 identifiers: vec![IdentifierAst {
                                     span: Span { start: 7, end: 13 },
-                                    symbol: 7
+                                    symbol: symbols::UINT32
                                 }]
                             },
                             generic_arguments: None
@@ -506,7 +506,7 @@ fn lambda() {
                     span: Span { start: 17, end: 22 },
                     left: Box::new(Expression::Identifier(IdentifierAst {
                         span: Span { start: 17, end: 18 },
-                        symbol: 19
+                        symbol: interner.get_or_intern("a")
                     })),
                     operator: BinaryOperator {
                         span: Span { start: 19, end: 20 },
@@ -514,7 +514,7 @@ fn lambda() {
                     },
                     right: Box::new(Expression::Identifier(IdentifierAst {
                         span: Span { start: 21, end: 22 },
-                        symbol: 20
+                        symbol: interner.get_or_intern("b")
                     }))
                 },
                 has_semicolon: false
@@ -540,7 +540,7 @@ fn r#match() {
                 span: Span { start: 6, end: 13 },
                 left: Box::new(Expression::Identifier(IdentifierAst {
                     span: Span { start: 6, end: 10 },
-                    symbol: 19
+                    symbol: interner.get_or_intern("Some")
                 })),
                 arguments: vec![Expression::Literal(Literal::Integer {
                     value: 3,
@@ -555,14 +555,14 @@ fn r#match() {
                             span: Span { start: 16, end: 20 },
                             identifiers: vec![IdentifierAst {
                                 span: Span { start: 16, end: 20 },
-                                symbol: 19
+                                symbol: interner.get_or_intern("Some")
                             }]
                         },
                         inner_patterns: vec![Pattern::Identifier {
                             span: Span { start: 21, end: 22 },
                             identifier: IdentifierAst {
                                 span: Span { start: 21, end: 22 },
-                                symbol: 20
+                                symbol: interner.get_or_intern("a")
                             },
                             pattern: None
                         }]
@@ -571,11 +571,11 @@ fn r#match() {
                         span: Span { start: 27, end: 37 },
                         left: Box::new(Expression::Identifier(IdentifierAst {
                             span: Span { start: 27, end: 34 },
-                            symbol: 21
+                            symbol: interner.get_or_intern("println")
                         })),
                         arguments: vec![Expression::Identifier(IdentifierAst {
                             span: Span { start: 35, end: 36 },
-                            symbol: 20
+                            symbol: interner.get_or_intern("a")
                         })]
                     }
                 },

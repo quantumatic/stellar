@@ -5,7 +5,7 @@ use ry_ast::{
     WhereClauseItem,
 };
 use ry_filesystem::span::Span;
-use ry_interner::Interner;
+use ry_interner::{symbols, Interner, Symbol};
 use ry_parser::parse_item;
 
 mod r#macro;
@@ -147,7 +147,7 @@ fn r#impl() {
                 GenericParameter {
                     name: IdentifierAst {
                         span: Span { start: 5, end: 6 },
-                        symbol: 19
+                        symbol: interner.get_or_intern("A")
                     },
                     bounds: None,
                     default_value: None
@@ -155,7 +155,7 @@ fn r#impl() {
                 GenericParameter {
                     name: IdentifierAst {
                         span: Span { start: 8, end: 9 },
-                        symbol: 20
+                        symbol: interner.get_or_intern("B")
                     },
                     bounds: None,
                     default_value: None
@@ -172,7 +172,7 @@ fn r#impl() {
                                 span: Span { start: 37, end: 38 },
                                 identifiers: vec![IdentifierAst {
                                     span: Span { start: 37, end: 38 },
-                                    symbol: 19
+                                    symbol: interner.get_or_intern("A")
                                 }]
                             },
                             generic_arguments: None
@@ -186,7 +186,7 @@ fn r#impl() {
                                 span: Span { start: 40, end: 41 },
                                 identifiers: vec![IdentifierAst {
                                     span: Span { start: 40, end: 41 },
-                                    symbol: 20
+                                    symbol: interner.get_or_intern("B")
                                 }]
                             },
                             generic_arguments: None
@@ -202,7 +202,7 @@ fn r#impl() {
                         span: Span { start: 11, end: 15 },
                         identifiers: vec![IdentifierAst {
                             span: Span { start: 11, end: 15 },
-                            symbol: 21
+                            symbol: interner.get_or_intern("Into")
                         }]
                     },
                     generic_arguments: Some(vec![GenericArgument::Type(Type::Path(TypePath {
@@ -213,7 +213,7 @@ fn r#impl() {
                                 span: Span { start: 16, end: 22 },
                                 identifiers: vec![IdentifierAst {
                                     span: Span { start: 16, end: 22 },
-                                    symbol: 22
+                                    symbol: interner.get_or_intern("Option")
                                 }]
                             },
                             generic_arguments: Some(vec![GenericArgument::Type(Type::Tuple {
@@ -227,7 +227,7 @@ fn r#impl() {
                                                 span: Span { start: 24, end: 25 },
                                                 identifiers: vec![IdentifierAst {
                                                     span: Span { start: 24, end: 25 },
-                                                    symbol: 19
+                                                    symbol: interner.get_or_intern("A")
                                                 }]
                                             },
                                             generic_arguments: None
@@ -241,7 +241,7 @@ fn r#impl() {
                                                 span: Span { start: 27, end: 28 },
                                                 identifiers: vec![IdentifierAst {
                                                     span: Span { start: 27, end: 28 },
-                                                    symbol: 20
+                                                    symbol: interner.get_or_intern("B")
                                                 }]
                                             },
                                             generic_arguments: None
@@ -274,17 +274,17 @@ fn import() {
                     identifiers: vec![
                         IdentifierAst {
                             span: Span { start: 7, end: 10 },
-                            symbol: 19
+                            symbol: interner.get_or_intern("std")
                         },
                         IdentifierAst {
                             span: Span { start: 11, end: 13 },
-                            symbol: 20
+                            symbol: interner.get_or_intern("io")
                         }
                     ]
                 },
                 r#as: Some(IdentifierAst {
                     span: Span { start: 17, end: 21 },
-                    symbol: 21
+                    symbol: interner.get_or_intern("myio")
                 })
             }
         })
@@ -306,12 +306,12 @@ fn r#struct() {
             visibility: Visibility::private(),
             name: IdentifierAst {
                 span: Span { start: 7, end: 12 },
-                symbol: 19
+                symbol: interner.get_or_intern("Lexer")
             },
             generic_parameters: Some(vec![GenericParameter {
                 name: IdentifierAst {
                     span: Span { start: 13, end: 14 },
-                    symbol: 20
+                    symbol: interner.get_or_intern("S")
                 },
                 bounds: None,
                 default_value: None
@@ -325,7 +325,7 @@ fn r#struct() {
                             span: Span { start: 22, end: 23 },
                             identifiers: vec![IdentifierAst {
                                 span: Span { start: 22, end: 23 },
-                                symbol: 20
+                                symbol: interner.get_or_intern("S")
                             }]
                         },
                         generic_arguments: None
@@ -339,7 +339,7 @@ fn r#struct() {
                             span: Span { start: 25, end: 33 },
                             identifiers: vec![IdentifierAst {
                                 span: Span { start: 25, end: 33 },
-                                symbol: 21
+                                symbol: interner.get_or_intern("Iterator")
                             }]
                         },
                         generic_arguments: Some(vec![GenericArgument::Type(Type::Path(
@@ -351,7 +351,7 @@ fn r#struct() {
                                         span: Span { start: 34, end: 38 },
                                         identifiers: vec![IdentifierAst {
                                             span: Span { start: 34, end: 38 },
-                                            symbol: 16
+                                            symbol: symbols::CHAR
                                         }]
                                     },
                                     generic_arguments: None
@@ -365,7 +365,7 @@ fn r#struct() {
                 visibility: Visibility::private(),
                 name: IdentifierAst {
                     span: Span { start: 42, end: 50 },
-                    symbol: 22
+                    symbol: interner.get_or_intern("contents")
                 },
                 ty: Type::Path(TypePath {
                     span: Span { start: 52, end: 53 },
@@ -375,7 +375,7 @@ fn r#struct() {
                             span: Span { start: 52, end: 53 },
                             identifiers: vec![IdentifierAst {
                                 span: Span { start: 52, end: 53 },
-                                symbol: 20
+                                symbol: interner.get_or_intern("S")
                             }]
                         },
                         generic_arguments: None
@@ -403,12 +403,12 @@ fn into() {
             visibility: Visibility::private(),
             name: IdentifierAst {
                 span: Span { start: 6, end: 10 },
-                symbol: 19
+                symbol: interner.get_or_intern("Into")
             },
             generic_parameters: Some(vec![GenericParameter {
                 name: IdentifierAst {
                     span: Span { start: 11, end: 12 },
-                    symbol: 20
+                    symbol: interner.get_or_intern("T")
                 },
                 bounds: None,
                 default_value: None
@@ -418,7 +418,7 @@ fn into() {
                 visibility: Visibility::private(),
                 name: IdentifierAst {
                     span: Span { start: 20, end: 24 },
-                    symbol: 21
+                    symbol: interner.get_or_intern("into")
                 },
                 generic_parameters: None,
                 parameters: vec![FunctionParameter::Self_(SelfParameter {
@@ -433,7 +433,7 @@ fn into() {
                             span: Span { start: 32, end: 33 },
                             identifiers: vec![IdentifierAst {
                                 span: Span { start: 32, end: 33 },
-                                symbol: 20
+                                symbol: interner.get_or_intern("T")
                             }]
                         },
                         generic_arguments: None
@@ -463,13 +463,13 @@ fn alias() {
             visibility: Visibility::private(),
             name: IdentifierAst {
                 span: Span { start: 5, end: 17 },
-                symbol: 19
+                symbol: interner.get_or_intern("KeyValuePair")
             },
             generic_parameters: Some(vec![
                 GenericParameter {
                     name: IdentifierAst {
                         span: Span { start: 18, end: 19 },
-                        symbol: 20
+                        symbol: interner.get_or_intern("K")
                     },
                     bounds: None,
                     default_value: None
@@ -477,7 +477,7 @@ fn alias() {
                 GenericParameter {
                     name: IdentifierAst {
                         span: Span { start: 21, end: 22 },
-                        symbol: 21
+                        symbol: interner.get_or_intern("V")
                     },
                     bounds: None,
                     default_value: None
@@ -494,7 +494,7 @@ fn alias() {
                             span: Span { start: 27, end: 34 },
                             identifiers: vec![IdentifierAst {
                                 span: Span { start: 27, end: 34 },
-                                symbol: 22
+                                symbol: interner.get_or_intern("HashMap")
                             }]
                         },
                         generic_arguments: Some(vec![
@@ -506,7 +506,7 @@ fn alias() {
                                         span: Span { start: 35, end: 36 },
                                         identifiers: vec![IdentifierAst {
                                             span: Span { start: 35, end: 36 },
-                                            symbol: 20
+                                            symbol: interner.get_or_intern("K")
                                         }]
                                     },
                                     generic_arguments: None
@@ -520,7 +520,7 @@ fn alias() {
                                         span: Span { start: 38, end: 39 },
                                         identifiers: vec![IdentifierAst {
                                             span: Span { start: 38, end: 39 },
-                                            symbol: 21
+                                            symbol: interner.get_or_intern("V")
                                         }]
                                     },
                                     generic_arguments: None
@@ -537,7 +537,7 @@ fn alias() {
                             span: Span { start: 44, end: 56 },
                             identifiers: vec![IdentifierAst {
                                 span: Span { start: 44, end: 56 },
-                                symbol: 23
+                                symbol: interner.get_or_intern("IntoIterator")
                             }]
                         },
                         generic_arguments: None
@@ -549,7 +549,7 @@ fn alias() {
                         span: Span { start: 58, end: 62 },
                         identifiers: vec![IdentifierAst {
                             span: Span { start: 58, end: 62 },
-                            symbol: 24
+                            symbol: interner.get_or_intern("Item")
                         }]
                     },
                     generic_arguments: None
@@ -575,13 +575,13 @@ fn r#enum() {
             visibility: Visibility::private(),
             name: IdentifierAst {
                 span: Span { start: 5, end: 11 },
-                symbol: 19
+                symbol: interner.get_or_intern("Result")
             },
             generic_parameters: Some(vec![
                 GenericParameter {
                     name: IdentifierAst {
                         span: Span { start: 12, end: 13 },
-                        symbol: 20
+                        symbol: interner.get_or_intern("T")
                     },
                     bounds: None,
                     default_value: None
@@ -589,7 +589,7 @@ fn r#enum() {
                 GenericParameter {
                     name: IdentifierAst {
                         span: Span { start: 15, end: 16 },
-                        symbol: 21
+                        symbol: interner.get_or_intern("E")
                     },
                     bounds: None,
                     default_value: None
@@ -600,7 +600,7 @@ fn r#enum() {
                 EnumItem::Tuple {
                     name: IdentifierAst {
                         span: Span { start: 20, end: 22 },
-                        symbol: 22
+                        symbol: interner.get_or_intern("Ok")
                     },
                     fields: vec![TupleField {
                         visibility: Visibility::private(),
@@ -612,7 +612,7 @@ fn r#enum() {
                                     span: Span { start: 23, end: 24 },
                                     identifiers: vec![IdentifierAst {
                                         span: Span { start: 23, end: 24 },
-                                        symbol: 20
+                                        symbol: interner.get_or_intern("T")
                                     }]
                                 },
                                 generic_arguments: None
@@ -624,7 +624,7 @@ fn r#enum() {
                 EnumItem::Tuple {
                     name: IdentifierAst {
                         span: Span { start: 27, end: 30 },
-                        symbol: 23
+                        symbol: interner.get_or_intern("Err")
                     },
                     fields: vec![TupleField {
                         visibility: Visibility::private(),
@@ -636,7 +636,7 @@ fn r#enum() {
                                     span: Span { start: 31, end: 32 },
                                     identifiers: vec![IdentifierAst {
                                         span: Span { start: 31, end: 32 },
-                                        symbol: 21
+                                        symbol: interner.get_or_intern("E")
                                     }]
                                 },
                                 generic_arguments: None

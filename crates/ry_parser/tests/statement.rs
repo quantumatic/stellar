@@ -19,11 +19,11 @@ fn defer() {
                     span: Span { start: 6, end: 16 },
                     left: Box::new(Expression::Identifier(IdentifierAst {
                         span: Span { start: 6, end: 10 },
-                        symbol: 19
+                        symbol: interner.get_or_intern("file")
                     })),
                     right: IdentifierAst {
                         span: Span { start: 11, end: 16 },
-                        symbol: 20
+                        symbol: interner.get_or_intern("close")
                     }
                 }),
                 arguments: vec![]
@@ -70,7 +70,7 @@ fn r#let() {
                 span: Span { start: 4, end: 5 },
                 identifier: IdentifierAst {
                     span: Span { start: 4, end: 5 },
-                    symbol: 19
+                    symbol: interner.get_or_intern("x")
                 },
                 pattern: None
             },
