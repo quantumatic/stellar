@@ -14,3 +14,4 @@ ry_diagnostics = { path = "../ry_diagnostics" }
 ry_filesystem = { path = "../ry_filesystem" }
 ry_interner = { path = "../ry_interner" }
 ry_lexer = { path = "../ry_lexer" }
+tracing = "0.1.29"

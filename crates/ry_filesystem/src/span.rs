@@ -54,6 +54,12 @@ impl From<Span> for Range<usize> {
     }
 }
 
+impl From<Span> for String {
+    fn from(value: Span) -> Self {
+        format!("{}..{}", value.start, value.end)
+    }
+}
+
 impl From<Range<usize>> for Span {
     fn from(value: Range<usize>) -> Self {
         Self {

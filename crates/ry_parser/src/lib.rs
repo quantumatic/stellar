@@ -91,6 +91,7 @@ use ry_filesystem::span::{Span, SpanIndex};
 use ry_interner::Interner;
 use ry_lexer::Lexer;
 use statement::StatementParser;
+use tracing::trace;
 
 #[macro_use]
 mod macros;
@@ -302,6 +303,12 @@ impl<'source, 'diagnostics, 'interner> ParseState<'source, 'diagnostics, 'intern
         let mut lexer = Lexer::new(source, interner);
 
         let current_token = lexer.next_no_comments();
+        trace!(
+            "next_token: {} at {}",
+            current_token.raw,
+            current_token.span
+        );
+
         let next_token = current_token;
 
         let mut state = Self {
@@ -348,6 +355,12 @@ impl<'source, 'diagnostics, 'interner> ParseState<'source, 'diagnostics, 'intern
         self.current_token = self.next_token;
         self.next_token = self.lexer.next_no_comments();
 
+        trace!(
+            "next_token: {} at {}",
+            self.next_token.raw,
+            self.next_token.span
+        );
+
         self.check_next_token();
     }
 
@@ -356,6 +369,13 @@ impl<'source, 'diagnostics, 'interner> ParseState<'source, 'diagnostics, 'intern
     where
         N: Into<String>,
     {
+        trace!(
+            "excepted {} to be {} at: {}",
+            self.next_token.raw,
+            expected,
+            self.next_token.span
+        );
+
         if self.next_token.raw == expected {
             Some(())
         } else {
@@ -397,6 +417,12 @@ impl<'source, 'diagnostics, 'interner> ParseState<'source, 'diagnostics, 'intern
     where
         N: Into<String>,
     {
+        trace!(
+            "expected next_token {} to be an identifier at: {}",
+            self.next_token.raw,
+            self.next_token.span
+        );
+
         let spanned_symbol = if self.next_token.raw == RawToken::Identifier {
             IdentifierAst {
                 span: self.next_token.span,
@@ -430,6 +456,8 @@ impl<'source, 'diagnostics, 'interner> ParseState<'source, 'diagnostics, 'intern
                 module_docstring.push_str(self.resolve_span(self.current_token.span));
             }
 
+            trace!("consumed module level docstring");
+
             Some(module_docstring)
         } else {
             None
@@ -446,6 +474,8 @@ impl<'source, 'diagnostics, 'interner> ParseState<'source, 'diagnostics, 'intern
 
                 local_docstring.push_str(self.resolve_span(self.current_token.span));
             }
+
+            trace!("consumed docstring");
 
             Some(local_docstring)
         } else {

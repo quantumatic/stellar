@@ -45,6 +45,7 @@ where
 
     Ok(ModuleNode {
         docstring: ast.docstring,
+        imports: vec![],
         items,
     })
 }
@@ -128,7 +129,7 @@ fn build_resolution_tree_project_node(
         }
     }
 
-    todo!()
+    tree
 }
 
 fn build_resolution_tree_module_node_for_file<P>(
@@ -186,17 +187,24 @@ where
 
     let mut file_diagnostics = vec![];
 
+    let mod_file_path = path.join("mod.ry");
+
     let mut module_node = match parse_and_build_resolution_tree_module_node_for_file(
-        path.join("mod.ry"),
+        mod_file_path.clone(),
         &mut file_diagnostics,
         interner,
     ) {
         Ok(module_node) => module_node,
         Err(..) => ModuleNode {
             docstring: None,
+            imports: vec![],
             items: HashMap::new(),
         },
     };
+
+    if !file_diagnostics.is_empty() {
+        diagnostics.add_file_diagnostics(mod_file_path, file_diagnostics);
+    }
 
     let Ok(module_directory_reader) = fs::read_dir(path) else {
         return Some((module_name_symbol, module_node));

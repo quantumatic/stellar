@@ -44,6 +44,8 @@
 )]
 #![allow(clippy::match_single_binding, clippy::inconsistent_struct_constructor)]
 
+use std::env;
+
 use clap::{Parser, Subcommand};
 
 mod lex;
@@ -76,6 +78,13 @@ enum Commands {
 }
 
 fn main() {
+    tracing_subscriber::fmt()
+        .with_writer(std::io::stderr)
+        .with_env_filter(env::var("RY_LOG").unwrap_or_else(|_| "off".to_owned()))
+        .without_time()
+        .with_ansi(false)
+        .init();
+
     match Cli::parse().command {
         Commands::Lex {
             filepath,
