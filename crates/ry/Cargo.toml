@@ -17,8 +17,8 @@ ry_diagnostics = { path = "../ry_diagnostics" }
 ry_filesystem = { path = "../ry_filesystem" }
 ry_interner = { path = "../ry_interner" }
 ry_lexer = { path = "../ry_lexer" }
-ry_parser = { path = "../ry_parser" }
 ry_manifest = { path = "../ry_manifest" }
+ry_parser = { path = "../ry_parser" }
 serde = { version = "1.0.160", features = ["derive"] }
 serde_json = "1.0.96"
 termcolor = "1.2.0"
