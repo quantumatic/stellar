@@ -1,4 +1,20 @@
-<p align="center"><img width="70%" src="additional/icon/banner.png" alt="rycon"></p>
+# Ry programming language
+
+![](https://github.com/ry-lang/ry/actions/workflows/ci.yaml/badge.svg)
+![](https://badgen.net/static/license/MIT/blue)
+![](https://badgen.net/github/license/ry-lang/ry)
+![](https://badgen.net/github/contributors/ry-lang/ry)
+![](https://badgen.net/github/stars/ry-lang/ry)
+
+We have a [Discord server](https://discord.gg/re29xvSV2) and a [Telegram group](https://t.me/ry_lang).
+
+## Table of contents
+
+- [Introduction](#Introduction)
+- [Installation](#Installation)
+- [Overview](#Overview)
+
+# Introduction
 
 An open source programming language for web development with expressive type system and easy-to-learn syntax that makes it easy to build reliable and efficient software.
 
@@ -10,7 +26,21 @@ pub fun main() {
 }
 ```
 
-Pattern matching is supported!
+# Installation
+
+## Compiling from source code
+
+You need to have Rust installed on your system. Then run:
+
+```
+cargo install --path crates/ry
+```
+
+# Overview
+
+# Pattern matching
+
+Ry supports matching patterns by having a `match` expression:
 
 ```
 match tuple {
@@ -29,7 +59,18 @@ match tuple {
 }
 ```
 
-Ry follows "most of stuff is expression" philosophy. So `if`, `match`, `while`, etc. are expressions:
+Pattern matching can also be used in `let` statement for destructuring:
+
+```
+let Person {
+    name,
+    age,
+} = get_person();
+```
+
+# Everything is expression
+
+Ry follows "everything is expression" philosophy. So `if`, `match`, `while`, etc. are expressions:
 
 ```
 fun factorial(n: uint32): uint32 {
@@ -45,12 +86,7 @@ fun factorial(n: uint32): uint32 {
 
 Pattern matching can also be used in `let` statement for destructuring:
 
-```
-let Person {
-    name,
-    age,
-} = get_person();
-```
+# Type system
 
 Ry also supports Rust trait system:
 
@@ -112,7 +148,7 @@ fun do_stuff_with(a: uint32, b: uint32, fn: (uint32, uint32): ()) {
 }
 ```
 
-Ry also has an analog of sum types: enums:
+The language also has an analog of sum types: _enums_:
 
 ```
 enum Result[T, E] {
@@ -190,66 +226,3 @@ You can access their inner values using pattern matching:
 let MyStringWrapper(str) = wrapper;
 println(str);
 ```
-
-Ry is going to have documentation generation tool, package manager and more!
-
-# Installation
-
-## Compiling from source code
-
-You need to have Rust installed on your system. Then run:
-
-```
-cargo install --path crates/ry
-```
-
-Then you're good to go coding in Ry!
-
-# Architecture
-
-```mermaid
-flowchart
-	JsonManifest["project.toml"] --> TomlParser["Manifest Analyzer"]
-	CliManifest["project.toml"] --> TomlParser
-	CliMain["main.ry"] --> CacheManager["Cache Manager"]
-	Deserialize["deserialize.ry"] --> CacheManager
-	Serialize["serialize.ry"] --> CacheManager
-	CodeGen["MIR lowering"] --> LLVMIR["LLVM IR"]
-	LLVMIR --> LLVM
-	LLVM --> Objects["Object files"]
-	Objects --> Linker
-	Linker --> Exec["Executable"]
-	subgraph Sources
-		Json["json"] --> Serialize
-		Json --> Deserialize
-		Json --> JsonManifest
-		Cli["cli"] --> CliMain
-		Cli --> CliManifest
-	end
-	subgraph subGraph3["Ry Compiler"]
-		TomlParser --> CacheManager
-		CacheManager --> Parser
-		Parser --> AST["Abstract Syntax Tree"]
-		AST --> NameResolver["Name resolver"]
-		NameResolver --> NameResolutionGraph["Untyped resolution graph"]
-		ScopeManager["Scope manager"] --> NameResolutionGraph
-		NameResolutionGraph --> ItemValidator["Item validator"]
-		TypeInference["Type inference"] --> TypedNameResolutionGraph["Typed resolution graph"]
-		CacheManager --> TypedNameResolutionGraph
-		TypedNameResolutionGraph --> MIRBuilder["MIR Builder"]
-		MIRBuilder --> MIR
-		MIR --> CodeGen
-		subgraph Parsing
-			Parser --> Lexer
-			Lexer --> Parser
-		end
-		subgraph subGraph2["Type inference"]
-			ItemValidator --> TypeInference
-			TypeInference --> ScopeManager
-		end
-	end
-```
-
-# Documentation
-
-> Not made
