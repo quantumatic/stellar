@@ -71,7 +71,7 @@ pub fn build_resolution_tree<P>(
         return;
     };
 
-    match parse_manifest(manifest_source, diagnostics) {
+    match parse_manifest(manifest_source) {
         Ok(manifest) => {
             let project_name = manifest.project.name;
 

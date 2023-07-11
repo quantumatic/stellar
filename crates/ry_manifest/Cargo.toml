@@ -9,7 +9,6 @@ readme = "../../README.md"
 description = "Parses and processes Ry projects' configuration files."
 
 [dependencies]
-ry_diagnostics = { path = "../ry_diagnostics" }
 serde = { version = "1.0.167", features = ["derive"] }
 serde_ignored = "0.1.8"
 toml = "0.7.6"

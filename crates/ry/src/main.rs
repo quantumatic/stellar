@@ -51,6 +51,7 @@ use clap::{Parser, Subcommand};
 mod lex;
 mod new;
 mod parse;
+mod parse_manifest;
 mod prefix;
 mod unique_file;
 
@@ -64,17 +65,18 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
+    #[command(about = "Tokenize Ry source file")]
     Lex {
         filepath: String,
         #[arg(long)]
         show_locations: bool,
     },
-    Parse {
-        filepath: String,
-    },
-    New {
-        project_name: String,
-    },
+    #[command(about = "Parse Ry source file")]
+    Parse { filepath: String },
+    #[command(about = "Parse Ry manifest file")]
+    ParseManifest { filepath: String },
+    #[command(about = "Create a new Ry project")]
+    New { project_name: String },
 }
 
 fn main() {
@@ -92,6 +94,9 @@ fn main() {
         } => lex::command(&filepath, show_locations),
         Commands::Parse { filepath } => {
             parse::command(&filepath);
+        }
+        Commands::ParseManifest { filepath } => {
+            parse_manifest::command(&filepath);
         }
         Commands::New { project_name } => {
             new::command(&project_name);

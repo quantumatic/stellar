@@ -16,7 +16,7 @@
 //!
 //! [dependencies]
 //! hashmap = "1.0.1"
-//! btreemap = { version = "1.0.0", author = "abs0luty" } # cause there are 2 candidates for the same project name
+//! btreemap = { version = "1.0.0" }
 //! serialization_engine = { path = "../serialization_engine" }
 //! ```
 //!
@@ -88,7 +88,6 @@
 
 use std::collections::BTreeMap;
 
-use ry_diagnostics::{Diagnostic, GlobalDiagnostics};
 use serde::{de::IntoDeserializer, Deserialize, Serialize};
 use toml as _;
 use toml_edit::Document;
@@ -153,8 +152,6 @@ pub enum TomlDependency {
 pub struct DetailedTomlDependency {
     /// The version of the dependency.
     pub version: Option<String>,
-    /// The author of the dependency.
-    pub author: Option<String>,
     pub path: Option<String>,
 }
 
@@ -164,10 +161,7 @@ pub struct DetailedTomlDependency {
 /// See [crate level documentation] for more information.
 ///
 /// [crate level documentation]: crate
-pub fn parse_manifest<S>(
-    source: S,
-    diagnostics: &mut GlobalDiagnostics,
-) -> Result<TomlManifest, String>
+pub fn parse_manifest<S>(source: S) -> Result<TomlManifest, String>
 where
     S: AsRef<str>,
 {
@@ -177,9 +171,6 @@ where
         match serde_ignored::deserialize(toml.into_deserializer(), |path| {
             let mut key = String::new();
             stringify(&mut key, &path);
-            diagnostics
-                .context_free_diagnostics
-                .push(Diagnostic::warning());
         }) {
             Ok(manifest) => manifest,
             Err(err) => return Err(format!("{err}")),

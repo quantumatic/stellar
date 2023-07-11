@@ -1,17 +1,15 @@
 use std::collections::BTreeMap;
 
-use ry_diagnostics::GlobalDiagnostics;
 use ry_manifest::TomlDependency;
 use ry_manifest::{parse_manifest, DetailedTomlDependency, TomlManifest, TomlProject};
 
 #[test]
 fn simple_manifest() {
-    let mut diagnostics = GlobalDiagnostics::new();
     let manifest = "[project]
 name = \"json\"
 version = \"1.0.0\"";
     assert_eq!(
-        parse_manifest(manifest, &mut diagnostics),
+        parse_manifest(manifest),
         Ok(TomlManifest {
             project: TomlProject {
                 name: "json".to_owned(),
@@ -26,12 +24,10 @@ version = \"1.0.0\"";
             dependencies: None,
         })
     );
-    assert_eq!(diagnostics.context_free_diagnostics.len(), 0);
 }
 
 #[test]
 fn full_project_metadata() {
-    let mut diagnostics = GlobalDiagnostics::new();
     let manifest = "[project]
 name = \"json\"
 version = \"1.0.0\"
@@ -44,7 +40,7 @@ categories = [\"json\", \"parser\", \"serialization\", \"deserialization\",
 keywords = [\"json\", \"config\"]";
 
     assert_eq!(
-        parse_manifest(manifest, &mut diagnostics),
+        parse_manifest(manifest),
         Ok(TomlManifest {
             project: TomlProject {
                 name: "json".to_owned(),
@@ -65,13 +61,10 @@ keywords = [\"json\", \"config\"]";
             dependencies: None,
         })
     );
-
-    assert_eq!(diagnostics.context_free_diagnostics.len(), 0);
 }
 
 #[test]
 fn dependencies() {
-    let mut diagnostics = GlobalDiagnostics::new();
     let manifest = "[project]
 name = \"json\"
 version = \"1.0.0\"
@@ -79,7 +72,7 @@ author = \"abs0luty\"
 
 [dependencies]
 foo = \"1.0\"
-bar = { version = \"1.0\", author = \"abs0luty\" }
+bar = { version = \"1.0\" }
 foo2 = { path = \"../foo\" }";
 
     let mut deps = BTreeMap::new();
@@ -88,7 +81,6 @@ foo2 = { path = \"../foo\" }";
         "bar".to_owned(),
         TomlDependency::Detailed(DetailedTomlDependency {
             version: Some("1.0".to_owned()),
-            author: Some("abs0luty".to_owned()),
             path: None,
         }),
     );
@@ -96,13 +88,12 @@ foo2 = { path = \"../foo\" }";
         "foo2".to_owned(),
         TomlDependency::Detailed(DetailedTomlDependency {
             path: Some("../foo".to_owned()),
-            author: None,
             version: None,
         }),
     );
 
     assert_eq!(
-        parse_manifest(manifest, &mut diagnostics),
+        parse_manifest(manifest),
         Ok(TomlManifest {
             project: TomlProject {
                 name: "json".to_owned(),
@@ -117,6 +108,4 @@ foo2 = { path = \"../foo\" }";
             dependencies: Some(deps),
         })
     );
-
-    assert_eq!(diagnostics.context_free_diagnostics.len(), 0);
 }
