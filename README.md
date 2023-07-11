@@ -82,10 +82,6 @@ fun factorial(n: uint32): uint32 {
 }
 ```
 
-> `let` is a statement!
-
-Pattern matching can also be used in `let` statement for destructuring:
-
 # Type system
 
 Ry also supports Rust trait system:
