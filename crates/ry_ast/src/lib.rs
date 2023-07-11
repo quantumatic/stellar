@@ -90,6 +90,7 @@ use token::RawToken;
 pub mod precedence;
 pub mod serialize;
 pub mod token;
+pub mod visit;
 
 /// Represents a literal.
 #[derive(Debug, PartialEq, Clone)]
