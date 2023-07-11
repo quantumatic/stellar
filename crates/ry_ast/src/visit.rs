@@ -1,9 +1,10 @@
 use crate::{
-    BinaryOperator, EnumItem, Expression, Function, GenericArgument, GenericParameter,
-    IdentifierAst, Impl, ImportPath, Item, LambdaFunctionParameter, Literal, MatchExpressionItem,
-    Module, Path, Pattern, PostfixOperator, PrefixOperator, Statement, StatementsBlock,
-    StructExpressionItem, StructField, StructFieldPattern, TraitItem, TupleField, Type, TypeAlias,
-    TypePath, TypePathSegment, Visibility, WhereClauseItem,
+    BinaryOperator, EnumItem, Expression, Function, FunctionParameter, GenericArgument,
+    GenericParameter, IdentifierAst, Impl, ImportPath, Item, JustFunctionParameter,
+    LambdaFunctionParameter, Literal, MatchExpressionItem, Module, Path, Pattern, PostfixOperator,
+    PrefixOperator, SelfParameter, Statement, StatementsBlock, StructExpressionItem, StructField,
+    StructFieldPattern, TraitItem, TupleField, Type, TypeAlias, TypePath, TypePathSegment,
+    Visibility, WhereClauseItem,
 };
 
 pub trait Visitor<'ast>: Sized {
@@ -139,6 +140,22 @@ pub trait Visitor<'ast>: Sized {
 
     fn visit_lambda_function_parameter(&mut self, parameter: &'ast LambdaFunctionParameter) {
         walk_lambda_function_parameter(self, parameter);
+    }
+
+    fn visit_function_parameters(&mut self, parameters: &'ast [FunctionParameter]) {
+        walk_function_parameters(self, parameters);
+    }
+
+    fn visit_function_parameter(&mut self, parameter: &'ast FunctionParameter) {
+        walk_function_parameter(self, parameter);
+    }
+
+    fn visit_self_function_parameter(&mut self, parameter: &'ast SelfParameter) {
+        walk_self_function_parameter(self, parameter);
+    }
+
+    fn visit_just_function_parameter(&mut self, parameter: &'ast JustFunctionParameter) {
+        walk_just_function_parameter(self, parameter);
     }
 
     fn visit_match_expression_items(&mut self, items: &'ast [MatchExpressionItem]) {
@@ -305,6 +322,14 @@ where
     V: Visitor<'ast>,
 {
     visitor.visit_visibility(function.visibility);
+    visitor.visit_identifier(function.name);
+    visitor.visit_generic_parameters(function.generic_parameters.as_deref());
+    visitor.visit_function_parameters(&function.parameters);
+    visitor.visit_where_clause(function.where_clause.as_deref());
+
+    if let Some(body) = &function.body {
+        visitor.visit_statements_block(body);
+    }
 }
 
 pub fn walk_where_clause<'ast, V>(visitor: &mut V, items: Option<&'ast [WhereClauseItem]>)
@@ -486,7 +511,7 @@ where
         } => {
             walk_list!(visitor, visit_type, parameter_types);
 
-            visitor.visit_type(&**return_type);
+            visitor.visit_type(return_type);
         }
         Type::Parenthesized { inner, .. } => {
             visitor.visit_type(inner);
@@ -500,7 +525,7 @@ where
             segments,
             ..
         } => {
-            visitor.visit_type(&**left);
+            visitor.visit_type(left);
             visitor.visit_type_path(right);
 
             walk_list!(visitor, visit_type_path_segment, segments);
@@ -611,7 +636,7 @@ where
 {
     match expression {
         Expression::As { left, right, .. } => {
-            visitor.visit_expression(&**left);
+            visitor.visit_expression(left);
             visitor.visit_type(right);
         }
         Expression::Binary {
@@ -620,21 +645,21 @@ where
             right,
             ..
         } => {
-            visitor.visit_expression(&**left);
+            visitor.visit_expression(left);
             visitor.visit_binary_operator(*operator);
-            visitor.visit_expression(&**right);
+            visitor.visit_expression(right);
         }
         Expression::Call {
             left, arguments, ..
         } => {
-            visitor.visit_expression(&**left);
+            visitor.visit_expression(left);
             walk_list!(visitor, visit_expression, arguments);
         }
         Expression::FieldAccess { left, right, .. } => {
-            visitor.visit_expression(&**left);
+            visitor.visit_expression(left);
             visitor.visit_identifier(*right);
         }
-        Expression::Function {
+        Expression::Lambda {
             parameters,
             return_type,
             block,
@@ -653,7 +678,7 @@ where
             generic_arguments,
             ..
         } => {
-            visitor.visit_expression(&**left);
+            visitor.visit_expression(left);
 
             for argument in generic_arguments {
                 visitor.visit_generic_argument(argument);
@@ -669,45 +694,42 @@ where
                 visitor.visit_statements_block(r#else);
             }
         }
-        Expression::List { elements, .. } => {
+        Expression::List { elements, .. } | Expression::Tuple { elements, .. } => {
             walk_list!(visitor, visit_expression, elements);
         }
         Expression::Literal(literal) => visitor.visit_literal(literal),
         Expression::Match {
             expression, block, ..
         } => {
-            visitor.visit_expression(&**expression);
+            visitor.visit_expression(expression);
             visitor.visit_match_expression_items(block);
         }
         Expression::Parenthesized { inner, .. } => {
-            visitor.visit_expression(&**inner);
+            visitor.visit_expression(inner);
         }
         Expression::Postfix {
             inner, operator, ..
         } => {
-            visitor.visit_expression(&**inner);
+            visitor.visit_expression(inner);
             visitor.visit_postfix_operator(*operator);
         }
         Expression::Prefix {
             inner, operator, ..
         } => {
-            visitor.visit_expression(&**inner);
+            visitor.visit_expression(inner);
             visitor.visit_prefix_operator(*operator);
         }
         Expression::StatementsBlock { block, .. } => {
             visitor.visit_statements_block(block);
         }
         Expression::Struct { left, fields, .. } => {
-            visitor.visit_expression(&**left);
+            visitor.visit_expression(left);
             visitor.visit_struct_expression_items(fields);
-        }
-        Expression::Tuple { elements, .. } => {
-            walk_list!(visitor, visit_expression, elements);
         }
         Expression::While {
             condition, body, ..
         } => {
-            visitor.visit_expression(&**condition);
+            visitor.visit_expression(condition);
             visitor.visit_statements_block(body);
         }
     }
@@ -733,6 +755,42 @@ pub fn walk_lambda_function_parameters<'ast, V>(
     V: Visitor<'ast>,
 {
     walk_list!(visitor, visit_lambda_function_parameter, parameters);
+}
+
+pub fn walk_function_parameters<'ast, V>(visitor: &mut V, parameters: &'ast [FunctionParameter])
+where
+    V: Visitor<'ast>,
+{
+    walk_list!(visitor, visit_function_parameter, parameters);
+}
+
+pub fn walk_function_parameter<'ast, V>(visitor: &mut V, parameter: &'ast FunctionParameter)
+where
+    V: Visitor<'ast>,
+{
+    match parameter {
+        FunctionParameter::Just(just) => visitor.visit_just_function_parameter(just),
+        FunctionParameter::Self_(self_) => visitor.visit_self_function_parameter(self_),
+    }
+}
+
+pub fn walk_self_function_parameter<'ast, V>(visitor: &mut V, parameter: &'ast SelfParameter)
+where
+    V: Visitor<'ast>,
+{
+    if let Some(ty) = &parameter.ty {
+        visitor.visit_type(ty);
+    }
+}
+
+pub fn walk_just_function_parameter<'ast, V>(
+    visitor: &mut V,
+    parameter: &'ast JustFunctionParameter,
+) where
+    V: Visitor<'ast>,
+{
+    visitor.visit_identifier(parameter.name);
+    visitor.visit_type(&parameter.ty);
 }
 
 pub fn walk_match_expression_item<'ast, V>(visitor: &mut V, item: &'ast MatchExpressionItem)
@@ -774,7 +832,7 @@ where
 {
     match pattern {
         Pattern::Grouped { inner, .. } => {
-            visitor.visit_pattern(&**inner);
+            visitor.visit_pattern(inner);
         }
         Pattern::Identifier {
             identifier,
@@ -784,7 +842,7 @@ where
             visitor.visit_identifier(*identifier);
 
             if let Some(pattern) = pattern {
-                visitor.visit_pattern(&**pattern);
+                visitor.visit_pattern(pattern);
             }
         }
         Pattern::List { inner_patterns, .. } => {
@@ -792,8 +850,8 @@ where
         }
         Pattern::Literal(literal) => visitor.visit_literal(literal),
         Pattern::Or { left, right, .. } => {
-            visitor.visit_pattern(&**left);
-            visitor.visit_pattern(&**right);
+            visitor.visit_pattern(left);
+            visitor.visit_pattern(right);
         }
         Pattern::Path { path, .. } => {
             visitor.visit_path(path);

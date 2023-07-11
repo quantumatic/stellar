@@ -1,15 +1,25 @@
 //! Defines [`Serializer`] to serialize AST into a string.
 
-use ry_filesystem::span::{Span, DUMMY_SPAN};
-use ry_interner::{Interner, Symbol};
+use ry_interner::Interner;
 
 use crate::{
-    token::RawToken, BinaryOperator, EnumItem, Expression, Function, FunctionParameter,
-    GenericArgument, GenericParameter, IdentifierAst, Impl, ImportPath, Item,
-    JustFunctionParameter, LambdaFunctionParameter, Literal, MatchExpressionItem, Module, Path,
-    Pattern, PostfixOperator, PrefixOperator, Statement, StructExpressionItem, StructField,
-    StructFieldPattern, TraitItem, TupleField, Type, TypeAlias, TypePath, TypePathSegment,
-    Visibility, WhereClauseItem,
+    visit::{
+        walk_enum_items, walk_expression, walk_function, walk_generic_argument,
+        walk_generic_arguments, walk_generic_parameter, walk_generic_parameters, walk_if_block,
+        walk_if_blocks, walk_item, walk_lambda_function_parameter, walk_lambda_function_parameters,
+        walk_match_expression_item, walk_match_expression_items, walk_module, walk_path,
+        walk_statement, walk_statements_block, walk_struct_expression_item,
+        walk_struct_expression_items, walk_struct_field, walk_struct_field_pattern,
+        walk_struct_field_patterns, walk_struct_fields, walk_trait_bounds, walk_trait_item,
+        walk_trait_items, walk_tuple_field, walk_tuple_fields, walk_type, walk_type_alias,
+        walk_type_implementation, walk_type_path, walk_type_path_segment, walk_where_clause,
+        walk_where_clause_item, Visitor,
+    },
+    BinaryOperator, EnumItem, Expression, Function, GenericArgument, GenericParameter,
+    IdentifierAst, Impl, ImportPath, Item, LambdaFunctionParameter, Literal, MatchExpressionItem,
+    Module, Path, Pattern, PostfixOperator, PrefixOperator, Statement, StatementsBlock,
+    StructExpressionItem, StructField, StructFieldPattern, TraitItem, TupleField, Type, TypeAlias,
+    TypePath, TypePathSegment, Visibility, WhereClauseItem,
 };
 
 /// A struct that allows to serialize a Ry module into a string, for debug purposes.
@@ -84,75 +94,6 @@ impl<'interner> Serializer<'interner> {
         }
     }
 
-    #[inline]
-    fn write_node_name<S>(&mut self, node_name: S)
-    where
-        S: AsRef<str>,
-    {
-        self.write(node_name);
-    }
-
-    #[inline]
-    fn write_node_name_with_span<S>(&mut self, node_name: S, span: Span)
-    where
-        S: AsRef<str>,
-    {
-        self.write(node_name);
-        self.write("@");
-
-        span.serialize(self);
-    }
-
-    fn serialize_key_value_pair<A, S>(&mut self, key: A, value: &S)
-    where
-        A: AsRef<str>,
-        S: Serialize,
-    {
-        self.write_newline();
-        self.write_identation();
-        self.write(key);
-        self.write(": ");
-        value.serialize(self);
-    }
-
-    fn serialize_item<S>(&mut self, item: &S)
-    where
-        S: Serialize,
-    {
-        self.write_newline();
-        self.write_identation();
-        item.serialize(self);
-    }
-
-    fn serialize_items<S>(&mut self, items: &Vec<S>)
-    where
-        S: Serialize,
-    {
-        if items.is_empty() {
-            self.write("EMPTY");
-        } else {
-            self.increment_indentation();
-
-            for item in items {
-                self.serialize_item(item);
-            }
-
-            self.decrement_indentation();
-        }
-    }
-
-    fn serialize_key_list_value_pair<A, S>(&mut self, key: A, items: &Vec<S>)
-    where
-        A: AsRef<str>,
-        S: Serialize,
-    {
-        self.write_newline();
-        self.write_identation();
-        self.write(key);
-        self.write(": ");
-        self.serialize_items(items);
-    }
-
     /// Returns the output string produced.
     #[inline]
     #[must_use]
@@ -169,893 +110,585 @@ impl<'interner> Serializer<'interner> {
     }
 }
 
-pub trait Serialize {
-    fn serialize(&self, serializer: &mut Serializer<'_>);
-}
+impl Visitor<'_> for Serializer<'_> {
+    fn visit_binary_operator(&mut self, operator: BinaryOperator) {
+        self.increment_indentation();
+        self.write_identation();
 
-impl Serialize for bool {
-    fn serialize(&self, serializer: &mut Serializer<'_>) {
-        serializer.write(if *self { "TRUE" } else { "FALSE" });
+        self.write(format!("BINARY_OP {}@{}", operator.raw, operator.span));
+
+        self.decrement_indentation();
     }
-}
 
-impl Serialize for Span {
-    fn serialize(&self, serializer: &mut Serializer<'_>) {
-        match self {
-            &DUMMY_SPAN => serializer.write("DUMMY"),
-            _ => serializer.write(if self.start >= self.end {
-                "INVALID".to_owned()
-            } else {
-                format!("{}..{}", self.start, self.end)
-            }),
-        }
+    fn visit_enum_items(&mut self, items: &'_ [EnumItem]) {
+        self.increment_indentation();
+        self.write_identation();
+
+        self.write("ENUM_ITEMS");
+        self.write_newline();
+
+        walk_enum_items(self, items);
+
+        self.decrement_indentation();
     }
-}
 
-impl Serialize for Symbol {
-    fn serialize(&self, serializer: &mut Serializer<'_>) {
-        serializer.write(
-            serializer
-                .interner()
-                .resolve(*self)
-                .unwrap_or_else(|| panic!("Symbol {self} cannot be resolved")),
-        );
-    }
-}
+    fn visit_expression(&mut self, expression: &'_ Expression) {
+        self.increment_indentation();
+        self.write_identation();
 
-impl Serialize for IdentifierAst {
-    fn serialize(&self, serializer: &mut Serializer<'_>) {
-        serializer.write("IDENTIFIER(`");
-        self.symbol.serialize(serializer);
-        serializer.write("`)@");
-        self.span.serialize(serializer);
-    }
-}
-
-impl Serialize for Path {
-    fn serialize(&self, serializer: &mut Serializer<'_>) {
-        serializer.write_node_name_with_span("PATH", self.span);
-        serializer.increment_indentation();
-        serializer.serialize_items(&self.identifiers);
-        serializer.decrement_indentation();
-    }
-}
-
-impl Serialize for TypePath {
-    fn serialize(&self, serializer: &mut Serializer<'_>) {
-        serializer.write_node_name_with_span("TYPE_PATH", self.span);
-        serializer.increment_indentation();
-        serializer.serialize_items(&self.segments);
-        serializer.decrement_indentation();
-    }
-}
-
-impl Serialize for TypePathSegment {
-    fn serialize(&self, serializer: &mut Serializer<'_>) {
-        serializer.write_node_name_with_span("TYPE_PATH_SEGMENT", self.span);
-        serializer.increment_indentation();
-        serializer.serialize_key_value_pair("PATH", &self.path);
-        if let Some(generic_arguments) = &self.generic_arguments {
-            serializer.serialize_key_list_value_pair("GENERIC_ARGUMENTS", generic_arguments);
-        }
-        serializer.decrement_indentation();
-    }
-}
-
-impl Serialize for GenericArgument {
-    fn serialize(&self, serializer: &mut Serializer<'_>) {
-        match self {
-            Self::Type(ty) => {
-                serializer.write_node_name_with_span("GENERIC_ARGUMENT", ty.span());
-                serializer.increment_indentation();
-                serializer.serialize_key_value_pair("TYPE", ty);
-                serializer.decrement_indentation();
-            }
-            Self::AssociatedType { name, value } => {
-                serializer.write_node_name_with_span(
-                    "NAMED_GENERIC_ARGUMENT",
-                    Span {
-                        start: name.span.start,
-                        end: value.span().end,
-                    },
-                );
-                serializer.increment_indentation();
-                serializer.serialize_key_value_pair("NAME", name);
-                serializer.serialize_key_value_pair("VALUE", value);
-                serializer.decrement_indentation();
-            }
-        }
-    }
-}
-
-impl Serialize for BinaryOperator {
-    fn serialize(&self, serializer: &mut Serializer<'_>) {
-        serializer.write_node_name_with_span(format!("{}", RawToken::from(self.raw)), self.span);
-    }
-}
-
-impl Serialize for PostfixOperator {
-    fn serialize(&self, serializer: &mut Serializer<'_>) {
-        serializer.write_node_name_with_span(format!("{}", RawToken::from(self.raw)), self.span);
-    }
-}
-
-impl Serialize for PrefixOperator {
-    fn serialize(&self, serializer: &mut Serializer<'_>) {
-        serializer.write_node_name_with_span(format!("{}", RawToken::from(self.raw)), self.span);
-    }
-}
-
-impl Serialize for StructExpressionItem {
-    fn serialize(&self, serializer: &mut Serializer<'_>) {
-        serializer.write_node_name("STRUCT_EXPRESSION_ITEM");
-        serializer.increment_indentation();
-        serializer.serialize_key_value_pair("FIELD_NAME", &self.name);
-        if let Some(value) = &self.value {
-            serializer.serialize_key_value_pair("VALUE", value);
-        }
-        serializer.decrement_indentation();
-    }
-}
-
-impl Serialize for Literal {
-    fn serialize(&self, serializer: &mut Serializer<'_>) {
-        match self {
-            Self::Boolean { value, span } => {
-                serializer.write_node_name_with_span(
-                    format!("BOOLEAN_LITERAL({})", if *value { "TRUE" } else { "FALSE" }),
-                    *span,
-                );
-            }
-            Self::Character { value, span } => {
-                serializer
-                    .write_node_name_with_span(format!("CHARACTER_LITERAL(`{value}`)"), *span);
-            }
-            Self::Float { value, span } => {
-                serializer.write_node_name_with_span(format!("FLOAT_LITERAL({value})"), *span);
-            }
-            Self::Integer { value, span } => {
-                serializer.write_node_name_with_span(format!("INTEGER_LITERAL({value})"), *span);
-            }
-            Self::String { value, span } => {
-                serializer.write_node_name_with_span(format!("STRING_LITERAL(`{value}`)"), *span);
-            }
-        }
-    }
-}
-
-impl Serialize for StructFieldPattern {
-    fn serialize(&self, serializer: &mut Serializer<'_>) {
-        match self {
-            Self::Rest { span } => {
-                serializer.write_node_name_with_span("REST_STRUCT_FIELD_PATTERN", *span);
-            }
-            Self::NotRest {
-                span,
-                field_name,
-                value_pattern,
-            } => {
-                serializer.write_node_name_with_span("STRUCT_FIELD_PATTERN", *span);
-                serializer.increment_indentation();
-                serializer.serialize_key_value_pair("FIELD_NAME", field_name);
-                if let Some(value_pattern) = value_pattern {
-                    serializer.serialize_key_value_pair("VALUE_PATTERN", value_pattern);
-                }
-                serializer.decrement_indentation();
-            }
-        }
-    }
-}
-
-impl Serialize for Pattern {
-    fn serialize(&self, serializer: &mut Serializer<'_>) {
-        match self {
-            Self::Grouped { span, inner } => {
-                serializer.write_node_name_with_span("GROUPED_PATTERN", *span);
-                serializer.increment_indentation();
-                serializer.serialize_key_value_pair("INNER_PATTERN", &**inner);
-                serializer.decrement_indentation();
-            }
-            Self::Identifier {
-                span,
-                identifier,
-                pattern,
-            } => {
-                serializer.write_node_name_with_span("IDENTIFIER_PATTERN", *span);
-                serializer.increment_indentation();
-                serializer.serialize_key_value_pair("IDENTIFIER", identifier);
-                if let Some(pattern) = pattern {
-                    serializer.serialize_key_value_pair("PATTERN", &**pattern);
-                }
-                serializer.decrement_indentation();
-            }
-            Self::List {
-                span,
-                inner_patterns,
-            } => {
-                serializer.write_node_name_with_span("LIST_PATTERN", *span);
-                serializer.increment_indentation();
-                serializer.serialize_key_list_value_pair("INNER_PATTERNS", inner_patterns);
-                serializer.decrement_indentation();
-            }
-            Self::Literal(literal) => literal.serialize(serializer),
-            Self::Or { span, left, right } => {
-                serializer.write_node_name_with_span("OR_PATTERN", *span);
-                serializer.increment_indentation();
-                serializer.serialize_key_value_pair("LEFT", &**left);
-                serializer.serialize_key_value_pair("RIGHT", &**right);
-                serializer.decrement_indentation();
-            }
-            Self::Path { span, path } => {
-                serializer.write_node_name_with_span("PATH_PATTERN", *span);
-                serializer.increment_indentation();
-                serializer.serialize_key_value_pair("PATH", path);
-                serializer.decrement_indentation();
-            }
-            Self::Rest { span } => {
-                serializer.write_node_name_with_span("REST_PATTERN", *span);
-            }
-            Self::Struct { span, path, fields } => {
-                serializer.write_node_name_with_span("STRUCT_PATTERN", *span);
-                serializer.increment_indentation();
-                serializer.serialize_key_value_pair("STRUCT_PATH", path);
-                serializer.serialize_key_list_value_pair("FIELDS", fields);
-                serializer.decrement_indentation();
-            }
-            Self::Tuple { span, elements } => {
-                serializer.write_node_name_with_span("TUPLE_PATTERN", *span);
-                serializer.increment_indentation();
-                serializer.serialize_key_list_value_pair("ELEMENTS", elements);
-                serializer.decrement_indentation();
-            }
-            Self::TupleLike {
-                span,
-                path,
-                inner_patterns,
-            } => {
-                serializer.write_node_name_with_span("TUPLE_PATTERN", *span);
-                serializer.increment_indentation();
-                serializer.serialize_key_value_pair("PATH", path);
-                serializer.serialize_key_list_value_pair("INNER_PATTERNS", inner_patterns);
-                serializer.decrement_indentation();
-            }
-        }
-    }
-}
-
-impl Serialize for Statement {
-    fn serialize(&self, serializer: &mut Serializer<'_>) {
-        match self {
-            Self::Break { span } => serializer.write_node_name_with_span("BREAK_STATEMENT", *span),
-            Self::Continue { span } => {
-                serializer.write_node_name_with_span("CONTINUE_STATEMENT", *span);
-            }
-            Self::Return { expression } => {
-                serializer.write_node_name("RETURN_STATEMENT");
-                serializer.increment_indentation();
-                serializer.serialize_key_value_pair("EXPRESSION", expression);
-                serializer.decrement_indentation();
-            }
-            Self::Defer { call } => {
-                serializer.write_node_name("DEFER_STATEMENT");
-                serializer.increment_indentation();
-                serializer.serialize_key_value_pair("CALL", call);
-                serializer.decrement_indentation();
-            }
-            Self::Expression {
-                expression,
-                has_semicolon,
-            } => {
-                serializer.write_node_name("EXPRESSION_STATEMENT");
-                serializer.increment_indentation();
-                serializer.serialize_key_value_pair("EXPRESSION", expression);
-                serializer.serialize_key_value_pair("HAS_SEMICOLON", has_semicolon);
-                serializer.decrement_indentation();
-            }
-            Self::Let { pattern, value, ty } => {
-                serializer.write_node_name("LET_STATEMENT");
-                serializer.increment_indentation();
-                serializer.serialize_key_value_pair("PATTERN", pattern);
-                serializer.serialize_key_value_pair("VALUE", value);
-                if let Some(ty) = ty {
-                    serializer.serialize_key_value_pair("TYPE", ty);
-                }
-                serializer.decrement_indentation();
-            }
-        }
-    }
-}
-
-impl Serialize for (Expression, Vec<Statement>) {
-    fn serialize(&self, serializer: &mut Serializer<'_>) {
-        serializer.write_node_name("ELSE_IF_NODE");
-        serializer.increment_indentation();
-        serializer.serialize_key_value_pair("CONDITION", &self.0);
-        serializer.serialize_key_list_value_pair("STATEMENTS_BLOCK", &self.1);
-        serializer.decrement_indentation();
-    }
-}
-
-impl Serialize for MatchExpressionItem {
-    fn serialize(&self, serializer: &mut Serializer<'_>) {
-        serializer.write_node_name("MATCH_EXPRESSION_ITEM");
-        serializer.increment_indentation();
-        serializer.serialize_key_value_pair("PATTERN", &self.left);
-        serializer.serialize_key_value_pair("EXPRESSION", &self.right);
-        serializer.decrement_indentation();
-    }
-}
-
-impl Serialize for Expression {
-    fn serialize(&self, serializer: &mut Serializer<'_>) {
-        match self {
-            Self::As { span, left, right } => {
-                serializer.write_node_name_with_span("CAST_EXPRESSION", *span);
-                serializer.increment_indentation();
-                serializer.serialize_key_value_pair("LEFT", &**left);
-                serializer.serialize_key_value_pair("RIGHT", right);
-                serializer.decrement_indentation();
-            }
-            Self::Binary {
-                span,
-                left,
-                operator,
-                right,
-            } => {
-                serializer.write_node_name_with_span("BINARY_EXPRESSION", *span);
-                serializer.increment_indentation();
-                serializer.serialize_key_value_pair("LEFT", &**left);
-                serializer.serialize_key_value_pair("OPERATOR", operator);
-                serializer.serialize_key_value_pair("RIGHT", &**right);
-                serializer.decrement_indentation();
-            }
-            Self::Call {
-                span,
-                left,
-                arguments,
-            } => {
-                serializer.write_node_name_with_span("CALL_EXPRESSION", *span);
-                serializer.increment_indentation();
-                serializer.serialize_key_value_pair("LEFT", &**left);
-                serializer.serialize_key_list_value_pair("ARGUMENTS", arguments);
-                serializer.decrement_indentation();
-            }
-            Self::Function {
-                span,
-                parameters,
-                return_type,
-                block,
-            } => {
-                serializer.write_node_name_with_span("FUNCTION_EXPRESSION", *span);
-                serializer.increment_indentation();
-                serializer.serialize_key_list_value_pair("PARAMETERS", parameters);
-
-                if let Some(return_type) = return_type {
-                    serializer.serialize_key_value_pair("RETURN_TYPE", return_type);
-                }
-
-                serializer.serialize_key_list_value_pair("STATEMENTS_BLOCK", block);
-                serializer.decrement_indentation();
-            }
-            Self::GenericArguments {
-                span,
-                left,
-                generic_arguments,
-            } => {
-                serializer.write_node_name_with_span("GENERIC_ARGUMENTS", *span);
-                serializer.increment_indentation();
-                serializer.serialize_key_value_pair("LEFT", &**left);
-                serializer.serialize_key_list_value_pair("GENERIC_ARGUMENTS", generic_arguments);
-                serializer.decrement_indentation();
-            }
-            Self::Identifier(symbol) => symbol.serialize(serializer),
-            Self::If {
-                span,
-                if_blocks,
-                r#else,
-            } => {
-                serializer.write_node_name_with_span("IF_EXPRESSION", *span);
-                serializer.increment_indentation();
-                serializer.serialize_key_list_value_pair("IF_BLOCKS", if_blocks);
-                if let Some(r#else) = r#else {
-                    serializer.serialize_key_list_value_pair("ELSE_BLOCK", r#else);
-                }
-                serializer.decrement_indentation();
-            }
-            Self::List { span, elements } => {
-                serializer.write_node_name_with_span("LIST_EXPRESSION", *span);
-                serializer.increment_indentation();
-                serializer.serialize_key_list_value_pair("ELEMENTS", elements);
-                serializer.decrement_indentation();
-            }
-            Self::Parenthesized { span, inner } => {
-                serializer.write_node_name_with_span("PARENTHESIZED_EXPRESSION", *span);
-                serializer.increment_indentation();
-                serializer.serialize_key_value_pair("INNER", &**inner);
-                serializer.decrement_indentation();
-            }
-            Self::Postfix {
-                span,
-                inner,
-                operator,
-            } => {
-                serializer.write_node_name_with_span("POSTFIX_EXPRESSION", *span);
-                serializer.increment_indentation();
-                serializer.serialize_key_value_pair("LEFT", &**inner);
-                serializer.serialize_key_value_pair("OPERATOR", operator);
-                serializer.decrement_indentation();
-            }
-            Self::Prefix {
-                span,
-                inner,
-                operator,
-            } => {
-                serializer.write_node_name_with_span("PREFIX_EXPRESSION", *span);
-                serializer.increment_indentation();
-                serializer.serialize_key_value_pair("OPERATOR", operator);
-                serializer.serialize_key_value_pair("INNER", &**inner);
-                serializer.decrement_indentation();
-            }
-            Self::FieldAccess { span, left, right } => {
-                serializer.write_node_name_with_span("FIELD_ACCESS_EXPRESSION", *span);
-                serializer.increment_indentation();
-                serializer.serialize_key_value_pair("LEFT", &**left);
-                serializer.serialize_key_value_pair("RIGHT", right);
-                serializer.decrement_indentation();
-            }
-            Self::StatementsBlock { span, block } => {
-                serializer.write_node_name_with_span("BLOCK_EXPRESSION", *span);
-                serializer.increment_indentation();
-                serializer.serialize_key_list_value_pair("STATEMENTS_BLOCK", block);
-                serializer.decrement_indentation();
-            }
-            Self::Struct { span, left, fields } => {
-                serializer.write_node_name_with_span("STRUCT_EXPRESSION", *span);
-                serializer.increment_indentation();
-                serializer.serialize_key_value_pair("LEFT", &**left);
-                serializer.serialize_key_list_value_pair("FIELDS", fields);
-                serializer.decrement_indentation();
-            }
-            Self::Tuple { span, elements } => {
-                serializer.write_node_name_with_span("TUPLE_EXPRESSION", *span);
-                serializer.increment_indentation();
-                serializer.serialize_key_list_value_pair("ELEMENTS", elements);
-                serializer.decrement_indentation();
-            }
-            Self::While {
-                span,
-                condition,
-                body,
-            } => {
-                serializer.write_node_name_with_span("WHILE_EXPRESSION", *span);
-                serializer.increment_indentation();
-                serializer.serialize_key_value_pair("CONDITION", &**condition);
-                serializer.serialize_key_list_value_pair("BODY_STATEMENTS_BLOCK", body);
-                serializer.decrement_indentation();
-            }
-            Self::Literal(literal) => literal.serialize(serializer),
-            Self::Match {
-                span,
-                expression,
-                block,
-            } => {
-                serializer.write_node_name_with_span("MATCH_EXPRESSION", *span);
-                serializer.increment_indentation();
-                serializer.serialize_key_value_pair("EXPRESSION", &**expression);
-                serializer.serialize_key_list_value_pair("BLOCK", block);
-                serializer.decrement_indentation();
-            }
-        }
-    }
-}
-
-impl Serialize for LambdaFunctionParameter {
-    fn serialize(&self, serializer: &mut Serializer<'_>) {
-        serializer.write_node_name("LAMBDA_PARAMETER");
-        serializer.increment_indentation();
-
-        serializer.serialize_key_value_pair("NAME", &self.name);
-
-        if let Some(ty) = &self.ty {
-            serializer.serialize_key_value_pair("TYPE", ty);
+        match expression {
+            Expression::As { .. } => self.write("AS"),
+            Expression::Binary { .. } => self.write("BINARY"),
+            Expression::Call { .. } => self.write("CALL"),
+            Expression::FieldAccess { .. } => self.write("FIELD_ACCESS"),
+            Expression::GenericArguments { .. } => self.write("GENERIC_AGRUMENTS"),
+            Expression::Identifier(..) => self.write("IDENTIFIER"),
+            Expression::If { .. } => self.write("IF"),
+            Expression::Lambda { .. } => self.write("LAMBDA"),
+            Expression::List { .. } => self.write("LIST"),
+            Expression::Literal(..) => self.write("LITERAL"),
+            Expression::Match { .. } => self.write("MATCH"),
+            Expression::Parenthesized { .. } => self.write("PARENTHESIZED"),
+            Expression::Postfix { .. } => self.write("POSTFIX"),
+            Expression::Prefix { .. } => self.write("PREFIX"),
+            Expression::StatementsBlock { .. } => self.write("STATEMENTS_BLOCK"),
+            Expression::Struct { .. } => self.write("STRUCT"),
+            Expression::Tuple { .. } => self.write("TUPLE"),
+            Expression::While { .. } => self.write("WHILE"),
         }
 
-        serializer.decrement_indentation();
+        self.write(format!(" <{}>", expression.span()));
+        self.write_newline();
+        walk_expression(self, expression);
+
+        self.decrement_indentation();
     }
-}
 
-impl Serialize for Type {
-    fn serialize(&self, serializer: &mut Serializer<'_>) {
-        match self {
-            Self::Function {
-                span,
-                parameter_types,
-                return_type,
-            } => {
-                serializer.write_node_name_with_span("FUNCTION_TYPE", *span);
-                serializer.increment_indentation();
-                serializer.serialize_key_list_value_pair("PARAMETER_TYPES", parameter_types);
-                serializer.serialize_key_value_pair("RETURN_TYPE", &**return_type);
-                serializer.decrement_indentation();
-            }
-            Self::Parenthesized { span, inner } => {
-                serializer.write_node_name_with_span("PARENTHESIZED_TYPE", *span);
-                serializer.increment_indentation();
-                serializer.serialize_key_value_pair("TYPE", &**inner);
-                serializer.decrement_indentation();
-            }
-            Self::Path(path) => {
-                path.serialize(serializer);
-            }
-            Self::TraitObject { span, bounds } => {
-                serializer.write_node_name_with_span("TRAIT_OBJECT_TYPE", *span);
-                serializer.increment_indentation();
-                serializer.serialize_key_list_value_pair("BOUNDS", bounds);
-                serializer.decrement_indentation();
-            }
-            Self::Tuple {
-                span,
-                element_types,
-            } => {
-                serializer.write_node_name_with_span("TUPLE_TYPE", *span);
-                serializer.increment_indentation();
-                serializer.serialize_key_list_value_pair("ELEMENT_TYPES", element_types);
-                serializer.decrement_indentation();
-            }
-            Self::WithQualifiedPath {
-                span,
-                left,
-                right,
-                segments,
-            } => {
-                serializer.write_node_name_with_span("TYPE_WITH_QUALIFIED_PATH", *span);
-                serializer.increment_indentation();
-                serializer.serialize_key_value_pair("LEFT", &**left);
-                serializer.serialize_key_value_pair("RIGHT", right);
-                serializer.serialize_key_list_value_pair("SEGMENTS", segments);
-                serializer.decrement_indentation();
-            }
-        }
+    fn visit_function(&mut self, function: &'_ Function) {
+        self.increment_indentation();
+        self.write_identation();
+
+        self.write("FUNCTION");
+        self.write_newline();
+        walk_function(self, function);
+
+        self.decrement_indentation();
     }
-}
 
-impl Serialize for Visibility {
-    fn serialize(&self, serializer: &mut Serializer<'_>) {
-        match self.span_of_pub() {
-            Some(pub_span) => {
-                serializer.write("PUBLIC@");
-                pub_span.serialize(serializer);
-            }
-            None => {
-                serializer.write("PRIVATE");
-            }
-        }
+    fn visit_generic_argument(&mut self, argument: &'_ GenericArgument) {
+        self.increment_indentation();
+        self.write_identation();
+
+        self.write("GENERIC_ARGUMENT");
+        self.write_newline();
+        walk_generic_argument(self, argument);
+
+        self.decrement_indentation();
     }
-}
 
-impl Serialize for GenericParameter {
-    fn serialize(&self, serializer: &mut Serializer<'_>) {
-        serializer.write_node_name("GENERIC_PARAMETER");
-        serializer.increment_indentation();
-        serializer.serialize_key_value_pair("NAME", &self.name);
-        if let Some(bounds) = &self.bounds {
-            serializer.serialize_key_list_value_pair("BOUNDS", bounds);
-        }
-        if let Some(default) = &self.default_value {
-            serializer.serialize_key_value_pair("DEFAULT", default);
-        }
-        serializer.decrement_indentation();
+    fn visit_generic_arguments(&mut self, arguments: &'_ [GenericArgument]) {
+        self.increment_indentation();
+        self.write_identation();
+
+        self.write("GENERIC_ARGUMENTS");
+        self.write_newline();
+        walk_generic_arguments(self, arguments);
+
+        self.decrement_indentation();
     }
-}
 
-impl Serialize for WhereClauseItem {
-    fn serialize(&self, serializer: &mut Serializer<'_>) {
-        match self {
-            Self::Eq { left, right } => {
-                serializer.write_node_name("WHERE_CLAUSE_ITEM_EQ");
-                serializer.increment_indentation();
-                serializer.serialize_key_value_pair("LEFT", left);
-                serializer.serialize_key_value_pair("RIGHT", right);
-                serializer.decrement_indentation();
-            }
-            Self::Satisfies { ty, bounds } => {
-                serializer.write_node_name("WHERE_CLAUSE_ITEM_SATISFIES");
-                serializer.increment_indentation();
-                serializer.serialize_key_value_pair("TYPE", ty);
-                serializer.serialize_key_list_value_pair("BOUNDS", bounds);
-                serializer.decrement_indentation();
-            }
-        }
+    fn visit_generic_parameter(&mut self, parameter: &'_ GenericParameter) {
+        self.increment_indentation();
+        self.write_identation();
+
+        self.write("GENERIC_PARAMETER");
+        self.write_newline();
+        walk_generic_parameter(self, parameter);
+
+        self.decrement_indentation();
     }
-}
 
-impl Serialize for JustFunctionParameter {
-    fn serialize(&self, serializer: &mut Serializer<'_>) {
-        serializer.write_node_name("FUNCTION_PARAMETER");
-        serializer.increment_indentation();
-        serializer.serialize_key_value_pair("NAME", &self.name);
-        serializer.serialize_key_value_pair("TYPE", &self.ty);
+    fn visit_generic_parameters(&mut self, parameters: Option<&'_ [GenericParameter]>) {
+        self.increment_indentation();
+        self.write_identation();
 
-        serializer.decrement_indentation();
+        self.write("GENERIC_PARAMETERS");
+        self.write_newline();
+        walk_generic_parameters(self, parameters);
+
+        self.decrement_indentation();
     }
-}
 
-impl Serialize for FunctionParameter {
-    fn serialize(&self, serializer: &mut Serializer<'_>) {
-        match self {
-            Self::Just(parameter) => {
-                parameter.serialize(serializer);
-            }
-            Self::Self_(parameter) => {
-                serializer.write_node_name("SELF_PARAMETER");
-                serializer.increment_indentation();
-                serializer.serialize_key_value_pair("SELF_SPAN", &parameter.self_span);
-                if let Some(ty) = &parameter.ty {
-                    serializer.serialize_key_value_pair("TYPE", ty);
-                }
-                serializer.decrement_indentation();
-            }
-        }
+    fn visit_identifier(&mut self, identifier: IdentifierAst) {
+        self.increment_indentation();
+        self.write_identation();
+
+        self.write(format!(
+            "IDENTIFIER: {} <{}>",
+            self.interner.resolve(identifier.symbol).unwrap_or("?"),
+            identifier.span
+        ));
+        self.write_newline();
+
+        self.decrement_indentation();
     }
-}
 
-impl Serialize for Function {
-    fn serialize(&self, serializer: &mut Serializer<'_>) {
-        serializer.write_node_name("FUNCTION");
-        serializer.increment_indentation();
-        serializer.serialize_key_value_pair("VISIBILITY", &self.visibility);
-        serializer.serialize_key_value_pair("NAME", &self.name);
+    fn visit_if_block(&mut self, block: &'_ (Expression, StatementsBlock)) {
+        self.increment_indentation();
+        self.write_identation();
 
-        if let Some(generic_parameters) = &self.generic_parameters {
-            serializer.serialize_key_list_value_pair("GENERIC_PARAMETERS", generic_parameters);
-        }
+        self.write("IF_BLOCK");
+        self.write_newline();
+        walk_if_block(self, block);
 
-        serializer.serialize_key_list_value_pair("PARAMETERS", &self.parameters);
-
-        if let Some(return_type) = &self.return_type {
-            serializer.serialize_key_value_pair("RETURN_TYPE", return_type);
-        }
-
-        if let Some(where_clause) = &self.where_clause {
-            serializer.serialize_key_list_value_pair("WHERE_CLAUSE", where_clause);
-        }
-
-        if let Some(body) = &self.body {
-            serializer.serialize_key_list_value_pair("BODY", body);
-        }
-
-        serializer.decrement_indentation();
+        self.decrement_indentation();
     }
-}
 
-impl Serialize for StructField {
-    fn serialize(&self, serializer: &mut Serializer<'_>) {
-        serializer.write_node_name("STRUCT_FIELD");
-        serializer.increment_indentation();
-        serializer.serialize_key_value_pair("VISIBILITY", &self.visibility);
-        serializer.serialize_key_value_pair("NAME", &self.name);
-        serializer.serialize_key_value_pair("TYPE", &self.ty);
-        serializer.decrement_indentation();
+    fn visit_if_blocks(&mut self, blocks: &'_ [(Expression, StatementsBlock)]) {
+        self.increment_indentation();
+        self.write_identation();
+
+        self.write("IF_BLOCKS");
+        self.write_newline();
+        walk_if_blocks(self, blocks);
+
+        self.decrement_indentation();
     }
-}
 
-impl Serialize for TupleField {
-    fn serialize(&self, serializer: &mut Serializer<'_>) {
-        serializer.write_node_name("TUPLE_FIELD");
-        serializer.increment_indentation();
-        serializer.serialize_key_value_pair("VISIBILITY", &self.visibility);
-        serializer.serialize_key_value_pair("TYPE", &self.ty);
-        serializer.decrement_indentation();
-    }
-}
+    fn visit_import_path(&mut self, path: &'_ ImportPath) {
+        self.increment_indentation();
+        self.write_identation();
 
-impl Serialize for EnumItem {
-    fn serialize(&self, serializer: &mut Serializer<'_>) {
-        match self {
-            Self::Just { name, .. } => {
-                serializer.write_node_name("EMPTY_ENUM_ITEM");
-                serializer.increment_indentation();
-                serializer.serialize_key_value_pair("ITEM_NAME", name);
-                serializer.decrement_indentation();
-            }
-            Self::Struct { name, fields, .. } => {
-                serializer.write_node_name("STRUCT_ENUM_ITEM");
-                serializer.increment_indentation();
-                serializer.serialize_key_value_pair("NAME", name);
-                serializer.serialize_key_list_value_pair("FIELDS", fields);
-                serializer.decrement_indentation();
-            }
-            Self::Tuple { name, fields, .. } => {
-                serializer.write_node_name("TUPLE_ENUM_ITEM");
-                serializer.increment_indentation();
-                serializer.serialize_key_value_pair("NAME", name);
-                serializer.serialize_key_list_value_pair("FIELDS", fields);
-                serializer.decrement_indentation();
-            }
-        }
-    }
-}
+        self.write("IMPORT_PATH");
+        self.write_newline();
+        walk_path(self, &path.left);
 
-impl Serialize for TypeAlias {
-    fn serialize(&self, serializer: &mut Serializer<'_>) {
-        serializer.write_node_name("TYPE_ALIAS");
-        serializer.increment_indentation();
-        serializer.serialize_key_value_pair("NAME", &self.name);
-        if let Some(generic_parameters) = &self.generic_parameters {
-            serializer.serialize_key_list_value_pair("GENERIC_PARAMETERS", generic_parameters);
-        }
-        if let Some(bounds) = &self.bounds {
-            serializer.serialize_key_list_value_pair("BOUNDS", bounds);
-        }
-        if let Some(value) = &self.value {
-            serializer.serialize_key_value_pair("VALUE", value);
-        }
-        serializer.decrement_indentation();
-    }
-}
-
-impl Serialize for TraitItem {
-    fn serialize(&self, serializer: &mut Serializer<'_>) {
-        match self {
-            Self::AssociatedFunction(function) => function.serialize(serializer),
-            Self::TypeAlias(alias) => alias.serialize(serializer),
-        }
-    }
-}
-
-impl Serialize for ImportPath {
-    fn serialize(&self, serializer: &mut Serializer<'_>) {
-        serializer.write_node_name("IMPORT_PATH");
-        serializer.increment_indentation();
-        serializer.serialize_key_value_pair("PATH", &self.left);
-
-        if let Some(r#as) = &self.r#as {
-            serializer.serialize_key_value_pair("AS", r#as);
+        if let Some(r#as) = path.r#as {
+            self.increment_indentation();
+            self.write_identation();
+            self.write("AS");
+            self.write_newline();
+            self.decrement_indentation();
+            self.visit_identifier(r#as);
         }
 
-        serializer.decrement_indentation();
+        self.decrement_indentation();
     }
-}
 
-impl Serialize for Item {
-    fn serialize(&self, serializer: &mut Serializer<'_>) {
-        match self {
-            Self::Enum {
-                visibility,
-                name,
-                generic_parameters,
-                where_clause,
-                items,
-                ..
-            } => {
-                serializer.write_node_name("ENUM");
-                serializer.increment_indentation();
-                serializer.serialize_key_value_pair("VISIBILITY", visibility);
-                serializer.serialize_key_value_pair("NAME", name);
-                if let Some(generic_parameters) = generic_parameters {
-                    serializer
-                        .serialize_key_list_value_pair("GENERIC_PARAMETERS", generic_parameters);
-                }
-                if let Some(where_clause) = where_clause {
-                    serializer.serialize_key_list_value_pair("WHERE_CLAUSE", where_clause);
-                }
-                serializer.serialize_key_list_value_pair("ITEMS", items);
-                serializer.decrement_indentation();
-            }
-            Self::Function(function) => function.serialize(serializer),
-            Self::Impl(Impl {
-                generic_parameters,
-                ty: r#type,
-                r#trait,
-                where_clause,
-                items,
-                ..
-            }) => {
-                serializer.write_node_name("IMPL");
-                serializer.increment_indentation();
-                if let Some(generic_parameters) = generic_parameters {
-                    serializer
-                        .serialize_key_list_value_pair("GENERIC_PARAMETERS", generic_parameters);
-                }
-                serializer.serialize_key_value_pair("TYPE", r#type);
-                if let Some(r#trait) = r#trait {
-                    serializer.serialize_key_value_pair("TRAIT", r#trait);
-                }
-                if let Some(where_clause) = where_clause {
-                    serializer.serialize_key_list_value_pair("WHERE_CLAUSE", where_clause);
-                }
-                serializer.serialize_key_list_value_pair("ITEMS", items);
-                serializer.decrement_indentation();
-            }
-            Self::Struct {
-                visibility,
-                name,
-                generic_parameters,
-                where_clause,
-                fields,
-                ..
-            } => {
-                serializer.write_node_name("STRUCT");
-                serializer.increment_indentation();
-                serializer.serialize_key_value_pair("VISIBILITY", visibility);
-                serializer.serialize_key_value_pair("NAME", name);
-                if let Some(generic_parameters) = generic_parameters {
-                    serializer
-                        .serialize_key_list_value_pair("GENERIC_PARAMETERS", generic_parameters);
-                }
-                if let Some(where_clause) = where_clause {
-                    serializer.serialize_key_list_value_pair("WHERE_CLAUSE", where_clause);
-                }
-                serializer.serialize_key_list_value_pair("FIELDS", fields);
-                serializer.decrement_indentation();
-            }
-            Self::Trait {
-                visibility,
-                name,
-                generic_parameters,
-                where_clause,
-                items,
-                ..
-            } => {
-                serializer.write_node_name("TRAIT");
-                serializer.increment_indentation();
-                serializer.serialize_key_value_pair("VISIBILITY", visibility);
-                serializer.serialize_key_value_pair("NAME", name);
-                if let Some(generic_parameters) = generic_parameters {
-                    serializer
-                        .serialize_key_list_value_pair("GENERIC_PARAMETERS", generic_parameters);
-                }
-                if let Some(where_clause) = where_clause {
-                    serializer.serialize_key_list_value_pair("WHERE_CLAUSE", where_clause);
-                }
-                serializer.serialize_key_list_value_pair("ITEMS", items);
-                serializer.decrement_indentation();
-            }
-            Self::TupleLikeStruct {
-                visibility,
-                name,
-                generic_parameters,
-                where_clause,
-                fields,
-                ..
-            } => {
-                serializer.write_node_name("TUPLE_LIKE_STRUCT");
-                serializer.increment_indentation();
-                serializer.serialize_key_value_pair("VISIBILITY", visibility);
-                serializer.serialize_key_value_pair("NAME", name);
-                if let Some(generic_parameters) = generic_parameters {
-                    serializer
-                        .serialize_key_list_value_pair("GENERIC_PARAMETERS", generic_parameters);
-                }
-                if let Some(where_clause) = where_clause {
-                    serializer.serialize_key_list_value_pair("WHERE_CLAUSE", where_clause);
-                }
-                serializer.serialize_key_list_value_pair("FIELDS", fields);
-                serializer.decrement_indentation();
-            }
-            Self::TypeAlias(alias) => alias.serialize(serializer),
-            Self::Import { path } => {
-                serializer.write_node_name("IMPORT");
-                serializer.increment_indentation();
-                serializer.serialize_key_value_pair("IMPORT_PATH", path);
-                serializer.decrement_indentation();
-            }
+    fn visit_item(&mut self, item: &'_ Item) {
+        self.increment_indentation();
+        self.write_identation();
+
+        match item {
+            Item::Enum { .. } => self.write("ENUM_GLOBAL_ITEM"),
+            Item::Function(..) => self.write("FUNCTION_GLOBAL_ITEM"),
+            Item::Impl(..) => self.write("IMPL_GLOBAL_ITEM"),
+            Item::Import { .. } => self.write("IMPORT"),
+            Item::Struct { .. } => self.write("STRUCT_GLOBAL_ITEM"),
+            Item::Trait { .. } => self.write("TRAIT_GLOBAL_ITEM"),
+            Item::TupleLikeStruct { .. } => self.write("TUPLE_LIKE_STRUCT_GLOBAL_ITEM"),
+            Item::TypeAlias(..) => self.write("TYPE_ALIAS_GLOBAL_ITEM"),
         }
-    }
-}
 
-impl Serialize for &str {
-    fn serialize(&self, serializer: &mut Serializer<'_>) {
-        serializer.write(self);
-    }
-}
+        self.write_newline();
+        walk_item(self, item);
 
-impl Serialize for Module {
-    fn serialize(&self, serializer: &mut Serializer<'_>) {
-        serializer.write_node_name("MODULE");
-        serializer.increment_indentation();
-        serializer.serialize_key_list_value_pair("ITEMS", &self.items);
-        serializer.decrement_indentation();
+        self.decrement_indentation();
+    }
+
+    fn visit_lambda_function_parameter(&mut self, parameter: &'_ LambdaFunctionParameter) {
+        self.increment_indentation();
+        self.write_identation();
+
+        self.write("LAMBDA_FUNCTION_PARAMETER");
+        self.write_newline();
+
+        walk_lambda_function_parameter(self, parameter);
+
+        self.decrement_indentation();
+    }
+
+    fn visit_lambda_function_parameters(&mut self, parameters: &'_ [LambdaFunctionParameter]) {
+        self.increment_indentation();
+        self.write_identation();
+
+        self.write("LAMBDA_FUNCTION_PARAMETERS");
+        self.write_newline();
+
+        walk_lambda_function_parameters(self, parameters);
+
+        self.decrement_indentation();
+    }
+
+    fn visit_literal(&mut self, literal: &'_ Literal) {
+        self.increment_indentation();
+        self.write_identation();
+
+        self.write("LITERAL ");
+
+        match literal {
+            Literal::Boolean { value, .. } => self.write(format!("{value}")),
+            Literal::Character { value, .. } => self.write(format!("'{value}'")),
+            Literal::Float { value, .. } => self.write(format!("{value}")),
+            Literal::Integer { value, .. } => self.write(format!("{value}")),
+            Literal::String { value, .. } => self.write(format!("\"{value}\"")),
+        }
+
+        self.write(format!(" <{}>", literal.span()));
+        self.write_newline();
+
+        self.decrement_indentation();
+    }
+
+    fn visit_match_expression_item(&mut self, item: &'_ MatchExpressionItem) {
+        self.increment_indentation();
+        self.write_identation();
+
+        self.write("MATCH_EXPRESSION_ITEM");
+        self.write_newline();
+        walk_match_expression_item(self, item);
+
+        self.decrement_indentation();
+    }
+
+    fn visit_match_expression_items(&mut self, items: &'_ [MatchExpressionItem]) {
+        self.increment_indentation();
+        self.write_identation();
+
+        self.write("MATCH_EXPRESSION_ITEMS");
+        self.write_newline();
+        walk_match_expression_items(self, items);
+
+        self.decrement_indentation();
+    }
+
+    fn visit_module(&mut self, module: &'_ Module) {
+        self.write("MODULE");
+        self.write_newline();
+        walk_module(self, module);
+    }
+
+    fn visit_path(&mut self, path: &'_ Path) {
+        self.increment_indentation();
+        self.write_identation();
+
+        self.write(format!("PATH <{}>", path.span));
+        self.write_newline();
+        walk_path(self, path);
+
+        self.decrement_indentation();
+    }
+
+    fn visit_pattern(&mut self, pattern: &'_ Pattern) {
+        self.increment_indentation();
+        self.write_identation();
+
+        match pattern {
+            Pattern::Grouped { .. } => self.write("GROUPED_PATTERN"),
+            Pattern::Identifier { .. } => self.write("IDENTIFIER_PATTERN"),
+            Pattern::List { .. } => self.write("LIST_PATTERN"),
+            Pattern::Literal(..) => self.write("LITERAL_PATTERN"),
+            Pattern::Or { .. } => self.write("OR_PATTERN"),
+            Pattern::Path { .. } => self.write("PATH_PATTERN"),
+            Pattern::Rest { .. } => self.write("REST_PATTERN"),
+            Pattern::Struct { .. } => self.write("STRUCT_PATTERN"),
+            Pattern::Tuple { .. } => self.write("TUPLE_PATTERN"),
+            Pattern::TupleLike { .. } => self.write("TUPLE_LIKE_PATTERN"),
+        }
+
+        self.write(format!(" <{}>", pattern.span()));
+        self.write_newline();
+
+        self.decrement_indentation();
+    }
+
+    fn visit_postfix_operator(&mut self, operator: PostfixOperator) {
+        self.increment_indentation();
+        self.write_identation();
+
+        self.write(format!("POSTFIX_OP {}@{}", operator.raw, operator.span));
+        self.write_newline();
+
+        self.decrement_indentation();
+    }
+
+    fn visit_prefix_operator(&mut self, operator: PrefixOperator) {
+        self.increment_indentation();
+        self.write_identation();
+
+        self.write(format!("PREFIX_OP {}@{}", operator.raw, operator.span));
+        self.write_newline();
+
+        self.decrement_indentation();
+    }
+
+    fn visit_statement(&mut self, statement: &'_ Statement) {
+        self.increment_indentation();
+        self.write_identation();
+
+        match statement {
+            Statement::Break { .. } => self.write("BREAK_STATEMENT"),
+            Statement::Continue { .. } => self.write("CONTINUE_STATEMENT"),
+            Statement::Defer { .. } => self.write("DEFER_STATEMENT"),
+            Statement::Expression { .. } => self.write("EXPRESSION_STATEMENT"),
+            Statement::Let { .. } => self.write("LET_STATEMENT"),
+            Statement::Return { .. } => self.write("RETURN_STATEMENT"),
+        }
+
+        self.write_newline();
+        walk_statement(self, statement);
+
+        self.decrement_indentation();
+    }
+
+    fn visit_statements_block(&mut self, block: &'_ StatementsBlock) {
+        self.increment_indentation();
+        self.write_identation();
+
+        self.write("STATEMENTS_BLOCK");
+        self.write_newline();
+
+        walk_statements_block(self, block);
+
+        self.decrement_indentation();
+    }
+
+    fn visit_struct_expression_item(&mut self, item: &'_ StructExpressionItem) {
+        self.increment_indentation();
+        self.write_identation();
+
+        self.write("STRUCT_EXPRESSION_ITEM");
+        self.write_newline();
+
+        walk_struct_expression_item(self, item);
+
+        self.decrement_indentation();
+    }
+
+    fn visit_struct_expression_items(&mut self, items: &'_ [StructExpressionItem]) {
+        self.increment_indentation();
+        self.write_identation();
+
+        self.write("STRUCT_EXPRESSION_ITEMS");
+        self.write_newline();
+
+        walk_struct_expression_items(self, items);
+
+        self.decrement_indentation();
+    }
+
+    fn visit_struct_field(&mut self, field: &'_ StructField) {
+        self.increment_indentation();
+        self.write_identation();
+
+        self.write("STRUCT_FIELD");
+        self.write_newline();
+
+        walk_struct_field(self, field);
+
+        self.decrement_indentation();
+    }
+
+    fn visit_struct_field_pattern(&mut self, pattern: &'_ StructFieldPattern) {
+        self.increment_indentation();
+        self.write_identation();
+
+        self.write("STRUCT_FIELD_PATTERN");
+        self.write_newline();
+
+        walk_struct_field_pattern(self, pattern);
+
+        self.decrement_indentation();
+    }
+
+    fn visit_struct_field_patterns(&mut self, patterns: &'_ [StructFieldPattern]) {
+        self.increment_indentation();
+        self.write_identation();
+
+        self.write("STRUCT_FIELD_PATTERNS");
+        self.write_newline();
+
+        walk_struct_field_patterns(self, patterns);
+
+        self.decrement_indentation();
+    }
+
+    fn visit_struct_fields(&mut self, fields: &'_ [StructField]) {
+        self.increment_indentation();
+        self.write_identation();
+
+        self.write("STRUCT_FIELDS");
+        self.write_newline();
+
+        walk_struct_fields(self, fields);
+
+        self.decrement_indentation();
+    }
+
+    fn visit_trait_bounds(&mut self, bounds: &'_ [TypePath]) {
+        self.increment_indentation();
+        self.write_identation();
+
+        self.write("TRAIT_BOUNDS");
+        self.write_newline();
+
+        walk_trait_bounds(self, bounds);
+
+        self.decrement_indentation();
+    }
+
+    fn visit_trait_item(&mut self, item: &'_ TraitItem) {
+        self.increment_indentation();
+        self.write_identation();
+
+        self.write("TRAIT_ITEM");
+        self.write_newline();
+
+        walk_trait_item(self, item);
+
+        self.decrement_indentation();
+    }
+
+    fn visit_trait_items(&mut self, items: &'_ [TraitItem]) {
+        self.increment_indentation();
+        self.write_identation();
+
+        self.write("TRAIT_ITEMS");
+        self.write_newline();
+
+        walk_trait_items(self, items);
+
+        self.decrement_indentation();
+    }
+
+    fn visit_tuple_field(&mut self, field: &'_ TupleField) {
+        self.increment_indentation();
+        self.write_identation();
+
+        self.write("TUPLE_FIELD");
+        self.write_newline();
+
+        walk_tuple_field(self, field);
+
+        self.decrement_indentation();
+    }
+
+    fn visit_tuple_fields(&mut self, fields: &'_ [TupleField]) {
+        self.increment_indentation();
+        self.write_identation();
+
+        self.write("TUPLE_FIELDS");
+        self.write_newline();
+
+        walk_tuple_fields(self, fields);
+
+        self.decrement_indentation();
+    }
+
+    fn visit_type(&mut self, ty: &'_ Type) {
+        self.increment_indentation();
+        self.write_identation();
+
+        match ty {
+            Type::Function { .. } => self.write("FUNCTION_TYPE"),
+            Type::Tuple { .. } => self.write("TUPLE_TYPE"),
+            Type::Path { .. } => self.write("PATH_TYPE"),
+            Type::TraitObject { .. } => self.write("TRAIT_OBJECT_TYPE"),
+            Type::Parenthesized { .. } => self.write("PARENTHESIZED_TYPE"),
+            Type::WithQualifiedPath { .. } => self.write("WITH_QUALIFIED_PATH_TYPE"),
+        }
+        self.write(format!(" <{}>", ty.span()));
+        self.write_newline();
+
+        walk_type(self, ty);
+
+        self.decrement_indentation();
+    }
+
+    fn visit_type_alias(&mut self, alias: &'_ TypeAlias) {
+        self.increment_indentation();
+        self.write_identation();
+
+        self.write("TYPE_ALIAS");
+        self.write_newline();
+
+        walk_type_alias(self, alias);
+
+        self.decrement_indentation();
+    }
+
+    fn visit_type_implementation(&mut self, implementation: &'_ Impl) {
+        self.increment_indentation();
+        self.write_identation();
+
+        self.write("TYPE_IMPLEMENTATION");
+        self.write_newline();
+
+        walk_type_implementation(self, implementation);
+
+        self.decrement_indentation();
+    }
+
+    fn visit_type_path(&mut self, path: &'_ TypePath) {
+        self.increment_indentation();
+        self.write_identation();
+
+        self.write(format!("TYPE_PATH <{}>", path.span));
+        self.write_newline();
+
+        walk_type_path(self, path);
+
+        self.decrement_indentation();
+    }
+
+    fn visit_type_path_segment(&mut self, segment: &'_ TypePathSegment) {
+        self.increment_indentation();
+        self.write_identation();
+
+        self.write(format!("TYPE_PATH_SEGMENT <{}>", segment.span));
+        self.write_newline();
+
+        walk_type_path_segment(self, segment);
+
+        self.decrement_indentation();
+    }
+
+    fn visit_visibility(&mut self, visibility: Visibility) {
+        self.increment_indentation();
+        self.write_identation();
+
+        self.write("VISIBILITY: ");
+        match visibility.span_of_pub() {
+            Some(span) => self.write(format!("PUBLIC <{span}>")),
+            None => self.write("PRIVATE"),
+        }
+        self.write_newline();
+
+        self.decrement_indentation();
+    }
+
+    fn visit_where_clause(&mut self, items: Option<&'_ [WhereClauseItem]>) {
+        self.increment_indentation();
+        self.write_identation();
+
+        self.write("WHERE_CLAUSE");
+        self.write_newline();
+
+        walk_where_clause(self, items);
+
+        self.decrement_indentation();
+    }
+
+    fn visit_where_clause_item(&mut self, item: &'_ WhereClauseItem) {
+        self.increment_indentation();
+        self.write_identation();
+
+        self.write("WHERE_CLAUSE_ITEM");
+        self.write_newline();
+
+        walk_where_clause_item(self, item);
+
+        self.decrement_indentation();
     }
 }
 
@@ -1063,6 +696,6 @@ impl Serialize for Module {
 #[must_use]
 pub fn serialize_ast(module: &Module, interner: &Interner) -> String {
     let mut serializer = Serializer::new(interner);
-    module.serialize(&mut serializer);
+    serializer.visit_module(module);
     serializer.take_output()
 }

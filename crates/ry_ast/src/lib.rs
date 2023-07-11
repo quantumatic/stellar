@@ -83,6 +83,8 @@
     clippy::unnested_or_patterns
 )]
 
+use std::fmt::Display;
+
 use ry_filesystem::span::Span;
 use ry_interner::Symbol;
 use token::RawToken;
@@ -100,6 +102,20 @@ pub enum Literal {
     String { value: String, span: Span },
     Integer { value: u64, span: Span },
     Float { value: f64, span: Span },
+}
+
+impl Literal {
+    #[inline]
+    #[must_use]
+    pub const fn span(&self) -> Span {
+        match self {
+            Self::Boolean { span, .. }
+            | Self::Character { span, .. }
+            | Self::String { span, .. }
+            | Self::Integer { span, .. }
+            | Self::Float { span, .. } => *span,
+        }
+    }
 }
 
 /// Represents a symbol with a specified span.
@@ -728,13 +744,13 @@ pub enum Expression {
         block: Vec<MatchExpressionItem>,
     },
 
-    /// Function expression.
+    /// Lambda expression.
     ///
     /// ```txt
     /// let a = |x| { x + 1 };
-    ///         ^^^^^^^^^^^^^ function expression
+    ///         ^^^^^^^^^^^^^ lambda expression
     /// ```
-    Function {
+    Lambda {
         span: Span,
         parameters: Vec<LambdaFunctionParameter>,
         return_type: Option<Type>,
@@ -784,7 +800,7 @@ impl Expression {
             | Self::Tuple { span, .. }
             | Self::Struct { span, .. }
             | Self::Match { span, .. }
-            | Self::Function { span, .. } => *span,
+            | Self::Lambda { span, .. } => *span,
         }
     }
 }
@@ -897,6 +913,18 @@ impl From<RawBinaryOperator> for RawToken {
     }
 }
 
+impl From<RawBinaryOperator> for String {
+    fn from(value: RawBinaryOperator) -> Self {
+        RawToken::from(value).into()
+    }
+}
+
+impl Display for RawBinaryOperator {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        RawToken::from(*self).fmt(f)
+    }
+}
+
 /// Represents a prefix operator with a specific span.
 #[derive(Debug, PartialEq, Copy, Clone, Eq, Hash)]
 pub struct PrefixOperator {
@@ -942,6 +970,18 @@ impl From<RawPrefixOperator> for RawToken {
     }
 }
 
+impl From<RawPrefixOperator> for String {
+    fn from(value: RawPrefixOperator) -> Self {
+        RawToken::from(value).into()
+    }
+}
+
+impl Display for RawPrefixOperator {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        RawToken::from(*self).fmt(f)
+    }
+}
+
 /// Represents a postfix operator with a specific span.
 #[derive(Debug, PartialEq, Copy, Clone, Eq, Hash)]
 pub struct PostfixOperator {
@@ -975,6 +1015,18 @@ impl From<RawPostfixOperator> for RawToken {
             RawPostfixOperator::PlusPlus => Token![++],
             RawPostfixOperator::MinusMinus => Token![--],
         }
+    }
+}
+
+impl From<RawPostfixOperator> for String {
+    fn from(value: RawPostfixOperator) -> Self {
+        RawToken::from(value).into()
+    }
+}
+
+impl Display for RawPostfixOperator {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        RawToken::from(*self).fmt(f)
     }
 }
 

@@ -469,7 +469,7 @@ fn lambda() {
 
     assert_eq!(
         parse_expression("|a, b: uint32| { a + b }", &mut diagnostics, &mut interner),
-        Some(Expression::Function {
+        Some(Expression::Lambda {
             span: Span { start: 0, end: 24 },
             parameters: vec![
                 LambdaFunctionParameter {

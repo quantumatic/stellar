@@ -76,7 +76,7 @@ struct StructExpressionParser {
 
 struct StructExpressionUnitParser;
 
-struct FunctionExpressionParser;
+struct LambdaExpressionParser;
 
 struct StatementsBlockExpressionParser;
 
@@ -220,7 +220,7 @@ impl Parse for PrimaryExpressionParser {
             Token!['('] => ParenthesizedOrTupleExpressionParser.parse(state),
             Token!['['] => ListExpressionParser.parse(state),
             Token!['{'] => StatementsBlockExpressionParser.parse(state),
-            Token![|] => FunctionExpressionParser.parse(state),
+            Token![|] => LambdaExpressionParser.parse(state),
             Token![if] => IfExpressionParser.parse(state),
             Token![match] => MatchExpressionParser.parse(state),
             Token![while] => WhileExpressionParser.parse(state),
@@ -574,7 +574,7 @@ impl Parse for StatementsBlockExpressionParser {
     }
 }
 
-impl Parse for FunctionExpressionParser {
+impl Parse for LambdaExpressionParser {
     type Output = Option<Expression>;
 
     fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
@@ -607,7 +607,7 @@ impl Parse for FunctionExpressionParser {
 
         let block = StatementsBlockParser.parse(state)?;
 
-        Some(Expression::Function {
+        Some(Expression::Lambda {
             span: state.span_from(start),
             parameters,
             return_type,
