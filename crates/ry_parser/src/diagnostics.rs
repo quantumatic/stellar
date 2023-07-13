@@ -4,7 +4,7 @@ use std::fmt::Display;
 
 use ry_ast::{
     token::{LexError, Token},
-    ItemKind,
+    ModuleItemKind,
 };
 use ry_diagnostics::{BuildDiagnostic, Diagnostic};
 use ry_filesystem::span::Span;
@@ -99,7 +99,7 @@ pub enum ParseDiagnostic {
     /// When got EOF instead of close brace at the of the item.
     EOFInsteadOfCloseBrace {
         /// Type of item in which error occurred.
-        item_kind: ItemKind,
+        item_kind: ModuleItemKind,
 
         /// Location of item name.
         item_span: Span,

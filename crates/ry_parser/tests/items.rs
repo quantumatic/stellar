@@ -145,6 +145,7 @@ fn r#impl() {
             &mut interner,
         ),
         Some(ModuleItem::Impl(Impl {
+            span: Span { start: 0, end: 4 },
             generic_parameters: Some(vec![
                 GenericParameter {
                     name: IdentifierAst {
@@ -270,8 +271,9 @@ fn import() {
     assert_eq!(
         parse_item("import std.io as myio;", &mut diagnostics, &mut interner),
         Some(ModuleItem::Import {
+            span: Span { start: 0, end: 22 },
             path: ImportPath {
-                left: Path {
+                path: Path {
                     span: Span { start: 7, end: 13 },
                     identifiers: vec![
                         IdentifierAst {

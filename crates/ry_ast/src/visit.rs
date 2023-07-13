@@ -257,7 +257,7 @@ where
         ModuleItem::Function(function) => {
             visitor.visit_function(function);
         }
-        ModuleItem::Import { path } => {
+        ModuleItem::Import { path, .. } => {
             visitor.visit_import_path(path);
         }
         ModuleItem::Trait {

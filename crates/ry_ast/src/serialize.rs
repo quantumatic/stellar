@@ -261,7 +261,7 @@ impl Visitor<'_> for Serializer<'_> {
 
         self.write("IMPORT_PATH");
         self.write_newline();
-        walk_path(self, &path.left);
+        walk_path(self, &path.path);
 
         if let Some(r#as) = path.r#as {
             self.increment_indentation();

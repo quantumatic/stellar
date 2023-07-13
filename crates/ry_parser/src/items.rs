@@ -1,7 +1,7 @@
 use ry_ast::{
     token::RawToken, EnumItem, Function, FunctionParameter, FunctionSignature, IdentifierAst, Impl,
-    ItemKind, JustFunctionParameter, ModuleItem, SelfParameter, StructField, Token, TraitItem,
-    TupleField, TypeAlias, Visibility,
+    JustFunctionParameter, ModuleItem, ModuleItemKind, SelfParameter, StructField, Token,
+    TraitItem, TupleField, TypeAlias, Visibility,
 };
 use ry_diagnostics::BuildDiagnostic;
 use ry_filesystem::span::Span;
@@ -67,7 +67,7 @@ struct EnumParser {
 struct EnumItemParser;
 
 struct TupleFieldsParser {
-    pub(crate) context: ItemKind,
+    pub(crate) context: ModuleItemKind,
 }
 
 struct EnumItemStructParser {
@@ -83,6 +83,8 @@ impl Parse for ImportParser {
     type Output = Option<ModuleItem>;
 
     fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
+        let start = state.next_token.span.start;
+
         if let Some(span) = self.visibility.span_of_pub() {
             state.diagnostics.push(
                 ParseDiagnostic::UnnecessaryVisibilityQualifierError {
@@ -98,7 +100,10 @@ impl Parse for ImportParser {
         let path = ImportPathParser.parse(state)?;
         state.consume(Token![;], "import")?;
 
-        Some(ModuleItem::Import { path })
+        Some(ModuleItem::Import {
+            path,
+            span: state.span_from(start),
+        })
     }
 }
 
@@ -168,7 +173,7 @@ impl Parse for StructParser {
             })
         } else if state.next_token.raw == Token!['('] {
             let fields = TupleFieldsParser {
-                context: ItemKind::Struct,
+                context: ModuleItemKind::Struct,
             }
             .parse(state)?;
 
@@ -436,7 +441,8 @@ impl Parse for ImplParser {
 
     fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
         state.advance();
-        let impl_span = state.current_token.span;
+
+        let span = state.current_token.span;
 
         if let Some(span) = self.visibility.span_of_pub() {
             state.diagnostics.push(
@@ -465,7 +471,7 @@ impl Parse for ImplParser {
         state.consume(Token!['{'], "type implementation")?;
 
         let items = TraitItemsParser {
-            name_span: impl_span,
+            name_span: span,
             type_implementation: true,
         }
         .parse(state)?;
@@ -475,6 +481,7 @@ impl Parse for ImplParser {
         }
 
         Some(ModuleItem::Impl(Impl {
+            span,
             generic_parameters,
             ty,
             r#trait,
@@ -528,7 +535,7 @@ impl Parse for EnumItemParser {
             Token!['('] => Some(EnumItem::TupleLike {
                 name,
                 fields: TupleFieldsParser {
-                    context: ItemKind::Enum,
+                    context: ModuleItemKind::Enum,
                 }
                 .parse(state)?,
                 docstring,

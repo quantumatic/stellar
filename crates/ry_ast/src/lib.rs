@@ -143,7 +143,7 @@ pub struct Path {
 /// An import path, e.g. `std.io`, `std.io as myio`.
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct ImportPath {
-    pub left: Path,
+    pub path: Path,
     pub r#as: Option<IdentifierAst>,
 }
 
@@ -863,6 +863,8 @@ pub type StatementsBlock = Vec<Statement>;
 /// A type implementation.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Impl {
+    /// Location of the `impl` keyword.
+    pub span: Span,
     pub generic_parameters: Option<Vec<GenericParameter>>,
     pub ty: Type,
     pub r#trait: Option<Type>,
@@ -890,7 +892,11 @@ pub enum ModuleItem {
 
     /// Import item.
     ///
-    Import { path: ImportPath },
+    Import {
+        /// Location of the entire import item.
+        span: Span,
+        path: ImportPath,
+    },
 
     /// Trait item.
     Trait {
@@ -929,19 +935,127 @@ pub enum ModuleItem {
     TypeAlias(TypeAlias),
 }
 
+impl ModuleItem {
+    pub fn span(&self) -> Span {
+        match self {
+            Self::Enum {
+                name: IdentifierAst { span, .. },
+                ..
+            }
+            | Self::Function(Function {
+                signature:
+                    FunctionSignature {
+                        name: IdentifierAst { span, .. },
+                        ..
+                    },
+                ..
+            })
+            | Self::Impl(Impl { span, .. })
+            | Self::Import { span, .. }
+            | Self::Struct {
+                name: IdentifierAst { span, .. },
+                ..
+            }
+            | Self::Trait {
+                name: IdentifierAst { span, .. },
+                ..
+            }
+            | Self::TupleLikeStruct {
+                name: IdentifierAst { span, .. },
+                ..
+            }
+            | Self::TypeAlias(TypeAlias {
+                name: IdentifierAst { span, .. },
+                ..
+            }) => *span,
+        }
+    }
+
+    pub fn name(&self) -> Option<Symbol> {
+        match self {
+            ModuleItem::Enum {
+                name: IdentifierAst { symbol, .. },
+                ..
+            }
+            | ModuleItem::Function(Function {
+                signature:
+                    FunctionSignature {
+                        name: IdentifierAst { symbol, .. },
+                        ..
+                    },
+                ..
+            })
+            | ModuleItem::Struct {
+                name: IdentifierAst { symbol, .. },
+                ..
+            }
+            | ModuleItem::TupleLikeStruct {
+                name: IdentifierAst { symbol, .. },
+                ..
+            }
+            | ModuleItem::Trait {
+                name: IdentifierAst { symbol, .. },
+                ..
+            }
+            | ModuleItem::TypeAlias(TypeAlias {
+                name: IdentifierAst { symbol, .. },
+                ..
+            }) => Some(*symbol),
+            ModuleItem::Import { .. } | ModuleItem::Impl(..) => None,
+        }
+    }
+
+    pub fn name_or_panic(&self) -> Symbol {
+        self.name().unwrap()
+    }
+
+    pub fn kind(&self) -> ModuleItemKind {
+        match self {
+            Self::Enum { .. } => ModuleItemKind::Enum,
+            Self::Function(..) => ModuleItemKind::Function,
+            Self::Import { .. } => ModuleItemKind::Import,
+            Self::Trait { .. } => ModuleItemKind::Trait,
+            Self::Impl(..) => ModuleItemKind::Impl,
+            Self::Struct { .. } => ModuleItemKind::Struct,
+            Self::TupleLikeStruct { .. } => ModuleItemKind::TupleLikeStruct,
+            Self::TypeAlias(..) => ModuleItemKind::TypeAlias,
+        }
+    }
+
+    pub fn visibility(&self) -> Option<Visibility> {
+        match self {
+            Self::Enum { visibility, .. }
+            | Self::Struct { visibility, .. }
+            | Self::TupleLikeStruct { visibility, .. }
+            | Self::Trait { visibility, .. }
+            | Self::TypeAlias(TypeAlias { visibility, .. })
+            | Self::Function(Function {
+                signature: FunctionSignature { visibility, .. },
+                ..
+            }) => Some(*visibility),
+            _ => None,
+        }
+    }
+
+    pub fn visibility_or_panic(&self) -> Visibility {
+        self.visibility().unwrap()
+    }
+}
+
 /// A kind of module item.
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
-pub enum ItemKind {
+pub enum ModuleItemKind {
     Enum,
     Function,
     Import,
     Trait,
     Impl,
     Struct,
+    TupleLikeStruct,
     TypeAlias,
 }
 
-impl AsRef<str> for ItemKind {
+impl AsRef<str> for ModuleItemKind {
     fn as_ref(&self) -> &str {
         match self {
             Self::Enum => "enum",
@@ -950,14 +1064,15 @@ impl AsRef<str> for ItemKind {
             Self::Trait => "trait",
             Self::Impl => "type implementation",
             Self::Struct => "struct",
+            Self::TupleLikeStruct => "tuple-like struct",
             Self::TypeAlias => "type alias",
         }
     }
 }
 
-impl ToString for ItemKind {
-    fn to_string(&self) -> String {
-        self.as_ref().into()
+impl Display for ModuleItemKind {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.as_ref().fmt(f)
     }
 }
 

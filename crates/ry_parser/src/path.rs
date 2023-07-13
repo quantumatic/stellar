@@ -32,7 +32,7 @@ impl Parse for ImportPathParser {
     type Output = Option<ImportPath>;
 
     fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
-        let identifiers = PathParser.parse(state)?;
+        let path = PathParser.parse(state)?;
 
         let r#as = if state.next_token.raw == Token![as] {
             state.advance();
@@ -42,9 +42,6 @@ impl Parse for ImportPathParser {
             None
         };
 
-        Some(ImportPath {
-            left: identifiers,
-            r#as,
-        })
+        Some(ImportPath { path, r#as })
     }
 }
