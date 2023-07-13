@@ -16,3 +16,4 @@ ry_interner = { path = "../ry_interner" }
 ry_manifest = { path = "../ry_manifest" }
 ry_parser = { path = "../ry_parser" }
 ry_typed_ast = { path = "../ry_typed_ast" }
+ry_fx_hash = { path = "../ry_fx_hash" }
