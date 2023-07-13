@@ -14,6 +14,12 @@ pub struct NameResolutionTree<'ast> {
     pub projects: FxHashMap<Symbol, ProjectData<'ast>>,
 }
 
+impl Default for NameResolutionTree<'_> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl<'ast> NameResolutionTree<'ast> {
     pub fn new() -> Self {
         NameResolutionTree {
@@ -38,9 +44,9 @@ impl<'ast> NameResolutionTree<'ast> {
         }
 
         if let Some(binding) = module.bindings.get(last) {
-            return Some(NameBindingData::Item(&binding));
+            return Some(NameBindingData::Item(binding));
         } else if let Some(submodule) = module.submodules.get(last) {
-            return Some(NameBindingData::Module(&submodule));
+            return Some(NameBindingData::Module(submodule));
         } else {
             return None;
         }
@@ -113,8 +119,10 @@ impl<'ast> ModuleData<'ast> {
     ) -> Option<NameBindingData<'tree, 'ast>> {
         for (_, import) in &self.imports {
             match import.r#as {
-                Some(IdentifierAst { symbol, .. }) => {
-                    if symbol != symbol {
+                Some(IdentifierAst {
+                    symbol: id_symbol, ..
+                }) => {
+                    if id_symbol != symbol {
                         continue;
                     }
 

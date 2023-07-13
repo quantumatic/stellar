@@ -69,7 +69,7 @@ use ty::Type;
 
 pub mod ty;
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Path {
     symbols: Vec<Symbol>,
 }

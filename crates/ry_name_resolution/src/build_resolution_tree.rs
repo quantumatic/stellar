@@ -46,24 +46,23 @@ pub fn build_resolution_tree_node_from_ast<'ast>(
             _ => {
                 let name = module_item_name(item);
 
-                match bindings.get(&name) {
-                    Some(ModuleItemNameBindingData::NotAnalyzed(previous_item)) => {
-                        file_diagnostics.push(
-                            NameResolutionDiagnostics::OverwrittingModuleItem {
-                                name: interner.resolve(name).unwrap().to_owned(),
-                                first_definition: DefinitionInfo {
-                                    span: previous_item.span(),
-                                    kind: previous_item.kind(),
-                                },
-                                second_definition: DefinitionInfo {
-                                    span: item.span(),
-                                    kind: item.kind(),
-                                },
-                            }
-                            .build(),
-                        );
-                    }
-                    _ => {}
+                if let Some(ModuleItemNameBindingData::NotAnalyzed(previous_item)) =
+                    bindings.get(&name)
+                {
+                    file_diagnostics.push(
+                        NameResolutionDiagnostics::OverwrittingModuleItem {
+                            name: interner.resolve(name).unwrap().to_owned(),
+                            first_definition: DefinitionInfo {
+                                span: previous_item.span(),
+                                kind: previous_item.kind(),
+                            },
+                            second_definition: DefinitionInfo {
+                                span: item.span(),
+                                kind: item.kind(),
+                            },
+                        }
+                        .build(),
+                    );
                 }
 
                 bindings.insert(

@@ -49,7 +49,7 @@ impl BuildDiagnostic for NameResolutionDiagnostics {
                 project_name_span,
             } => Diagnostic::error()
                 .with_code("E005")
-                .with_message(format!("trying to import the project"))
+                .with_message("trying to import the project".to_owned())
                 .with_labels(vec![
                     span.to_primary_label()
                         .with_message("consider removing this import"),

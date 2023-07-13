@@ -936,7 +936,10 @@ pub enum ModuleItem {
 }
 
 impl ModuleItem {
-    pub fn span(&self) -> Span {
+    /// Returns the span of the item.
+    #[inline]
+    #[must_use]
+    pub const fn span(&self) -> Span {
         match self {
             Self::Enum {
                 name: IdentifierAst { span, .. },
@@ -971,13 +974,16 @@ impl ModuleItem {
         }
     }
 
-    pub fn name(&self) -> Option<Symbol> {
+    /// Returns the name of the item.
+    #[inline]
+    #[must_use]
+    pub const fn name(&self) -> Option<Symbol> {
         match self {
-            ModuleItem::Enum {
+            Self::Enum {
                 name: IdentifierAst { symbol, .. },
                 ..
             }
-            | ModuleItem::Function(Function {
+            | Self::Function(Function {
                 signature:
                     FunctionSignature {
                         name: IdentifierAst { symbol, .. },
@@ -985,31 +991,41 @@ impl ModuleItem {
                     },
                 ..
             })
-            | ModuleItem::Struct {
+            | Self::Struct {
                 name: IdentifierAst { symbol, .. },
                 ..
             }
-            | ModuleItem::TupleLikeStruct {
+            | Self::TupleLikeStruct {
                 name: IdentifierAst { symbol, .. },
                 ..
             }
-            | ModuleItem::Trait {
+            | Self::Trait {
                 name: IdentifierAst { symbol, .. },
                 ..
             }
-            | ModuleItem::TypeAlias(TypeAlias {
+            | Self::TypeAlias(TypeAlias {
                 name: IdentifierAst { symbol, .. },
                 ..
             }) => Some(*symbol),
-            ModuleItem::Import { .. } | ModuleItem::Impl(..) => None,
+            Self::Import { .. } | Self::Impl(..) => None,
         }
     }
 
+    /// Returns the name of the item.
+    ///
+    /// # Panics
+    ///
+    /// If the item does not have a name.
+    #[inline]
+    #[must_use]
     pub fn name_or_panic(&self) -> Symbol {
         self.name().unwrap()
     }
 
-    pub fn kind(&self) -> ModuleItemKind {
+    /// Returns the kind of the item.
+    #[inline]
+    #[must_use]
+    pub const fn kind(&self) -> ModuleItemKind {
         match self {
             Self::Enum { .. } => ModuleItemKind::Enum,
             Self::Function(..) => ModuleItemKind::Function,
@@ -1022,7 +1038,10 @@ impl ModuleItem {
         }
     }
 
-    pub fn visibility(&self) -> Option<Visibility> {
+    /// Returns the visibility of the item.
+    #[inline]
+    #[must_use]
+    pub const fn visibility(&self) -> Option<Visibility> {
         match self {
             Self::Enum { visibility, .. }
             | Self::Struct { visibility, .. }
@@ -1037,6 +1056,13 @@ impl ModuleItem {
         }
     }
 
+    /// Returns the visibility of the item.
+    ///
+    /// # Panics
+    ///
+    /// If the item does not have a visibility.
+    #[inline]
+    #[must_use]
     pub fn visibility_or_panic(&self) -> Visibility {
         self.visibility().unwrap()
     }
