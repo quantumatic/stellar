@@ -5,6 +5,7 @@ members = [
     "crates/ry_ast",
     "crates/ry_diagnostics",
     "crates/ry_filesystem",
+    "crates/ry_fx_hash",
     "crates/ry_interner",
     "crates/ry_lexer",
     "crates/ry_manifest",
@@ -12,5 +13,4 @@ members = [
     "crates/ry_parser",
     "crates/ry_stable_likely",
     "crates/ry_typed_ast",
-    "crates/ry_fx_hash",
 ]
