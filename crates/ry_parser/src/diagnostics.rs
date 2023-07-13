@@ -208,7 +208,7 @@ impl BuildDiagnostic for ParseDiagnostic {
                     .with_code("E001")
                     .with_labels(vec![
                         item_span.to_primary_label()
-                            .with_message(format!("happened when parsing this {}", item_kind.to_string())),
+                            .with_message(format!("happened when parsing this {item_kind}")),
                         span.to_secondary_label()
                             .with_message("consider adding `}`".to_owned())
                     ]),
