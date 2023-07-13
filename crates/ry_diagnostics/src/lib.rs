@@ -4,7 +4,6 @@
     html_logo_url = "https://raw.githubusercontent.com/abs0luty/Ry/main/additional/icon/ry.png",
     html_favicon_url = "https://raw.githubusercontent.com/abs0luty/Ry/main/additional/icon/ry.png"
 )]
-#![cfg_attr(not(test), forbid(clippy::unwrap_used))]
 #![warn(missing_docs, clippy::dbg_macro)]
 #![deny(
     // rustc lint groups https://doc.rust-lang.org/rustc/lints/groups.html
@@ -194,6 +193,7 @@ impl Files<'_> for EmptyDiagnosticsManager {
 
 impl DiagnosticsEmitter {
     /// Emit the diagnostic not associated with a file.
+    #[allow(clippy::missing_panics_doc)]
     pub fn emit_context_free_diagnostic(&self, diagnostic: &Diagnostic) {
         term::emit(
             &mut self.writer.lock(),
@@ -201,7 +201,7 @@ impl DiagnosticsEmitter {
             &EmptyDiagnosticsManager,
             diagnostic,
         )
-        .expect("emit_global_diagnostic() failed");
+        .unwrap();
     }
 
     /// Emit diagnostics not associated with a particular file.
@@ -212,12 +212,14 @@ impl DiagnosticsEmitter {
     }
 
     /// Emit diagnostics associated with a particular file.
+    ///
+    /// # Panics
+    /// If the file with a given path does not exist.
     pub fn emit_file_diagnostics(&self, path: &Path, file_diagnostics: &[Diagnostic]) {
         let file = InMemoryFile::new_or_panic(path);
 
         for diagnostic in file_diagnostics {
-            term::emit(&mut self.writer.lock(), &self.config, &file, diagnostic)
-                .expect("Cannot emit the diagnostic");
+            term::emit(&mut self.writer.lock(), &self.config, &file, diagnostic).unwrap();
         }
     }
 
@@ -293,6 +295,6 @@ pub fn check_global_diagnostics(diagnostics: &GlobalDiagnostics) -> DiagnosticsS
 
 /// Anything that can be reported using [`DiagnosticsEmitter`].
 pub trait BuildDiagnostic {
-    /// Convert [`self`] into [`SingleContextDiagnostic`].
+    /// Convert [`self`] into [`Diagnostic`].
     fn build(&self) -> Diagnostic;
 }

@@ -6,9 +6,4 @@ license = "MIT OR Apache-2.0"
 repository = "https://github.com/ry-lang/ry"
 authors = ["Adi Salimgereyev <adisalimgereev@gmail.com>"]
 readme = "../../README.md"
-description = "Implements diagnostics for the Ry programming language."
-
-[dependencies]
-codespan-reporting = "0.11.1"
-ry_filesystem = { path = "../ry_filesystem" }
-
+description = "Implements the fx hash algorithm for the Ry programming language."

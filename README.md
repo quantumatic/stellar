@@ -1,3 +1,5 @@
+<img align="right" width="25%" src="./additional/icon/ry.png">
+
 # Ry programming language
 
 ![](https://github.com/ry-lang/ry/actions/workflows/ci.yaml/badge.svg)

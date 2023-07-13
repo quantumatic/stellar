@@ -6,9 +6,9 @@ use crate::{
     visit::{
         walk_enum_items, walk_expression, walk_function, walk_generic_argument,
         walk_generic_arguments, walk_generic_parameter, walk_generic_parameters, walk_if_block,
-        walk_if_blocks, walk_item, walk_lambda_function_parameter, walk_lambda_function_parameters,
-        walk_match_expression_item, walk_match_expression_items, walk_module, walk_path,
-        walk_statement, walk_statements_block, walk_struct_expression_item,
+        walk_if_blocks, walk_lambda_function_parameter, walk_lambda_function_parameters,
+        walk_match_expression_item, walk_match_expression_items, walk_module, walk_module_item,
+        walk_path, walk_statement, walk_statements_block, walk_struct_expression_item,
         walk_struct_expression_items, walk_struct_field, walk_struct_field_pattern,
         walk_struct_field_patterns, walk_struct_fields, walk_trait_bounds, walk_trait_item,
         walk_trait_items, walk_tuple_field, walk_tuple_fields, walk_type, walk_type_alias,
@@ -16,8 +16,8 @@ use crate::{
         walk_where_clause_item, Visitor,
     },
     BinaryOperator, EnumItem, Expression, Function, GenericArgument, GenericParameter,
-    IdentifierAst, Impl, ImportPath, Item, LambdaFunctionParameter, Literal, MatchExpressionItem,
-    Module, Path, Pattern, PostfixOperator, PrefixOperator, Statement, StatementsBlock,
+    IdentifierAst, Impl, ImportPath, LambdaFunctionParameter, Literal, MatchExpressionItem, Module,
+    ModuleItem, Path, Pattern, PostfixOperator, PrefixOperator, Statement, StatementsBlock,
     StructExpressionItem, StructField, StructFieldPattern, TraitItem, TupleField, Type, TypeAlias,
     TypePath, TypePathSegment, Visibility, WhereClauseItem,
 };
@@ -275,23 +275,23 @@ impl Visitor<'_> for Serializer<'_> {
         self.decrement_indentation();
     }
 
-    fn visit_item(&mut self, item: &'_ Item) {
+    fn visit_module_item(&mut self, item: &'_ ModuleItem) {
         self.increment_indentation();
         self.write_identation();
 
         match item {
-            Item::Enum { .. } => self.write("ENUM_GLOBAL_ITEM"),
-            Item::Function(..) => self.write("FUNCTION_GLOBAL_ITEM"),
-            Item::Impl(..) => self.write("IMPL_GLOBAL_ITEM"),
-            Item::Import { .. } => self.write("IMPORT"),
-            Item::Struct { .. } => self.write("STRUCT_GLOBAL_ITEM"),
-            Item::Trait { .. } => self.write("TRAIT_GLOBAL_ITEM"),
-            Item::TupleLikeStruct { .. } => self.write("TUPLE_LIKE_STRUCT_GLOBAL_ITEM"),
-            Item::TypeAlias(..) => self.write("TYPE_ALIAS_GLOBAL_ITEM"),
+            ModuleItem::Enum { .. } => self.write("ENUM_GLOBAL_ITEM"),
+            ModuleItem::Function(..) => self.write("FUNCTION_GLOBAL_ITEM"),
+            ModuleItem::Impl(..) => self.write("IMPL_GLOBAL_ITEM"),
+            ModuleItem::Import { .. } => self.write("IMPORT"),
+            ModuleItem::Struct { .. } => self.write("STRUCT_GLOBAL_ITEM"),
+            ModuleItem::Trait { .. } => self.write("TRAIT_GLOBAL_ITEM"),
+            ModuleItem::TupleLikeStruct { .. } => self.write("TUPLE_LIKE_STRUCT_GLOBAL_ITEM"),
+            ModuleItem::TypeAlias(..) => self.write("TYPE_ALIAS_GLOBAL_ITEM"),
         }
 
         self.write_newline();
-        walk_item(self, item);
+        walk_module_item(self, item);
 
         self.decrement_indentation();
     }

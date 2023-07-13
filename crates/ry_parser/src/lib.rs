@@ -9,7 +9,6 @@
     html_logo_url = "https://raw.githubusercontent.com/abs0luty/Ry/main/additional/icon/ry.png",
     html_favicon_url = "https://raw.githubusercontent.com/abs0luty/Ry/main/additional/icon/ry.png"
 )]
-#![cfg_attr(not(test), forbid(clippy::unwrap_used))]
 #![warn(missing_docs, clippy::dbg_macro)]
 #![deny(
     // rustc lint groups https://doc.rust-lang.org/rustc/lints/groups.html
@@ -84,7 +83,7 @@ use pattern::PatternParser;
 use r#type::TypeParser;
 use ry_ast::{
     token::{LexError, RawToken, Token},
-    Expression, IdentifierAst, Item, Module, Pattern, Statement, Token, Type, Visibility,
+    Expression, IdentifierAst, Module, ModuleItem, Pattern, Statement, Token, Type, Visibility,
 };
 use ry_diagnostics::{BuildDiagnostic, Diagnostic};
 use ry_filesystem::span::{Span, SpanIndex};
@@ -194,7 +193,7 @@ pub fn parse_item<S>(
     source: S,
     diagnostics: &mut Vec<Diagnostic>,
     interner: &mut Interner,
-) -> Option<Item>
+) -> Option<ModuleItem>
 where
     S: AsRef<str>,
 {
@@ -204,7 +203,7 @@ where
 /// Parse an item.
 #[inline]
 #[must_use]
-pub fn parse_item_using(state: &mut ParseState<'_, '_, '_>) -> Option<Item> {
+pub fn parse_item_using(state: &mut ParseState<'_, '_, '_>) -> Option<ModuleItem> {
     ItemParser.parse(state)
 }
 

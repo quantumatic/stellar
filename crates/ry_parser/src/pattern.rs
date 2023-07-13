@@ -97,10 +97,7 @@ impl Parse for PatternExceptOrParser {
                         pattern,
                     })
                 } else {
-                    Some(Pattern::Path {
-                        span: path.span,
-                        path,
-                    })
+                    Some(Pattern::Path { path })
                 }
             }
             Token!['['] => ArrayPatternParser.parse(state),

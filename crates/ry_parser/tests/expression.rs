@@ -92,7 +92,7 @@ fn postfix() {
             })),
             operator: PostfixOperator {
                 span: Span { start: 1, end: 3 },
-                raw: RawPostfixOperator::PlusPlus
+                raw: RawPostfixOperator::DoublePlus
             }
         })
     );

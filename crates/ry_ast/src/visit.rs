@@ -1,10 +1,15 @@
+//! AST walker. Each overridden visit method has full control over what
+//! happens with its node, it can do its own traversal of the node's children,
+//! call `visit::walk_*` to apply the default traversal algorithm, or prevent
+//! deeper traversal by doing nothing.
+
 use crate::{
-    BinaryOperator, EnumItem, Expression, Function, FunctionParameter, GenericArgument,
-    GenericParameter, IdentifierAst, Impl, ImportPath, Item, JustFunctionParameter,
-    LambdaFunctionParameter, Literal, MatchExpressionItem, Module, Path, Pattern, PostfixOperator,
-    PrefixOperator, SelfParameter, Statement, StatementsBlock, StructExpressionItem, StructField,
-    StructFieldPattern, TraitItem, TupleField, Type, TypeAlias, TypePath, TypePathSegment,
-    Visibility, WhereClauseItem,
+    BinaryOperator, EnumItem, Expression, Function, FunctionParameter, FunctionSignature,
+    GenericArgument, GenericParameter, IdentifierAst, Impl, ImportPath, JustFunctionParameter,
+    LambdaFunctionParameter, Literal, MatchExpressionItem, Module, ModuleItem, Path, Pattern,
+    PostfixOperator, PrefixOperator, SelfParameter, Statement, StatementsBlock,
+    StructExpressionItem, StructField, StructFieldPattern, TraitItem, TupleField, Type, TypeAlias,
+    TypePath, TypePathSegment, Visibility, WhereClauseItem,
 };
 
 pub trait Visitor<'ast>: Sized {
@@ -22,8 +27,8 @@ pub trait Visitor<'ast>: Sized {
 
     fn visit_module_docstring(&mut self, _docstring: Option<&'ast str>) {}
 
-    fn visit_item(&mut self, item: &'ast Item) {
-        walk_item(self, item);
+    fn visit_module_item(&mut self, item: &'ast ModuleItem) {
+        walk_module_item(self, item);
     }
 
     fn visit_local_docstring(&mut self, _docstring: Option<&'ast str>) {}
@@ -34,6 +39,10 @@ pub trait Visitor<'ast>: Sized {
 
     fn visit_function(&mut self, function: &'ast Function) {
         walk_function(self, function);
+    }
+
+    fn visit_function_signature(&mut self, signature: &'ast FunctionSignature) {
+        walk_function_signature(self, signature);
     }
 
     fn visit_visibility(&mut self, _visibility: Visibility) {}
@@ -221,16 +230,16 @@ where
     visitor.visit_module_docstring(module.docstring.as_deref());
 
     for item in &module.items {
-        visitor.visit_item(item);
+        visitor.visit_module_item(item);
     }
 }
 
-pub fn walk_item<'ast, V>(visitor: &mut V, item: &'ast Item)
+pub fn walk_module_item<'ast, V>(visitor: &mut V, item: &'ast ModuleItem)
 where
     V: Visitor<'ast>,
 {
     match item {
-        Item::Enum {
+        ModuleItem::Enum {
             visibility,
             name,
             generic_parameters,
@@ -245,13 +254,13 @@ where
             visitor.visit_where_clause(where_clause.as_deref());
             visitor.visit_enum_items(items);
         }
-        Item::Function(function) => {
+        ModuleItem::Function(function) => {
             visitor.visit_function(function);
         }
-        Item::Import { path } => {
+        ModuleItem::Import { path } => {
             visitor.visit_import_path(path);
         }
-        Item::Trait {
+        ModuleItem::Trait {
             visibility,
             name,
             generic_parameters,
@@ -266,7 +275,7 @@ where
             visitor.visit_where_clause(where_clause.as_deref());
             visitor.visit_trait_items(items);
         }
-        Item::TupleLikeStruct {
+        ModuleItem::TupleLikeStruct {
             visibility,
             name,
             generic_parameters,
@@ -281,8 +290,8 @@ where
             visitor.visit_where_clause(where_clause.as_deref());
             visitor.visit_tuple_fields(fields);
         }
-        Item::Impl(implementation) => visitor.visit_type_implementation(implementation),
-        Item::Struct {
+        ModuleItem::Impl(implementation) => visitor.visit_type_implementation(implementation),
+        ModuleItem::Struct {
             visibility,
             name,
             generic_parameters,
@@ -297,7 +306,7 @@ where
             visitor.visit_struct_fields(fields);
             visitor.visit_local_docstring(docstring.as_deref());
         }
-        Item::TypeAlias(alias) => visitor.visit_type_alias(alias),
+        ModuleItem::TypeAlias(alias) => visitor.visit_type_alias(alias),
     }
 }
 
@@ -321,15 +330,21 @@ pub fn walk_function<'ast, V>(visitor: &mut V, function: &'ast Function)
 where
     V: Visitor<'ast>,
 {
-    visitor.visit_visibility(function.visibility);
-    visitor.visit_identifier(function.name);
-    visitor.visit_generic_parameters(function.generic_parameters.as_deref());
-    visitor.visit_function_parameters(&function.parameters);
-    visitor.visit_where_clause(function.where_clause.as_deref());
+    visitor.visit_function_signature(&function.signature);
 
     if let Some(body) = &function.body {
         visitor.visit_statements_block(body);
     }
+}
+
+pub fn walk_function_signature<'ast, V>(visitor: &mut V, signature: &'ast FunctionSignature)
+where
+    V: Visitor<'ast>,
+{
+    visitor.visit_visibility(signature.visibility);
+    visitor.visit_identifier(signature.name);
+    visitor.visit_generic_parameters(signature.generic_parameters.as_deref());
+    visitor.visit_function_parameters(&signature.parameters);
 }
 
 pub fn walk_where_clause<'ast, V>(visitor: &mut V, items: Option<&'ast [WhereClauseItem]>)
@@ -386,7 +401,7 @@ where
             visitor.visit_identifier(*name);
             visitor.visit_struct_fields(fields);
         }
-        EnumItem::Tuple {
+        EnumItem::TupleLike {
             name,
             fields,
             docstring,

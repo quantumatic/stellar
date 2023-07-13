@@ -1,7 +1,7 @@
 use ry_ast::{
-    token::RawToken, EnumItem, Function, FunctionParameter, IdentifierAst, Impl, Item, ItemKind,
-    JustFunctionParameter, SelfParameter, StructField, Token, TraitItem, TupleField, TypeAlias,
-    Visibility,
+    token::RawToken, EnumItem, Function, FunctionParameter, FunctionSignature, IdentifierAst, Impl,
+    ItemKind, JustFunctionParameter, ModuleItem, SelfParameter, StructField, Token, TraitItem,
+    TupleField, TypeAlias, Visibility,
 };
 use ry_diagnostics::BuildDiagnostic;
 use ry_filesystem::span::Span;
@@ -80,7 +80,7 @@ pub(crate) struct ItemParser;
 pub(crate) struct ItemsParser;
 
 impl Parse for ImportParser {
-    type Output = Option<Item>;
+    type Output = Option<ModuleItem>;
 
     fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
         if let Some(span) = self.visibility.span_of_pub() {
@@ -98,7 +98,7 @@ impl Parse for ImportParser {
         let path = ImportPathParser.parse(state)?;
         state.consume(Token![;], "import")?;
 
-        Some(Item::Import { path })
+        Some(ModuleItem::Import { path })
     }
 }
 
@@ -145,7 +145,7 @@ impl Parse for StructFieldsParser {
 }
 
 impl Parse for StructParser {
-    type Output = Option<Item>;
+    type Output = Option<ModuleItem>;
 
     fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
         state.advance();
@@ -158,7 +158,7 @@ impl Parse for StructParser {
 
         if state.next_token.raw == Token!['{'] {
             let fields = StructFieldsParser.parse(state)?;
-            Some(Item::Struct {
+            Some(ModuleItem::Struct {
                 visibility: self.visibility,
                 name,
                 generic_parameters,
@@ -185,7 +185,7 @@ impl Parse for StructParser {
                 );
             }
 
-            Some(Item::TupleLikeStruct {
+            Some(ModuleItem::TupleLikeStruct {
                 visibility: self.visibility,
                 name,
                 generic_parameters,
@@ -267,12 +267,15 @@ impl Parse for FunctionParser {
         let where_clause = WhereClauseParser.optionally_parse(state)?;
 
         Some(Function {
-            visibility: self.visibility,
-            name,
-            generic_parameters,
-            parameters,
-            return_type,
-            where_clause,
+            signature: FunctionSignature {
+                visibility: self.visibility,
+                name,
+                generic_parameters,
+                parameters,
+                return_type,
+                where_clause,
+                docstring: self.docstring,
+            },
             body: match state.next_token.raw {
                 Token![;] => {
                     state.advance();
@@ -295,7 +298,6 @@ impl Parse for FunctionParser {
                     None
                 }
             },
-            docstring: self.docstring,
         })
     }
 }
@@ -395,7 +397,7 @@ impl Parse for TypeAliasParser {
 }
 
 impl Parse for TraitParser {
-    type Output = Option<Item>;
+    type Output = Option<ModuleItem>;
 
     fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
         state.advance();
@@ -418,7 +420,7 @@ impl Parse for TraitParser {
             state.consume(Token!['}'], "trait declaration")?;
         }
 
-        Some(Item::Trait {
+        Some(ModuleItem::Trait {
             visibility: self.visibility,
             name,
             generic_parameters,
@@ -430,7 +432,7 @@ impl Parse for TraitParser {
 }
 
 impl Parse for ImplParser {
-    type Output = Option<Item>;
+    type Output = Option<ModuleItem>;
 
     fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
         state.advance();
@@ -472,7 +474,7 @@ impl Parse for ImplParser {
             state.consume(Token!['}'], "type implementation")?;
         }
 
-        Some(Item::Impl(Impl {
+        Some(ModuleItem::Impl(Impl {
             generic_parameters,
             ty,
             r#trait,
@@ -484,7 +486,7 @@ impl Parse for ImplParser {
 }
 
 impl Parse for EnumParser {
-    type Output = Option<Item>;
+    type Output = Option<ModuleItem>;
 
     fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
         state.advance();
@@ -503,7 +505,7 @@ impl Parse for EnumParser {
 
         let where_clause = WhereClauseParser.optionally_parse(state)?;
 
-        Some(Item::Enum {
+        Some(ModuleItem::Enum {
             visibility: self.visibility,
             name,
             generic_parameters,
@@ -523,7 +525,7 @@ impl Parse for EnumItemParser {
 
         match state.next_token.raw {
             Token!['{'] => EnumItemStructParser { name, docstring }.parse(state),
-            Token!['('] => Some(EnumItem::Tuple {
+            Token!['('] => Some(EnumItem::TupleLike {
                 name,
                 fields: TupleFieldsParser {
                     context: ItemKind::Enum,
@@ -575,7 +577,7 @@ impl Parse for TupleFieldsParser {
 }
 
 impl Parse for ItemsParser {
-    type Output = Vec<Item>;
+    type Output = Vec<ModuleItem>;
 
     fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
         let mut items = vec![];
@@ -620,7 +622,7 @@ macro_rules! go_to_next_valid_item {
 }
 
 impl Parse for ItemParser {
-    type Output = Option<Item>;
+    type Output = Option<ModuleItem>;
 
     fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
         let docstring = state.consume_local_docstring();
@@ -660,7 +662,7 @@ impl Parse for ItemParser {
                     .parse(state)
                 )
             }
-            Token![fun] => Item::Function(go_to_next_valid_item!(
+            Token![fun] => ModuleItem::Function(go_to_next_valid_item!(
                 state,
                 FunctionParser {
                     visibility,
@@ -678,7 +680,7 @@ impl Parse for ItemParser {
                     .parse(state)
                 )
             }
-            Token![type] => Item::TypeAlias(go_to_next_valid_item!(
+            Token![type] => ModuleItem::TypeAlias(go_to_next_valid_item!(
                 state,
                 TypeAliasParser {
                     visibility,
