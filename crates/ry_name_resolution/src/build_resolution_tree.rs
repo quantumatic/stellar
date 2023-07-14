@@ -1,31 +1,19 @@
 use std::path::PathBuf;
 
-use ry_ast::{Function, FunctionSignature, Module, ModuleItem, TypeAlias};
+use ry_ast::{Module, ModuleItem};
 use ry_diagnostics::{BuildDiagnostic, Diagnostic};
 use ry_fx_hash::FxHashMap;
-use ry_interner::{Interner, Symbol};
+use ry_interner::Interner;
 
 use crate::{
-    diagnostics::{DefinitionInfo, NameResolutionDiagnostics},
+    diagnostics::{DefinitionInfo, NameResolutionDiagnostic},
     ModuleData, ModuleItemNameBindingData,
 };
 
-pub fn module_item_name(item: &ModuleItem) -> Symbol {
-    match item {
-        ModuleItem::Enum { name, .. }
-        | ModuleItem::Function(Function {
-            signature: FunctionSignature { name, .. },
-            ..
-        })
-        | ModuleItem::Struct { name, .. }
-        | ModuleItem::TupleLikeStruct { name, .. }
-        | ModuleItem::Trait { name, .. }
-        | ModuleItem::TypeAlias(TypeAlias { name, .. }) => name.symbol,
-        ModuleItem::Import { .. } | ModuleItem::Impl(..) => unreachable!(),
-    }
-}
-
-pub fn build_resolution_tree_node_from_ast<'ast>(
+/// Builds a name resolution tree module node from the module AST
+/// and adds diagnostic into the diagnostics if there are two definitions with
+/// the same name.
+pub fn build_module_node_from_ast<'ast>(
     file_path: impl Into<PathBuf>,
     module: &'ast Module,
     interner: &Interner,
@@ -44,13 +32,13 @@ pub fn build_resolution_tree_node_from_ast<'ast>(
                 imports.push((*span, path));
             }
             _ => {
-                let name = module_item_name(item);
+                let name = item.name_or_panic();
 
                 if let Some(ModuleItemNameBindingData::NotAnalyzed(previous_item)) =
                     bindings.get(&name)
                 {
                     file_diagnostics.push(
-                        NameResolutionDiagnostics::OverwrittingModuleItem {
+                        NameResolutionDiagnostic::ItemDefinedMultipleTimes {
                             name: interner.resolve(name).unwrap().to_owned(),
                             first_definition: DefinitionInfo {
                                 span: previous_item.span(),
@@ -65,10 +53,7 @@ pub fn build_resolution_tree_node_from_ast<'ast>(
                     );
                 }
 
-                bindings.insert(
-                    module_item_name(item),
-                    ModuleItemNameBindingData::NotAnalyzed(item),
-                );
+                bindings.insert(name, ModuleItemNameBindingData::NotAnalyzed(item));
             }
         }
     }

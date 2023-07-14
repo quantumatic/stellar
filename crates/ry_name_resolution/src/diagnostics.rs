@@ -2,28 +2,46 @@ use ry_ast::ModuleItemKind;
 use ry_diagnostics::{BuildDiagnostic, Diagnostic};
 use ry_filesystem::span::Span;
 
+/// An information about an item defined in the module.
 pub struct DefinitionInfo {
+    /// Location of the item name.
     pub span: Span,
+
+    /// Kind of the definition.
     pub kind: ModuleItemKind,
 }
 
-pub enum NameResolutionDiagnostics {
-    OverwrittingModuleItem {
+/// Diagnostic encountered during name resolution.
+pub enum NameResolutionDiagnostic {
+    /// The name is defined multiple times.
+    ItemDefinedMultipleTimes {
+        /// Name of the item.
         name: String,
+
+        /// First definition of the item.
         first_definition: DefinitionInfo,
+
+        /// Second definition of the item.
         second_definition: DefinitionInfo,
     },
+
+    /// Trying to import the project.
     ImportingProject {
+        /// Location of the entire import module item.
         span: Span,
+
+        /// Name of the project.
         project_name: String,
+
+        /// Location of the project name in the import.
         project_name_span: Span,
     },
 }
 
-impl BuildDiagnostic for NameResolutionDiagnostics {
+impl BuildDiagnostic for NameResolutionDiagnostic {
     fn build(&self) -> Diagnostic {
         match self {
-            NameResolutionDiagnostics::OverwrittingModuleItem {
+            Self::ItemDefinedMultipleTimes {
                 name,
                 first_definition,
                 second_definition,

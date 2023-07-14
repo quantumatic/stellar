@@ -6,6 +6,12 @@ use ry_fx_hash::FxHashMap;
 use ry_interner::Interner;
 use ry_name_resolution::{ModuleData, NameBindingData, NameResolutionTree, Path, ProjectData};
 
+/// ```txt
+/// a
+/// |_ a.ry
+///
+/// resolve(a.a) = a.a module
+/// ```
 #[test]
 fn resolve_module() {
     let mut interner = Interner::default();
@@ -52,6 +58,15 @@ fn resolve_module() {
     assert_eq!(tree.resolve_absolute_path(Path { symbols: vec![b] }), None);
 }
 
+/// ```txt
+/// a
+/// |_ project.ry
+///    |_ `import a.b;`
+///    |_ `import a.b as c;`
+/// |_ b.ry
+///
+/// a/project.ry: resolve(b) = a.b, resolve(c) = a.b
+/// ```
 #[test]
 fn import() {
     let mut interner = Interner::default();
