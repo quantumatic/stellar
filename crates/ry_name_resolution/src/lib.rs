@@ -88,8 +88,9 @@ impl Default for GlobalContext {
 
 impl GlobalContext {
     /// Creates new name empty resolution tree.
+    #[must_use]
     pub fn new() -> Self {
-        GlobalContext {
+        Self {
             projects: FxHashMap::default(),
         }
     }
@@ -98,7 +99,8 @@ impl GlobalContext {
     ///
     /// * Path must start with a project name (not `serialize`, but `json.serialization.serialize`).
     /// * Imports are not resolved here, because the context is global.
-    pub fn resolve_module_item_by_absolute_path(&self, path: Path) -> Option<NameBindingData<'_>> {
+    #[must_use]
+    pub fn resolve_module_item_by_absolute_path(&self, path: &Path) -> Option<NameBindingData<'_>> {
         fn split_first_and_last<T>(a: &[T]) -> Option<(&T, &[T], &T)> {
             let (first, rest) = a.split_first()?;
             let (last, middle) = rest.split_last()?;
@@ -124,9 +126,9 @@ impl GlobalContext {
             return Some(NameBindingData::Item(binding));
         } else if let Some(submodule) = module.submodules.get(last) {
             return Some(NameBindingData::Module(submodule));
-        } else {
-            return None;
         }
+
+        None
     }
 }
 
@@ -169,9 +171,10 @@ pub struct ModuleContext {
 
 impl ModuleContext {
     /// Resolves path and returns binding data (may return submodule).
+    #[must_use]
     pub fn resolve_module_item_path<'ctx>(
         &'ctx self,
-        path: Path,
+        path: &Path,
         tree: &'ctx GlobalContext,
     ) -> Option<NameBindingData<'ctx>> {
         // serializer.serialize
@@ -189,7 +192,7 @@ impl ModuleContext {
                     Some(NameBindingData::Module(module))
                 } else {
                     module.resolve_module_item_path(
-                        Path {
+                        &Path {
                             symbols: rest.to_vec(),
                         },
                         tree,
@@ -231,34 +234,32 @@ impl ModuleContext {
         // fun main() { foo(); }
         // ```
         for (_, import) in &self.imports {
-            match import.r#as {
+            if let Some(IdentifierAst {
+                symbol: id_symbol, ..
+            }) = import.r#as
+            {
                 // ```
                 // import a.b as foo;
                 //               ^^^ function item
                 // ```
-                Some(IdentifierAst {
-                    symbol: id_symbol, ..
-                }) => {
-                    if id_symbol != symbol {
-                        continue;
-                    }
-
-                    return tree.resolve_module_item_by_absolute_path(import.path.clone().into());
+                if id_symbol != symbol {
+                    continue;
                 }
-                // ```
-                // import a.foo;
-                //          ^^^ function item
-                // ```
-                None => {
-                    let import_last_symbol = import.path.identifiers.last()?.symbol;
 
-                    if import_last_symbol != symbol {
-                        continue;
-                    }
-
-                    return tree.resolve_module_item_by_absolute_path(import.path.clone().into());
-                }
+                return tree.resolve_module_item_by_absolute_path(&import.path.clone().into());
             }
+
+            // ```
+            // import a.foo;
+            //          ^^^ function item
+            // ```
+            let import_last_symbol = import.path.identifiers.last()?.symbol;
+
+            if import_last_symbol != symbol {
+                continue;
+            }
+
+            return tree.resolve_module_item_by_absolute_path(&import.path.clone().into());
         }
 
         None

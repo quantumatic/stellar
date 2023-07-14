@@ -49,18 +49,18 @@ fn resolve_module() {
     tree.projects.insert(a, project);
 
     assert!(matches!(
-        tree.resolve_module_item_by_absolute_path(Path {
+        tree.resolve_module_item_by_absolute_path(&Path {
             symbols: vec![a, a]
         }),
         Some(NameBindingData::Module(..))
     ));
 
     assert_eq!(
-        tree.resolve_module_item_by_absolute_path(Path { symbols: vec![a] }),
+        tree.resolve_module_item_by_absolute_path(&Path { symbols: vec![a] }),
         None
     );
     assert_eq!(
-        tree.resolve_module_item_by_absolute_path(Path { symbols: vec![b] }),
+        tree.resolve_module_item_by_absolute_path(&Path { symbols: vec![b] }),
         None
     );
 }
@@ -158,7 +158,7 @@ fn import() {
             .get(&a)
             .unwrap()
             .root
-            .resolve_module_item_path(Path { symbols: vec![b] }, &tree),
+            .resolve_module_item_path(&Path { symbols: vec![b] }, &tree),
         Some(..)
     ));
     assert!(matches!(
@@ -166,7 +166,7 @@ fn import() {
             .get(&a)
             .unwrap()
             .root
-            .resolve_module_item_path(Path { symbols: vec![c] }, &tree),
+            .resolve_module_item_path(&Path { symbols: vec![c] }, &tree),
         Some(..)
     ));
     assert_eq!(
@@ -175,7 +175,7 @@ fn import() {
             .unwrap()
             .root
             .resolve_module_item_path(
-                Path {
+                &Path {
                     symbols: vec![b, b]
                 },
                 &tree

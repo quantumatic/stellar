@@ -15,6 +15,11 @@ use crate::{
 
 /// Builds a module context from the module's AST and adds diagnostic into
 /// the diagnostics if there are two definitions with the same name.
+///
+/// # Panics
+///
+/// If the interner cannot resolve any name in the module AST.
+#[must_use]
 pub fn build_module_context_from_ast(
     file_path: impl Into<PathBuf>,
     module: Module,
@@ -71,6 +76,14 @@ pub fn build_module_context_from_ast(
 }
 
 /// Reads, parses and builds a module context.
+///
+/// # Panics
+///
+/// If the interner cannot resolve any name in the module AST.
+///
+/// # Errors
+///
+/// If the file cannot be read.
 #[inline]
 pub fn read_and_build_module_context(
     file_path: impl Into<PathBuf>,

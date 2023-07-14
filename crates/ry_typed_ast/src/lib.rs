@@ -416,7 +416,7 @@ pub enum EnumItem {
 }
 
 /// A generic parameter.
-#[derive(Debug, PartialEq, Clone, Copy)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub struct GenericParameter {
     /// Location of the generic parameter name.
     ///
@@ -463,7 +463,7 @@ pub enum ConstraintPair {
 
 /// A path similiar to [`ry_ast::Path`], but which doesn't store any spans,
 /// e.g. `std.path.Path`, `foo`, `json.serializer`.
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Path {
     /// Path symbols.
     pub symbols: Vec<Symbol>,
