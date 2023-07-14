@@ -1,6 +1,9 @@
 //! # Name resolution
 //!
+//! The name resolution allows to resolve names, after parsing all the projects in stages like
+//! type checking and MIR lowering.
 //!
+//! See [`GlobalContext`], [`ProjectContext`] and [`ModuleContext`] for more details.
 
 #![doc(
     html_logo_url = "https://raw.githubusercontent.com/abs0luty/Ry/main/additional/icon/ry.png",
