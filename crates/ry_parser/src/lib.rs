@@ -150,14 +150,11 @@ where
 /// # Errors
 /// Returns an error if the file contents cannot be read.
 #[inline]
-pub fn read_and_parse_module<P>(
-    file_path: P,
+pub fn read_and_parse_module(
+    file_path: impl AsRef<Path>,
     diagnostics: &mut Vec<Diagnostic>,
     interner: &mut Interner,
-) -> Result<Module, io::Error>
-where
-    P: AsRef<Path>,
-{
+) -> Result<Module, io::Error> {
     Ok(parse_module_using(ParseState::new(
         &fs::read_to_string(file_path)?,
         diagnostics,
@@ -189,14 +186,11 @@ pub fn parse_module_using(mut state: ParseState<'_, '_, '_>) -> Module {
 /// Parse an item.
 #[inline]
 #[must_use]
-pub fn parse_item<S>(
-    source: S,
+pub fn parse_item(
+    source: impl AsRef<str>,
     diagnostics: &mut Vec<Diagnostic>,
     interner: &mut Interner,
-) -> Option<ModuleItem>
-where
-    S: AsRef<str>,
-{
+) -> Option<ModuleItem> {
     parse_item_using(&mut ParseState::new(source.as_ref(), diagnostics, interner))
 }
 
@@ -210,14 +204,11 @@ pub fn parse_item_using(state: &mut ParseState<'_, '_, '_>) -> Option<ModuleItem
 /// Parse an expression.
 #[inline]
 #[must_use]
-pub fn parse_expression<S>(
-    source: S,
+pub fn parse_expression(
+    source: impl AsRef<str>,
     diagnostics: &mut Vec<Diagnostic>,
     interner: &mut Interner,
-) -> Option<Expression>
-where
-    S: AsRef<str>,
-{
+) -> Option<Expression> {
     parse_expression_using(&mut ParseState::new(source.as_ref(), diagnostics, interner))
 }
 
@@ -231,14 +222,11 @@ pub fn parse_expression_using(state: &mut ParseState<'_, '_, '_>) -> Option<Expr
 /// Parse a statement.
 #[inline]
 #[must_use]
-pub fn parse_statement<S>(
-    source: S,
+pub fn parse_statement(
+    source: impl AsRef<str>,
     diagnostics: &mut Vec<Diagnostic>,
     interner: &mut Interner,
-) -> Option<Statement>
-where
-    S: AsRef<str>,
-{
+) -> Option<Statement> {
     parse_statement_using(&mut ParseState::new(source.as_ref(), diagnostics, interner))
 }
 
@@ -252,14 +240,11 @@ pub fn parse_statement_using(state: &mut ParseState<'_, '_, '_>) -> Option<State
 /// Parse a type.
 #[inline]
 #[must_use]
-pub fn parse_type<S>(
-    source: S,
+pub fn parse_type(
+    source: impl AsRef<str>,
     diagnostics: &mut Vec<Diagnostic>,
     interner: &mut Interner,
-) -> Option<Type>
-where
-    S: AsRef<str>,
-{
+) -> Option<Type> {
     parse_type_using(&mut ParseState::new(source.as_ref(), diagnostics, interner))
 }
 
@@ -273,14 +258,11 @@ pub fn parse_type_using(state: &mut ParseState<'_, '_, '_>) -> Option<Type> {
 /// Parse a pattern.
 #[inline]
 #[must_use]
-pub fn parse_pattern<S>(
-    source: S,
+pub fn parse_pattern(
+    source: impl AsRef<str>,
     diagnostics: &mut Vec<Diagnostic>,
     interner: &mut Interner,
-) -> Option<Pattern>
-where
-    S: AsRef<str>,
-{
+) -> Option<Pattern> {
     parse_pattern_using(&mut ParseState::new(source.as_ref(), diagnostics, interner))
 }
 
@@ -364,10 +346,7 @@ impl<'source, 'diagnostics, 'interner> ParseState<'source, 'diagnostics, 'intern
     }
 
     /// Checks if the next token is [`expected`].
-    fn expect<N>(&mut self, expected: RawToken, node: N) -> Option<()>
-    where
-        N: Into<String>,
-    {
+    fn expect(&mut self, expected: RawToken, node: impl Into<String>) -> Option<()> {
         trace!(
             "excepted {} to be {} at: {}",
             self.next_token.raw,
@@ -392,10 +371,7 @@ impl<'source, 'diagnostics, 'interner> ParseState<'source, 'diagnostics, 'intern
     }
 
     /// Checks if the next token is [`expected`] and advances the parse state.
-    fn consume<N>(&mut self, expected: RawToken, node: N) -> Option<()>
-    where
-        N: Into<String>,
-    {
+    fn consume(&mut self, expected: RawToken, node: impl Into<String>) -> Option<()> {
         self.expect(expected, node)?;
         self.advance();
         Some(())
@@ -412,10 +388,7 @@ impl<'source, 'diagnostics, 'interner> ParseState<'source, 'diagnostics, 'intern
 
     /// Checks if the next token is identifiers, advances the parse state and if
     /// everything is ok, returns the identifier symbol.
-    fn consume_identifier<N>(&mut self, node: N) -> Option<IdentifierAst>
-    where
-        N: Into<String>,
-    {
+    fn consume_identifier(&mut self, node: impl Into<String>) -> Option<IdentifierAst> {
         trace!(
             "expected next_token {} to be an identifier at: {}",
             self.next_token.raw,

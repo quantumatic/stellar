@@ -1,31 +1,95 @@
+//! # Name resolution
+//!
+//!
+
+#![doc(
+    html_logo_url = "https://raw.githubusercontent.com/abs0luty/Ry/main/additional/icon/ry.png",
+    html_favicon_url = "https://raw.githubusercontent.com/abs0luty/Ry/main/additional/icon/ry.png"
+)]
+#![warn(missing_docs, clippy::dbg_macro)]
+#![deny(
+    // rustc lint groups https://doc.rust-lang.org/rustc/lints/groups.html
+    warnings,
+    future_incompatible,
+    let_underscore,
+    nonstandard_style,
+    rust_2018_compatibility,
+    rust_2018_idioms,
+    rust_2021_compatibility,
+    unused,
+    // rustc allowed-by-default lints https://doc.rust-lang.org/rustc/lints/listing/allowed-by-default.html
+    macro_use_extern_crate,
+    meta_variable_misuse,
+    missing_abi,
+    missing_copy_implementations,
+    missing_debug_implementations,
+    non_ascii_idents,
+    noop_method_call,
+    single_use_lifetimes,
+    trivial_casts,
+    trivial_numeric_casts,
+    unreachable_pub,
+    unsafe_op_in_unsafe_fn,
+    unused_crate_dependencies,
+    unused_import_braces,
+    unused_lifetimes,
+    unused_qualifications,
+    unused_tuple_struct_fields,
+    variant_size_differences,
+    // rustdoc lints https://doc.rust-lang.org/rustdoc/lints.html
+    rustdoc::broken_intra_doc_links,
+    rustdoc::private_intra_doc_links,
+    rustdoc::missing_crate_level_docs,
+    rustdoc::private_doc_tests,
+    rustdoc::invalid_codeblock_attributes,
+    rustdoc::invalid_rust_codeblocks,
+    rustdoc::bare_urls,
+    // clippy categories https://doc.rust-lang.org/clippy/
+    clippy::all,
+    clippy::correctness,
+    clippy::suspicious,
+    clippy::style,
+    clippy::complexity,
+    clippy::perf,
+    clippy::pedantic,
+    clippy::nursery,
+)]
+#![allow(
+    clippy::module_name_repetitions,
+    clippy::too_many_lines,
+    clippy::option_if_let_else,
+    clippy::cast_possible_truncation
+)]
 use std::path::PathBuf;
 
-use ry_ast::{IdentifierAst, Impl, ImportPath, ModuleItem, Visibility};
+use ry_ast::{IdentifierAst, Impl, ImportPath, ModuleItem};
 use ry_filesystem::span::Span;
 use ry_fx_hash::FxHashMap;
 use ry_interner::Symbol;
-use ry_typed_ast::{ty::Type, TypeBounds};
+use ry_typed_ast::{ty::Type, Path};
 
-pub mod build_resolution_tree;
+pub mod build_context;
 pub mod diagnostics;
 
-/// A name resolution tree - data structure used to resolve names.
+/// A symbol data, in which types in a definition are processed, once the the
+/// definition is used somewhere else. This approach allows to resolve forward
+/// references.
 #[derive(Debug, PartialEq, Clone)]
-pub struct NameResolutionTree<'ast> {
+pub struct GlobalContext {
     /// Projects, that are going to be resolved.
-    pub projects: FxHashMap<Symbol, ProjectData<'ast>>,
+    pub projects: FxHashMap<Symbol, ProjectContext>,
 }
 
-impl Default for NameResolutionTree<'_> {
+impl Default for GlobalContext {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl<'ast> NameResolutionTree<'ast> {
+impl GlobalContext {
     /// Creates new name empty resolution tree.
     pub fn new() -> Self {
-        NameResolutionTree {
+        GlobalContext {
             projects: FxHashMap::default(),
         }
     }
@@ -34,7 +98,7 @@ impl<'ast> NameResolutionTree<'ast> {
     ///
     /// * Path must start with a project name (not `serialize`, but `json.serialization.serialize`).
     /// * Imports are not resolved here, because the context is global.
-    pub fn resolve_absolute_path(&self, path: Path) -> Option<NameBindingData<'_, 'ast>> {
+    pub fn resolve_module_item_by_absolute_path(&self, path: Path) -> Option<NameBindingData<'_>> {
         fn split_first_and_last<T>(a: &[T]) -> Option<(&T, &[T], &T)> {
             let (first, rest) = a.split_first()?;
             let (last, middle) = rest.split_last()?;
@@ -68,12 +132,12 @@ impl<'ast> NameResolutionTree<'ast> {
 
 /// Data that Ry compiler has about a project.
 #[derive(Debug, PartialEq, Clone)]
-pub struct ProjectData<'ast> {
+pub struct ProjectContext {
     /// Path to the project.
     pub path: PathBuf,
 
     /// The root module of the project (the module that is located in the `project.ry`).
-    pub root: ModuleData<'ast>,
+    pub root: ModuleContext,
 
     /// The dependencies of the project (must be included in the resolution tree).
     pub dependencies: Vec<Symbol>,
@@ -81,35 +145,35 @@ pub struct ProjectData<'ast> {
 
 /// Data that Ry compiler has about a module.
 #[derive(Debug, PartialEq, Clone)]
-pub struct ModuleData<'ast> {
+pub struct ModuleContext {
     /// Path to the module file.
     pub path: PathBuf,
 
     /// The module docstring.
-    pub docstring: Option<&'ast str>,
+    pub docstring: Option<String>,
 
     /// The module items name bindings.
     ///
     /// See [`ModuleItemNameBindingData`] for more details.
-    pub bindings: FxHashMap<Symbol, ModuleItemNameBindingData<'ast>>,
+    pub bindings: FxHashMap<Symbol, ModuleItemNameBindingData>,
 
     /// The submodules of the module.
-    pub submodules: FxHashMap<Symbol, ModuleData<'ast>>,
+    pub submodules: FxHashMap<Symbol, ModuleContext>,
 
     /// The type implementations, that are not yet analyzed (type checked) in the module.
-    pub implementations: Vec<&'ast Impl>,
+    pub implementations: Vec<Impl>,
 
     /// The imports used in the module ([`Span`] stores a location of an entire import item).
-    pub imports: Vec<(Span, &'ast ImportPath)>,
+    pub imports: Vec<(Span, ImportPath)>,
 }
 
-impl<'ast> ModuleData<'ast> {
+impl ModuleContext {
     /// Resolves path and returns binding data (may return submodule).
-    pub fn resolve_path<'tree>(
-        &'tree self,
+    pub fn resolve_module_item_path<'ctx>(
+        &'ctx self,
         path: Path,
-        tree: &'tree NameResolutionTree<'ast>,
-    ) -> Option<NameBindingData<'tree, 'ast>> {
+        tree: &'ctx GlobalContext,
+    ) -> Option<NameBindingData<'ctx>> {
         // serializer.serialize
         // ^^^^^^^^^^ first symbol
         //            ^^^^^^^^^ rest
@@ -124,7 +188,7 @@ impl<'ast> ModuleData<'ast> {
                 if rest.is_empty() {
                     Some(NameBindingData::Module(module))
                 } else {
-                    module.resolve_path(
+                    module.resolve_module_item_path(
                         Path {
                             symbols: rest.to_vec(),
                         },
@@ -145,11 +209,11 @@ impl<'ast> ModuleData<'ast> {
     }
 
     /// Resolves a single symbol and returns binding data.
-    fn resolve_symbol<'tree>(
-        &'tree self,
+    fn resolve_symbol<'ctx>(
+        &'ctx self,
         symbol: Symbol,
-        tree: &'tree NameResolutionTree<'ast>,
-    ) -> Option<NameBindingData<'tree, 'ast>> {
+        tree: &'ctx GlobalContext,
+    ) -> Option<NameBindingData<'ctx>> {
         // If symbol is related to an item defined in the module, return it.
         //
         // ```
@@ -179,7 +243,7 @@ impl<'ast> ModuleData<'ast> {
                         continue;
                     }
 
-                    return tree.resolve_absolute_path(import.path.clone().into());
+                    return tree.resolve_module_item_by_absolute_path(import.path.clone().into());
                 }
                 // ```
                 // import a.foo;
@@ -192,7 +256,7 @@ impl<'ast> ModuleData<'ast> {
                         continue;
                     }
 
-                    return tree.resolve_absolute_path(import.path.clone().into());
+                    return tree.resolve_module_item_by_absolute_path(import.path.clone().into());
                 }
             }
         }
@@ -204,401 +268,78 @@ impl<'ast> ModuleData<'ast> {
 /// Data that Ry compiler has about a name binding or the result of the
 /// [`ModuleData::resolve_path()`] and [`NameResolutionTree::resolve_absolute_path()`].
 #[derive(Debug, PartialEq, Clone)]
-pub enum NameBindingData<'tree, 'ast> {
+pub enum NameBindingData<'ctx> {
     /// A module.
-    Module(&'tree ModuleData<'ast>),
+    Module(&'ctx ModuleContext),
 
     /// A module item.
-    Item(&'tree ModuleItemNameBindingData<'ast>),
+    Item(&'ctx ModuleItemNameBindingData),
 }
 
 /// Data that Ry compiler has about a module item.
 #[derive(Debug, PartialEq, Clone)]
-pub enum ModuleItemNameBindingData<'ast> {
+pub enum ModuleItemNameBindingData {
     /// An item that has gone through type checking.
-    Analyzed(AnalyzedNameBindingData<'ast>),
+    Analyzed(ry_typed_ast::ModuleItem),
 
     /// An item that has not been analyzed yet - AST ref.
-    NotAnalyzed(&'ast ModuleItem),
+    NotAnalyzed(ModuleItem),
 }
 
-/// Data that Ry compiler has about a module item that has gone through type checking.
-#[derive(Debug, PartialEq, Clone)]
-pub enum AnalyzedNameBindingData<'ast> {
-    /// Data about a type alias.
-    Alias(AliasModuleItemData<'ast>),
+/// Data that Ry compiler has about a particular symbol.
+#[derive(Debug, Clone, PartialEq)]
+pub struct ValueConstructor {
+    /// Span where the symbol was defined.
+    pub origin: Span,
 
-    /// Data about an enum.
-    Enum(EnumData<'ast>),
-
-    /// Data about a trait.
-    Trait(TraitData<'ast>),
-
-    /// Data about a function (associated functions and
-    /// implementations are not here).
-    Function(FunctionData<'ast>),
-
-    /// Data about a struct.
-    Struct(StructData<'ast>),
-
-    /// Data about a tuple-like struct.
-    TupleLikeStruct(TupleLikeStructData<'ast>),
-}
-
-/// Data that Ry compiler has about a type alias.
-#[derive(Debug, PartialEq, Clone)]
-pub struct AliasModuleItemData<'ast> {
-    /// Alias visibility.
-    pub visibility: Visibility,
-
-    /// Location of the alias name (not the entire alias item!).
-    pub span: Span,
-
-    /// Alias docstring.
-    pub docstring: Option<&'ast str>,
-
-    /// Alias generic parameters.
-    pub generic_parameters: Vec<GenericParameterData>,
-
-    /// Alias value - `Result[T, E]` in `type Res[T] = Result[T, E]`.
-    pub value: Type,
-}
-
-/// Data that Ry compiler has about a trait.
-#[derive(Debug, PartialEq, Clone)]
-pub struct TraitData<'ast> {
-    /// Trait visibility.
-    pub visibility: Visibility,
-
-    /// Location of the trait name (not the entire trait item!).
-    pub span: Span,
-
-    /// Trait docstring.
-    pub docstring: Option<&'ast str>,
-
-    /// Trait generic parameters.
-    pub generic_parameters: Vec<GenericParameterData>,
-
-    /// Type constraints.
-    pub constraints: Vec<ConstraintPair>,
-
-    /// Trait items.
-    pub items: FxHashMap<Symbol, TraitItemData<'ast>>,
-
-    /// All the trait implementations (implementations in the foreign
-    /// modules and even projects are also here).
-    pub implementations: TraitImplementationData<'ast>,
-}
-
-/// Data that Ry compiler has about a trait item.
-#[derive(Debug, PartialEq, Clone)]
-pub enum TraitItemData<'ast> {
-    /// Data about a type alias item.
-    Alias {
-        /// Location of the alias name (not the entire alias item!).
-        span: Span,
-
-        /// Alias docstring.
-        docstring: Option<&'ast str>,
-
-        /// Alias generic parameters.
-        generic_parameters: Vec<GenericParameterData>,
-
-        /// Type constraints.
-        constraints: Vec<ConstraintPair>,
-    },
-
-    /// Data about a function item.
-    ///
-    /// Visibility here is ignored.
-    Function(FunctionData<'ast>),
-}
-
-/// Data that Ry compiler has about a trait implementation.
-#[derive(Debug, PartialEq, Clone)]
-pub struct TraitImplementationData<'ast> {
-    /// Path to the module in which the implementation lives (useful for diagnostics).
-    pub module: Path,
-
-    /// Location of the `impl` keyword.
-    pub span: Span,
-
-    /// Trait implementation docstring.
-    pub docstring: Option<&'ast str>,
-
-    /// Trait implementation generic parameters.
-    pub generic_parameters: Vec<GenericParameterData>,
-
-    /// Trait generic arguments.
-    ///
-    /// ```txt
-    /// impl[T, M] Foo[T] for M {}
-    ///                ^
-    /// ```
-    pub trait_generic_arguments: Vec<Type>,
-
-    /// Type constraints.
-    pub constraints: Vec<ConstraintPair>,
-
-    /// The type for which the trait is implemented.
+    /// Type of the symbol.
     pub ty: Type,
 }
 
-/// Data that Ry compiler has about a type implementation.
-///
-/// The difference between this and [`TraitImplementationData`] is that
-/// this struct corresponds to raw type implementations, without traits:
-///
-/// ```txt
-/// impl[T] Foo[T] {} => TypeImplementationData
-/// impl[T, M] Foo[T] for M {} => TraitImplementationData
-/// ```
-#[derive(Debug, PartialEq, Clone)]
-pub struct TypeImplementationData<'ast> {
-    /// Location of the `impl` keyword.
-    pub span: Span,
+/// A local scope (a scope within a particular statements block).
+#[derive(Debug)]
+pub struct Scope<'ctx> {
+    /// Module that the scope belongs to.
+    pub module_context: &'ctx ModuleContext,
 
-    /// Type implementation docstring.
-    pub docstring: Option<&'ast str>,
+    /// Symbols in the scope (not the ones contained in the parent scopes).
+    entities: FxHashMap<Symbol, ValueConstructor>,
 
-    /// Type implementation generic parameters.
-    pub generic_parameters: Vec<GenericParameterData>,
-
-    /// Type constraints.
-    pub constraints: Vec<ConstraintPair>,
-
-    /// The type that is implemented.
-    pub ty: Type,
+    /// Parent scope.
+    pub parent: Option<&'ctx Scope<'ctx>>,
 }
 
-/// Data that Ry compiler has about a function.
-#[derive(Debug, PartialEq, Clone)]
-pub struct FunctionData<'ast> {
-    /// Function visibility.
-    pub visibility: Visibility,
-
-    /// Location of the function name (not the entire function item!).
-    pub span: Span,
-
-    /// Function docstring.
-    pub docstring: Option<&'ast str>,
-
-    /// Function generic parameters.
-    pub generic_parameters: Vec<GenericParameterData>,
-
-    /// Type constraints.
-    pub constraints: Vec<ConstraintPair>,
-
-    /// Function parameters.
-    pub parameters: Vec<FunctionParameterData>,
-
-    /// Function return type (is it's not written in the signature, then it's `()`).
-    pub return_type: Type,
-}
-
-/// Data that Ry compiler has about a function parameter.
-#[derive(Debug, PartialEq, Clone)]
-pub struct FunctionParameterData {
-    /// Parameter name.
-    pub name: Symbol,
-
-    /// Parameter type.
-    pub ty: Type,
-}
-
-/// Data that Ry compiler has about a struct.
-#[derive(Debug, PartialEq, Clone)]
-pub struct StructData<'ast> {
-    /// Struct visibility.
-    pub visibility: Visibility,
-
-    /// Location of the struct name (not the entire struct item!).
-    pub span: Span,
-
-    /// Struct docstring.
-    pub docstring: Option<&'ast str>,
-
-    /// Struct generic parameters.
-    pub generic_parameters: Vec<GenericParameterData>,
-
-    /// Type constraints.
-    pub constraints: Vec<ConstraintPair>,
-
-    /// Struct fields.
-    pub fields: FxHashMap<Symbol, StructFieldData<'ast>>,
-
-    /// All the struct raw type implementations (implementations in the foreign
-    /// modules and even projects are also here).
-    pub implementations: TraitImplementationData<'ast>,
-}
-
-/// Data that Ry compiler has about a struct field.
-#[derive(Debug, PartialEq, Clone)]
-pub struct StructFieldData<'ast> {
-    /// Field visibility.
-    pub visibility: Visibility,
-
-    /// Location of the field name (not the entire field item!).
-    pub span: Span,
-
-    /// Field docstring.
-    pub docstring: Option<&'ast str>,
-
-    /// Field name
-    pub name: Symbol,
-
-    /// Field type.
-    pub ty: Type,
-}
-
-/// Data that Ry compiler has about a tuple-like struct.
-#[derive(Debug, PartialEq, Clone)]
-pub struct TupleLikeStructData<'ast> {
-    /// Struct visibility.
-    pub visibility: Visibility,
-
-    /// Location of the struct name (not the entire struct item!).
-    pub span: Span,
-
-    /// Struct docstring.
-    pub docstring: Option<&'ast str>,
-
-    /// Struct generic parameters.
-    pub generic_parameters: Vec<GenericParameterData>,
-
-    /// Type constraints.
-    pub constraints: Vec<ConstraintPair>,
-
-    /// Struct fields.
-    pub fields: FxHashMap<Symbol, TupleLikeStructFieldData>,
-    pub implementations: TraitImplementationData<'ast>,
-}
-
-/// Data that Ry compiler has about a tuple-like struct field.
-#[derive(Debug, PartialEq, Clone)]
-pub struct TupleLikeStructFieldData {
-    /// Field visibility.
-    pub visibility: Visibility,
-
-    /// Location of the entire field.
-    pub span: Span,
-
-    /// Field type.
-    pub ty: Type,
-}
-
-/// Data that Ry compiler has about an enum.
-#[derive(Debug, PartialEq, Clone)]
-pub struct EnumData<'ast> {
-    /// Enum visibility.
-    pub visibility: Visibility,
-
-    /// Location of the enum name (not the entire enum item!).
-    pub span: Span,
-
-    /// Enum docstring.
-    pub docstring: Option<&'ast str>,
-
-    /// Enum generic parameters.
-    pub generic_parameters: Vec<GenericParameterData>,
-
-    /// Type constraints.
-    pub constraints: Vec<ConstraintPair>,
-
-    /// Enum items.
-    pub items: FxHashMap<Symbol, EnumItemData<'ast>>,
-
-    /// All the enum raw type implementations (implementations in the foreign
-    /// modules and even projects are also here).
-    pub implementations: TraitImplementationData<'ast>,
-}
-
-/// Data that Ry compiler has about an enum item.
-#[derive(Debug, PartialEq, Clone)]
-pub enum EnumItemData<'ast> {
-    /// Data about an identifier item, e.g. `None` in `Option[T]`.
-    Identifier {
-        /// Location of the name.
-        span: Span,
-    },
-
-    /// Data about a tuple like item.
-    TupleLike {
-        /// Location of the item name (not the entire item).
-        span: Span,
-
-        /// Fields.
-        fields: FxHashMap<Symbol, TupleLikeStructFieldData>,
-    },
-
-    /// Data about a struct item.
-    Struct {
-        /// Location of the item name (not the entire item).
-        span: Span,
-
-        /// Fields.
-        fields: FxHashMap<Symbol, StructFieldData<'ast>>,
-    },
-}
-
-/// Data that Ry compiler has about a generic parameter.
-#[derive(Debug, PartialEq, Clone)]
-pub struct GenericParameterData {
-    /// Location of the generic parameter name.
-    ///
-    /// ```txt
-    /// fun foo[T: Into[String]]()
-    ///         ^
-    /// ```
-    pub span: Span,
-
-    /// Generic parameter name.
-    pub name: Symbol,
-}
-
-/// Data that Ry compiler has about a constraint.
-#[derive(Debug, PartialEq, Clone)]
-pub enum ConstraintPair {
-    Satisfies {
-        /// The type that must satisfy the bounds.
-        ty: Type,
-
-        /// Location of the type that must satisfy the bounds.
-        ty_span: Span,
-
-        /// The bounds.
-        bounds: TypeBounds,
-
-        /// Location of the bounds.
-        bounds_span: Span,
-    },
-    Eq {
-        /// The left hand side type.
-        left: Type,
-
-        /// Location of the left hand side type.
-        left_span: Span,
-
-        /// The right hand side type.
-        right: Type,
-
-        /// Location of the right hand side type.
-        right_span: Span,
-    },
-}
-
-/// A path similiar to [`ry_ast::Path`], but which doesn't store any spans,
-/// e.g. `std.path.Path`, `foo`, `json.serializer`.
-#[derive(Debug, PartialEq, Clone)]
-pub struct Path {
-    /// Path symbols.
-    pub symbols: Vec<Symbol>,
-}
-
-impl From<ry_ast::Path> for Path {
-    fn from(value: ry_ast::Path) -> Self {
+impl<'ctx> Scope<'ctx> {
+    /// Creates a new [`Scope`] instance.
+    #[inline]
+    #[must_use]
+    pub fn new(parent: Option<&'ctx Scope<'ctx>>, module_context: &'ctx ModuleContext) -> Self {
         Self {
-            symbols: value.identifiers.iter().map(|i| i.symbol).collect(),
+            entities: FxHashMap::default(),
+            parent,
+            module_context,
+        }
+    }
+
+    /// Adds a symbol to this scope.
+    pub fn add_symbol(&mut self, symbol: Symbol, data: ValueConstructor) {
+        // shadowing
+        if self.entities.contains_key(&symbol) {
+            self.entities.remove(&symbol);
+        }
+
+        self.entities.insert(symbol, data);
+    }
+
+    /// Returns the symbol data for the given symbol. If the symbol is not in this scope, `None` is returned.
+    #[must_use]
+    pub fn lookup(&self, symbol: Symbol) -> Option<&ValueConstructor> {
+        if let data @ Some(..) = self.entities.get(&symbol) {
+            data
+        } else if let Some(parent) = self.parent {
+            parent.lookup(symbol)
+        } else {
+            None
         }
     }
 }

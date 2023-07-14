@@ -1,35 +1,37 @@
-use std::path::PathBuf;
+//! Builds a resolution context out of a parsed AST.
+
+use std::{io, path::PathBuf};
 
 use ry_ast::{Module, ModuleItem};
 use ry_diagnostics::{BuildDiagnostic, Diagnostic};
 use ry_fx_hash::FxHashMap;
 use ry_interner::Interner;
+use ry_parser::read_and_parse_module;
 
 use crate::{
     diagnostics::{DefinitionInfo, NameResolutionDiagnostic},
-    ModuleData, ModuleItemNameBindingData,
+    ModuleContext, ModuleItemNameBindingData,
 };
 
-/// Builds a name resolution tree module node from the module AST
-/// and adds diagnostic into the diagnostics if there are two definitions with
-/// the same name.
-pub fn build_module_node_from_ast<'ast>(
+/// Builds a module context from the module's AST and adds diagnostic into
+/// the diagnostics if there are two definitions with the same name.
+pub fn build_module_context_from_ast(
     file_path: impl Into<PathBuf>,
-    module: &'ast Module,
+    module: Module,
     interner: &Interner,
     file_diagnostics: &mut Vec<Diagnostic>,
-) -> ModuleData<'ast> {
+) -> ModuleContext {
     let mut bindings = FxHashMap::default();
     let mut implementations = vec![];
     let mut imports = vec![];
 
-    for item in &module.items {
+    for item in module.items {
         match item {
             ModuleItem::Impl(r#impl) => {
                 implementations.push(r#impl);
             }
             ModuleItem::Import { span, path } => {
-                imports.push((*span, path));
+                imports.push((span, path));
             }
             _ => {
                 let name = item.name_or_panic();
@@ -58,12 +60,31 @@ pub fn build_module_node_from_ast<'ast>(
         }
     }
 
-    ModuleData {
+    ModuleContext {
         path: file_path.into(),
-        docstring: module.docstring.as_deref(),
+        docstring: module.docstring,
         bindings,
         submodules: FxHashMap::default(),
         implementations,
         imports,
     }
+}
+
+/// Reads, parses and builds a module context.
+#[inline]
+pub fn read_and_build_module_context(
+    file_path: impl Into<PathBuf>,
+    interner: &mut Interner,
+    file_diagnostics: &mut Vec<Diagnostic>,
+) -> Result<ModuleContext, io::Error> {
+    let file_path = file_path.into();
+
+    let module = read_and_parse_module(file_path.clone(), file_diagnostics, interner)?;
+
+    Ok(build_module_context_from_ast(
+        file_path,
+        module,
+        interner,
+        file_diagnostics,
+    ))
 }

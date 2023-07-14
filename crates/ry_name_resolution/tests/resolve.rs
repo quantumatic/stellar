@@ -4,7 +4,8 @@ use ry_ast::{IdentifierAst, ImportPath};
 use ry_filesystem::span::DUMMY_SPAN;
 use ry_fx_hash::FxHashMap;
 use ry_interner::Interner;
-use ry_name_resolution::{ModuleData, NameBindingData, NameResolutionTree, Path, ProjectData};
+use ry_name_resolution::{GlobalContext, ModuleContext, NameBindingData, ProjectContext};
+use ry_typed_ast::Path;
 
 /// ```txt
 /// a
@@ -18,9 +19,9 @@ fn resolve_module() {
     let a = interner.get_or_intern("a");
     let b = interner.get_or_intern("b");
 
-    let mut tree = NameResolutionTree::new();
+    let mut tree = GlobalContext::new();
 
-    let child_module_data = ModuleData {
+    let child_module_data = ModuleContext {
         path: PathBuf::new(),
         docstring: None,
         bindings: FxHashMap::default(),
@@ -29,7 +30,7 @@ fn resolve_module() {
         imports: vec![],
     };
 
-    let mut project_root_module = ModuleData {
+    let mut project_root_module = ModuleContext {
         path: PathBuf::new(),
         docstring: None,
         bindings: FxHashMap::default(),
@@ -39,7 +40,7 @@ fn resolve_module() {
     };
     project_root_module.submodules.insert(a, child_module_data);
 
-    let project = ProjectData {
+    let project = ProjectContext {
         path: PathBuf::new(),
         root: project_root_module,
         dependencies: vec![],
@@ -48,14 +49,20 @@ fn resolve_module() {
     tree.projects.insert(a, project);
 
     assert!(matches!(
-        tree.resolve_absolute_path(Path {
+        tree.resolve_module_item_by_absolute_path(Path {
             symbols: vec![a, a]
         }),
         Some(NameBindingData::Module(..))
     ));
 
-    assert_eq!(tree.resolve_absolute_path(Path { symbols: vec![a] }), None);
-    assert_eq!(tree.resolve_absolute_path(Path { symbols: vec![b] }), None);
+    assert_eq!(
+        tree.resolve_module_item_by_absolute_path(Path { symbols: vec![a] }),
+        None
+    );
+    assert_eq!(
+        tree.resolve_module_item_by_absolute_path(Path { symbols: vec![b] }),
+        None
+    );
 }
 
 /// ```txt
@@ -74,9 +81,9 @@ fn import() {
     let b = interner.get_or_intern("b");
     let c = interner.get_or_intern("c");
 
-    let mut tree = NameResolutionTree::new();
+    let mut tree = GlobalContext::new();
 
-    let child_module_data = ModuleData {
+    let child_module_data = ModuleContext {
         path: PathBuf::new(),
         docstring: None,
         bindings: FxHashMap::default(),
@@ -85,55 +92,60 @@ fn import() {
         imports: vec![],
     };
 
-    let import_path1 = ImportPath {
-        path: ry_ast::Path {
-            span: DUMMY_SPAN,
-            identifiers: vec![
-                IdentifierAst {
-                    span: DUMMY_SPAN,
-                    symbol: a,
-                },
-                IdentifierAst {
-                    span: DUMMY_SPAN,
-                    symbol: b,
-                },
-            ],
-        },
-        r#as: None,
-    };
-
-    let import_path2 = ImportPath {
-        path: ry_ast::Path {
-            span: DUMMY_SPAN,
-            identifiers: vec![
-                IdentifierAst {
-                    span: DUMMY_SPAN,
-                    symbol: a,
-                },
-                IdentifierAst {
-                    span: DUMMY_SPAN,
-                    symbol: b,
-                },
-            ],
-        },
-        r#as: Some(IdentifierAst {
-            span: DUMMY_SPAN,
-            symbol: c,
-        }),
-    };
-
     let mut submodules = FxHashMap::default();
     submodules.insert(b, child_module_data);
 
-    let project_root_module = ModuleData {
+    let project_root_module = ModuleContext {
         path: PathBuf::new(),
         docstring: None,
         bindings: FxHashMap::default(),
         submodules,
         implementations: vec![],
-        imports: vec![(DUMMY_SPAN, &import_path1), (DUMMY_SPAN, &import_path2)],
+        imports: vec![
+            (
+                DUMMY_SPAN,
+                ImportPath {
+                    path: ry_ast::Path {
+                        span: DUMMY_SPAN,
+                        identifiers: vec![
+                            IdentifierAst {
+                                span: DUMMY_SPAN,
+                                symbol: a,
+                            },
+                            IdentifierAst {
+                                span: DUMMY_SPAN,
+                                symbol: b,
+                            },
+                        ],
+                    },
+                    r#as: None,
+                },
+            ),
+            (
+                DUMMY_SPAN,
+                ImportPath {
+                    path: ry_ast::Path {
+                        span: DUMMY_SPAN,
+                        identifiers: vec![
+                            IdentifierAst {
+                                span: DUMMY_SPAN,
+                                symbol: a,
+                            },
+                            IdentifierAst {
+                                span: DUMMY_SPAN,
+                                symbol: b,
+                            },
+                        ],
+                    },
+                    r#as: Some(IdentifierAst {
+                        span: DUMMY_SPAN,
+                        symbol: c,
+                    }),
+                },
+            ),
+        ],
     };
-    let project = ProjectData {
+    let project = ProjectContext {
         path: PathBuf::new(),
         root: project_root_module,
         dependencies: vec![],
@@ -146,7 +158,7 @@ fn import() {
             .get(&a)
             .unwrap()
             .root
-            .resolve_path(Path { symbols: vec![b] }, &tree),
+            .resolve_module_item_path(Path { symbols: vec![b] }, &tree),
         Some(..)
     ));
     assert!(matches!(
@@ -154,16 +166,20 @@ fn import() {
             .get(&a)
             .unwrap()
             .root
-            .resolve_path(Path { symbols: vec![c] }, &tree),
+            .resolve_module_item_path(Path { symbols: vec![c] }, &tree),
         Some(..)
     ));
     assert_eq!(
-        tree.projects.get(&a).unwrap().root.resolve_path(
-            Path {
-                symbols: vec![b, b]
-            },
-            &tree
-        ),
+        tree.projects
+            .get(&a)
+            .unwrap()
+            .root
+            .resolve_module_item_path(
+                Path {
+                    symbols: vec![b, b]
+                },
+                &tree
+            ),
         None
     );
 }

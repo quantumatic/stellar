@@ -1,8 +1,11 @@
+//! Diagnostics related to a name resolution process.
+
 use ry_ast::ModuleItemKind;
 use ry_diagnostics::{BuildDiagnostic, Diagnostic};
 use ry_filesystem::span::Span;
 
 /// An information about an item defined in the module.
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub struct DefinitionInfo {
     /// Location of the item name.
     pub span: Span,
@@ -12,6 +15,7 @@ pub struct DefinitionInfo {
 }
 
 /// Diagnostic encountered during name resolution.
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub enum NameResolutionDiagnostic {
     /// The name is defined multiple times.
     ItemDefinedMultipleTimes {
