@@ -3,8 +3,6 @@
 ![](https://github.com/ry-lang/ry/actions/workflows/ci.yaml/badge.svg)
 ![](https://badgen.net/static/license/MIT/blue)
 ![](https://badgen.net/github/license/ry-lang/ry)
-![](https://badgen.net/github/contributors/ry-lang/ry)
-![](https://badgen.net/github/stars/ry-lang/ry)
 
 We have a [Discord server](https://discord.gg/re29xvSV2) and a [Telegram group](https://t.me/ry_lang).
 
