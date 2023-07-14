@@ -1,5 +1,3 @@
-<img align="right" width="25%" src="./additional/icon/ry.png">
-
 # Ry programming language
 
 ![](https://github.com/ry-lang/ry/actions/workflows/ci.yaml/badge.svg)
@@ -18,7 +16,7 @@ We have a [Discord server](https://discord.gg/re29xvSV2) and a [Telegram group](
 
 # Introduction
 
-An open source programming language for web development with expressive type system and easy-to-learn syntax that makes it easy to build reliable and efficient software.
+Ry is an open source programming language for web development with expressive type system and easy-to-learn syntax that makes it easy to build reliable and efficient software.
 
 Example of hello world program:
 
