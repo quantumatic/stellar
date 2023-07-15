@@ -1,10 +1,13 @@
-# Ry programming language
-
-![](https://github.com/ry-lang/ry/actions/workflows/ci.yaml/badge.svg)
-![](https://badgen.net/static/license/MIT/blue)
-![](https://badgen.net/github/license/ry-lang/ry)
-
-We have a [Discord server](https://discord.gg/re29xvSV2) and a [Telegram group](https://t.me/ry_lang).
+<p align="center">
+<img src="./additional/icon/ry.png" width="20%">
+</p>
+<h1 align="center">Ry programming language</h1>
+<p align="center">
+<img src="https://github.com/ry-lang/ry/actions/workflows/ci.yaml/badge.svg">
+<img src="https://badgen.net/static/license/MIT/blue">
+<img src="https://badgen.net/github/license/ry-lang/ry">
+</p>
+<p align="center">We have a <a href="https://discord.gg/re29xvSV2">Discord server</a> and a <a href="https://t.me/ry_lang">Telegram group</a>.</p>
 
 ## Table of contents
 
