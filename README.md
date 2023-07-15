@@ -1,5 +1,5 @@
 <p align="center">
-<img src="./additional/icon/banner.png" width="70%">
+<img src="./additional/icon/banner.png">
 </p>
 <p align="center">
 <img src="https://github.com/ry-lang/ry/actions/workflows/ci.yaml/badge.svg">
