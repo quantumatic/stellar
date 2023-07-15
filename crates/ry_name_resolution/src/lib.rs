@@ -64,10 +64,8 @@
     clippy::cast_possible_truncation
 )]
 
-use std::path::PathBuf;
-
 use ry_ast::{IdentifierAst, Impl, ImportPath, ModuleItem};
-use ry_filesystem::span::Span;
+use ry_filesystem::{location::Location, path_storage::PathID};
 use ry_fx_hash::FxHashMap;
 use ry_interner::Symbol;
 use ry_typed_ast::{ty::Type, Path};
@@ -80,9 +78,6 @@ pub mod diagnostics;
 /// references.
 #[derive(Debug, PartialEq, Clone)]
 pub struct GlobalContext {
-    /// File path storage.
-    pub file_path_storage: FilePathStorage,
-
     /// Projects, that are going to be resolved.
     pub projects: FxHashMap<Symbol, ProjectContext>,
 }
@@ -101,7 +96,6 @@ impl GlobalContext {
     #[must_use]
     pub fn new() -> Self {
         Self {
-            file_path_storage: FilePathStorage::new(),
             projects: FxHashMap::default(),
         }
     }
@@ -147,7 +141,7 @@ impl GlobalContext {
 #[derive(Debug, PartialEq, Clone)]
 pub struct ProjectContext {
     /// Path to the project.
-    pub path: PathBuf,
+    pub path_id: PathID,
 
     /// The root module of the project (the module that is located in the `project.ry`).
     pub root: ModuleContext,
@@ -159,8 +153,8 @@ pub struct ProjectContext {
 /// Data that Ry compiler has about a module.
 #[derive(Debug, PartialEq, Clone)]
 pub struct ModuleContext {
-    /// Path to the module file.
-    pub path: PathBuf,
+    /// ID of the path of the module file/folder.
+    pub path_id: PathID,
 
     /// The module docstring.
     pub docstring: Option<String>,
@@ -177,7 +171,7 @@ pub struct ModuleContext {
     pub implementations: Vec<Impl>,
 
     /// The imports used in the module ([`Span`] stores a location of an entire import item).
-    pub imports: Vec<(Span, ImportPath)>,
+    pub imports: Vec<(Location, ImportPath)>,
 }
 
 impl ModuleContext {
@@ -302,7 +296,7 @@ pub enum ModuleItemNameBindingData {
 #[derive(Debug, Clone, PartialEq)]
 pub struct ValueConstructor {
     /// Span where the symbol was defined.
-    pub origin: Span,
+    pub origin: Location,
 
     /// Type of the symbol.
     pub ty: Type,
@@ -353,64 +347,5 @@ impl<'ctx> Scope<'ctx> {
         } else {
             None
         }
-    }
-}
-
-/// Storage for file paths (to avoid copying and fast comparing, basically the same
-/// movitation as with [`Interner`]).
-///
-/// The ID-s that correspond to file paths have a type of [`FilePathID`].
-///
-/// [`Interner`]: ry_interner::Interner
-#[derive(Debug, PartialEq, Eq, Clone)]
-pub struct FilePathStorage {
-    storage: Vec<PathBuf>,
-}
-
-/// ID of a file path in a [`FilePathStorage`].
-pub type FilePathID = usize;
-
-impl Default for FilePathStorage {
-    #[inline]
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl FilePathStorage {
-    /// Creates a new empty file path storage.
-    #[inline]
-    #[must_use]
-    pub const fn new() -> Self {
-        Self {
-            storage: Vec::new(),
-        }
-    }
-
-    /// Adds a path to the storage.
-    #[inline]
-    #[must_use]
-    pub fn add_path(&mut self, path: PathBuf) -> FilePathID {
-        self.storage.push(path);
-        self.storage.len() - 1
-    }
-
-    /// Resolves a path stored in the storage.
-    #[inline]
-    #[must_use]
-    pub fn resolve_path(&self, id: FilePathID) -> Option<PathBuf> {
-        self.storage.get(id).cloned()
-    }
-
-    /// Resolves a path stored in the storage (same as `resolve_path()`),
-    /// but panics if the path is not found.
-    #[inline]
-    #[must_use]
-    #[allow(clippy::missing_panics_doc)]
-    pub fn resolve_path_or_panic(&self, id: FilePathID) -> PathBuf {
-        self.storage
-            .get(id)
-            .unwrap_or_else(|| panic!("Path with id: {id} is not found"))
-            .clone()
     }
 }

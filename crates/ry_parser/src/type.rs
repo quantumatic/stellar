@@ -75,7 +75,7 @@ impl Parse for TypeWithQualifiedPathParser {
     type Output = Option<Type>;
 
     fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
-        let start = state.next_token.span.start;
+        let start = state.next_token.location.start;
         state.advance(); // `[`
 
         let left = Box::new(TypeParser.parse(state)?);
@@ -95,7 +95,7 @@ impl Parse for TypeWithQualifiedPathParser {
         }
 
         Some(Type::WithQualifiedPath {
-            span: state.span_from(start),
+            location: state.location_from(start),
             left,
             right,
             segments,
@@ -107,13 +107,13 @@ impl Parse for TraitObjectTypeParser {
     type Output = Option<Type>;
 
     fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
-        let start = state.next_token.span.start;
+        let start = state.next_token.location.start;
 
         state.advance(); // `dyn`
 
         Some(Type::TraitObject {
             bounds: TypeBoundsParser.parse(state)?,
-            span: state.span_from(start),
+            location: state.location_from(start),
         })
     }
 }
@@ -122,7 +122,7 @@ impl Parse for ParenthesizedTupleOrFunctionTypeParser {
     type Output = Option<Type>;
 
     fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
-        let start = state.next_token.span.start;
+        let start = state.next_token.location.start;
         state.advance(); // `(`
 
         let element_types = parse_list!(state, "parenthesized or tuple type", Token![')'], {
@@ -137,35 +137,35 @@ impl Parse for ParenthesizedTupleOrFunctionTypeParser {
             let return_type = Box::new(TypeParser.parse(state)?);
 
             return Some(Type::Function {
-                span: state.span_from(start),
+                location: state.location_from(start),
                 parameter_types: element_types,
                 return_type,
             });
         }
 
-        let span = state.span_from(start);
+        let location = state.location_from(start);
 
         let mut element_types = element_types.into_iter();
 
         match (element_types.next(), element_types.next()) {
             (Some(element), None) => {
                 if state
-                    .resolve_span(state.span_from(element.span().end))
+                    .resolve_location(state.location_from(element.location().end))
                     .contains(',')
                 {
                     Some(Type::Tuple {
-                        span,
+                        location,
                         element_types: vec![element],
                     })
                 } else {
                     Some(Type::Parenthesized {
-                        span,
+                        location,
                         inner: Box::from(element),
                     })
                 }
             }
             (None, None) => Some(Type::Tuple {
-                span,
+                location,
                 element_types: vec![],
             }),
             (Some(previous), Some(next)) => {
@@ -176,7 +176,7 @@ impl Parse for ParenthesizedTupleOrFunctionTypeParser {
                 new_element_types.append(&mut element_types.collect::<Vec<_>>());
 
                 Some(Type::Tuple {
-                    span,
+                    location,
                     element_types: new_element_types,
                 })
             }
@@ -225,7 +225,7 @@ impl Parse for TypePathParser {
     type Output = Option<TypePath>;
 
     fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
-        let start = state.next_token.span.start;
+        let start = state.next_token.location.start;
 
         let mut segments = vec![];
         segments.push(TypePathSegmentParser.parse(state)?);
@@ -237,7 +237,7 @@ impl Parse for TypePathParser {
         }
 
         Some(TypePath {
-            span: state.span_from(start),
+            location: state.location_from(start),
             segments,
         })
     }
@@ -251,7 +251,7 @@ impl Parse for TypePathSegmentParser {
         let generic_arguments = GenericArgumentsParser.optionally_parse(state)?;
 
         Some(TypePathSegment {
-            span: state.span_from(path.span.start),
+            location: state.location_from(path.location.start),
             path,
             generic_arguments,
         })

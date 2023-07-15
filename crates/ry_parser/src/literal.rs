@@ -15,12 +15,12 @@ impl Parse for LiteralParser {
                 if let Ok(value) = state.resolve_current().replace('_', "").parse::<u64>() {
                     Some(Literal::Integer {
                         value,
-                        span: state.current_token.span,
+                        location: state.current_token.location,
                     })
                 } else {
                     state.diagnostics.push(
                         ParseDiagnostic::IntegerOverflowError {
-                            span: state.current_token.span,
+                            location: state.current_token.location,
                         }
                         .build(),
                     );
@@ -32,12 +32,12 @@ impl Parse for LiteralParser {
                 if let Ok(value) = state.resolve_current().replace('_', "").parse::<f64>() {
                     Some(Literal::Float {
                         value,
-                        span: state.current_token.span,
+                        location: state.current_token.location,
                     })
                 } else {
                     state.diagnostics.push(
                         ParseDiagnostic::FloatOverflowError {
-                            span: state.current_token.span,
+                            location: state.current_token.location,
                         }
                         .build(),
                     );
@@ -48,28 +48,28 @@ impl Parse for LiteralParser {
                 state.advance();
                 Some(Literal::String {
                     value: state.lexer.scanned_string(),
-                    span: state.current_token.span,
+                    location: state.current_token.location,
                 })
             }
             RawToken::CharLiteral => {
                 state.advance();
                 Some(Literal::Character {
                     value: state.lexer.scanned_char,
-                    span: state.current_token.span,
+                    location: state.current_token.location,
                 })
             }
             Token![true] => {
                 state.advance();
                 Some(Literal::Boolean {
                     value: true,
-                    span: state.current_token.span,
+                    location: state.current_token.location,
                 })
             }
             Token![false] => {
                 state.advance();
                 Some(Literal::Boolean {
                     value: false,
-                    span: state.current_token.span,
+                    location: state.current_token.location,
                 })
             }
             _ => {

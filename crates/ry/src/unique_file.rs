@@ -9,5 +9,8 @@ pub(crate) fn create_unique_file(name: &str, extension: &str) -> (String, File) 
         idx += 1;
     }
 
-    (path.clone(), File::create(path).expect("Err"))
+    (
+        path.clone(),
+        File::create(path).expect("Cannot create a unique file"),
+    )
 }

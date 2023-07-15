@@ -7,7 +7,7 @@ use std::path::Path;
 
 use codespan_reporting::files::{Error, Files};
 
-use crate::span::{Span, SpanIndex};
+use crate::location::{Location, LocationIndex};
 
 /// A Ry source file.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -64,8 +64,8 @@ impl<'file> InMemoryFile<'file> {
     /// Returns the string slice corresponding to the given location.
     #[inline]
     #[must_use]
-    pub fn resolve_span(&self, span: Span) -> &str {
-        self.source.index(span)
+    pub fn resolve_location(&self, location: Location) -> &str {
+        self.source.index(location)
     }
 
     /// Returns the line starting byte index of the given line index.

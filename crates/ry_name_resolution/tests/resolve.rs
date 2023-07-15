@@ -1,7 +1,5 @@
-use std::path::PathBuf;
-
 use ry_ast::{IdentifierAst, ImportPath};
-use ry_filesystem::span::DUMMY_SPAN;
+use ry_filesystem::{location::DUMMY_LOCATION, path_storage::DUMMY_PATH_ID};
 use ry_fx_hash::FxHashMap;
 use ry_interner::Interner;
 use ry_name_resolution::{GlobalContext, ModuleContext, NameBindingData, ProjectContext};
@@ -22,7 +20,7 @@ fn resolve_module() {
     let mut tree = GlobalContext::new();
 
     let child_module_data = ModuleContext {
-        path: PathBuf::new(),
+        path_id: DUMMY_PATH_ID,
         docstring: None,
         bindings: FxHashMap::default(),
         submodules: FxHashMap::default(),
@@ -31,7 +29,7 @@ fn resolve_module() {
     };
 
     let mut project_root_module = ModuleContext {
-        path: PathBuf::new(),
+        path_id: DUMMY_PATH_ID,
         docstring: None,
         bindings: FxHashMap::default(),
         submodules: FxHashMap::default(),
@@ -41,7 +39,7 @@ fn resolve_module() {
     project_root_module.submodules.insert(a, child_module_data);
 
     let project = ProjectContext {
-        path: PathBuf::new(),
+        path_id: DUMMY_PATH_ID,
         root: project_root_module,
         dependencies: vec![],
     };
@@ -84,7 +82,7 @@ fn import() {
     let mut tree = GlobalContext::new();
 
     let child_module_data = ModuleContext {
-        path: PathBuf::new(),
+        path_id: DUMMY_PATH_ID,
         docstring: None,
         bindings: FxHashMap::default(),
         submodules: FxHashMap::default(),
@@ -96,24 +94,24 @@ fn import() {
     submodules.insert(b, child_module_data);
 
     let project_root_module = ModuleContext {
-        path: PathBuf::new(),
+        path_id: DUMMY_PATH_ID,
         docstring: None,
         bindings: FxHashMap::default(),
         submodules,
         implementations: vec![],
         imports: vec![
             (
-                DUMMY_SPAN,
+                DUMMY_LOCATION,
                 ImportPath {
                     path: ry_ast::Path {
-                        span: DUMMY_SPAN,
+                        location: DUMMY_LOCATION,
                         identifiers: vec![
                             IdentifierAst {
-                                span: DUMMY_SPAN,
+                                location: DUMMY_LOCATION,
                                 symbol: a,
                             },
                             IdentifierAst {
-                                span: DUMMY_SPAN,
+                                location: DUMMY_LOCATION,
                                 symbol: b,
                             },
                         ],
@@ -122,23 +120,23 @@ fn import() {
                 },
             ),
             (
-                DUMMY_SPAN,
+                DUMMY_LOCATION,
                 ImportPath {
                     path: ry_ast::Path {
-                        span: DUMMY_SPAN,
+                        location: DUMMY_LOCATION,
                         identifiers: vec![
                             IdentifierAst {
-                                span: DUMMY_SPAN,
+                                location: DUMMY_LOCATION,
                                 symbol: a,
                             },
                             IdentifierAst {
-                                span: DUMMY_SPAN,
+                                location: DUMMY_LOCATION,
                                 symbol: b,
                             },
                         ],
                     },
                     r#as: Some(IdentifierAst {
-                        span: DUMMY_SPAN,
+                        location: DUMMY_LOCATION,
                         symbol: c,
                     }),
                 },
@@ -146,7 +144,7 @@ fn import() {
         ],
     };
     let project = ProjectContext {
-        path: PathBuf::new(),
+        path_id: DUMMY_PATH_ID,
         root: project_root_module,
         dependencies: vec![],
     };

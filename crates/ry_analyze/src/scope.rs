@@ -3,7 +3,7 @@
 use std::collections::HashMap;
 
 use ry_diagnostics::{BuildDiagnostic, Diagnostic};
-use ry_filesystem::span::Span;
+use ry_filesystem::location::Location;
 use ry_interner::{Interner, Symbol};
 use ry_typed_ast::ty::Type;
 
@@ -13,7 +13,7 @@ use crate::diagnostics::ScopeDiagnostic;
 #[derive(Debug, Clone, PartialEq)]
 pub struct ValueConstructor {
     /// Span where the symbol was defined.
-    pub origin: Span,
+    pub origin: Location,
 
     /// Type of the symbol.
     pub ty: Type,
@@ -73,14 +73,14 @@ impl<'scope> Scope<'scope> {
     pub fn lookup_or_save_diagnostic(
         &self,
         symbol: Symbol,
-        span: Span,
+        location: Location,
         interner: &Interner,
         diagnostics: &mut Vec<Diagnostic>,
     ) -> Option<&ValueConstructor> {
         if let data @ Some(..) = self.lookup(symbol) {
             data
         } else if let Some(parent) = self.parent {
-            parent.lookup_or_save_diagnostic(symbol, span, interner, diagnostics)
+            parent.lookup_or_save_diagnostic(symbol, location, interner, diagnostics)
         } else {
             diagnostics.push(
                 ScopeDiagnostic::NotFound {
@@ -88,7 +88,7 @@ impl<'scope> Scope<'scope> {
                         .resolve(symbol)
                         .unwrap_or_else(|| panic!("Symbol {symbol} cannot be resolved"))
                         .to_owned(),
-                    span,
+                    location,
                 }
                 .build(),
             );

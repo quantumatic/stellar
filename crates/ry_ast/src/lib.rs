@@ -84,7 +84,7 @@
 
 use std::fmt::Display;
 
-use ry_filesystem::span::Span;
+use ry_filesystem::location::Location;
 use ry_interner::Symbol;
 use token::RawToken;
 
@@ -97,46 +97,46 @@ pub mod visit;
 #[derive(Debug, PartialEq, Clone)]
 pub enum Literal {
     /// Boolean literal, e.g. `true` or `false`.
-    Boolean { value: bool, span: Span },
+    Boolean { value: bool, location: Location },
 
     /// Character literal, e.g. `'a'`, `'\u{1234}'`.
-    Character { value: char, span: Span },
+    Character { value: char, location: Location },
 
     /// String literal, e.g. `"hello"`.
-    String { value: String, span: Span },
+    String { value: String, location: Location },
 
     /// Integer literal, e.g. `123`,
-    Integer { value: u64, span: Span },
+    Integer { value: u64, location: Location },
 
     /// Float literal, e.g. `3.14`.
-    Float { value: f64, span: Span },
+    Float { value: f64, location: Location },
 }
 
 impl Literal {
     #[inline]
     #[must_use]
-    pub const fn span(&self) -> Span {
+    pub const fn location(&self) -> Location {
         match self {
-            Self::Boolean { span, .. }
-            | Self::Character { span, .. }
-            | Self::String { span, .. }
-            | Self::Integer { span, .. }
-            | Self::Float { span, .. } => *span,
+            Self::Boolean { location, .. }
+            | Self::Character { location, .. }
+            | Self::String { location, .. }
+            | Self::Integer { location, .. }
+            | Self::Float { location, .. } => *location,
         }
     }
 }
 
-/// A symbol with a specified span, e.g. `foo`, `std`.
+/// A symbol with a specified location, e.g. `foo`, `std`.
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub struct IdentifierAst {
-    pub span: Span,
+    pub location: Location,
     pub symbol: Symbol,
 }
 
 /// A sequence of identifiers separated by `.`, e.g. `std.io`, `foo`.
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Path {
-    pub span: Span,
+    pub location: Location,
     pub identifiers: Vec<IdentifierAst>,
 }
 
@@ -150,7 +150,7 @@ pub struct ImportPath {
 /// A type path, e.g. `Iterator[Item = uint32].Item`, `F.Output`.
 #[derive(Debug, PartialEq, Clone)]
 pub struct TypePath {
-    pub span: Span,
+    pub location: Location,
     pub segments: Vec<TypePathSegment>,
 }
 
@@ -158,7 +158,7 @@ pub struct TypePath {
 /// `Iterator[Item = uint32].Item`.
 #[derive(Debug, PartialEq, Clone)]
 pub struct TypePathSegment {
-    pub span: Span,
+    pub location: Location,
     pub path: Path,
     pub generic_arguments: Option<Vec<GenericArgument>>,
 }
@@ -171,14 +171,14 @@ pub enum Pattern {
 
     /// An identifier pattern, e.g. `f`, `list @ [3, ..]`.
     Identifier {
-        span: Span,
+        location: Location,
         identifier: IdentifierAst,
         pattern: Option<Box<Self>>,
     },
 
     /// A struct pattern, e.g. `Person { name, age, .. }`.
     Struct {
-        span: Span,
+        location: Location,
         path: Path,
         fields: Vec<StructFieldPattern>,
     },
@@ -186,61 +186,67 @@ pub enum Pattern {
     /// A tuple-like pattern - used to match a tuple-like structs and enum tuple-like items,
     /// e.g. `Some(x)`, `A()`.
     TupleLike {
-        span: Span,
+        location: Location,
         path: Path,
         inner_patterns: Vec<Self>,
     },
 
     /// A tuple pattern, e.g. `(a, "hello", ..)`.
-    Tuple { span: Span, elements: Vec<Self> },
+    Tuple {
+        location: Location,
+        elements: Vec<Self>,
+    },
 
     /// A path pattern.
     Path { path: Path },
 
     /// A list pattern, e.g. `[1, .., 10]`.
     List {
-        span: Span,
+        location: Location,
         inner_patterns: Vec<Self>,
     },
 
     /// A grouped pattern - surrounded by parentheses, e.g. `(a)`, `([1, .., 9])`.
-    Grouped { span: Span, inner: Box<Self> },
+    Grouped {
+        location: Location,
+        inner: Box<Self>,
+    },
 
     /// An or pattern, e.g. `Some(..) | None`.
     Or {
-        span: Span,
+        location: Location,
         left: Box<Self>,
         right: Box<Self>,
     },
 
     /// A rest pattern - `..`.
-    Rest { span: Span },
+    Rest { location: Location },
 }
 
 impl Pattern {
-    /// Returns the span of the pattern.
+    /// Returns the location of the pattern.
     #[inline]
     #[must_use]
-    pub const fn span(&self) -> Span {
+    pub const fn location(&self) -> Location {
         match self {
             Self::Literal(
-                Literal::Boolean { span, .. }
-                | Literal::Character { span, .. }
-                | Literal::String { span, .. }
-                | Literal::Integer { span, .. }
-                | Literal::Float { span, .. },
+                Literal::Boolean { location, .. }
+                | Literal::Character { location, .. }
+                | Literal::String { location, .. }
+                | Literal::Integer { location, .. }
+                | Literal::Float { location, .. },
             )
-            | Self::Grouped { span, .. }
-            | Self::Identifier { span, .. }
-            | Self::List { span, .. }
-            | Self::Or { span, .. }
-            | Self::Rest { span }
-            | Self::Struct { span, .. }
-            | Self::Tuple { span, .. }
-            | Self::TupleLike { span, .. }
+            | Self::Grouped { location, .. }
+            | Self::Identifier { location, .. }
+            | Self::List { location, .. }
+            | Self::Or { location, .. }
+            | Self::Rest { location }
+            | Self::Struct { location, .. }
+            | Self::Tuple { location, .. }
+            | Self::TupleLike { location, .. }
             | Self::Path {
-                path: Path { span, .. },
-            } => *span,
+                path: Path { location, .. },
+            } => *location,
         }
     }
 }
@@ -252,12 +258,12 @@ pub enum StructFieldPattern {
     /// A pattern used to match a struct field, which is not rest pattern (`..`),
     /// e.g. `citizen: "USA"` and `name` in `Person { citizen: "USA", name, .. }`.
     NotRest {
-        span: Span,
+        location: Location,
         field_name: IdentifierAst,
         value_pattern: Option<Pattern>,
     },
     /// A rest pattern, e.g. `..`.
-    Rest { span: Span },
+    Rest { location: Location },
 }
 
 /// A list of trait bounds being type pathes, e.g. `Debug + Into[T]`.
@@ -271,13 +277,13 @@ pub enum Type {
 
     /// A tuple type, e.g. `(int32, String, char)`.
     Tuple {
-        span: Span,
+        location: Location,
         element_types: Vec<Self>,
     },
 
     /// A function type (return type is required for consistency), e.g. `(char): bool`.
     Function {
-        span: Span,
+        location: Location,
         parameter_types: Vec<Self>,
         return_type: Box<Self>,
     },
@@ -286,14 +292,20 @@ pub enum Type {
     ///
     /// **Note**: parenthesized type is not a single element tuple type, because
     /// its syntax is: `(T,)`!
-    Parenthesized { span: Span, inner: Box<Self> },
+    Parenthesized {
+        location: Location,
+        inner: Box<Self>,
+    },
 
     /// A trait object type, e.g. `dyn Iterator[Item = uint32]`, `dyn Debug + Clone`.
-    TraitObject { span: Span, bounds: TypeBounds },
+    TraitObject {
+        location: Location,
+        bounds: TypeBounds,
+    },
 
     /// A type with a qualified path, e.g. `[A as Iterator].Item`.
     WithQualifiedPath {
-        span: Span,
+        location: Location,
         left: Box<Self>,
         right: TypePath,
         segments: Vec<TypePathSegment>,
@@ -301,17 +313,17 @@ pub enum Type {
 }
 
 impl Type {
-    /// Returns the span of the type.
+    /// Returns the location of the type.
     #[inline]
     #[must_use]
-    pub const fn span(&self) -> Span {
+    pub const fn location(&self) -> Location {
         match self {
-            Self::Function { span, .. }
-            | Self::Parenthesized { span, .. }
-            | Self::Path(TypePath { span, .. })
-            | Self::TraitObject { span, .. }
-            | Self::Tuple { span, .. }
-            | Self::WithQualifiedPath { span, .. } => *span,
+            Self::Function { location, .. }
+            | Self::Parenthesized { location, .. }
+            | Self::Path(TypePath { location, .. })
+            | Self::TraitObject { location, .. }
+            | Self::Tuple { location, .. }
+            | Self::WithQualifiedPath { location, .. } => *location,
         }
     }
 }
@@ -350,25 +362,31 @@ pub enum WhereClauseItem {
 #[derive(Debug, PartialEq, Clone)]
 pub enum Expression {
     /// List expression, e.g. `[1, 2, 3]`.
-    List { span: Span, elements: Vec<Self> },
+    List {
+        location: Location,
+        elements: Vec<Self>,
+    },
 
     /// As expression, e.g. `a as float32`.
     As {
-        span: Span,
+        location: Location,
         left: Box<Self>,
         right: Type,
     },
 
     /// Binary expression, e.g. `1 + 2`.
     Binary {
-        span: Span,
+        location: Location,
         left: Box<Self>,
         operator: BinaryOperator,
         right: Box<Self>,
     },
 
     /// Block expression, e.g. `{ let b = 1; b }`.
-    StatementsBlock { span: Span, block: Vec<Statement> },
+    StatementsBlock {
+        location: Location,
+        block: Vec<Statement>,
+    },
 
     /// Literal expression, e.g. `true`, `\"hello\"`, `1.2`.
     Literal(Literal),
@@ -377,77 +395,83 @@ pub enum Expression {
     Identifier(IdentifierAst),
 
     /// Parenthesized expression, e.g. `(1 + 2)`.
-    Parenthesized { span: Span, inner: Box<Self> },
+    Parenthesized {
+        location: Location,
+        inner: Box<Self>,
+    },
 
     /// If expression, e.g. `if x { ... } else { ... }`.
     If {
-        span: Span,
+        location: Location,
         if_blocks: Vec<(Self, Vec<Statement>)>,
         r#else: Option<Vec<Statement>>,
     },
 
     /// Field access expression, e.g. `x.y`.
     FieldAccess {
-        span: Span,
+        location: Location,
         left: Box<Self>,
         right: IdentifierAst,
     },
 
     /// Prefix expression, e.g. `!false`, `++a`.
     Prefix {
-        span: Span,
+        location: Location,
         inner: Box<Self>,
         operator: PrefixOperator,
     },
 
     /// Postfix expression, e.g. `safe_div(1, 0)?`, `a++`.
     Postfix {
-        span: Span,
+        location: Location,
         inner: Box<Self>,
         operator: PostfixOperator,
     },
 
     /// While expression, e.g. `while x != 0 {}`.
     While {
-        span: Span,
+        location: Location,
         condition: Box<Self>,
         body: Vec<Statement>,
     },
 
     /// Call expression, e.g. `s.to_string()`.
     Call {
-        span: Span,
+        location: Location,
         left: Box<Self>,
         arguments: Vec<Self>,
     },
 
     /// Generic arguments expression, e.g. `sizeof[uint32]`.
     GenericArguments {
-        span: Span,
+        location: Location,
         left: Box<Self>,
         generic_arguments: Vec<GenericArgument>,
     },
 
     /// Tuple expression, e.g. `(a, 32, \"hello\")`.
-    Tuple { span: Span, elements: Vec<Self> },
+    Tuple {
+        location: Location,
+        elements: Vec<Self>,
+    },
 
     /// Struct expression, e.g. `Person { name: \"John\", age: 25 }`.
     Struct {
-        span: Span,
+        location: Location,
         left: Box<Self>,
         fields: Vec<StructExpressionItem>,
     },
 
     /// Match expression (`match fs.read_file(...) { ... }`).
     Match {
-        span: Span,
+        location: Location,
         expression: Box<Self>,
         block: Vec<MatchExpressionItem>,
     },
 
     /// Lambda expression (`|x| { x + 1 }`).
     Lambda {
-        span: Span,
+        location: Location,
         parameters: Vec<LambdaFunctionParameter>,
         return_type: Option<Type>,
         block: Vec<Statement>,
@@ -471,45 +495,45 @@ pub enum GenericArgument {
 }
 
 impl Expression {
-    /// Returns the span of the expression.
+    /// Returns the location of the expression.
     #[inline]
     #[must_use]
-    pub const fn span(&self) -> Span {
+    pub const fn location(&self) -> Location {
         match self {
-            Self::List { span, .. }
-            | Self::As { span, .. }
-            | Self::Binary { span, .. }
-            | Self::StatementsBlock { span, .. }
+            Self::List { location, .. }
+            | Self::As { location, .. }
+            | Self::Binary { location, .. }
+            | Self::StatementsBlock { location, .. }
             | Self::Literal(
-                Literal::Integer { span, .. }
-                | Literal::Float { span, .. }
-                | Literal::Character { span, .. }
-                | Literal::String { span, .. }
-                | Literal::Boolean { span, .. },
+                Literal::Integer { location, .. }
+                | Literal::Float { location, .. }
+                | Literal::Character { location, .. }
+                | Literal::String { location, .. }
+                | Literal::Boolean { location, .. },
             )
-            | Self::Identifier(IdentifierAst { span, .. })
-            | Self::Parenthesized { span, .. }
-            | Self::If { span, .. }
-            | Self::FieldAccess { span, .. }
-            | Self::Prefix { span, .. }
-            | Self::Postfix { span, .. }
-            | Self::While { span, .. }
-            | Self::Call { span, .. }
-            | Self::GenericArguments { span, .. }
-            | Self::Tuple { span, .. }
-            | Self::Struct { span, .. }
-            | Self::Match { span, .. }
-            | Self::Lambda { span, .. } => *span,
+            | Self::Identifier(IdentifierAst { location, .. })
+            | Self::Parenthesized { location, .. }
+            | Self::If { location, .. }
+            | Self::FieldAccess { location, .. }
+            | Self::Prefix { location, .. }
+            | Self::Postfix { location, .. }
+            | Self::While { location, .. }
+            | Self::Call { location, .. }
+            | Self::GenericArguments { location, .. }
+            | Self::Tuple { location, .. }
+            | Self::Struct { location, .. }
+            | Self::Match { location, .. }
+            | Self::Lambda { location, .. } => *location,
         }
     }
 }
 
-/// A binary operator with a specific span.
+/// A binary operator with a specific location.
 ///
 /// See [`BinaryOperator`] for more information.
 #[derive(Debug, PartialEq, Copy, Clone, Eq, Hash)]
 pub struct BinaryOperator {
-    pub span: Span,
+    pub location: Location,
     pub raw: RawBinaryOperator,
 }
 
@@ -674,12 +698,12 @@ impl Display for RawBinaryOperator {
     }
 }
 
-/// A prefix operator with a specific span.
+/// A prefix operator with a specific location.
 ///
 /// See [`PrefixOperator`] for more information.
 #[derive(Debug, PartialEq, Copy, Clone, Eq, Hash)]
 pub struct PrefixOperator {
-    pub span: Span,
+    pub location: Location,
     pub raw: RawPrefixOperator,
 }
 
@@ -744,12 +768,12 @@ impl Display for RawPrefixOperator {
     }
 }
 
-/// A postfix operator with a specific span.
+/// A postfix operator with a specific location.
 ///
 /// See [`PostfixOperator`] for more information.
 #[derive(Debug, PartialEq, Copy, Clone, Eq, Hash)]
 pub struct PostfixOperator {
-    pub span: Span,
+    pub location: Location,
     pub raw: RawPostfixOperator,
 }
 
@@ -841,10 +865,10 @@ pub enum Statement {
     },
 
     /// Break statement - `break;`.
-    Break { span: Span },
+    Break { location: Location },
 
     /// Continue statement - `continue`;
-    Continue { span: Span },
+    Continue { location: Location },
 
     /// Return statement - `return <expr>;`, e.g. `return 42;`.
     Return { expression: Expression },
@@ -864,7 +888,7 @@ pub type StatementsBlock = Vec<Statement>;
 #[derive(Debug, Clone, PartialEq)]
 pub struct Impl {
     /// Location of the `impl` keyword.
-    pub span: Span,
+    pub location: Location,
     pub generic_parameters: Option<Vec<GenericParameter>>,
     pub ty: Type,
     pub r#trait: Option<Type>,
@@ -894,7 +918,7 @@ pub enum ModuleItem {
     ///
     Import {
         /// Location of the entire import item.
-        span: Span,
+        location: Location,
         path: ImportPath,
     },
 
@@ -936,41 +960,41 @@ pub enum ModuleItem {
 }
 
 impl ModuleItem {
-    /// Returns the span of the item.
+    /// Returns the location of the item.
     #[inline]
     #[must_use]
-    pub const fn span(&self) -> Span {
+    pub const fn location(&self) -> Location {
         match self {
             Self::Enum {
-                name: IdentifierAst { span, .. },
+                name: IdentifierAst { location, .. },
                 ..
             }
             | Self::Function(Function {
                 signature:
                     FunctionSignature {
-                        name: IdentifierAst { span, .. },
+                        name: IdentifierAst { location, .. },
                         ..
                     },
                 ..
             })
-            | Self::Impl(Impl { span, .. })
-            | Self::Import { span, .. }
+            | Self::Impl(Impl { location, .. })
+            | Self::Import { location, .. }
             | Self::Struct {
-                name: IdentifierAst { span, .. },
+                name: IdentifierAst { location, .. },
                 ..
             }
             | Self::Trait {
-                name: IdentifierAst { span, .. },
+                name: IdentifierAst { location, .. },
                 ..
             }
             | Self::TupleLikeStruct {
-                name: IdentifierAst { span, .. },
+                name: IdentifierAst { location, .. },
                 ..
             }
             | Self::TypeAlias(TypeAlias {
-                name: IdentifierAst { span, .. },
+                name: IdentifierAst { location, .. },
                 ..
-            }) => *span,
+            }) => *location,
         }
     }
 
@@ -1182,7 +1206,7 @@ pub enum FunctionParameter {
 /// A self parameter, e.g. `self`, `self: Self`.
 #[derive(Debug, PartialEq, Clone)]
 pub struct SelfParameter {
-    pub self_span: Span,
+    pub self_location: Location,
     pub ty: Option<Type>,
 }
 
@@ -1202,7 +1226,7 @@ pub struct Module {
 
 /// A visibility qualifier - `pub` or nothing (private visibility).
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
-pub struct Visibility(Option<Span>);
+pub struct Visibility(Option<Location>);
 
 impl Visibility {
     #[inline]
@@ -1213,13 +1237,13 @@ impl Visibility {
 
     #[inline]
     #[must_use]
-    pub const fn public(span: Span) -> Self {
-        Self(Some(span))
+    pub const fn public(location: Location) -> Self {
+        Self(Some(location))
     }
 
     #[inline]
     #[must_use]
-    pub const fn span_of_pub(&self) -> Option<Span> {
+    pub const fn location_of_pub(&self) -> Option<Location> {
         self.0
     }
 }

@@ -1,9 +1,10 @@
 //! Builds a resolution context out of a parsed AST.
 
-use std::{io, path::PathBuf};
+use std::io;
 
 use ry_ast::{Module, ModuleItem};
 use ry_diagnostics::{BuildDiagnostic, Diagnostic};
+use ry_filesystem::path_storage::{PathID, PathStorage};
 use ry_fx_hash::FxHashMap;
 use ry_interner::Interner;
 use ry_parser::read_and_parse_module;
@@ -21,7 +22,7 @@ use crate::{
 /// If the interner cannot resolve any name in the module AST.
 #[must_use]
 pub fn build_module_context_from_ast(
-    file_path: impl Into<PathBuf>,
+    path_id: PathID,
     module: Module,
     interner: &Interner,
     file_diagnostics: &mut Vec<Diagnostic>,
@@ -35,8 +36,8 @@ pub fn build_module_context_from_ast(
             ModuleItem::Impl(r#impl) => {
                 implementations.push(r#impl);
             }
-            ModuleItem::Import { span, path } => {
-                imports.push((span, path));
+            ModuleItem::Import { location, path } => {
+                imports.push((location, path));
             }
             _ => {
                 let name = item.name_or_panic();
@@ -48,11 +49,11 @@ pub fn build_module_context_from_ast(
                         NameResolutionDiagnostic::ItemDefinedMultipleTimes {
                             name: interner.resolve(name).unwrap().to_owned(),
                             first_definition: DefinitionInfo {
-                                span: previous_item.span(),
+                                location: previous_item.location(),
                                 kind: previous_item.kind(),
                             },
                             second_definition: DefinitionInfo {
-                                span: item.span(),
+                                location: item.location(),
                                 kind: item.kind(),
                             },
                         }
@@ -66,7 +67,7 @@ pub fn build_module_context_from_ast(
     }
 
     ModuleContext {
-        path: file_path.into(),
+        path_id,
         docstring: module.docstring,
         bindings,
         submodules: FxHashMap::default(),
@@ -79,23 +80,24 @@ pub fn build_module_context_from_ast(
 ///
 /// # Panics
 ///
-/// If the interner cannot resolve any name in the module AST.
+/// * If the interner cannot resolve any name in the module AST.
+/// * If the file path cannot be resolved in the path storage.
 ///
 /// # Errors
 ///
 /// If the file cannot be read.
 #[inline]
 pub fn read_and_build_module_context(
-    file_path: impl Into<PathBuf>,
+    file_path_storage: &PathStorage,
+    file_path_id: PathID,
     interner: &mut Interner,
     file_diagnostics: &mut Vec<Diagnostic>,
 ) -> Result<ModuleContext, io::Error> {
-    let file_path = file_path.into();
-
-    let module = read_and_parse_module(file_path.clone(), file_diagnostics, interner)?;
+    let module =
+        read_and_parse_module(file_path_storage, file_path_id, file_diagnostics, interner)?;
 
     Ok(build_module_context_from_ast(
-        file_path,
+        file_path_id,
         module,
         interner,
         file_diagnostics,

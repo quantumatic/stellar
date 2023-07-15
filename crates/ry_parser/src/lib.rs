@@ -74,7 +74,7 @@ mod pattern;
 mod statement;
 mod r#type;
 
-use std::{fs, io, path::Path};
+use std::{fs, io};
 
 use diagnostics::ParseDiagnostic;
 use expression::ExpressionParser;
@@ -86,7 +86,10 @@ use ry_ast::{
     Expression, IdentifierAst, Module, ModuleItem, Pattern, Statement, Token, Type, Visibility,
 };
 use ry_diagnostics::{BuildDiagnostic, Diagnostic};
-use ry_filesystem::span::{Span, SpanIndex};
+use ry_filesystem::{
+    location::{Location, LocationIndex},
+    path_storage::{PathID, PathStorage},
+};
 use ry_interner::Interner;
 use ry_lexer::Lexer;
 use statement::StatementParser;
@@ -98,14 +101,13 @@ mod macros;
 /// Represents a parse state.
 #[derive(Debug)]
 pub struct ParseState<'source, 'diagnostics, 'interner> {
-    /// Source code of the file.
-    source: &'source str,
     /// Lexer that is used for parsing.
     lexer: Lexer<'source, 'interner>,
     /// Current token.
     current_token: Token,
     /// Next token.
     next_token: Token,
+
     /// Diagnostics that is emitted during parsing.
     diagnostics: &'diagnostics mut Vec<Diagnostic>,
 }
@@ -149,14 +151,19 @@ where
 ///
 /// # Errors
 /// Returns an error if the file contents cannot be read.
+///
+/// # Panics
+/// Panics if the file path cannot be resolved in the path storage.
 #[inline]
 pub fn read_and_parse_module(
-    file_path: impl AsRef<Path>,
+    path_storage: &PathStorage,
+    file_path_id: PathID,
     diagnostics: &mut Vec<Diagnostic>,
     interner: &mut Interner,
 ) -> Result<Module, io::Error> {
     Ok(parse_module_using(ParseState::new(
-        &fs::read_to_string(file_path)?,
+        file_path_id,
+        &fs::read_to_string(path_storage.resolve_path_or_panic(file_path_id))?,
         diagnostics,
         interner,
     )))
@@ -166,11 +173,12 @@ pub fn read_and_parse_module(
 #[inline]
 #[must_use]
 pub fn parse_module(
+    file_path_id: PathID,
     source: &str,
     diagnostics: &mut Vec<Diagnostic>,
     interner: &mut Interner,
 ) -> Module {
-    parse_module_using(ParseState::new(source, diagnostics, interner))
+    parse_module_using(ParseState::new(file_path_id, source, diagnostics, interner))
 }
 
 /// Parse a Ry module using a given parse state.
@@ -187,11 +195,17 @@ pub fn parse_module_using(mut state: ParseState<'_, '_, '_>) -> Module {
 #[inline]
 #[must_use]
 pub fn parse_item(
+    file_path_id: PathID,
     source: impl AsRef<str>,
     diagnostics: &mut Vec<Diagnostic>,
     interner: &mut Interner,
 ) -> Option<ModuleItem> {
-    parse_item_using(&mut ParseState::new(source.as_ref(), diagnostics, interner))
+    parse_item_using(&mut ParseState::new(
+        file_path_id,
+        source.as_ref(),
+        diagnostics,
+        interner,
+    ))
 }
 
 /// Parse an item.
@@ -205,11 +219,17 @@ pub fn parse_item_using(state: &mut ParseState<'_, '_, '_>) -> Option<ModuleItem
 #[inline]
 #[must_use]
 pub fn parse_expression(
+    file_path_id: PathID,
     source: impl AsRef<str>,
     diagnostics: &mut Vec<Diagnostic>,
     interner: &mut Interner,
 ) -> Option<Expression> {
-    parse_expression_using(&mut ParseState::new(source.as_ref(), diagnostics, interner))
+    parse_expression_using(&mut ParseState::new(
+        file_path_id,
+        source.as_ref(),
+        diagnostics,
+        interner,
+    ))
 }
 
 /// Parse an expression.
@@ -223,11 +243,17 @@ pub fn parse_expression_using(state: &mut ParseState<'_, '_, '_>) -> Option<Expr
 #[inline]
 #[must_use]
 pub fn parse_statement(
+    file_path_id: PathID,
     source: impl AsRef<str>,
     diagnostics: &mut Vec<Diagnostic>,
     interner: &mut Interner,
 ) -> Option<Statement> {
-    parse_statement_using(&mut ParseState::new(source.as_ref(), diagnostics, interner))
+    parse_statement_using(&mut ParseState::new(
+        file_path_id,
+        source.as_ref(),
+        diagnostics,
+        interner,
+    ))
 }
 
 /// Parse a statement.
@@ -241,11 +267,17 @@ pub fn parse_statement_using(state: &mut ParseState<'_, '_, '_>) -> Option<State
 #[inline]
 #[must_use]
 pub fn parse_type(
+    file_path_id: PathID,
     source: impl AsRef<str>,
     diagnostics: &mut Vec<Diagnostic>,
     interner: &mut Interner,
 ) -> Option<Type> {
-    parse_type_using(&mut ParseState::new(source.as_ref(), diagnostics, interner))
+    parse_type_using(&mut ParseState::new(
+        file_path_id,
+        source.as_ref(),
+        diagnostics,
+        interner,
+    ))
 }
 
 /// Parse a type.
@@ -259,11 +291,17 @@ pub fn parse_type_using(state: &mut ParseState<'_, '_, '_>) -> Option<Type> {
 #[inline]
 #[must_use]
 pub fn parse_pattern(
+    file_path_id: PathID,
     source: impl AsRef<str>,
     diagnostics: &mut Vec<Diagnostic>,
     interner: &mut Interner,
 ) -> Option<Pattern> {
-    parse_pattern_using(&mut ParseState::new(source.as_ref(), diagnostics, interner))
+    parse_pattern_using(&mut ParseState::new(
+        file_path_id,
+        source.as_ref(),
+        diagnostics,
+        interner,
+    ))
 }
 
 /// Parse a pattern.
@@ -277,23 +315,23 @@ impl<'source, 'diagnostics, 'interner> ParseState<'source, 'diagnostics, 'intern
     /// Creates an initial parse state from file source.
     #[must_use]
     pub fn new(
+        file_path_id: PathID,
         source: &'source str,
         diagnostics: &'diagnostics mut Vec<Diagnostic>,
         interner: &'interner mut Interner,
     ) -> Self {
-        let mut lexer = Lexer::new(source, interner);
+        let mut lexer = Lexer::new(file_path_id, source, interner);
 
         let current_token = lexer.next_no_comments();
         trace!(
             "next_token: {} at {}",
             current_token.raw,
-            current_token.span
+            current_token.location
         );
 
         let next_token = current_token;
 
         let mut state = Self {
-            source,
             lexer,
             current_token,
             next_token,
@@ -309,7 +347,7 @@ impl<'source, 'diagnostics, 'interner> ParseState<'source, 'diagnostics, 'intern
         if let RawToken::Error(error) = self.next_token.raw {
             self.diagnostics.push(
                 ParseDiagnostic::LexError(LexError {
-                    span: self.next_token.span,
+                    location: self.next_token.location,
                     raw: error,
                 })
                 .build(),
@@ -320,15 +358,15 @@ impl<'source, 'diagnostics, 'interner> ParseState<'source, 'diagnostics, 'intern
     /// Returns string slice corresponding to the given location.
     #[inline]
     #[must_use]
-    fn resolve_span(&self, span: Span) -> &str {
-        self.source.index(span)
+    fn resolve_location(&self, location: Location) -> &str {
+        self.lexer.source.index(location)
     }
 
     /// Returns string slice corresponding to the current token's location.
     #[inline]
     #[must_use]
     fn resolve_current(&self) -> &str {
-        self.resolve_span(self.current_token.span)
+        self.resolve_location(self.current_token.location)
     }
 
     /// Advances the iter to the next token (skips comment tokens).
@@ -339,7 +377,7 @@ impl<'source, 'diagnostics, 'interner> ParseState<'source, 'diagnostics, 'intern
         trace!(
             "next_token: {} at {}",
             self.next_token.raw,
-            self.next_token.span
+            self.next_token.location
         );
 
         self.check_next_token();
@@ -351,7 +389,7 @@ impl<'source, 'diagnostics, 'interner> ParseState<'source, 'diagnostics, 'intern
             "excepted {} to be {} at: {}",
             self.next_token.raw,
             expected,
-            self.next_token.span
+            self.next_token.location
         );
 
         if self.next_token.raw == expected {
@@ -377,13 +415,22 @@ impl<'source, 'diagnostics, 'interner> ParseState<'source, 'diagnostics, 'intern
         Some(())
     }
 
-    /// Creates a new span with the state's file id and
-    /// ending with a current token span's end byte location.
-    pub(crate) const fn span_from(&self, start: usize) -> Span {
-        Span {
+    /// Creates a new location with the parser state's file id and
+    /// the given starting and ending byte offsets.
+    #[inline]
+    pub(crate) const fn make_location(&self, start: usize, end: usize) -> Location {
+        Location {
+            file_path_id: self.lexer.file_path_id,
             start,
-            end: self.current_token.span.end,
+            end,
         }
+    }
+
+    /// Creates a new location with the state's file id and
+    /// ending with a current token location's end byte location.
+    #[inline]
+    pub(crate) const fn location_from(&self, start: usize) -> Location {
+        self.make_location(start, self.current_token.location.end)
     }
 
     /// Checks if the next token is identifiers, advances the parse state and if
@@ -392,12 +439,12 @@ impl<'source, 'diagnostics, 'interner> ParseState<'source, 'diagnostics, 'intern
         trace!(
             "expected next_token {} to be an identifier at: {}",
             self.next_token.raw,
-            self.next_token.span
+            self.next_token.location
         );
 
-        let spanned_symbol = if self.next_token.raw == RawToken::Identifier {
+        let locationned_symbol = if self.next_token.raw == RawToken::Identifier {
             IdentifierAst {
-                span: self.next_token.span,
+                location: self.next_token.location,
                 symbol: self.lexer.scanned_identifier,
             }
         } else {
@@ -414,7 +461,7 @@ impl<'source, 'diagnostics, 'interner> ParseState<'source, 'diagnostics, 'intern
 
         self.advance();
 
-        Some(spanned_symbol)
+        Some(locationned_symbol)
     }
 
     /// Consumes the docstring for a module.
@@ -425,7 +472,7 @@ impl<'source, 'diagnostics, 'interner> ParseState<'source, 'diagnostics, 'intern
             while self.next_token.raw == RawToken::GlobalDocComment {
                 self.advance();
 
-                module_docstring.push_str(self.resolve_span(self.current_token.span));
+                module_docstring.push_str(self.resolve_location(self.current_token.location));
             }
 
             trace!("consumed module level docstring");
@@ -444,7 +491,7 @@ impl<'source, 'diagnostics, 'interner> ParseState<'source, 'diagnostics, 'intern
             while self.next_token.raw == RawToken::LocalDocComment {
                 self.advance();
 
-                local_docstring.push_str(self.resolve_span(self.current_token.span));
+                local_docstring.push_str(self.resolve_location(self.current_token.location));
             }
 
             trace!("consumed docstring");
@@ -465,7 +512,7 @@ impl Parse for VisibilityParser {
         if state.next_token.raw == Token![pub] {
             state.advance();
 
-            Visibility::public(state.current_token.span)
+            Visibility::public(state.current_token.location)
         } else {
             Visibility::private()
         }

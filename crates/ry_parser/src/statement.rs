@@ -31,14 +31,14 @@ impl Parse for StatementParser {
                 state.advance();
 
                 Statement::Continue {
-                    span: state.current_token.span,
+                    location: state.current_token.location,
                 }
             }
             Token![break] => {
                 state.advance();
 
                 Statement::Break {
-                    span: state.current_token.span,
+                    location: state.current_token.location,
                 }
             }
             _ => {

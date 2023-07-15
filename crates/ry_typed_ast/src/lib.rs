@@ -67,7 +67,7 @@
 use std::path::PathBuf;
 
 use ry_ast::Visibility;
-use ry_filesystem::span::Span;
+use ry_filesystem::location::Location;
 use ry_fx_hash::FxHashMap;
 use ry_interner::Symbol;
 use ty::Type;
@@ -122,7 +122,7 @@ pub struct TypeAliasModuleItem {
     pub visibility: Visibility,
 
     /// Location of the alias name (not the entire alias item!).
-    pub span: Span,
+    pub location: Location,
 
     /// Alias docstring.
     pub docstring: Option<String>,
@@ -141,7 +141,7 @@ pub struct TraitModuleItem {
     pub visibility: Visibility,
 
     /// Location of the trait name (not the entire trait item!).
-    pub span: Span,
+    pub location: Location,
 
     /// Trait docstring.
     pub docstring: Option<String>,
@@ -176,7 +176,7 @@ pub enum TraitItem {
 #[derive(Debug, PartialEq, Clone)]
 pub struct TraitAliasTraitItem {
     /// Location of the trait name (not the entire trait item!).
-    pub span: Span,
+    pub location: Location,
 
     /// Alias docstring.
     pub docstring: Option<String>,
@@ -195,7 +195,7 @@ pub struct TraitImplementation {
     pub module: Path,
 
     /// Location of the `impl` keyword.
-    pub span: Span,
+    pub location: Location,
 
     /// Trait implementation docstring.
     pub docstring: Option<String>,
@@ -230,7 +230,7 @@ pub struct TraitImplementation {
 #[derive(Debug, PartialEq, Clone)]
 pub struct TypeImplementation {
     /// Location of the `impl` keyword.
-    pub span: Span,
+    pub location: Location,
 
     /// Type implementation docstring.
     pub docstring: Option<String>,
@@ -252,7 +252,7 @@ pub struct Function {
     pub visibility: Visibility,
 
     /// Location of the function name (not the entire function item!).
-    pub span: Span,
+    pub location: Location,
 
     /// Function docstring.
     pub docstring: Option<String>,
@@ -287,7 +287,7 @@ pub struct StructModuleItem {
     pub visibility: Visibility,
 
     /// Location of the struct name (not the entire struct item!).
-    pub span: Span,
+    pub location: Location,
 
     /// Struct docstring.
     pub docstring: Option<String>,
@@ -313,7 +313,7 @@ pub struct StructField {
     pub visibility: Visibility,
 
     /// Location of the field name (not the entire field item!).
-    pub span: Span,
+    pub location: Location,
 
     /// Field docstring.
     pub docstring: Option<String>,
@@ -332,7 +332,7 @@ pub struct TupleLikeStructModuleItem {
     pub visibility: Visibility,
 
     /// Location of the struct name (not the entire struct item!).
-    pub span: Span,
+    pub location: Location,
 
     /// Struct docstring.
     pub docstring: Option<String>,
@@ -355,7 +355,7 @@ pub struct TupleLikeStructField {
     pub visibility: Visibility,
 
     /// Location of the entire field.
-    pub span: Span,
+    pub location: Location,
 
     /// Field type.
     pub ty: Type,
@@ -368,7 +368,7 @@ pub struct EnumModuleItem {
     pub visibility: Visibility,
 
     /// Location of the enum name (not the entire enum item!).
-    pub span: Span,
+    pub location: Location,
 
     /// Enum docstring.
     pub docstring: Option<String>,
@@ -393,13 +393,13 @@ pub enum EnumItem {
     /// An identifier item, e.g. `None` in `Option[T]`.
     Identifier {
         /// Location of the name.
-        span: Span,
+        location: Location,
     },
 
     /// A tuple like item.
     TupleLike {
         /// Location of the item name (not the entire item).
-        span: Span,
+        location: Location,
 
         /// Fields.
         fields: FxHashMap<Symbol, TupleLikeStructField>,
@@ -408,7 +408,7 @@ pub enum EnumItem {
     /// A struct item.
     Struct {
         /// Location of the item name (not the entire item).
-        span: Span,
+        location: Location,
 
         /// Fields.
         fields: FxHashMap<Symbol, StructField>,
@@ -424,7 +424,7 @@ pub struct GenericParameter {
     /// fun foo[T: Into[String]]()
     ///         ^
     /// ```
-    pub span: Span,
+    pub location: Location,
 
     /// Generic parameter name.
     pub name: Symbol,
@@ -438,30 +438,30 @@ pub enum ConstraintPair {
         ty: Type,
 
         /// Location of the type that must satisfy the bounds.
-        ty_span: Span,
+        ty_location: Location,
 
         /// The bounds.
         bounds: TypeBounds,
 
         /// Location of the bounds.
-        bounds_span: Span,
+        bounds_location: Location,
     },
     Eq {
         /// The left hand side type.
         left: Type,
 
         /// Location of the left hand side type.
-        left_span: Span,
+        left_location: Location,
 
         /// The right hand side type.
         right: Type,
 
         /// Location of the right hand side type.
-        right_span: Span,
+        right_location: Location,
     },
 }
 
-/// A path similiar to [`ry_ast::Path`], but which doesn't store any spans,
+/// A path similiar to [`ry_ast::Path`], but which doesn't store any locations,
 /// e.g. `std.path.Path`, `foo`, `json.serializer`.
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Path {

@@ -72,7 +72,7 @@ use ry_ast::{
     token::{LexError, RawLexError, RawToken, Token, RESERVED},
     Token,
 };
-use ry_filesystem::span::Span;
+use ry_filesystem::{location::Location, path_storage::PathID};
 use ry_interner::{Interner, Symbol};
 use ry_stable_likely::unlikely;
 
@@ -85,15 +85,15 @@ mod number;
 /// # use ry_lexer::Lexer;
 /// # use ry_ast::token::{Token, RawToken::EndOfFile};
 /// # use ry_interner::Interner;
-/// # use ry_filesystem::span::Span;
+/// # use ry_filesystem::{location::Location, path_storage::DUMMY_PATH_ID};
 /// let mut interner = Interner::default();
-/// let mut lexer = Lexer::new("", &mut interner);
+/// let mut lexer = Lexer::new(DUMMY_PATH_ID, "", &mut interner);
 ///
 /// assert_eq!(
 ///     lexer.next_token(),
 ///     Token {
 ///         raw: EndOfFile,
-///         span: Span { start: 0, end: 1 }
+///         location: Location { file_path_id: DUMMY_PATH_ID, start: 0, end: 1 }
 ///     }
 /// );
 /// ```
@@ -104,8 +104,9 @@ mod number;
 /// # use ry_lexer::Lexer;
 /// # use ry_ast::token::{RawLexError, RawToken::Error};
 /// # use ry_interner::Interner;
+/// # use ry_filesystem::path_storage::DUMMY_PATH_ID;
 /// let mut interner = Interner::default();
-/// let mut lexer = Lexer::new("١", &mut interner);
+/// let mut lexer = Lexer::new(DUMMY_PATH_ID, "١", &mut interner);
 ///
 /// assert_eq!(lexer.next_token().raw, Error(RawLexError::UnexpectedChar));
 /// ```
@@ -119,8 +120,11 @@ mod number;
 /// [`Error`]: ry_ast::token::RawToken::Error
 #[derive(Debug)]
 pub struct Lexer<'source, 'interner> {
+    /// ID of the path of the file being scanned.
+    pub file_path_id: PathID,
+
     /// Content of the file being scanned.
-    source: &'source str,
+    pub source: &'source str,
 
     /// Identifier interner.
     pub interner: &'interner mut Interner,
@@ -133,8 +137,8 @@ pub struct Lexer<'source, 'interner> {
     /// Iterator through source text characters.
     chars: Chars<'source>,
 
-    /// Location of the current character being processed.
-    location: usize,
+    /// Offset of the current character being processed.
+    offset: usize,
 
     /// Symbol corresponding to an identifier being processed early on.
     pub scanned_identifier: Symbol,
@@ -147,19 +151,24 @@ pub struct Lexer<'source, 'interner> {
 impl<'source, 'interner> Lexer<'source, 'interner> {
     /// Creates a new [`Lexer`] instance.
     #[must_use]
-    pub fn new(source: &'source str, interner: &'interner mut Interner) -> Self {
+    pub fn new(
+        file_path_id: PathID,
+        source: &'source str,
+        interner: &'interner mut Interner,
+    ) -> Self {
         let mut chars = source.chars();
 
         let current = chars.next().unwrap_or('\0');
         let next = chars.next().unwrap_or('\0');
 
         Self {
+            file_path_id,
             source,
             current,
             next,
             chars,
             interner,
-            location: 0,
+            offset: 0,
             scanned_identifier: 0,
             scanned_char: '\0',
             scanned_string: String::new(),
@@ -201,7 +210,7 @@ impl<'source, 'interner> Lexer<'source, 'interner> {
         self.current = self.next;
         self.next = self.chars.next().unwrap_or('\0');
 
-        self.location += previous.len_utf8();
+        self.offset += previous.len_utf8();
     }
 
     /// Advances the lexer state to the next 2 characters
@@ -217,28 +226,34 @@ impl<'source, 'interner> Lexer<'source, 'interner> {
     fn advance_with(&mut self, raw: RawToken) -> Token {
         let token = Token {
             raw,
-            span: self.current_char_span(),
+            location: self.current_char_location(),
         };
 
         self.advance();
         token
     }
 
-    /// Returns a span of the current character.
+    /// Returns a location with given start and end byte offsets
+    /// and with the lexer's currently processed file path id.
     #[inline]
-    const fn current_char_span(&self) -> Span {
-        Span {
-            start: self.location,
-            end: self.location + 1,
+    const fn make_location(&self, start: usize, end: usize) -> Location {
+        Location {
+            file_path_id: self.file_path_id,
+            start,
+            end,
         }
     }
 
-    /// Returns a span ending with the current character's location.
-    const fn span_from(&self, start_location: usize) -> Span {
-        Span {
-            start: start_location,
-            end: self.location,
-        }
+    /// Returns a location of the current character.
+    #[inline]
+    const fn current_char_location(&self) -> Location {
+        self.make_location(self.offset, self.offset + 1)
+    }
+
+    /// Returns a location ending with the current character's location.
+    #[inline]
+    const fn location_from(&self, start_offset: usize) -> Location {
+        self.make_location(start_offset, self.offset)
     }
 
     /// Advances the lexer state to the next 2 characters, and returns the token
@@ -246,10 +261,7 @@ impl<'source, 'interner> Lexer<'source, 'interner> {
     fn advance_twice_with(&mut self, raw: RawToken) -> Token {
         let token = Token {
             raw,
-            span: Span {
-                start: self.location,
-                end: self.location + 2,
-            },
+            location: self.make_location(self.offset, self.offset + 2),
         };
 
         self.advance_twice();
@@ -258,10 +270,10 @@ impl<'source, 'interner> Lexer<'source, 'interner> {
 
     /// Advances the lexer state to the next character while `f` returns `true`,
     /// where its arguments are the current and next characters.
-    /// Returns the string slice of source text between `start_location`
-    /// and `self.location` when `f` returns `false` OR `self.eof() == true`.
+    /// Returns the string slice of source text between `start_offset`
+    /// and `self.offset` when `f` returns `false` OR `self.eof() == true`.
     #[inline]
-    fn advance_while<F>(&mut self, start_location: usize, mut f: F) -> &'source str
+    fn advance_while<F>(&mut self, start_offset: usize, mut f: F) -> &'source str
     where
         F: FnMut(char, char) -> bool,
     {
@@ -269,12 +281,13 @@ impl<'source, 'interner> Lexer<'source, 'interner> {
             self.advance();
         }
 
-        &self.source[start_location..self.location]
+        &self.source[start_offset..self.offset]
     }
 
     /// Parses an escape sequence.
     fn eat_escape(&mut self) -> Result<char, LexError> {
         self.advance(); // `\`
+
         let r = match self.current {
             'b' => Ok('\u{0008}'),
             'f' => Ok('\u{000C}'),
@@ -286,7 +299,7 @@ impl<'source, 'interner> Lexer<'source, 'interner> {
             '\\' => Ok('\\'),
             '\0' => Err(LexError {
                 raw: RawLexError::EmptyEscapeSequence,
-                span: self.current_char_span(),
+                location: self.current_char_location(),
             }),
             'u' => {
                 self.advance();
@@ -294,7 +307,7 @@ impl<'source, 'interner> Lexer<'source, 'interner> {
                 if self.current != '{' {
                     return Err(LexError {
                         raw: RawLexError::ExpectedOpenBracketInUnicodeEscapeSequence,
-                        span: self.current_char_span(),
+                        location: self.current_char_location(),
                     });
                 }
 
@@ -306,7 +319,7 @@ impl<'source, 'interner> Lexer<'source, 'interner> {
                     if !self.current.is_ascii_hexdigit() {
                         return Err(LexError {
                             raw: RawLexError::ExpectedDigitInUnicodeEscapeSequence,
-                            span: self.current_char_span(),
+                            location: self.current_char_location(),
                         });
                     }
 
@@ -317,7 +330,7 @@ impl<'source, 'interner> Lexer<'source, 'interner> {
                 if self.current != '}' {
                     return Err(LexError {
                         raw: RawLexError::ExpectedCloseBracketInUnicodeEscapeSequence,
-                        span: self.current_char_span(),
+                        location: self.current_char_location(),
                     });
                 }
 
@@ -325,7 +338,7 @@ impl<'source, 'interner> Lexer<'source, 'interner> {
                     Some(c) => Ok(c),
                     None => Err(LexError {
                         raw: RawLexError::InvalidUnicodeEscapeSequence,
-                        span: self.current_char_span(),
+                        location: self.current_char_location(),
                     }),
                 }
             }
@@ -335,7 +348,7 @@ impl<'source, 'interner> Lexer<'source, 'interner> {
                 if self.current != '{' {
                     return Err(LexError {
                         raw: RawLexError::ExpectedOpenBracketInUnicodeEscapeSequence,
-                        span: self.current_char_span(),
+                        location: self.current_char_location(),
                     });
                 }
 
@@ -347,7 +360,7 @@ impl<'source, 'interner> Lexer<'source, 'interner> {
                     if !self.current.is_ascii_hexdigit() {
                         return Err(LexError {
                             raw: RawLexError::ExpectedDigitInUnicodeEscapeSequence,
-                            span: self.current_char_span(),
+                            location: self.current_char_location(),
                         });
                     }
 
@@ -358,7 +371,7 @@ impl<'source, 'interner> Lexer<'source, 'interner> {
                 if self.current != '}' {
                     return Err(LexError {
                         raw: RawLexError::ExpectedCloseBracketInUnicodeEscapeSequence,
-                        span: self.current_char_span(),
+                        location: self.current_char_location(),
                     });
                 }
 
@@ -366,7 +379,7 @@ impl<'source, 'interner> Lexer<'source, 'interner> {
                     Some(c) => Ok(c),
                     None => Err(LexError {
                         raw: RawLexError::InvalidUnicodeEscapeSequence,
-                        span: self.current_char_span(),
+                        location: self.current_char_location(),
                     }),
                 }
             }
@@ -376,7 +389,7 @@ impl<'source, 'interner> Lexer<'source, 'interner> {
                 if self.current != '{' {
                     return Err(LexError {
                         raw: RawLexError::ExpectedOpenBracketInByteEscapeSequence,
-                        span: self.current_char_span(),
+                        location: self.current_char_location(),
                     });
                 }
 
@@ -388,7 +401,7 @@ impl<'source, 'interner> Lexer<'source, 'interner> {
                     if !self.current.is_ascii_hexdigit() {
                         return Err(LexError {
                             raw: RawLexError::ExpectedDigitInByteEscapeSequence,
-                            span: self.current_char_span(),
+                            location: self.current_char_location(),
                         });
                     }
 
@@ -399,7 +412,7 @@ impl<'source, 'interner> Lexer<'source, 'interner> {
                 if self.current != '}' {
                     return Err(LexError {
                         raw: RawLexError::ExpectedCloseBracketInByteEscapeSequence,
-                        span: self.current_char_span(),
+                        location: self.current_char_location(),
                     });
                 }
 
@@ -407,16 +420,13 @@ impl<'source, 'interner> Lexer<'source, 'interner> {
                     Some(c) => Ok(c),
                     None => Err(LexError {
                         raw: RawLexError::InvalidByteEscapeSequence,
-                        span: Span {
-                            start: self.location - 4,
-                            end: self.location,
-                        },
+                        location: self.make_location(self.offset - 4, self.offset),
                     }),
                 }
             }
             _ => Err(LexError {
                 raw: RawLexError::UnknownEscapeSequence,
-                span: self.current_char_span(),
+                location: self.current_char_location(),
             }),
         };
 
@@ -427,7 +437,7 @@ impl<'source, 'interner> Lexer<'source, 'interner> {
 
     /// Parses a char literal.
     fn eat_char(&mut self) -> Token {
-        let start_location = self.location;
+        let start_offset = self.offset;
 
         self.advance();
 
@@ -437,7 +447,7 @@ impl<'source, 'interner> Lexer<'source, 'interner> {
             if self.current == '\n' || self.eof() {
                 return Token {
                     raw: RawToken::Error(RawLexError::UnterminatedCharLiteral),
-                    span: self.span_from(start_location),
+                    location: self.location_from(start_offset),
                 };
             }
 
@@ -450,7 +460,7 @@ impl<'source, 'interner> Lexer<'source, 'interner> {
                     }
                     Err(e) => {
                         return Token {
-                            span: e.span,
+                            location: e.location,
                             raw: RawToken::from(e.raw),
                         }
                     }
@@ -469,13 +479,13 @@ impl<'source, 'interner> Lexer<'source, 'interner> {
             2..=usize::MAX => {
                 return Token {
                     raw: RawToken::Error(RawLexError::MoreThanOneCharInCharLiteral),
-                    span: self.span_from(start_location),
+                    location: self.location_from(start_offset),
                 };
             }
             0 => {
                 return Token {
                     raw: RawToken::Error(RawLexError::EmptyCharLiteral),
-                    span: self.span_from(start_location),
+                    location: self.location_from(start_offset),
                 };
             }
             _ => {}
@@ -483,14 +493,14 @@ impl<'source, 'interner> Lexer<'source, 'interner> {
 
         Token {
             raw: RawToken::CharLiteral,
-            span: self.span_from(start_location),
+            location: self.location_from(start_offset),
         }
     }
 
     /// Parses a string literal.
     fn eat_string(&mut self) -> Token {
         self.scanned_string.clear();
-        let start_location = self.location;
+        let start_offset = self.offset;
 
         self.advance();
 
@@ -510,7 +520,7 @@ impl<'source, 'interner> Lexer<'source, 'interner> {
                     }
                     Err(e) => {
                         return Token {
-                            span: e.span,
+                            location: e.location,
                             raw: RawToken::from(e.raw),
                         }
                     }
@@ -524,7 +534,7 @@ impl<'source, 'interner> Lexer<'source, 'interner> {
         if self.eof() || self.current == '\n' {
             return Token {
                 raw: RawToken::Error(RawLexError::UnterminatedStringLiteral),
-                span: self.span_from(start_location),
+                location: self.location_from(start_offset),
             };
         }
 
@@ -532,13 +542,13 @@ impl<'source, 'interner> Lexer<'source, 'interner> {
 
         Token {
             raw: RawToken::StringLiteral,
-            span: self.span_from(start_location),
+            location: self.location_from(start_offset),
         }
     }
 
     /// Parses a wrapped identifier.
     fn eat_wrapped_id(&mut self) -> Token {
-        let start_location = self.location;
+        let start_location = self.offset;
 
         self.advance();
 
@@ -549,14 +559,14 @@ impl<'source, 'interner> Lexer<'source, 'interner> {
         if self.current != '`' {
             return Token {
                 raw: RawToken::Error(RawLexError::UnterminatedWrappedIdentifier),
-                span: self.span_from(start_location),
+                location: self.location_from(start_location),
             };
         }
 
         if name.is_empty() {
             return Token {
                 raw: RawToken::Error(RawLexError::EmptyWrappedIdentifier),
-                span: self.span_from(start_location),
+                location: self.location_from(start_location),
             };
         }
 
@@ -566,21 +576,21 @@ impl<'source, 'interner> Lexer<'source, 'interner> {
 
         Token {
             raw: RawToken::Identifier,
-            span: self.span_from(start_location),
+            location: self.location_from(start_location),
         }
     }
 
     /// Parses a usual comment (prefix is `//`).
     fn eat_comment(&mut self) -> Token {
         // first `/` character is already advanced
-        let start_location = self.location - 1;
+        let start_location = self.offset - 1;
         self.advance();
 
         self.advance_while(start_location + 2, |current, _| (current != '\n'));
 
         Token {
             raw: RawToken::Comment,
-            span: self.span_from(start_location),
+            location: self.location_from(start_location),
         }
     }
 
@@ -592,13 +602,13 @@ impl<'source, 'interner> Lexer<'source, 'interner> {
     /// (everything else and the character is `/`).
     fn eat_doc_comment(&mut self, global: bool) -> Token {
         // first `/` character is already consumed
-        let start_location = self.location - 1;
+        let start_location = self.offset - 1;
         self.advance_twice(); // `/` and (`!` or `/`)
 
         self.advance_while(start_location + 3, |current, _| (current != '\n'));
 
         Token {
-            span: self.span_from(start_location),
+            location: self.location_from(start_location),
             raw: if global {
                 RawToken::GlobalDocComment
             } else {
@@ -609,19 +619,19 @@ impl<'source, 'interner> Lexer<'source, 'interner> {
 
     /// Parses weather an identifier or a keyword.
     fn eat_name(&mut self) -> Token {
-        let start_location = self.location;
+        let start_location = self.offset;
         let name = self.advance_while(start_location, |current, _| is_id_continue(current));
 
         if let Some(reserved) = RESERVED.get(name) {
             Token {
                 raw: *reserved,
-                span: self.span_from(start_location),
+                location: self.location_from(start_location),
             }
         } else {
             self.scanned_identifier = self.interner.get_or_intern(name);
             Token {
                 raw: RawToken::Identifier,
-                span: self.span_from(start_location),
+                location: self.location_from(start_location),
             }
         }
     }
@@ -643,7 +653,7 @@ impl<'source, 'interner> Lexer<'source, 'interner> {
         if unlikely(self.current == '\0') {
             return Token {
                 raw: RawToken::EndOfFile,
-                span: self.current_char_span(),
+                location: self.current_char_location(),
             };
         }
 
@@ -728,6 +738,7 @@ impl<'source, 'interner> Lexer<'source, 'interner> {
 }
 
 /// True if `c` is a whitespace.
+#[inline]
 const fn is_whitespace(c: char) -> bool {
     // Note that it is ok to hard-code the values, because
     // the set is stable and doesn't change with different

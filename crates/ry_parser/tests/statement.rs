@@ -1,5 +1,5 @@
 use ry_ast::{Expression, IdentifierAst, Literal, Pattern, Statement};
-use ry_filesystem::span::Span;
+use ry_filesystem::{location::Location, path_storage::DUMMY_PATH_ID};
 use ry_interner::Interner;
 use ry_parser::parse_statement;
 
@@ -11,18 +11,39 @@ fn defer() {
     let mut diagnostics = vec![];
 
     assert_eq!(
-        parse_statement("defer file.close();", &mut diagnostics, &mut interner),
+        parse_statement(
+            DUMMY_PATH_ID,
+            "defer file.close();",
+            &mut diagnostics,
+            &mut interner
+        ),
         Some(Statement::Defer {
             call: Expression::Call {
-                span: Span { start: 6, end: 18 },
+                location: Location {
+                    file_path_id: DUMMY_PATH_ID,
+                    start: 6,
+                    end: 18
+                },
                 left: Box::new(Expression::FieldAccess {
-                    span: Span { start: 6, end: 16 },
+                    location: Location {
+                        file_path_id: DUMMY_PATH_ID,
+                        start: 6,
+                        end: 16
+                    },
                     left: Box::new(Expression::Identifier(IdentifierAst {
-                        span: Span { start: 6, end: 10 },
+                        location: Location {
+                            file_path_id: DUMMY_PATH_ID,
+                            start: 6,
+                            end: 10
+                        },
                         symbol: interner.get_or_intern("file")
                     })),
                     right: IdentifierAst {
-                        span: Span { start: 11, end: 16 },
+                        location: Location {
+                            file_path_id: DUMMY_PATH_ID,
+                            start: 11,
+                            end: 16
+                        },
                         symbol: interner.get_or_intern("close")
                     }
                 }),
@@ -38,9 +59,13 @@ fn r#break() {
     let mut diagnostics = vec![];
 
     assert_eq!(
-        parse_statement("break;", &mut diagnostics, &mut interner),
+        parse_statement(DUMMY_PATH_ID, "break;", &mut diagnostics, &mut interner),
         Some(Statement::Break {
-            span: Span { start: 0, end: 5 }
+            location: Location {
+                file_path_id: DUMMY_PATH_ID,
+                start: 0,
+                end: 5
+            }
         })
     );
 }
@@ -51,9 +76,13 @@ fn r#continue() {
     let mut diagnostics = vec![];
 
     assert_eq!(
-        parse_statement("continue;", &mut diagnostics, &mut interner),
+        parse_statement(DUMMY_PATH_ID, "continue;", &mut diagnostics, &mut interner),
         Some(Statement::Continue {
-            span: Span { start: 0, end: 8 }
+            location: Location {
+                file_path_id: DUMMY_PATH_ID,
+                start: 0,
+                end: 8
+            }
         })
     );
 }
@@ -64,19 +93,31 @@ fn r#let() {
     let mut diagnostics = vec![];
 
     assert_eq!(
-        parse_statement("let x = 1;", &mut diagnostics, &mut interner),
+        parse_statement(DUMMY_PATH_ID, "let x = 1;", &mut diagnostics, &mut interner),
         Some(Statement::Let {
             pattern: Pattern::Identifier {
-                span: Span { start: 4, end: 5 },
+                location: Location {
+                    file_path_id: DUMMY_PATH_ID,
+                    start: 4,
+                    end: 5
+                },
                 identifier: IdentifierAst {
-                    span: Span { start: 4, end: 5 },
+                    location: Location {
+                        file_path_id: DUMMY_PATH_ID,
+                        start: 4,
+                        end: 5
+                    },
                     symbol: interner.get_or_intern("x")
                 },
                 pattern: None
             },
             value: Expression::Literal(Literal::Integer {
                 value: 1,
-                span: Span { start: 8, end: 9 }
+                location: Location {
+                    file_path_id: DUMMY_PATH_ID,
+                    start: 8,
+                    end: 9
+                }
             }),
             ty: None
         })

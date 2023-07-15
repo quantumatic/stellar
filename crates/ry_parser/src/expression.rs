@@ -4,7 +4,6 @@ use ry_ast::{
     RawBinaryOperator, RawPostfixOperator, RawPrefixOperator, StructExpressionItem, Token,
 };
 use ry_diagnostics::BuildDiagnostic;
-use ry_filesystem::span::Span;
 
 use crate::{
     diagnostics::ParseDiagnostic,
@@ -126,7 +125,7 @@ impl Parse for WhileExpressionParser {
     type Output = Option<Expression>;
 
     fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
-        let start = state.next_token.span.start;
+        let start = state.next_token.location.start;
         state.advance(); // `while`
 
         let condition = ExpressionParser {
@@ -138,7 +137,7 @@ impl Parse for WhileExpressionParser {
         let body = StatementsBlockParser.parse(state)?;
 
         Some(Expression::While {
-            span: state.span_from(start),
+            location: state.location_from(start),
             condition: Box::new(condition),
             body,
         })
@@ -149,7 +148,7 @@ impl Parse for MatchExpressionParser {
     type Output = Option<Expression>;
 
     fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
-        let start = state.next_token.span.start;
+        let start = state.next_token.location.start;
         state.advance(); // `match`
 
         let expression = ExpressionParser {
@@ -161,7 +160,7 @@ impl Parse for MatchExpressionParser {
         let block = MatchExpressionBlockParser.parse(state)?;
 
         Some(Expression::Match {
-            span: state.span_from(start),
+            location: state.location_from(start),
             expression: Box::new(expression),
             block,
         })
@@ -213,7 +212,7 @@ impl Parse for PrimaryExpressionParser {
                 state.advance();
 
                 Some(Expression::Identifier(IdentifierAst {
-                    span: state.current_token.span,
+                    location: state.current_token.location,
                     symbol,
                 }))
             }
@@ -266,7 +265,7 @@ impl Parse for GenericArgumentsExpressionParser {
         let generic_arguments = GenericArgumentsParser.parse(state)?;
 
         Some(Expression::GenericArguments {
-            span: state.span_from(self.left.span().start),
+            location: state.location_from(self.left.location().start),
             left: Box::new(self.left),
             generic_arguments,
         })
@@ -282,7 +281,7 @@ impl Parse for PropertyAccessExpressionParser {
         let right = state.consume_identifier("property")?;
 
         Some(Expression::FieldAccess {
-            span: state.span_from(self.left.span().start),
+            location: state.location_from(self.left.location().start),
             left: Box::new(self.left),
             right,
         })
@@ -295,7 +294,7 @@ impl Parse for PrefixExpressionParser {
     fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
         let operator_token = state.next_token;
         let operator: PrefixOperator = PrefixOperator {
-            span: operator_token.span,
+            location: operator_token.location,
             raw: RawPrefixOperator::from(operator_token.raw),
         };
         state.advance();
@@ -307,10 +306,7 @@ impl Parse for PrefixExpressionParser {
         .parse(state)?;
 
         Some(Expression::Prefix {
-            span: Span {
-                start: operator_token.span.start,
-                end: inner.span().end,
-            },
+            location: state.make_location(operator_token.location.start, inner.location().end),
             inner: Box::new(inner),
             operator,
         })
@@ -324,12 +320,12 @@ impl Parse for PostfixExpressionParser {
         state.advance();
 
         let operator: PostfixOperator = PostfixOperator {
-            span: state.current_token.span,
+            location: state.current_token.location,
             raw: RawPostfixOperator::from(state.current_token.raw),
         };
 
         Some(Expression::Postfix {
-            span: state.span_from(self.left.span().start),
+            location: state.location_from(self.left.location().start),
             inner: Box::new(self.left),
             operator,
         })
@@ -340,7 +336,7 @@ impl Parse for ParenthesizedOrTupleExpressionParser {
     type Output = Option<Expression>;
 
     fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
-        let start = state.next_token.span.start;
+        let start = state.next_token.location.start;
         state.advance();
 
         let elements = parse_list!(state, "parenthesized or tuple expression", Token![')'], {
@@ -349,29 +345,29 @@ impl Parse for ParenthesizedOrTupleExpressionParser {
 
         state.advance(); // `)`
 
-        let span = state.span_from(start);
+        let location = state.location_from(start);
 
         let mut elements = elements.into_iter();
 
         match (elements.next(), elements.next()) {
             (Some(element), None) => {
                 if state
-                    .resolve_span(state.span_from(element.span().end))
+                    .resolve_location(state.location_from(element.location().end))
                     .contains(',')
                 {
                     Some(Expression::Tuple {
-                        span,
+                        location,
                         elements: vec![element],
                     })
                 } else {
                     Some(Expression::Parenthesized {
-                        span,
+                        location,
                         inner: Box::from(element),
                     })
                 }
             }
             (None, None) => Some(Expression::Tuple {
-                span,
+                location,
                 elements: vec![],
             }),
             (Some(previous), Some(next)) => {
@@ -382,7 +378,7 @@ impl Parse for ParenthesizedOrTupleExpressionParser {
                 new_elements.append(&mut elements.collect::<Vec<_>>());
 
                 Some(Expression::Tuple {
-                    span,
+                    location,
                     elements: new_elements,
                 })
             }
@@ -395,7 +391,7 @@ impl Parse for IfExpressionParser {
     type Output = Option<Expression>;
 
     fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
-        let start = state.next_token.span.start;
+        let start = state.next_token.location.start;
         state.advance(); // `if`
 
         let condition = ExpressionParser {
@@ -431,7 +427,7 @@ impl Parse for IfExpressionParser {
         }
 
         Some(Expression::If {
-            span: state.span_from(start),
+            location: state.location_from(start),
             if_blocks,
             r#else,
         })
@@ -447,7 +443,7 @@ impl Parse for CastExpressionParser {
         let right = TypeParser.parse(state)?;
 
         Some(Expression::As {
-            span: state.span_from(self.left.span().start),
+            location: state.location_from(self.left.location().start),
             left: Box::new(self.left),
             right,
         })
@@ -467,7 +463,7 @@ impl Parse for CallExpressionParser {
         state.advance();
 
         Some(Expression::Call {
-            span: state.span_from(self.left.span().start),
+            location: state.location_from(self.left.location().start),
             left: Box::new(self.left),
             arguments,
         })
@@ -480,7 +476,7 @@ impl Parse for BinaryExpressionParser {
     fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
         let operator_token = state.next_token;
         let operator: BinaryOperator = BinaryOperator {
-            span: operator_token.span,
+            location: operator_token.location,
             raw: RawBinaryOperator::from(operator_token.raw),
         };
         let precedence = state.next_token.raw.to_precedence();
@@ -494,7 +490,7 @@ impl Parse for BinaryExpressionParser {
         .parse(state)?;
 
         Some(Expression::Binary {
-            span: state.span_from(self.left.span().start),
+            location: state.location_from(self.left.location().start),
             left: Box::new(self.left),
             right: Box::new(right),
             operator,
@@ -506,7 +502,7 @@ impl Parse for ListExpressionParser {
     type Output = Option<Expression>;
 
     fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
-        let start = state.next_token.span.start;
+        let start = state.next_token.location.start;
 
         state.advance();
 
@@ -517,7 +513,7 @@ impl Parse for ListExpressionParser {
         state.advance();
 
         Some(Expression::List {
-            span: state.span_from(start),
+            location: state.location_from(start),
             elements,
         })
     }
@@ -536,7 +532,7 @@ impl Parse for StructExpressionParser {
         state.advance(); // `}`
 
         Some(Expression::Struct {
-            span: state.span_from(self.left.span().start),
+            location: state.location_from(self.left.location().start),
             left: Box::new(self.left),
             fields,
         })
@@ -564,11 +560,11 @@ impl Parse for StatementsBlockExpressionParser {
     type Output = Option<Expression>;
 
     fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
-        let start = state.next_token.span.start;
+        let start = state.next_token.location.start;
         let block = StatementsBlockParser.parse(state)?;
 
         Some(Expression::StatementsBlock {
-            span: state.span_from(start),
+            location: state.location_from(start),
             block,
         })
     }
@@ -578,7 +574,7 @@ impl Parse for LambdaExpressionParser {
     type Output = Option<Expression>;
 
     fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
-        let start = state.next_token.span.start;
+        let start = state.next_token.location.start;
         state.advance(); // `|`
 
         let parameters = parse_list!(state, "function expression parameters", Token![|], {
@@ -608,7 +604,7 @@ impl Parse for LambdaExpressionParser {
         let block = StatementsBlockParser.parse(state)?;
 
         Some(Expression::Lambda {
-            span: state.span_from(start),
+            location: state.location_from(start),
             parameters,
             return_type,
             block,

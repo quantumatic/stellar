@@ -4,7 +4,7 @@ use ry_ast::{
     SelfParameter, Statement, StructField, TraitItem, TupleField, Type, TypeAlias, TypePath,
     TypePathSegment, Visibility, WhereClauseItem,
 };
-use ry_filesystem::span::Span;
+use ry_filesystem::{location::Location, path_storage::DUMMY_PATH_ID};
 use ry_interner::{symbols, Interner};
 use ry_parser::parse_item;
 
@@ -17,6 +17,7 @@ fn function() {
 
     assert_eq!(
         parse_item(
+            DUMMY_PATH_ID,
             "fun foo[T, B = Option[T]](a: B): T { a.unwrap() }",
             &mut diagnostics,
             &mut interner
@@ -25,13 +26,21 @@ fn function() {
             signature: FunctionSignature {
                 visibility: Visibility::private(),
                 name: IdentifierAst {
-                    span: Span { start: 4, end: 7 },
+                    location: Location {
+                        file_path_id: DUMMY_PATH_ID,
+                        start: 4,
+                        end: 7
+                    },
                     symbol: interner.get_or_intern("foo")
                 },
                 generic_parameters: Some(vec![
                     GenericParameter {
                         name: IdentifierAst {
-                            span: Span { start: 8, end: 9 },
+                            location: Location {
+                                file_path_id: DUMMY_PATH_ID,
+                                start: 8,
+                                end: 9
+                            },
                             symbol: interner.get_or_intern("T")
                         },
                         bounds: None,
@@ -39,30 +48,66 @@ fn function() {
                     },
                     GenericParameter {
                         name: IdentifierAst {
-                            span: Span { start: 11, end: 12 },
+                            location: Location {
+                                file_path_id: DUMMY_PATH_ID,
+                                start: 11,
+                                end: 12
+                            },
                             symbol: interner.get_or_intern("B")
                         },
                         bounds: None,
                         default_value: Some(Type::Path(TypePath {
-                            span: Span { start: 15, end: 24 },
+                            location: Location {
+                                file_path_id: DUMMY_PATH_ID,
+                                start: 15,
+                                end: 24
+                            },
                             segments: vec![TypePathSegment {
-                                span: Span { start: 15, end: 24 },
+                                location: Location {
+                                    file_path_id: DUMMY_PATH_ID,
+                                    start: 15,
+                                    end: 24
+                                },
                                 path: Path {
-                                    span: Span { start: 15, end: 21 },
+                                    location: Location {
+                                        file_path_id: DUMMY_PATH_ID,
+                                        start: 15,
+                                        end: 21
+                                    },
                                     identifiers: vec![IdentifierAst {
-                                        span: Span { start: 15, end: 21 },
+                                        location: Location {
+                                            file_path_id: DUMMY_PATH_ID,
+                                            start: 15,
+                                            end: 21
+                                        },
                                         symbol: interner.get_or_intern("Option")
                                     }]
                                 },
                                 generic_arguments: Some(vec![GenericArgument::Type(Type::Path(
                                     TypePath {
-                                        span: Span { start: 22, end: 23 },
+                                        location: Location {
+                                            file_path_id: DUMMY_PATH_ID,
+                                            start: 22,
+                                            end: 23
+                                        },
                                         segments: vec![TypePathSegment {
-                                            span: Span { start: 22, end: 23 },
+                                            location: Location {
+                                                file_path_id: DUMMY_PATH_ID,
+                                                start: 22,
+                                                end: 23
+                                            },
                                             path: Path {
-                                                span: Span { start: 22, end: 23 },
+                                                location: Location {
+                                                    file_path_id: DUMMY_PATH_ID,
+                                                    start: 22,
+                                                    end: 23
+                                                },
                                                 identifiers: vec![IdentifierAst {
-                                                    span: Span { start: 22, end: 23 },
+                                                    location: Location {
+                                                        file_path_id: DUMMY_PATH_ID,
+                                                        start: 22,
+                                                        end: 23
+                                                    },
                                                     symbol: interner.get_or_intern("T")
                                                 }]
                                             },
@@ -76,17 +121,37 @@ fn function() {
                 ]),
                 parameters: vec![FunctionParameter::Just(JustFunctionParameter {
                     name: IdentifierAst {
-                        span: Span { start: 26, end: 27 },
+                        location: Location {
+                            file_path_id: DUMMY_PATH_ID,
+                            start: 26,
+                            end: 27
+                        },
                         symbol: interner.get_or_intern("a")
                     },
                     ty: Type::Path(TypePath {
-                        span: Span { start: 29, end: 30 },
+                        location: Location {
+                            file_path_id: DUMMY_PATH_ID,
+                            start: 29,
+                            end: 30
+                        },
                         segments: vec![TypePathSegment {
-                            span: Span { start: 29, end: 30 },
+                            location: Location {
+                                file_path_id: DUMMY_PATH_ID,
+                                start: 29,
+                                end: 30
+                            },
                             path: Path {
-                                span: Span { start: 29, end: 30 },
+                                location: Location {
+                                    file_path_id: DUMMY_PATH_ID,
+                                    start: 29,
+                                    end: 30
+                                },
                                 identifiers: vec![IdentifierAst {
-                                    span: Span { start: 29, end: 30 },
+                                    location: Location {
+                                        file_path_id: DUMMY_PATH_ID,
+                                        start: 29,
+                                        end: 30
+                                    },
                                     symbol: interner.get_or_intern("B")
                                 }]
                             },
@@ -95,13 +160,29 @@ fn function() {
                     })
                 })],
                 return_type: Some(Type::Path(TypePath {
-                    span: Span { start: 33, end: 34 },
+                    location: Location {
+                        file_path_id: DUMMY_PATH_ID,
+                        start: 33,
+                        end: 34
+                    },
                     segments: vec![TypePathSegment {
-                        span: Span { start: 33, end: 34 },
+                        location: Location {
+                            file_path_id: DUMMY_PATH_ID,
+                            start: 33,
+                            end: 34
+                        },
                         path: Path {
-                            span: Span { start: 33, end: 34 },
+                            location: Location {
+                                file_path_id: DUMMY_PATH_ID,
+                                start: 33,
+                                end: 34
+                            },
                             identifiers: vec![IdentifierAst {
-                                span: Span { start: 33, end: 34 },
+                                location: Location {
+                                    file_path_id: DUMMY_PATH_ID,
+                                    start: 33,
+                                    end: 34
+                                },
                                 symbol: interner.get_or_intern("T")
                             }]
                         },
@@ -113,15 +194,31 @@ fn function() {
             },
             body: Some(vec![Statement::Expression {
                 expression: Expression::Call {
-                    span: Span { start: 37, end: 47 },
+                    location: Location {
+                        file_path_id: DUMMY_PATH_ID,
+                        start: 37,
+                        end: 47
+                    },
                     left: Box::new(Expression::FieldAccess {
-                        span: Span { start: 37, end: 45 },
+                        location: Location {
+                            file_path_id: DUMMY_PATH_ID,
+                            start: 37,
+                            end: 45
+                        },
                         left: Box::new(Expression::Identifier(IdentifierAst {
-                            span: Span { start: 37, end: 38 },
+                            location: Location {
+                                file_path_id: DUMMY_PATH_ID,
+                                start: 37,
+                                end: 38
+                            },
                             symbol: interner.get_or_intern("a")
                         })),
                         right: IdentifierAst {
-                            span: Span { start: 39, end: 45 },
+                            location: Location {
+                                file_path_id: DUMMY_PATH_ID,
+                                start: 39,
+                                end: 45
+                            },
                             symbol: interner.get_or_intern("unwrap")
                         }
                     }),
@@ -140,16 +237,25 @@ fn r#impl() {
 
     assert_eq!(
         parse_item(
+            DUMMY_PATH_ID,
             "impl[A, B] Into[Option[(A, B)]] for (A, B) {}",
             &mut diagnostics,
             &mut interner,
         ),
         Some(ModuleItem::Impl(Impl {
-            span: Span { start: 0, end: 4 },
+            location: Location {
+                file_path_id: DUMMY_PATH_ID,
+                start: 0,
+                end: 4
+            },
             generic_parameters: Some(vec![
                 GenericParameter {
                     name: IdentifierAst {
-                        span: Span { start: 5, end: 6 },
+                        location: Location {
+                            file_path_id: DUMMY_PATH_ID,
+                            start: 5,
+                            end: 6
+                        },
                         symbol: interner.get_or_intern("A")
                     },
                     bounds: None,
@@ -157,7 +263,11 @@ fn r#impl() {
                 },
                 GenericParameter {
                     name: IdentifierAst {
-                        span: Span { start: 8, end: 9 },
+                        location: Location {
+                            file_path_id: DUMMY_PATH_ID,
+                            start: 8,
+                            end: 9
+                        },
                         symbol: interner.get_or_intern("B")
                     },
                     bounds: None,
@@ -165,16 +275,36 @@ fn r#impl() {
                 }
             ]),
             ty: Type::Tuple {
-                span: Span { start: 36, end: 42 },
+                location: Location {
+                    file_path_id: DUMMY_PATH_ID,
+                    start: 36,
+                    end: 42
+                },
                 element_types: vec![
                     Type::Path(TypePath {
-                        span: Span { start: 37, end: 38 },
+                        location: Location {
+                            file_path_id: DUMMY_PATH_ID,
+                            start: 37,
+                            end: 38
+                        },
                         segments: vec![TypePathSegment {
-                            span: Span { start: 37, end: 38 },
+                            location: Location {
+                                file_path_id: DUMMY_PATH_ID,
+                                start: 37,
+                                end: 38
+                            },
                             path: Path {
-                                span: Span { start: 37, end: 38 },
+                                location: Location {
+                                    file_path_id: DUMMY_PATH_ID,
+                                    start: 37,
+                                    end: 38
+                                },
                                 identifiers: vec![IdentifierAst {
-                                    span: Span { start: 37, end: 38 },
+                                    location: Location {
+                                        file_path_id: DUMMY_PATH_ID,
+                                        start: 37,
+                                        end: 38
+                                    },
                                     symbol: interner.get_or_intern("A")
                                 }]
                             },
@@ -182,13 +312,29 @@ fn r#impl() {
                         }]
                     }),
                     Type::Path(TypePath {
-                        span: Span { start: 40, end: 41 },
+                        location: Location {
+                            file_path_id: DUMMY_PATH_ID,
+                            start: 40,
+                            end: 41
+                        },
                         segments: vec![TypePathSegment {
-                            span: Span { start: 40, end: 41 },
+                            location: Location {
+                                file_path_id: DUMMY_PATH_ID,
+                                start: 40,
+                                end: 41
+                            },
                             path: Path {
-                                span: Span { start: 40, end: 41 },
+                                location: Location {
+                                    file_path_id: DUMMY_PATH_ID,
+                                    start: 40,
+                                    end: 41
+                                },
                                 identifiers: vec![IdentifierAst {
-                                    span: Span { start: 40, end: 41 },
+                                    location: Location {
+                                        file_path_id: DUMMY_PATH_ID,
+                                        start: 40,
+                                        end: 41
+                                    },
                                     symbol: interner.get_or_intern("B")
                                 }]
                             },
@@ -198,38 +344,90 @@ fn r#impl() {
                 ]
             },
             r#trait: Some(Type::Path(TypePath {
-                span: Span { start: 11, end: 31 },
+                location: Location {
+                    file_path_id: DUMMY_PATH_ID,
+                    start: 11,
+                    end: 31
+                },
                 segments: vec![TypePathSegment {
-                    span: Span { start: 11, end: 31 },
+                    location: Location {
+                        file_path_id: DUMMY_PATH_ID,
+                        start: 11,
+                        end: 31
+                    },
                     path: Path {
-                        span: Span { start: 11, end: 15 },
+                        location: Location {
+                            file_path_id: DUMMY_PATH_ID,
+                            start: 11,
+                            end: 15
+                        },
                         identifiers: vec![IdentifierAst {
-                            span: Span { start: 11, end: 15 },
+                            location: Location {
+                                file_path_id: DUMMY_PATH_ID,
+                                start: 11,
+                                end: 15
+                            },
                             symbol: interner.get_or_intern("Into")
                         }]
                     },
                     generic_arguments: Some(vec![GenericArgument::Type(Type::Path(TypePath {
-                        span: Span { start: 16, end: 30 },
+                        location: Location {
+                            file_path_id: DUMMY_PATH_ID,
+                            start: 16,
+                            end: 30
+                        },
                         segments: vec![TypePathSegment {
-                            span: Span { start: 16, end: 30 },
+                            location: Location {
+                                file_path_id: DUMMY_PATH_ID,
+                                start: 16,
+                                end: 30
+                            },
                             path: Path {
-                                span: Span { start: 16, end: 22 },
+                                location: Location {
+                                    file_path_id: DUMMY_PATH_ID,
+                                    start: 16,
+                                    end: 22
+                                },
                                 identifiers: vec![IdentifierAst {
-                                    span: Span { start: 16, end: 22 },
+                                    location: Location {
+                                        file_path_id: DUMMY_PATH_ID,
+                                        start: 16,
+                                        end: 22
+                                    },
                                     symbol: interner.get_or_intern("Option")
                                 }]
                             },
                             generic_arguments: Some(vec![GenericArgument::Type(Type::Tuple {
-                                span: Span { start: 23, end: 29 },
+                                location: Location {
+                                    file_path_id: DUMMY_PATH_ID,
+                                    start: 23,
+                                    end: 29
+                                },
                                 element_types: vec![
                                     Type::Path(TypePath {
-                                        span: Span { start: 24, end: 25 },
+                                        location: Location {
+                                            file_path_id: DUMMY_PATH_ID,
+                                            start: 24,
+                                            end: 25
+                                        },
                                         segments: vec![TypePathSegment {
-                                            span: Span { start: 24, end: 25 },
+                                            location: Location {
+                                                file_path_id: DUMMY_PATH_ID,
+                                                start: 24,
+                                                end: 25
+                                            },
                                             path: Path {
-                                                span: Span { start: 24, end: 25 },
+                                                location: Location {
+                                                    file_path_id: DUMMY_PATH_ID,
+                                                    start: 24,
+                                                    end: 25
+                                                },
                                                 identifiers: vec![IdentifierAst {
-                                                    span: Span { start: 24, end: 25 },
+                                                    location: Location {
+                                                        file_path_id: DUMMY_PATH_ID,
+                                                        start: 24,
+                                                        end: 25
+                                                    },
                                                     symbol: interner.get_or_intern("A")
                                                 }]
                                             },
@@ -237,13 +435,29 @@ fn r#impl() {
                                         }]
                                     }),
                                     Type::Path(TypePath {
-                                        span: Span { start: 27, end: 28 },
+                                        location: Location {
+                                            file_path_id: DUMMY_PATH_ID,
+                                            start: 27,
+                                            end: 28
+                                        },
                                         segments: vec![TypePathSegment {
-                                            span: Span { start: 27, end: 28 },
+                                            location: Location {
+                                                file_path_id: DUMMY_PATH_ID,
+                                                start: 27,
+                                                end: 28
+                                            },
                                             path: Path {
-                                                span: Span { start: 27, end: 28 },
+                                                location: Location {
+                                                    file_path_id: DUMMY_PATH_ID,
+                                                    start: 27,
+                                                    end: 28
+                                                },
                                                 identifiers: vec![IdentifierAst {
-                                                    span: Span { start: 27, end: 28 },
+                                                    location: Location {
+                                                        file_path_id: DUMMY_PATH_ID,
+                                                        start: 27,
+                                                        end: 28
+                                                    },
                                                     symbol: interner.get_or_intern("B")
                                                 }]
                                             },
@@ -269,25 +483,50 @@ fn import() {
     let mut diagnostics = vec![];
 
     assert_eq!(
-        parse_item("import std.io as myio;", &mut diagnostics, &mut interner),
+        parse_item(
+            DUMMY_PATH_ID,
+            "import std.io as myio;",
+            &mut diagnostics,
+            &mut interner
+        ),
         Some(ModuleItem::Import {
-            span: Span { start: 0, end: 22 },
+            location: Location {
+                file_path_id: DUMMY_PATH_ID,
+                start: 0,
+                end: 22
+            },
             path: ImportPath {
                 path: Path {
-                    span: Span { start: 7, end: 13 },
+                    location: Location {
+                        file_path_id: DUMMY_PATH_ID,
+                        start: 7,
+                        end: 13
+                    },
                     identifiers: vec![
                         IdentifierAst {
-                            span: Span { start: 7, end: 10 },
+                            location: Location {
+                                file_path_id: DUMMY_PATH_ID,
+                                start: 7,
+                                end: 10
+                            },
                             symbol: symbols::STD
                         },
                         IdentifierAst {
-                            span: Span { start: 11, end: 13 },
+                            location: Location {
+                                file_path_id: DUMMY_PATH_ID,
+                                start: 11,
+                                end: 13
+                            },
                             symbol: interner.get_or_intern("io")
                         }
                     ]
                 },
                 r#as: Some(IdentifierAst {
-                    span: Span { start: 17, end: 21 },
+                    location: Location {
+                        file_path_id: DUMMY_PATH_ID,
+                        start: 17,
+                        end: 21
+                    },
                     symbol: interner.get_or_intern("myio")
                 })
             }
@@ -302,6 +541,7 @@ fn r#struct() {
 
     assert_eq!(
         parse_item(
+            DUMMY_PATH_ID,
             "struct Lexer[S] where S: Iterator[char] { contents: S }",
             &mut diagnostics,
             &mut interner
@@ -309,12 +549,20 @@ fn r#struct() {
         Some(ModuleItem::Struct {
             visibility: Visibility::private(),
             name: IdentifierAst {
-                span: Span { start: 7, end: 12 },
+                location: Location {
+                    file_path_id: DUMMY_PATH_ID,
+                    start: 7,
+                    end: 12
+                },
                 symbol: interner.get_or_intern("Lexer")
             },
             generic_parameters: Some(vec![GenericParameter {
                 name: IdentifierAst {
-                    span: Span { start: 13, end: 14 },
+                    location: Location {
+                        file_path_id: DUMMY_PATH_ID,
+                        start: 13,
+                        end: 14
+                    },
                     symbol: interner.get_or_intern("S")
                 },
                 bounds: None,
@@ -322,13 +570,29 @@ fn r#struct() {
             }]),
             where_clause: Some(vec![WhereClauseItem::Satisfies {
                 ty: Type::Path(TypePath {
-                    span: Span { start: 22, end: 23 },
+                    location: Location {
+                        file_path_id: DUMMY_PATH_ID,
+                        start: 22,
+                        end: 23
+                    },
                     segments: vec![TypePathSegment {
-                        span: Span { start: 22, end: 23 },
+                        location: Location {
+                            file_path_id: DUMMY_PATH_ID,
+                            start: 22,
+                            end: 23
+                        },
                         path: Path {
-                            span: Span { start: 22, end: 23 },
+                            location: Location {
+                                file_path_id: DUMMY_PATH_ID,
+                                start: 22,
+                                end: 23
+                            },
                             identifiers: vec![IdentifierAst {
-                                span: Span { start: 22, end: 23 },
+                                location: Location {
+                                    file_path_id: DUMMY_PATH_ID,
+                                    start: 22,
+                                    end: 23
+                                },
                                 symbol: interner.get_or_intern("S")
                             }]
                         },
@@ -336,25 +600,57 @@ fn r#struct() {
                     }]
                 }),
                 bounds: vec![TypePath {
-                    span: Span { start: 25, end: 39 },
+                    location: Location {
+                        file_path_id: DUMMY_PATH_ID,
+                        start: 25,
+                        end: 39
+                    },
                     segments: vec![TypePathSegment {
-                        span: Span { start: 25, end: 39 },
+                        location: Location {
+                            file_path_id: DUMMY_PATH_ID,
+                            start: 25,
+                            end: 39
+                        },
                         path: Path {
-                            span: Span { start: 25, end: 33 },
+                            location: Location {
+                                file_path_id: DUMMY_PATH_ID,
+                                start: 25,
+                                end: 33
+                            },
                             identifiers: vec![IdentifierAst {
-                                span: Span { start: 25, end: 33 },
+                                location: Location {
+                                    file_path_id: DUMMY_PATH_ID,
+                                    start: 25,
+                                    end: 33
+                                },
                                 symbol: interner.get_or_intern("Iterator")
                             }]
                         },
                         generic_arguments: Some(vec![GenericArgument::Type(Type::Path(
                             TypePath {
-                                span: Span { start: 34, end: 38 },
+                                location: Location {
+                                    file_path_id: DUMMY_PATH_ID,
+                                    start: 34,
+                                    end: 38
+                                },
                                 segments: vec![TypePathSegment {
-                                    span: Span { start: 34, end: 38 },
+                                    location: Location {
+                                        file_path_id: DUMMY_PATH_ID,
+                                        start: 34,
+                                        end: 38
+                                    },
                                     path: Path {
-                                        span: Span { start: 34, end: 38 },
+                                        location: Location {
+                                            file_path_id: DUMMY_PATH_ID,
+                                            start: 34,
+                                            end: 38
+                                        },
                                         identifiers: vec![IdentifierAst {
-                                            span: Span { start: 34, end: 38 },
+                                            location: Location {
+                                                file_path_id: DUMMY_PATH_ID,
+                                                start: 34,
+                                                end: 38
+                                            },
                                             symbol: symbols::CHAR
                                         }]
                                     },
@@ -368,17 +664,37 @@ fn r#struct() {
             fields: vec![StructField {
                 visibility: Visibility::private(),
                 name: IdentifierAst {
-                    span: Span { start: 42, end: 50 },
+                    location: Location {
+                        file_path_id: DUMMY_PATH_ID,
+                        start: 42,
+                        end: 50
+                    },
                     symbol: interner.get_or_intern("contents")
                 },
                 ty: Type::Path(TypePath {
-                    span: Span { start: 52, end: 53 },
+                    location: Location {
+                        file_path_id: DUMMY_PATH_ID,
+                        start: 52,
+                        end: 53
+                    },
                     segments: vec![TypePathSegment {
-                        span: Span { start: 52, end: 53 },
+                        location: Location {
+                            file_path_id: DUMMY_PATH_ID,
+                            start: 52,
+                            end: 53
+                        },
                         path: Path {
-                            span: Span { start: 52, end: 53 },
+                            location: Location {
+                                file_path_id: DUMMY_PATH_ID,
+                                start: 52,
+                                end: 53
+                            },
                             identifiers: vec![IdentifierAst {
-                                span: Span { start: 52, end: 53 },
+                                location: Location {
+                                    file_path_id: DUMMY_PATH_ID,
+                                    start: 52,
+                                    end: 53
+                                },
                                 symbol: interner.get_or_intern("S")
                             }]
                         },
@@ -399,6 +715,7 @@ fn into() {
 
     assert_eq!(
         parse_item(
+            DUMMY_PATH_ID,
             "trait Into[T] { fun into(self): T; }",
             &mut diagnostics,
             &mut interner
@@ -406,12 +723,20 @@ fn into() {
         Some(ModuleItem::Trait {
             visibility: Visibility::private(),
             name: IdentifierAst {
-                span: Span { start: 6, end: 10 },
+                location: Location {
+                    file_path_id: DUMMY_PATH_ID,
+                    start: 6,
+                    end: 10
+                },
                 symbol: interner.get_or_intern("Into")
             },
             generic_parameters: Some(vec![GenericParameter {
                 name: IdentifierAst {
-                    span: Span { start: 11, end: 12 },
+                    location: Location {
+                        file_path_id: DUMMY_PATH_ID,
+                        start: 11,
+                        end: 12
+                    },
                     symbol: interner.get_or_intern("T")
                 },
                 bounds: None,
@@ -422,22 +747,46 @@ fn into() {
                 signature: FunctionSignature {
                     visibility: Visibility::private(),
                     name: IdentifierAst {
-                        span: Span { start: 20, end: 24 },
+                        location: Location {
+                            file_path_id: DUMMY_PATH_ID,
+                            start: 20,
+                            end: 24
+                        },
                         symbol: interner.get_or_intern("into")
                     },
                     generic_parameters: None,
                     parameters: vec![FunctionParameter::Self_(SelfParameter {
-                        self_span: Span { start: 25, end: 29 },
+                        self_location: Location {
+                            file_path_id: DUMMY_PATH_ID,
+                            start: 25,
+                            end: 29
+                        },
                         ty: None
                     })],
                     return_type: Some(Type::Path(TypePath {
-                        span: Span { start: 32, end: 33 },
+                        location: Location {
+                            file_path_id: DUMMY_PATH_ID,
+                            start: 32,
+                            end: 33
+                        },
                         segments: vec![TypePathSegment {
-                            span: Span { start: 32, end: 33 },
+                            location: Location {
+                                file_path_id: DUMMY_PATH_ID,
+                                start: 32,
+                                end: 33
+                            },
                             path: Path {
-                                span: Span { start: 32, end: 33 },
+                                location: Location {
+                                    file_path_id: DUMMY_PATH_ID,
+                                    start: 32,
+                                    end: 33
+                                },
                                 identifiers: vec![IdentifierAst {
-                                    span: Span { start: 32, end: 33 },
+                                    location: Location {
+                                        file_path_id: DUMMY_PATH_ID,
+                                        start: 32,
+                                        end: 33
+                                    },
                                     symbol: interner.get_or_intern("T")
                                 }]
                             },
@@ -461,6 +810,7 @@ fn alias() {
 
     assert_eq!(
         parse_item(
+            DUMMY_PATH_ID,
             "type KeyValuePair[K, V] = [HashMap[K, V] as IntoIterator].Item;",
             &mut diagnostics,
             &mut interner,
@@ -468,13 +818,21 @@ fn alias() {
         Some(ModuleItem::TypeAlias(TypeAlias {
             visibility: Visibility::private(),
             name: IdentifierAst {
-                span: Span { start: 5, end: 17 },
+                location: Location {
+                    file_path_id: DUMMY_PATH_ID,
+                    start: 5,
+                    end: 17
+                },
                 symbol: interner.get_or_intern("KeyValuePair")
             },
             generic_parameters: Some(vec![
                 GenericParameter {
                     name: IdentifierAst {
-                        span: Span { start: 18, end: 19 },
+                        location: Location {
+                            file_path_id: DUMMY_PATH_ID,
+                            start: 18,
+                            end: 19
+                        },
                         symbol: interner.get_or_intern("K")
                     },
                     bounds: None,
@@ -482,7 +840,11 @@ fn alias() {
                 },
                 GenericParameter {
                     name: IdentifierAst {
-                        span: Span { start: 21, end: 22 },
+                        location: Location {
+                            file_path_id: DUMMY_PATH_ID,
+                            start: 21,
+                            end: 22
+                        },
                         symbol: interner.get_or_intern("V")
                     },
                     bounds: None,
@@ -491,27 +853,63 @@ fn alias() {
             ]),
             bounds: None,
             value: Some(Type::WithQualifiedPath {
-                span: Span { start: 26, end: 62 },
+                location: Location {
+                    file_path_id: DUMMY_PATH_ID,
+                    start: 26,
+                    end: 62
+                },
                 left: Box::new(Type::Path(TypePath {
-                    span: Span { start: 27, end: 40 },
+                    location: Location {
+                        file_path_id: DUMMY_PATH_ID,
+                        start: 27,
+                        end: 40
+                    },
                     segments: vec![TypePathSegment {
-                        span: Span { start: 27, end: 40 },
+                        location: Location {
+                            file_path_id: DUMMY_PATH_ID,
+                            start: 27,
+                            end: 40
+                        },
                         path: Path {
-                            span: Span { start: 27, end: 34 },
+                            location: Location {
+                                file_path_id: DUMMY_PATH_ID,
+                                start: 27,
+                                end: 34
+                            },
                             identifiers: vec![IdentifierAst {
-                                span: Span { start: 27, end: 34 },
+                                location: Location {
+                                    file_path_id: DUMMY_PATH_ID,
+                                    start: 27,
+                                    end: 34
+                                },
                                 symbol: interner.get_or_intern("HashMap")
                             }]
                         },
                         generic_arguments: Some(vec![
                             GenericArgument::Type(Type::Path(TypePath {
-                                span: Span { start: 35, end: 36 },
+                                location: Location {
+                                    file_path_id: DUMMY_PATH_ID,
+                                    start: 35,
+                                    end: 36
+                                },
                                 segments: vec![TypePathSegment {
-                                    span: Span { start: 35, end: 36 },
+                                    location: Location {
+                                        file_path_id: DUMMY_PATH_ID,
+                                        start: 35,
+                                        end: 36
+                                    },
                                     path: Path {
-                                        span: Span { start: 35, end: 36 },
+                                        location: Location {
+                                            file_path_id: DUMMY_PATH_ID,
+                                            start: 35,
+                                            end: 36
+                                        },
                                         identifiers: vec![IdentifierAst {
-                                            span: Span { start: 35, end: 36 },
+                                            location: Location {
+                                                file_path_id: DUMMY_PATH_ID,
+                                                start: 35,
+                                                end: 36
+                                            },
                                             symbol: interner.get_or_intern("K")
                                         }]
                                     },
@@ -519,13 +917,29 @@ fn alias() {
                                 }]
                             })),
                             GenericArgument::Type(Type::Path(TypePath {
-                                span: Span { start: 38, end: 39 },
+                                location: Location {
+                                    file_path_id: DUMMY_PATH_ID,
+                                    start: 38,
+                                    end: 39
+                                },
                                 segments: vec![TypePathSegment {
-                                    span: Span { start: 38, end: 39 },
+                                    location: Location {
+                                        file_path_id: DUMMY_PATH_ID,
+                                        start: 38,
+                                        end: 39
+                                    },
                                     path: Path {
-                                        span: Span { start: 38, end: 39 },
+                                        location: Location {
+                                            file_path_id: DUMMY_PATH_ID,
+                                            start: 38,
+                                            end: 39
+                                        },
                                         identifiers: vec![IdentifierAst {
-                                            span: Span { start: 38, end: 39 },
+                                            location: Location {
+                                                file_path_id: DUMMY_PATH_ID,
+                                                start: 38,
+                                                end: 39
+                                            },
                                             symbol: interner.get_or_intern("V")
                                         }]
                                     },
@@ -536,13 +950,29 @@ fn alias() {
                     }]
                 })),
                 right: TypePath {
-                    span: Span { start: 44, end: 56 },
+                    location: Location {
+                        file_path_id: DUMMY_PATH_ID,
+                        start: 44,
+                        end: 56
+                    },
                     segments: vec![TypePathSegment {
-                        span: Span { start: 44, end: 56 },
+                        location: Location {
+                            file_path_id: DUMMY_PATH_ID,
+                            start: 44,
+                            end: 56
+                        },
                         path: Path {
-                            span: Span { start: 44, end: 56 },
+                            location: Location {
+                                file_path_id: DUMMY_PATH_ID,
+                                start: 44,
+                                end: 56
+                            },
                             identifiers: vec![IdentifierAst {
-                                span: Span { start: 44, end: 56 },
+                                location: Location {
+                                    file_path_id: DUMMY_PATH_ID,
+                                    start: 44,
+                                    end: 56
+                                },
                                 symbol: interner.get_or_intern("IntoIterator")
                             }]
                         },
@@ -550,11 +980,23 @@ fn alias() {
                     }]
                 },
                 segments: vec![TypePathSegment {
-                    span: Span { start: 58, end: 62 },
+                    location: Location {
+                        file_path_id: DUMMY_PATH_ID,
+                        start: 58,
+                        end: 62
+                    },
                     path: Path {
-                        span: Span { start: 58, end: 62 },
+                        location: Location {
+                            file_path_id: DUMMY_PATH_ID,
+                            start: 58,
+                            end: 62
+                        },
                         identifiers: vec![IdentifierAst {
-                            span: Span { start: 58, end: 62 },
+                            location: Location {
+                                file_path_id: DUMMY_PATH_ID,
+                                start: 58,
+                                end: 62
+                            },
                             symbol: interner.get_or_intern("Item")
                         }]
                     },
@@ -573,6 +1015,7 @@ fn r#enum() {
 
     assert_eq!(
         parse_item(
+            DUMMY_PATH_ID,
             "enum Result[T, E] { Ok(T), Err(E) }",
             &mut diagnostics,
             &mut interner
@@ -580,13 +1023,21 @@ fn r#enum() {
         Some(ModuleItem::Enum {
             visibility: Visibility::private(),
             name: IdentifierAst {
-                span: Span { start: 5, end: 11 },
+                location: Location {
+                    file_path_id: DUMMY_PATH_ID,
+                    start: 5,
+                    end: 11
+                },
                 symbol: interner.get_or_intern("Result")
             },
             generic_parameters: Some(vec![
                 GenericParameter {
                     name: IdentifierAst {
-                        span: Span { start: 12, end: 13 },
+                        location: Location {
+                            file_path_id: DUMMY_PATH_ID,
+                            start: 12,
+                            end: 13
+                        },
                         symbol: interner.get_or_intern("T")
                     },
                     bounds: None,
@@ -594,7 +1045,11 @@ fn r#enum() {
                 },
                 GenericParameter {
                     name: IdentifierAst {
-                        span: Span { start: 15, end: 16 },
+                        location: Location {
+                            file_path_id: DUMMY_PATH_ID,
+                            start: 15,
+                            end: 16
+                        },
                         symbol: interner.get_or_intern("E")
                     },
                     bounds: None,
@@ -605,19 +1060,39 @@ fn r#enum() {
             items: vec![
                 EnumItem::TupleLike {
                     name: IdentifierAst {
-                        span: Span { start: 20, end: 22 },
+                        location: Location {
+                            file_path_id: DUMMY_PATH_ID,
+                            start: 20,
+                            end: 22
+                        },
                         symbol: interner.get_or_intern("Ok")
                     },
                     fields: vec![TupleField {
                         visibility: Visibility::private(),
                         ty: Type::Path(TypePath {
-                            span: Span { start: 23, end: 24 },
+                            location: Location {
+                                file_path_id: DUMMY_PATH_ID,
+                                start: 23,
+                                end: 24
+                            },
                             segments: vec![TypePathSegment {
-                                span: Span { start: 23, end: 24 },
+                                location: Location {
+                                    file_path_id: DUMMY_PATH_ID,
+                                    start: 23,
+                                    end: 24
+                                },
                                 path: Path {
-                                    span: Span { start: 23, end: 24 },
+                                    location: Location {
+                                        file_path_id: DUMMY_PATH_ID,
+                                        start: 23,
+                                        end: 24
+                                    },
                                     identifiers: vec![IdentifierAst {
-                                        span: Span { start: 23, end: 24 },
+                                        location: Location {
+                                            file_path_id: DUMMY_PATH_ID,
+                                            start: 23,
+                                            end: 24
+                                        },
                                         symbol: interner.get_or_intern("T")
                                     }]
                                 },
@@ -629,19 +1104,39 @@ fn r#enum() {
                 },
                 EnumItem::TupleLike {
                     name: IdentifierAst {
-                        span: Span { start: 27, end: 30 },
+                        location: Location {
+                            file_path_id: DUMMY_PATH_ID,
+                            start: 27,
+                            end: 30
+                        },
                         symbol: interner.get_or_intern("Err")
                     },
                     fields: vec![TupleField {
                         visibility: Visibility::private(),
                         ty: Type::Path(TypePath {
-                            span: Span { start: 31, end: 32 },
+                            location: Location {
+                                file_path_id: DUMMY_PATH_ID,
+                                start: 31,
+                                end: 32
+                            },
                             segments: vec![TypePathSegment {
-                                span: Span { start: 31, end: 32 },
+                                location: Location {
+                                    file_path_id: DUMMY_PATH_ID,
+                                    start: 31,
+                                    end: 32
+                                },
                                 path: Path {
-                                    span: Span { start: 31, end: 32 },
+                                    location: Location {
+                                        file_path_id: DUMMY_PATH_ID,
+                                        start: 31,
+                                        end: 32
+                                    },
                                     identifiers: vec![IdentifierAst {
-                                        span: Span { start: 31, end: 32 },
+                                        location: Location {
+                                            file_path_id: DUMMY_PATH_ID,
+                                            start: 31,
+                                            end: 32
+                                        },
                                         symbol: interner.get_or_intern("E")
                                     }]
                                 },

@@ -1,7 +1,7 @@
 //! Defines diagnostics related to scopes.
 
 use ry_diagnostics::{BuildDiagnostic, Diagnostic};
-use ry_filesystem::span::Span;
+use ry_filesystem::location::Location;
 
 /// Diagnostics related to scopes.
 #[allow(missing_copy_implementations)]
@@ -13,17 +13,17 @@ pub enum ScopeDiagnostic {
         symbol: String,
 
         /// The place where the symbol was tried to be used.
-        span: Span,
+        location: Location,
     },
 }
 
 impl BuildDiagnostic for ScopeDiagnostic {
     fn build(&self) -> Diagnostic {
         match self {
-            Self::NotFound { symbol, span } => Diagnostic::error()
+            Self::NotFound { symbol, location } => Diagnostic::error()
                 .with_message(format!("`{symbol}` is not found in this scope"))
                 .with_code("E004")
-                .with_labels(vec![span.to_primary_label()]),
+                .with_labels(vec![location.to_primary_label()]),
         }
     }
 }

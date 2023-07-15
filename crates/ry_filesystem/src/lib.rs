@@ -63,4 +63,5 @@
 
 pub mod file;
 pub mod path_resolver;
-pub mod span;
+pub mod path_storage;
+pub mod location;

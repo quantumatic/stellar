@@ -4,7 +4,7 @@ use ry_ast::{
     TraitItem, TupleField, TypeAlias, Visibility,
 };
 use ry_diagnostics::BuildDiagnostic;
-use ry_filesystem::span::Span;
+use ry_filesystem::location::Location;
 use ry_interner::symbols;
 
 use crate::{
@@ -50,7 +50,7 @@ struct TraitParser {
 }
 
 struct TraitItemsParser {
-    pub(crate) name_span: Span,
+    pub(crate) name_location: Location,
     pub(crate) type_implementation: bool,
 }
 
@@ -83,12 +83,12 @@ impl Parse for ImportParser {
     type Output = Option<ModuleItem>;
 
     fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
-        let start = state.next_token.span.start;
+        let start = state.next_token.location.start;
 
-        if let Some(span) = self.visibility.span_of_pub() {
+        if let Some(location) = self.visibility.location_of_pub() {
             state.diagnostics.push(
                 ParseDiagnostic::UnnecessaryVisibilityQualifierError {
-                    span,
+                    location,
                     context: UnnecessaryVisibilityQualifierContext::Import,
                 }
                 .build(),
@@ -102,7 +102,7 @@ impl Parse for ImportParser {
 
         Some(ModuleItem::Import {
             path,
-            span: state.span_from(start),
+            location: state.location_from(start),
         })
     }
 }
@@ -244,7 +244,7 @@ impl Parse for FunctionParser {
                 state.advance();
 
                 Some(FunctionParameter::Self_(SelfParameter {
-                    self_span: state.current_token.span,
+                    self_location: state.current_token.location,
                     ty: if state.next_token.raw == Token![:] {
                         state.advance();
 
@@ -316,13 +316,13 @@ impl Parse for TraitItemsParser {
         while state.next_token.raw != Token!['}'] {
             let docstring = state.consume_local_docstring();
 
-            if let Some(span) = VisibilityParser.parse(state).span_of_pub() {
+            if let Some(location) = VisibilityParser.parse(state).location_of_pub() {
                 if !self.type_implementation {
                     state.diagnostics.push(
                         ParseDiagnostic::UnnecessaryVisibilityQualifierError {
-                            span,
+                            location,
                             context: UnnecessaryVisibilityQualifierContext::TraitItem {
-                                name_span: self.name_span,
+                                name_location: self.name_location,
                             },
                         }
                         .build(),
@@ -416,7 +416,7 @@ impl Parse for TraitParser {
         state.consume(Token!['{'], "trait declaration")?;
 
         let items = TraitItemsParser {
-            name_span: name.span,
+            name_location: name.location,
             type_implementation: false,
         }
         .parse(state)?;
@@ -442,12 +442,12 @@ impl Parse for ImplParser {
     fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
         state.advance();
 
-        let span = state.current_token.span;
+        let location = state.current_token.location;
 
-        if let Some(span) = self.visibility.span_of_pub() {
+        if let Some(location) = self.visibility.location_of_pub() {
             state.diagnostics.push(
                 ParseDiagnostic::UnnecessaryVisibilityQualifierError {
-                    span,
+                    location,
                     context: UnnecessaryVisibilityQualifierContext::Impl,
                 }
                 .build(),
@@ -471,7 +471,7 @@ impl Parse for ImplParser {
         state.consume(Token!['{'], "type implementation")?;
 
         let items = TraitItemsParser {
-            name_span: span,
+            name_location: location,
             type_implementation: true,
         }
         .parse(state)?;
@@ -481,7 +481,7 @@ impl Parse for ImplParser {
         }
 
         Some(ModuleItem::Impl(Impl {
-            span,
+            location,
             generic_parameters,
             ty,
             r#trait,

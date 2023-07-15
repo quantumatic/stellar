@@ -12,7 +12,7 @@ impl Parse for PathParser {
         let first_identifier = state.consume_identifier("path")?;
         identifiers.push(first_identifier);
 
-        let start = first_identifier.span.start;
+        let start = first_identifier.location.start;
 
         while state.next_token.raw == Token![.] {
             state.advance();
@@ -20,7 +20,7 @@ impl Parse for PathParser {
         }
 
         Some(Path {
-            span: state.span_from(start),
+            location: state.location_from(start),
             identifiers,
         })
     }

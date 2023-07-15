@@ -115,7 +115,7 @@ impl Visitor<'_> for Serializer<'_> {
         self.increment_indentation();
         self.write_identation();
 
-        self.write(format!("BINARY_OP {}@{}", operator.raw, operator.span));
+        self.write(format!("BINARY_OP {}@{}", operator.raw, operator.location));
 
         self.decrement_indentation();
     }
@@ -157,7 +157,7 @@ impl Visitor<'_> for Serializer<'_> {
             Expression::While { .. } => self.write("WHILE"),
         }
 
-        self.write(format!(" <{}>", expression.span()));
+        self.write(format!(" <{}>", expression.location()));
         self.write_newline();
         walk_expression(self, expression);
 
@@ -226,7 +226,7 @@ impl Visitor<'_> for Serializer<'_> {
         self.write(format!(
             "IDENTIFIER: {} <{}>",
             self.interner.resolve(identifier.symbol).unwrap_or("?"),
-            identifier.span
+            identifier.location
         ));
         self.write_newline();
 
@@ -334,7 +334,7 @@ impl Visitor<'_> for Serializer<'_> {
             Literal::String { value, .. } => self.write(format!("\"{value}\"")),
         }
 
-        self.write(format!(" <{}>", literal.span()));
+        self.write(format!(" <{}>", literal.location()));
         self.write_newline();
 
         self.decrement_indentation();
@@ -372,7 +372,7 @@ impl Visitor<'_> for Serializer<'_> {
         self.increment_indentation();
         self.write_identation();
 
-        self.write(format!("PATH <{}>", path.span));
+        self.write(format!("PATH <{}>", path.location));
         self.write_newline();
         walk_path(self, path);
 
@@ -396,7 +396,7 @@ impl Visitor<'_> for Serializer<'_> {
             Pattern::TupleLike { .. } => self.write("TUPLE_LIKE_PATTERN"),
         }
 
-        self.write(format!(" <{}>", pattern.span()));
+        self.write(format!(" <{}>", pattern.location()));
         self.write_newline();
 
         self.decrement_indentation();
@@ -406,7 +406,7 @@ impl Visitor<'_> for Serializer<'_> {
         self.increment_indentation();
         self.write_identation();
 
-        self.write(format!("POSTFIX_OP {}@{}", operator.raw, operator.span));
+        self.write(format!("POSTFIX_OP {}@{}", operator.raw, operator.location));
         self.write_newline();
 
         self.decrement_indentation();
@@ -416,7 +416,7 @@ impl Visitor<'_> for Serializer<'_> {
         self.increment_indentation();
         self.write_identation();
 
-        self.write(format!("PREFIX_OP {}@{}", operator.raw, operator.span));
+        self.write(format!("PREFIX_OP {}@{}", operator.raw, operator.location));
         self.write_newline();
 
         self.decrement_indentation();
@@ -597,7 +597,7 @@ impl Visitor<'_> for Serializer<'_> {
             Type::Parenthesized { .. } => self.write("PARENTHESIZED_TYPE"),
             Type::WithQualifiedPath { .. } => self.write("WITH_QUALIFIED_PATH_TYPE"),
         }
-        self.write(format!(" <{}>", ty.span()));
+        self.write(format!(" <{}>", ty.location()));
         self.write_newline();
 
         walk_type(self, ty);
@@ -633,7 +633,7 @@ impl Visitor<'_> for Serializer<'_> {
         self.increment_indentation();
         self.write_identation();
 
-        self.write(format!("TYPE_PATH <{}>", path.span));
+        self.write(format!("TYPE_PATH <{}>", path.location));
         self.write_newline();
 
         walk_type_path(self, path);
@@ -645,7 +645,7 @@ impl Visitor<'_> for Serializer<'_> {
         self.increment_indentation();
         self.write_identation();
 
-        self.write(format!("TYPE_PATH_SEGMENT <{}>", segment.span));
+        self.write(format!("TYPE_PATH_SEGMENT <{}>", segment.location));
         self.write_newline();
 
         walk_type_path_segment(self, segment);
@@ -658,8 +658,8 @@ impl Visitor<'_> for Serializer<'_> {
         self.write_identation();
 
         self.write("VISIBILITY: ");
-        match visibility.span_of_pub() {
-            Some(span) => self.write(format!("PUBLIC <{span}>")),
+        match visibility.location_of_pub() {
+            Some(location) => self.write(format!("PUBLIC <{location}>")),
             None => self.write("PRIVATE"),
         }
         self.write_newline();

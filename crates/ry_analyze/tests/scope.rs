@@ -1,5 +1,5 @@
 use ry_analyze::scope::{Scope, ValueConstructor};
-use ry_filesystem::span::DUMMY_SPAN;
+use ry_filesystem::location::DUMMY_LOCATION;
 use ry_interner::Interner;
 use ry_typed_ast::ty::{string, uint8};
 
@@ -9,6 +9,7 @@ use ry_typed_ast::ty::{string, uint8};
 #[test]
 fn single_scope_lookup() {
     let mut interner = Interner::default();
+
     let a = interner.get_or_intern("a");
     let b = interner.get_or_intern("b");
 
@@ -16,7 +17,7 @@ fn single_scope_lookup() {
     scope.add_symbol(
         a,
         ValueConstructor {
-            origin: DUMMY_SPAN,
+            origin: DUMMY_LOCATION,
             ty: uint8(),
         },
     );
@@ -24,7 +25,7 @@ fn single_scope_lookup() {
     assert_eq!(
         scope.lookup(a),
         Some(&ValueConstructor {
-            origin: DUMMY_SPAN,
+            origin: DUMMY_LOCATION,
             ty: uint8()
         })
     );
@@ -46,7 +47,7 @@ fn single_scope_shadowed_variable_lookup() {
     scope.add_symbol(
         a,
         ValueConstructor {
-            origin: DUMMY_SPAN,
+            origin: DUMMY_LOCATION,
             ty: uint8(),
         },
     );
@@ -54,7 +55,7 @@ fn single_scope_shadowed_variable_lookup() {
     assert_eq!(
         scope.lookup(a),
         Some(&ValueConstructor {
-            origin: DUMMY_SPAN,
+            origin: DUMMY_LOCATION,
             ty: uint8()
         })
     );
@@ -62,7 +63,7 @@ fn single_scope_shadowed_variable_lookup() {
     scope.add_symbol(
         a,
         ValueConstructor {
-            origin: DUMMY_SPAN,
+            origin: DUMMY_LOCATION,
             ty: string(),
         },
     );
@@ -70,7 +71,7 @@ fn single_scope_shadowed_variable_lookup() {
     assert_eq!(
         scope.lookup(a),
         Some(&ValueConstructor {
-            origin: DUMMY_SPAN,
+            origin: DUMMY_LOCATION,
             ty: string()
         })
     );
@@ -94,7 +95,7 @@ fn inherited_scope_lookup() {
     parent_scope.add_symbol(
         a,
         ValueConstructor {
-            origin: DUMMY_SPAN,
+            origin: DUMMY_LOCATION,
             ty: string(),
         },
     );
@@ -103,7 +104,7 @@ fn inherited_scope_lookup() {
     inner_scope.add_symbol(
         b,
         ValueConstructor {
-            origin: DUMMY_SPAN,
+            origin: DUMMY_LOCATION,
             ty: uint8(),
         },
     );
@@ -111,14 +112,14 @@ fn inherited_scope_lookup() {
     assert_eq!(
         inner_scope.lookup(a),
         Some(&ValueConstructor {
-            origin: DUMMY_SPAN,
+            origin: DUMMY_LOCATION,
             ty: string()
         })
     );
     assert_eq!(
         inner_scope.lookup(b),
         Some(&ValueConstructor {
-            origin: DUMMY_SPAN,
+            origin: DUMMY_LOCATION,
             ty: uint8()
         })
     );
@@ -144,7 +145,7 @@ fn inherited_scope_shadowed_variable_lookup() {
     parent_scope.add_symbol(
         a,
         ValueConstructor {
-            origin: DUMMY_SPAN,
+            origin: DUMMY_LOCATION,
             ty: uint8(),
         },
     );
@@ -153,7 +154,7 @@ fn inherited_scope_shadowed_variable_lookup() {
     inner_scope.add_symbol(
         a,
         ValueConstructor {
-            origin: DUMMY_SPAN,
+            origin: DUMMY_LOCATION,
             ty: string(),
         },
     );
@@ -161,14 +162,14 @@ fn inherited_scope_shadowed_variable_lookup() {
     assert_eq!(
         inner_scope.lookup(a),
         Some(&ValueConstructor {
-            origin: DUMMY_SPAN,
+            origin: DUMMY_LOCATION,
             ty: string()
         })
     );
     assert_eq!(
         parent_scope.lookup(a),
         Some(&ValueConstructor {
-            origin: DUMMY_SPAN,
+            origin: DUMMY_LOCATION,
             ty: uint8()
         })
     );

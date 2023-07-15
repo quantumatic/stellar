@@ -1,7 +1,7 @@
 use std::char::from_u32;
 
 use ry_ast::token::{NumberKind, RawLexError, RawToken, Token};
-use ry_filesystem::span::Span;
+use ry_filesystem::location::Location;
 
 use crate::{is_id_start, Lexer};
 
@@ -17,62 +17,31 @@ pub(crate) fn hexadecimal(c: char) -> bool {
     c.is_ascii_digit() || ('a'..='f').contains(&c.to_ascii_lowercase())
 }
 
-fn invalid_separator(string: &str) -> i32 {
-    let mut base = ' ';
-    let mut d = '.';
-    let mut i = 0;
-
-    let bytes = string.as_bytes();
-
-    if string.len() >= 2 && bytes[0] as char == '0' {
-        base = bytes[1] as char;
-        if base == 'x' || base == 'o' || base == 'b' {
-            d = '0';
-            i = 2;
-        }
-    }
-
-    while i < string.len() {
-        let p = d;
-        d = bytes[i] as char;
-        if d == '_' {
-            if p != '0' {
-                return TryInto::<i32>::try_into(i).expect("Overflow in Lexer::invalid_separator");
-            }
-        } else if decimal(d) || base == 'x' && hexadecimal(d) {
-            d = '0';
-        } else {
-            if p == '_' {
-                return TryInto::<i32>::try_into(i).expect("Overflow in Lexer::invalid_separator")
-                    - 1;
-            }
-
-            d = '.';
-        }
-
-        i += 1;
-    }
-
-    if d == '_' {
-        return TryInto::<i32>::try_into(bytes.len())
-            .expect("Overflow in Lexer::invalid_separator")
-            - 1;
-    }
-
-    -1
-}
-
 impl Lexer<'_, '_> {
     pub(crate) fn eat_number(&mut self) -> Token {
-        let start_location = self.location;
+        let start_offset = self.offset;
 
+        // Weather the number is integer or float.
         let mut number_kind = NumberKind::Invalid;
 
-        let mut base: i8 = 10;
+        // Base of the number.
+        let mut base = 10i8;
+
+        // 0b010
+        //  ^ prefix = 'b'
+        //
+        // 0x9f
+        //  ^ prefix = 'x'
+        //
+        // 3822
+        // ^^^^ prefix = '0' for decimals
         let mut prefix = '0';
+
+        // bit 0: digit present, bit 1: `_` present.
         let mut digit_separator = 0;
 
-        let mut invalid_digit_location: Option<usize> = None;
+        // Location of the first invalid digit.
+        let mut invalid_digit_location = None;
 
         if self.current != '.' {
             number_kind = NumberKind::Int;
@@ -97,9 +66,9 @@ impl Lexer<'_, '_> {
                         prefix = 'b';
                     }
                     _ => {
-                        base = 10;
+                        base = 8;
                         prefix = '0';
-                        digit_separator = 1;
+                        digit_separator = 1; // leading 0
                     }
                 }
             }
@@ -122,7 +91,7 @@ impl Lexer<'_, '_> {
                 if prefix == 'o' || prefix == 'b' || prefix == 'x' {
                     return Token {
                         raw: RawToken::Error(RawLexError::InvalidRadixPoint),
-                        span: self.span_from(start_location),
+                        location: self.location_from(start_offset),
                     };
                 }
 
@@ -132,7 +101,7 @@ impl Lexer<'_, '_> {
             if digit_separator & 1 == 0 {
                 return Token {
                     raw: RawToken::Error(RawLexError::HasNoDigits),
-                    span: self.span_from(start_location),
+                    location: self.location_from(start_offset),
                 };
             }
         }
@@ -142,7 +111,7 @@ impl Lexer<'_, '_> {
             if prefix != '\0' && prefix != '0' {
                 return Token {
                     raw: RawToken::Error(RawLexError::ExponentRequiresDecimalMantissa),
-                    span: self.span_from(start_location),
+                    location: self.location_from(start_offset),
                 };
             }
 
@@ -161,47 +130,39 @@ impl Lexer<'_, '_> {
             if ds & 1 == 0 {
                 return Token {
                     raw: RawToken::Error(RawLexError::ExponentHasNoDigits),
-                    span: self.span_from(start_location),
+                    location: self.location_from(start_offset),
                 };
             }
         }
 
-        let string = &self.source[start_location..self.location];
+        let number_string = &self.source[start_offset..self.offset];
 
         if let Some(location) = invalid_digit_location {
             if number_kind == NumberKind::Int {
                 return Token {
                     raw: RawToken::Error(RawLexError::InvalidDigit),
-                    span: Span {
-                        start: location,
-                        end: location + 1,
-                    },
+                    location,
                 };
             }
         }
 
-        let s = invalid_separator(string);
-
-        if digit_separator & 2 != 0 && s >= 0 {
-            let separator_location =
-                TryInto::<usize>::try_into(s).expect("Invalid separator in Lexer::eat_number");
-            return Token {
-                raw: RawToken::Error(RawLexError::UnderscoreMustSeparateSuccessiveDigits),
-                span: Span {
-                    start: separator_location,
-                    end: separator_location + 1,
-                },
-            };
+        if let Some(location) = self.check_for_invalid_separator(start_offset, number_string) {
+            if digit_separator & 2 != 0 {
+                return Token {
+                    raw: RawToken::Error(RawLexError::UnderscoreMustSeparateSuccessiveDigits),
+                    location,
+                };
+            }
         }
 
         match number_kind {
             NumberKind::Int => Token {
                 raw: RawToken::IntegerLiteral,
-                span: self.span_from(start_location),
+                location: self.location_from(start_offset),
             },
             NumberKind::Float => Token {
                 raw: RawToken::FloatLiteral,
-                span: self.span_from(start_location),
+                location: self.location_from(start_offset),
             },
             NumberKind::Invalid => {
                 unreachable!()
@@ -209,12 +170,44 @@ impl Lexer<'_, '_> {
         }
     }
 
+    /// Checks if the number has an invalid `_` separator in it (if it doesn't separate
+    /// successive digits, the function returns the location of the separator).
+    fn check_for_invalid_separator(
+        &self,
+        start_offset: usize,
+        number_string: &str,
+    ) -> Option<Location> {
+        let mut idx = 0;
+        let chars_slice = &number_string.chars().collect::<Vec<char>>();
+
+        for window in chars_slice.windows(3) {
+            let (current, previous, next) = (window[0], window[1], window[2]);
+
+            if current != '_' || (hexadecimal(next) && hexadecimal(previous)) {
+                idx += 1;
+                continue;
+            }
+
+            return Some(self.make_location(start_offset + idx, start_offset + idx + 1));
+        }
+
+        None
+    }
+
+    /// Processes a group of digits.
     fn eat_digits(
         &mut self,
         base: i8,
-        invalid_digit_location: &mut Option<usize>,
+        invalid_digit_location: &mut Option<Location>,
         digit_separator: &mut i32,
     ) {
+        #[inline]
+        fn set_if_none<T>(option: &mut Option<T>, value: T) {
+            if option.is_none() {
+                *option = Some(value);
+            }
+        }
+
         if base <= 10 {
             let max = from_u32(
                 '0' as u32
@@ -223,22 +216,20 @@ impl Lexer<'_, '_> {
             .expect("Invalid max character in Lexer::eat_digits()");
 
             while decimal(self.current) || self.current == '_' {
-                let mut ds = 1;
+                let mut digit_separator_ = 1;
 
                 if self.current == '_' {
-                    ds = 2;
+                    digit_separator_ = 2;
                 } else if self.current >= max && invalid_digit_location.is_none() {
-                    *invalid_digit_location = Some(self.location);
+                    set_if_none(invalid_digit_location, self.current_char_location());
                 }
 
-                *digit_separator |= ds;
+                *digit_separator |= digit_separator_;
                 self.advance();
             }
         } else {
             while hexadecimal(self.current) || self.current == '_' {
-                let ds = if self.current == '_' { 2 } else { 1 };
-
-                *digit_separator |= ds;
+                *digit_separator |= if self.current == '_' { 2 } else { 1 };
                 self.advance();
             }
         }

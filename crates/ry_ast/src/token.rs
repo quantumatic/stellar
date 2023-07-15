@@ -2,7 +2,7 @@
 use std::fmt::Display;
 
 use phf::phf_map;
-use ry_filesystem::span::Span;
+use ry_filesystem::location::Location;
 
 use crate::precedence::Precedence;
 
@@ -96,11 +96,11 @@ impl From<RawToken> for RawLexError {
 
 #[derive(Debug, Clone, PartialEq, Eq, Copy)]
 pub struct LexError {
-    pub span: Span,
+    pub location: Location,
     pub raw: RawLexError,
 }
 
-/// Either the number is integer, float or imaginary literal.
+/// Either the number is integer or float.
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum NumberKind {
     Invalid,
@@ -466,7 +466,7 @@ impl RawToken {
 /// Represents a token with a specified location in source text.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct Token {
-    pub span: Span,
+    pub location: Location,
     pub raw: RawToken,
 }
 
