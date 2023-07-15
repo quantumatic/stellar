@@ -1,7 +1,6 @@
 <p align="center">
-<img src="./additional/icon/ry.png" width="20%">
+<img src="./additional/icon/banner.png" width="70%">
 </p>
-<h1 align="center">Ry programming language</h1>
 <p align="center">
 <img src="https://github.com/ry-lang/ry/actions/workflows/ci.yaml/badge.svg">
 <img src="https://badgen.net/static/license/MIT/blue">
