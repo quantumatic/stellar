@@ -1,9 +1,8 @@
 use ry_ast::{token::RawToken, Statement, StatementsBlock, Token};
-use ry_diagnostics::BuildDiagnostic;
 
 use crate::{
-    diagnostics::ParseDiagnostic, expected, expression::ExpressionParser, pattern::PatternParser,
-    r#type::TypeParser, Parse, ParseState,
+    diagnostics::UnexpectedTokenDiagnostic, expected, expression::ExpressionParser,
+    pattern::PatternParser, r#type::TypeParser, Parse, ParseState,
 };
 
 pub(crate) struct StatementParser;
@@ -54,14 +53,11 @@ impl Parse for StatementParser {
                         }
                     }
                     _ => {
-                        state.diagnostics.push(
-                            ParseDiagnostic::UnexpectedTokenError {
-                                got: state.next_token,
-                                expected: expected!(";"),
-                                node: "expression statement".to_owned(),
-                            }
-                            .build(),
-                        );
+                        state.save_single_file_diagnostic(UnexpectedTokenDiagnostic::new(
+                            state.next_token,
+                            expected!(";"),
+                            "expression statement",
+                        ));
                         return None;
                     }
                 }
@@ -100,14 +96,11 @@ impl Parse for StatementsBlockParser {
             match state.next_token.raw {
                 Token!['}'] => break,
                 RawToken::EndOfFile => {
-                    state.diagnostics.push(
-                        ParseDiagnostic::UnexpectedTokenError {
-                            got: state.next_token,
-                            expected: expected!("}"),
-                            node: "statements block".to_owned(),
-                        }
-                        .build(),
-                    );
+                    state.save_single_file_diagnostic(UnexpectedTokenDiagnostic::new(
+                        state.next_token,
+                        expected!("}"),
+                        "statements block",
+                    ));
 
                     return None;
                 }

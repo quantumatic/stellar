@@ -2,11 +2,10 @@ use ry_ast::{
     token::RawToken, GenericArgument, GenericParameter, Path, Token, Type, TypeBounds, TypePath,
     TypePathSegment, WhereClause, WhereClauseItem,
 };
-use ry_diagnostics::BuildDiagnostic;
 
 use crate::{
-    diagnostics::ParseDiagnostic, expected, macros::parse_list, path::PathParser, OptionalParser,
-    Parse, ParseState,
+    diagnostics::UnexpectedTokenDiagnostic, expected, macros::parse_list, path::PathParser,
+    OptionalParser, Parse, ParseState,
 };
 
 pub(crate) struct TypeBoundsParser;
@@ -56,14 +55,11 @@ impl Parse for TypeParser {
             Token![dyn] => TraitObjectTypeParser.parse(state),
             Token!['['] => TypeWithQualifiedPathParser.parse(state),
             _ => {
-                state.diagnostics.push(
-                    ParseDiagnostic::UnexpectedTokenError {
-                        got: state.next_token,
-                        expected: expected!("identifier", Token!['['], Token![#], Token!['(']),
-                        node: "type".to_owned(),
-                    }
-                    .build(),
-                );
+                state.save_single_file_diagnostic(UnexpectedTokenDiagnostic::new(
+                    state.next_token,
+                    expected!("identifier", Token!['['], Token![#], Token!['(']),
+                    "type",
+                ));
 
                 None
             }
@@ -335,11 +331,12 @@ impl OptionalParser for WhereClauseParser {
                         Some(WhereClauseItem::Eq { left, right: TypeParser.parse(state)? })
                     },
                     _ => {
-                        state.diagnostics.push(ParseDiagnostic::UnexpectedTokenError {
-                            got: state.next_token,
-                            expected: expected!(Token![=], Token![:]),
-                            node: "where clause".to_owned(),
-                        }.build());
+                        state.save_single_file_diagnostic(
+                            UnexpectedTokenDiagnostic::new(
+                                state.next_token,
+                                expected!(Token![=], Token![:]),
+                                "where clause",
+                        ));
 
                         None
                     }

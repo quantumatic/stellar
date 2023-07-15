@@ -1,12 +1,15 @@
 //! Defines diagnostics for parser.
 
+#![allow(clippy::needless_pass_by_value)]
+
 use std::fmt::Display;
 
+use codespan_reporting::diagnostic::Diagnostic;
 use ry_ast::{
     token::{LexError, Token},
     ModuleItemKind,
 };
-use ry_diagnostics::{BuildDiagnostic, Diagnostic};
+use ry_diagnostics::BuildSingleFileDiagnostic;
 use ry_filesystem::location::Location;
 
 /// Represents list of expected tokens.
@@ -57,56 +60,180 @@ pub enum UnnecessaryVisibilityQualifierContext {
     Import,
 }
 
-/// An enum which represents diagnostic encountered during parsing stage.
-#[derive(Debug, PartialEq, Eq, Clone)]
-pub enum ParseDiagnostic {
-    /// A lexing error.
-    LexError(LexError),
+/// Diagnostic related to an error occured when tokenizing.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct LexErrorDiagnostic(pub LexError);
 
-    /// When a token is unexpected.
-    UnexpectedTokenError {
-        /// The token that was not expected.
-        got: Token,
+impl BuildSingleFileDiagnostic for LexErrorDiagnostic {
+    #[inline]
+    fn build(&self) -> Diagnostic<()> {
+        Diagnostic::error()
+            .with_message(self.0.raw.to_string())
+            .with_code("E000")
+            .with_labels(vec![self.0.location.to_primary_label()])
+    }
+}
 
-        /// Tokens that were expected.
-        expected: Expected,
+/// Diagnostic related to an unexpected token error.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct UnexpectedTokenDiagnostic {
+    /// The token that was not expected.
+    pub got: Token,
 
-        /// AST Node at which the error occurred while parsing.
-        node: String,
-    },
+    /// Tokens that were expected.
+    pub expected: Expected,
 
-    /// Integer overflow.
-    IntegerOverflowError {
-        /// Location of number when parsing which, overflow happened.
-        location: Location,
-    },
+    /// AST Node at which the error occurred while parsing.
+    pub node: String,
+}
 
-    /// Float overflow.
-    FloatOverflowError {
-        /// Location of number when parsing which, overflow happened.
-        location: Location,
-    },
+impl UnexpectedTokenDiagnostic {
+    /// Creates a new instance of [`UnexpectedTokenDiagnostic`].
+    #[inline]
+    #[must_use]
+    pub fn new(got: Token, expected: Expected, node: impl ToString) -> Self {
+        Self {
+            got,
+            expected,
+            node: node.to_string(),
+        }
+    }
+}
 
-    /// When unnecessary `pub` is found.
-    UnnecessaryVisibilityQualifierError {
-        /// Location of `pub`.
-        location: Location,
+impl BuildSingleFileDiagnostic for UnexpectedTokenDiagnostic {
+    #[inline]
+    fn build(&self) -> Diagnostic<()> {
+        Diagnostic::error()
+            .with_message(format!("unexpected {}", self.got.raw))
+            .with_code("E001")
+            .with_labels(vec![self.got.location.to_primary_label().with_message(
+                format!("expected {} for {}", self.expected, self.node),
+            )])
+    }
+}
 
-        /// Context in which the error is found.
-        context: UnnecessaryVisibilityQualifierContext,
-    },
+/// Diagnostic related to ana integer overflow.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct IntegerOverflowDiagnostic {
+    /// Location of number when parsing which, overflow happened.
+    pub location: Location,
+}
 
-    /// When got EOF instead of close brace at the of the item.
-    EOFInsteadOfCloseBrace {
-        /// Type of item in which error occurred.
-        item_kind: ModuleItemKind,
+impl BuildSingleFileDiagnostic for IntegerOverflowDiagnostic {
+    #[inline]
+    fn build(&self) -> Diagnostic<()> {
+        Diagnostic::error()
+                    .with_message("unexpected integer overflow".to_owned())
+                    .with_code("E002")
+                    .with_labels(vec![self.location.to_primary_label()
+                        .with_message("error appeared when parsing this integer")])
+                    .with_notes(vec![
+                        "note: integer cannot exceed the maximum value of `u64` (u64.max() == 18_446_744_073_709_551_615)".to_owned(),
+                        "note: you can use exponent to do so, but be careful!".to_owned()
+                    ])
+    }
+}
 
-        /// Location of item name.
-        item_location: Location,
+/// Diagnostic related to a float overflow.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct FloatOverflowDiagnostic {
+    /// Location of number when parsing which, overflow happened.
+    pub location: Location,
+}
 
-        /// EOF token location.
-        location: Location,
-    },
+impl BuildSingleFileDiagnostic for FloatOverflowDiagnostic {
+    #[inline]
+    fn build(&self) -> Diagnostic<()> {
+        Diagnostic::error()
+                    .with_message("unexpected float overflow".to_owned())
+                    .with_code("E003")
+                    .with_labels(vec![self.location.to_primary_label()
+                        .with_message("error appeared when parsing this float literal")
+                    ])
+                    .with_notes(vec![
+                        "note: float literal cannot exceed the maximum value of `f64` (f64.max() == 1.7976931348623157E+308)".to_owned(),
+                        "note: you can use exponent to do so, but be careful, especially when working with floats!".to_owned()
+                    ])
+    }
+}
+
+/// Diagnostic related to an unnecessary visibility qualifier error.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct UnnecessaryVisibilityQualifierDiagnostic {
+    /// Location of `pub`.
+    pub location: Location,
+
+    /// Context in which the error is found.
+    pub context: UnnecessaryVisibilityQualifierContext,
+}
+
+impl BuildSingleFileDiagnostic for UnnecessaryVisibilityQualifierDiagnostic {
+    #[inline]
+    fn build(&self) -> Diagnostic<()> {
+        let mut labels = vec![self
+            .location
+            .to_primary_label()
+            .with_message("consider removing this `pub`")];
+
+        if let UnnecessaryVisibilityQualifierContext::TraitItem { name_location } = self.context {
+            labels.push(
+                name_location
+                    .to_secondary_label()
+                    .with_message("happened when analyzing the trait definition"),
+            );
+        }
+
+        Diagnostic::error()
+            .with_message("unnecessary visibility qualifier".to_owned())
+            .with_code("E004")
+            .with_labels(labels)
+            .with_notes(match self.context {
+                UnnecessaryVisibilityQualifierContext::Impl => {
+                    vec![
+                        "note: using `pub` will not make the type implementation public".to_owned(),
+                    ]
+                }
+                UnnecessaryVisibilityQualifierContext::TraitItem { .. } => {
+                    vec![
+                        "note: using `pub` for trait item will not make the item public".to_owned(),
+                        "note: all trait items are public by default".to_owned(),
+                    ]
+                }
+                UnnecessaryVisibilityQualifierContext::Import => {
+                    vec!["note: using `pub` will not make the import public.".to_owned()]
+                }
+            })
+    }
+}
+
+/// Diagnostic related to an EOF instead of close brace error.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct EOFInsteadOfCloseBrace {
+    /// Type of item in which error occurred.
+    pub item_kind: ModuleItemKind,
+
+    /// Location of item name.
+    pub item_location: Location,
+
+    /// EOF token location.
+    pub location: Location,
+}
+
+impl BuildSingleFileDiagnostic for EOFInsteadOfCloseBrace {
+    #[inline]
+    fn build(&self) -> Diagnostic<()> {
+        Diagnostic::error()
+            .with_message("unexpected end of file".to_owned())
+            .with_code("E001")
+            .with_labels(vec![
+                self.item_location
+                    .to_primary_label()
+                    .with_message(format!("happened when parsing this {}", self.item_kind)),
+                self.location
+                    .to_secondary_label()
+                    .with_message("consider adding `}`".to_owned()),
+            ])
+    }
 }
 
 impl Display for Expected {
@@ -132,86 +259,5 @@ impl Display for Expected {
                 })
                 .collect::<String>()
         ))
-    }
-}
-
-impl BuildDiagnostic for ParseDiagnostic {
-    fn build(&self) -> Diagnostic {
-        match self {
-            Self::LexError(error) =>
-                Diagnostic::error()
-                    .with_message(error.raw.to_string())
-                    .with_code("E000")
-                    .with_labels(vec![error.location.to_primary_label()]),
-            Self::UnexpectedTokenError {
-                got,
-                expected,
-                node,
-            } =>
-                Diagnostic::error()
-                    .with_message(format!("unexpected {}", got.raw))
-                    .with_code("E001")
-                    .with_labels(vec![got.location.to_primary_label()
-                        .with_message(format!("expected {expected} for {node}"))]),
-            Self::IntegerOverflowError { location } =>
-                Diagnostic::error()
-                    .with_message("unexpected integer overflow".to_owned())
-                    .with_code("E002")
-                    .with_labels(vec![location.to_primary_label()
-                        .with_message("error appeared when parsing this integer")])
-                    .with_notes(vec![
-                        "note: integer cannot exceed the maximum value of `u64` (u64.max() == 18_446_744_073_709_551_615)".to_owned(),
-                        "note: you can use exponent to do so, but be careful!".to_owned()
-                    ]),
-            Self::FloatOverflowError { location } =>
-                Diagnostic::error()
-                    .with_message("unexpected float overflow".to_owned())
-                    .with_code("E003")
-                    .with_labels(vec![location.to_primary_label()
-                        .with_message("error appeared when parsing this float literal")
-                    ])
-                    .with_notes(vec![
-                        "note: float literal cannot exceed the maximum value of `f64` (f64.max() == 1.7976931348623157E+308)".to_owned(),
-                        "note: you can use exponent to do so, but be careful, especially when working with floats!".to_owned()
-                    ]),
-            Self::UnnecessaryVisibilityQualifierError { location, context } => {
-                let mut labels = vec![location.to_primary_label().with_message("consider removing this `pub`")];
-
-                if let UnnecessaryVisibilityQualifierContext::TraitItem { name_location } = context {
-                    labels.push(name_location.to_secondary_label().with_message("happened when analyzing the trait definition"));
-                }
-
-                Diagnostic::error()
-                    .with_message("unnecessary visibility qualifier".to_owned())
-                    .with_code("E003")
-                    .with_labels(labels)
-                    .with_notes(
-                        match context {
-                            UnnecessaryVisibilityQualifierContext::Impl => {
-                                vec!["note: using `pub` will not make the type implementation public".to_owned()]
-                            }
-                            UnnecessaryVisibilityQualifierContext::TraitItem { .. } => {
-                                vec![
-                                    "note: using `pub` for trait item will not make the item public".to_owned(),
-                                    "note: all trait items are public by default".to_owned(),
-                                ]
-                            }
-                            UnnecessaryVisibilityQualifierContext::Import => {
-                                vec!["note: using `pub` will not make the import public.".to_owned()]
-                            }
-                        }
-                    )
-                }
-            Self::EOFInsteadOfCloseBrace { item_kind, item_location, location } =>
-                Diagnostic::error()
-                    .with_message("unexpected end of file".to_owned())
-                    .with_code("E001")
-                    .with_labels(vec![
-                        item_location.to_primary_label()
-                            .with_message(format!("happened when parsing this {item_kind}")),
-                        location.to_secondary_label()
-                            .with_message("consider adding `}`".to_owned())
-                    ]),
-        }
     }
 }

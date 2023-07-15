@@ -4,16 +4,15 @@ use ry_ast::{
     RawPostfixOperator, RawPrefixOperator, Statement, StructExpressionItem, Type, TypePath,
     TypePathSegment,
 };
+use ry_diagnostics::GlobalDiagnostics;
 use ry_filesystem::{location::Location, path_storage::DUMMY_PATH_ID};
 use ry_interner::{symbols, Interner};
 use ry_parser::parse_expression;
 
-mod r#macro;
-
 #[test]
 fn literal() {
     let mut interner = Interner::default();
-    let mut diagnostics = vec![];
+    let mut diagnostics = GlobalDiagnostics::new();
 
     assert_eq!(
         parse_expression(DUMMY_PATH_ID, "3", &mut diagnostics, &mut interner),
@@ -86,7 +85,7 @@ fn literal() {
 #[test]
 fn call() {
     let mut interner = Interner::default();
-    let mut diagnostics = vec![];
+    let mut diagnostics = GlobalDiagnostics::new();
 
     assert_eq!(
         parse_expression(DUMMY_PATH_ID, "foo()", &mut diagnostics, &mut interner),
@@ -112,7 +111,7 @@ fn call() {
 #[test]
 fn postfix() {
     let mut interner = Interner::default();
-    let mut diagnostics = vec![];
+    let mut diagnostics = GlobalDiagnostics::new();
 
     assert_eq!(
         parse_expression(DUMMY_PATH_ID, "x++", &mut diagnostics, &mut interner),
@@ -145,7 +144,7 @@ fn postfix() {
 #[test]
 fn generic_argument() {
     let mut interner = Interner::default();
-    let mut diagnostics = vec![];
+    let mut diagnostics = GlobalDiagnostics::new();
 
     assert_eq!(
         parse_expression(
@@ -213,7 +212,7 @@ fn generic_argument() {
 #[test]
 fn list() {
     let mut interner = Interner::default();
-    let mut diagnostics = vec![];
+    let mut diagnostics = GlobalDiagnostics::new();
 
     assert_eq!(
         parse_expression(
@@ -284,7 +283,7 @@ fn list() {
 #[test]
 fn tuple() {
     let mut interner = Interner::default();
-    let mut diagnostics = vec![];
+    let mut diagnostics = GlobalDiagnostics::new();
 
     assert_eq!(
         parse_expression(
@@ -355,7 +354,7 @@ fn tuple() {
 #[test]
 fn binary() {
     let mut interner = Interner::default();
-    let mut diagnostics = vec![];
+    let mut diagnostics = GlobalDiagnostics::new();
 
     assert_eq!(
         parse_expression(
@@ -545,7 +544,7 @@ fn binary() {
 #[test]
 fn r#as() {
     let mut interner = Interner::default();
-    let mut diagnostics = vec![];
+    let mut diagnostics = GlobalDiagnostics::new();
 
     assert_eq!(
         parse_expression(
@@ -605,7 +604,7 @@ fn r#as() {
 #[test]
 fn ifelse() {
     let mut interner = Interner::default();
-    let mut diagnostics = vec![];
+    let mut diagnostics = GlobalDiagnostics::new();
 
     assert_eq!(
         parse_expression(
@@ -659,7 +658,7 @@ fn ifelse() {
 #[test]
 fn r#struct() {
     let mut interner = Interner::default();
-    let mut diagnostics = vec![];
+    let mut diagnostics = GlobalDiagnostics::new();
 
     assert_eq!(
         parse_expression(
@@ -720,7 +719,7 @@ fn r#struct() {
 #[test]
 fn r#while() {
     let mut interner = Interner::default();
-    let mut diagnostics = vec![];
+    let mut diagnostics = GlobalDiagnostics::new();
 
     assert_eq!(
         parse_expression(
@@ -809,7 +808,7 @@ fn r#while() {
 #[test]
 fn lambda() {
     let mut interner = Interner::default();
-    let mut diagnostics = vec![];
+    let mut diagnostics = GlobalDiagnostics::new();
 
     assert_eq!(
         parse_expression(
@@ -919,7 +918,7 @@ fn lambda() {
 #[test]
 fn r#match() {
     let mut interner = Interner::default();
-    let mut diagnostics = vec![];
+    let mut diagnostics = GlobalDiagnostics::new();
 
     assert_eq!(
         parse_expression(

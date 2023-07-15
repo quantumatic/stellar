@@ -3,14 +3,14 @@
 use std::io;
 
 use ry_ast::{Module, ModuleItem};
-use ry_diagnostics::{BuildDiagnostic, Diagnostic};
+use ry_diagnostics::{BuildSingleFileDiagnostic, GlobalDiagnostics};
 use ry_filesystem::path_storage::{PathID, PathStorage};
 use ry_fx_hash::FxHashMap;
 use ry_interner::Interner;
 use ry_parser::read_and_parse_module;
 
 use crate::{
-    diagnostics::{DefinitionInfo, NameResolutionDiagnostic},
+    diagnostics::{DefinitionInfo, ItemDefinedMultipleTimesDiagnostic},
     ModuleContext, ModuleItemNameBindingData,
 };
 
@@ -22,10 +22,10 @@ use crate::{
 /// If the interner cannot resolve any name in the module AST.
 #[must_use]
 pub fn build_module_context_from_ast(
-    path_id: PathID,
+    file_path_id: PathID,
     module: Module,
     interner: &Interner,
-    file_diagnostics: &mut Vec<Diagnostic>,
+    diagnostics: &mut GlobalDiagnostics,
 ) -> ModuleContext {
     let mut bindings = FxHashMap::default();
     let mut implementations = vec![];
@@ -45,18 +45,19 @@ pub fn build_module_context_from_ast(
                 if let Some(ModuleItemNameBindingData::NotAnalyzed(previous_item)) =
                     bindings.get(&name)
                 {
-                    file_diagnostics.push(
-                        NameResolutionDiagnostic::ItemDefinedMultipleTimes {
-                            name: interner.resolve(name).unwrap().to_owned(),
-                            first_definition: DefinitionInfo {
+                    diagnostics.save_single_file_diagnostic(
+                        file_path_id,
+                        ItemDefinedMultipleTimesDiagnostic::new(
+                            interner.resolve(name).unwrap(),
+                            DefinitionInfo {
                                 location: previous_item.location(),
                                 kind: previous_item.kind(),
                             },
-                            second_definition: DefinitionInfo {
+                            DefinitionInfo {
                                 location: item.location(),
                                 kind: item.kind(),
                             },
-                        }
+                        )
                         .build(),
                     );
                 }
@@ -67,7 +68,7 @@ pub fn build_module_context_from_ast(
     }
 
     ModuleContext {
-        path_id,
+        path_id: file_path_id,
         docstring: module.docstring,
         bindings,
         submodules: FxHashMap::default(),
@@ -91,7 +92,7 @@ pub fn read_and_build_module_context(
     file_path_storage: &PathStorage,
     file_path_id: PathID,
     interner: &mut Interner,
-    file_diagnostics: &mut Vec<Diagnostic>,
+    file_diagnostics: &mut GlobalDiagnostics,
 ) -> Result<ModuleContext, io::Error> {
     let module =
         read_and_parse_module(file_path_storage, file_path_id, file_diagnostics, interner)?;

@@ -67,7 +67,7 @@ impl From<Location> for String {
     }
 }
 
-/// For internal usage only! Used to index a string using a given location.
+/// Allows to index a string using a given location.
 pub trait LocationIndex {
     /// Output of the indexing operation.
     type Output: ?Sized;

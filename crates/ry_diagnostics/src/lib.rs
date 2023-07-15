@@ -59,14 +59,10 @@
 )]
 
 use core::fmt;
-use std::{
-    collections::{BTreeMap, HashMap},
-    fmt::Display,
-    path::{Path, PathBuf},
-};
+use std::fmt::Display;
 
 use codespan_reporting::{
-    diagnostic::{self, Severity},
+    diagnostic::{Diagnostic, Severity},
     files::{self, Files},
     term::{
         self,
@@ -74,7 +70,11 @@ use codespan_reporting::{
         Config,
     },
 };
-use ry_filesystem::file::InMemoryFile;
+use ry_filesystem::{
+    file::InMemoryFile,
+    path_storage::{PathID, PathStorage},
+};
+use ry_fx_hash::FxHashMap;
 
 /// Stores basic [`codespan_reporting`] structs for reporting diagnostics.
 #[derive(Debug)]
@@ -92,17 +92,27 @@ impl Default for DiagnosticsEmitter {
     }
 }
 
-/// Diagnostic within a concrete context.
-pub type Diagnostic = diagnostic::Diagnostic<()>;
+/// Multi file diagnostic.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct MultiFileDiagnostic {
+    /// ID-s of the paths of the files that the diagnostics belongs to.
+    pub path_ids: Vec<PathID>,
+
+    /// Diagnostic.
+    pub diagnostic: Diagnostic<PathID>,
+}
 
 /// Global diagnostics.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GlobalDiagnostics {
     /// Diagnostics associated with concrete files.
-    pub diagnostics_in_files: BTreeMap<PathBuf, Vec<Diagnostic>>,
+    pub single_file_diagnostics: FxHashMap<PathID, Vec<Diagnostic<()>>>,
+
+    /// Diagnostics associated with multiple files.
+    pub multi_file_diagnostics: Vec<MultiFileDiagnostic>,
 
     /// Context free diagnostics.
-    pub context_free_diagnostics: Vec<Diagnostic>,
+    pub context_free_diagnostics: Vec<Diagnostic<()>>,
 }
 
 impl Default for GlobalDiagnostics {
@@ -115,31 +125,61 @@ impl GlobalDiagnostics {
     /// Creates a new instance of [`GlobalDiagnostics`].
     #[inline]
     #[must_use]
-    pub const fn new() -> Self {
+    pub fn new() -> Self {
         Self {
-            diagnostics_in_files: BTreeMap::new(),
+            single_file_diagnostics: FxHashMap::default(),
+            multi_file_diagnostics: Vec::new(),
             context_free_diagnostics: Vec::new(),
         }
     }
 
-    /// Adds a diagnostic to a file.
-    pub fn add_file_diagnostic(&mut self, path: PathBuf, diagnostic: Diagnostic) {
-        match self.diagnostics_in_files.get_mut(&path) {
+    /// Adds a diagnostic associated with a single file.
+    pub fn save_single_file_diagnostic(&mut self, path_id: PathID, diagnostic: Diagnostic<()>) {
+        match self.single_file_diagnostics.get_mut(&path_id) {
             Some(diagnostics_mut) => diagnostics_mut.push(diagnostic),
             None => {
-                self.diagnostics_in_files.insert(path, vec![diagnostic]);
+                self.single_file_diagnostics
+                    .insert(path_id, vec![diagnostic]);
             }
         }
     }
 
-    /// Adds diagnostics to a file.
-    pub fn add_file_diagnostics(&mut self, path: PathBuf, diagnostics: Vec<Diagnostic>) {
-        match self.diagnostics_in_files.get_mut(&path) {
+    /// Adds a diagnostics associated with a single file.
+    pub fn save_single_file_diagnostics(
+        &mut self,
+        path_id: PathID,
+        diagnostics: Vec<Diagnostic<()>>,
+    ) {
+        match self.single_file_diagnostics.get_mut(&path_id) {
             Some(diagnostics_mut) => diagnostics_mut.extend(diagnostics),
             None => {
-                self.diagnostics_in_files.insert(path, diagnostics);
+                self.single_file_diagnostics.insert(path_id, diagnostics);
             }
         }
+    }
+
+    /// Returns `true` if diagnostics are fatal.
+    #[inline]
+    #[must_use]
+    pub fn is_fatal(&self) -> bool {
+        self.context_free_diagnostics
+            .iter()
+            .all(|d| !is_fatal_sevirity(d.severity))
+            && self
+                .single_file_diagnostics
+                .iter()
+                .all(|d| d.1.iter().all(|d| !is_fatal_sevirity(d.severity)))
+            && self
+                .multi_file_diagnostics
+                .iter()
+                .all(|d| !is_fatal_sevirity(d.diagnostic.severity))
+    }
+
+    /// Returns `true` if diagnostics are ok.
+    #[inline]
+    #[must_use]
+    pub fn is_ok(&self) -> bool {
+        !self.is_fatal()
     }
 }
 
@@ -194,7 +234,7 @@ impl Files<'_> for EmptyDiagnosticsManager {
 impl DiagnosticsEmitter {
     /// Emit the diagnostic not associated with a file.
     #[allow(clippy::missing_panics_doc)]
-    pub fn emit_context_free_diagnostic(&self, diagnostic: &Diagnostic) {
+    pub fn emit_context_free_diagnostic(&self, diagnostic: &Diagnostic<()>) {
         term::emit(
             &mut self.writer.lock(),
             &self.config,
@@ -205,29 +245,54 @@ impl DiagnosticsEmitter {
     }
 
     /// Emit diagnostics not associated with a particular file.
-    pub fn emit_context_free_diagnostics(&self, diagnostics: &[Diagnostic]) {
+    pub fn emit_context_free_diagnostics(&self, diagnostics: &[Diagnostic<()>]) {
         for diagnostic in diagnostics {
             self.emit_context_free_diagnostic(diagnostic);
         }
     }
 
-    /// Emit diagnostics associated with a particular file.
+    /// Emit diagnostics associated with a particular file. If the file
+    /// cannot be read, stops executing (no panic, diagnostic is just ignored).
     ///
     /// # Panics
-    /// If the file with a given path does not exist.
-    pub fn emit_file_diagnostics(&self, path: &Path, file_diagnostics: &[Diagnostic]) {
-        let file = InMemoryFile::new_or_panic(path);
+    /// * If the file with a given path does not exist.
+    /// * If the file path id cannot be resolved in the path storage.
+    pub fn emit_particular_file_diagnostics(
+        &self,
+        path_storage: &PathStorage,
+        file_path_id: PathID,
+        file_diagnostics: &[Diagnostic<()>],
+    ) {
+        let path = path_storage.resolve_path_or_panic(file_path_id);
+        let file = InMemoryFile::new_or_panic(&path);
 
         for diagnostic in file_diagnostics {
             term::emit(&mut self.writer.lock(), &self.config, &file, diagnostic).unwrap();
         }
     }
 
-    /// Emit a list of diagnostic.
-    pub fn emit_global_diagnostics(&self, diagnostics: &HashMap<&Path, Vec<Diagnostic>>) {
+    /// Emit all of the single file diagnostics.
+    pub fn emit_all_single_file_diagnostics(
+        &self,
+        path_storage: &PathStorage,
+        diagnostics: &FxHashMap<PathID, Vec<Diagnostic<()>>>,
+    ) {
         for diagnostic in diagnostics {
-            self.emit_file_diagnostics(diagnostic.0, diagnostic.1);
+            self.emit_particular_file_diagnostics(path_storage, *diagnostic.0, diagnostic.1);
         }
+    }
+
+    /// Emit global diagnostics.
+    pub fn emit_global_diagnostics(
+        &self,
+        path_storage: &PathStorage,
+        global_diagnostics: &GlobalDiagnostics,
+    ) {
+        self.emit_context_free_diagnostics(&global_diagnostics.context_free_diagnostics);
+        self.emit_all_single_file_diagnostics(
+            path_storage,
+            &global_diagnostics.single_file_diagnostics,
+        );
     }
 
     /// Create a new [`DiagnosticsEmitter`] instance.
@@ -267,34 +332,23 @@ pub enum DiagnosticsStatus {
     Fatal,
 }
 
-/// Check if diagnostics associated with a particular file are fatal.
-///
-/// Note: ID is not required.
+/// Returns `true` if the given [`Severity`] is fatal.
+#[inline]
 #[must_use]
-pub fn check_file_diagnostics(file_diagnostics: &[Diagnostic]) -> DiagnosticsStatus {
-    for diagnostic in file_diagnostics {
-        if matches!(diagnostic.severity, Severity::Error | Severity::Bug) {
-            return DiagnosticsStatus::Fatal;
-        }
-    }
-
-    DiagnosticsStatus::Ok
+pub const fn is_fatal_sevirity(severity: Severity) -> bool {
+    matches!(severity, Severity::Error | Severity::Bug)
 }
 
-/// Check if diagnostics are fatal.
-#[must_use]
-pub fn check_global_diagnostics(diagnostics: &GlobalDiagnostics) -> DiagnosticsStatus {
-    for diagnostic in &diagnostics.diagnostics_in_files {
-        if check_file_diagnostics(diagnostic.1) == DiagnosticsStatus::Fatal {
-            return DiagnosticsStatus::Fatal;
-        }
-    }
-
-    DiagnosticsStatus::Ok
-}
-
-/// Anything that can be reported using [`DiagnosticsEmitter`].
-pub trait BuildDiagnostic {
+/// Builds a diagnostic for a **single file**!.
+pub trait BuildSingleFileDiagnostic {
     /// Convert [`self`] into [`Diagnostic`].
-    fn build(&self) -> Diagnostic;
+    #[must_use]
+    fn build(&self) -> Diagnostic<()>;
+}
+
+/// Builds a diagnostic for **multiple files**.
+pub trait BuildMultiFileDiagnostic {
+    /// Convert [`self`] into [`Diagnostic`].
+    #[must_use]
+    fn build(&self) -> Diagnostic<PathID>;
 }

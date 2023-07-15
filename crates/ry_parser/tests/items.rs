@@ -4,16 +4,15 @@ use ry_ast::{
     SelfParameter, Statement, StructField, TraitItem, TupleField, Type, TypeAlias, TypePath,
     TypePathSegment, Visibility, WhereClauseItem,
 };
+use ry_diagnostics::GlobalDiagnostics;
 use ry_filesystem::{location::Location, path_storage::DUMMY_PATH_ID};
 use ry_interner::{symbols, Interner};
 use ry_parser::parse_item;
 
-mod r#macro;
-
 #[test]
 fn function() {
     let mut interner = Interner::default();
-    let mut diagnostics = vec![];
+    let mut diagnostics = GlobalDiagnostics::new();
 
     assert_eq!(
         parse_item(
@@ -233,7 +232,7 @@ fn function() {
 #[test]
 fn r#impl() {
     let mut interner = Interner::default();
-    let mut diagnostics = vec![];
+    let mut diagnostics = GlobalDiagnostics::new();
 
     assert_eq!(
         parse_item(
@@ -480,7 +479,7 @@ fn r#impl() {
 #[test]
 fn import() {
     let mut interner = Interner::default();
-    let mut diagnostics = vec![];
+    let mut diagnostics = GlobalDiagnostics::new();
 
     assert_eq!(
         parse_item(
@@ -537,7 +536,7 @@ fn import() {
 #[test]
 fn r#struct() {
     let mut interner = Interner::default();
-    let mut diagnostics = vec![];
+    let mut diagnostics = GlobalDiagnostics::new();
 
     assert_eq!(
         parse_item(
@@ -711,7 +710,7 @@ fn r#struct() {
 #[test]
 fn into() {
     let mut interner = Interner::default();
-    let mut diagnostics = vec![];
+    let mut diagnostics = GlobalDiagnostics::new();
 
     assert_eq!(
         parse_item(
@@ -806,7 +805,7 @@ fn into() {
 #[test]
 fn alias() {
     let mut interner = Interner::default();
-    let mut diagnostics = vec![];
+    let mut diagnostics = GlobalDiagnostics::new();
 
     assert_eq!(
         parse_item(
@@ -1011,7 +1010,7 @@ fn alias() {
 #[test]
 fn r#enum() {
     let mut interner = Interner::default();
-    let mut diagnostics = vec![];
+    let mut diagnostics = GlobalDiagnostics::new();
 
     assert_eq!(
         parse_item(

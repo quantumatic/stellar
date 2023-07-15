@@ -1,6 +1,6 @@
 macro_rules! parse_list {
     (
-        $state:ident,
+        $state:expr,
         $node_name:expr,
         $closing_token:expr,
         $blck:block) => {
@@ -11,16 +11,16 @@ macro_rules! parse_list {
                 loop {
                     result.push($blck?);
 
-                    #[allow(unused_qualifications)]
                     if $state.next_token.raw != $closing_token {
                         if $state.next_token.raw != Token![,] {
-                            $state.diagnostics.push(
-                                ParseDiagnostic::UnexpectedTokenError {
-                                    got: $state.next_token.clone(),
-                                    expected: $crate::expected!($closing_token, Token![,]),
-                                    node: $node_name.to_owned(),
-                                }
-                                .build(),
+                            use crate::diagnostics::UnexpectedTokenDiagnostic;
+
+                            $state.save_single_file_diagnostic(
+                                UnexpectedTokenDiagnostic::new(
+                                    $state.next_token,
+                                    $crate::expected!($closing_token, Token![,]),
+                                    $node_name,
+                                )
                             );
                             break;
                         }
@@ -40,7 +40,7 @@ macro_rules! parse_list {
         }
     };
     (
-        $state:ident,
+        $state:expr,
         $node_name:expr,
         ($closing_token1:expr) or ($closing_token2:expr),
         $blck:block) => {
@@ -58,13 +58,14 @@ macro_rules! parse_list {
                     if $state.next_token.raw != $closing_token1
                         && $state.next_token.raw != $closing_token2 {
                         if $state.next_token.raw != Token![,] {
-                            $state.diagnostics.push(
-                                ParseDiagnostic::UnexpectedTokenError {
-                                    got: $state.next_token.clone(),
-                                    expected: $crate::expected!($closing_token1, $closing_token2, Token![,]),
-                                    node: $node_name.to_owned(),
-                                }
-                                .build(),
+                            use crate::diagnostics::UnexpectedTokenDiagnostic;
+
+                            $state.save_single_file_diagnostic(
+                                UnexpectedTokenDiagnostic::new(
+                                    $state.next_token,
+                                    $crate::expected!($closing_token1, $closing_token2, Token![,]),
+                                    $node_name,
+                                )
                             );
                             break;
                         }

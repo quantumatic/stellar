@@ -1,10 +1,12 @@
 use std::fs;
 
-use ry_diagnostics::{Diagnostic, DiagnosticsEmitter};
+use codespan_reporting::diagnostic::Diagnostic;
+use ry_diagnostics::DiagnosticsEmitter;
 use ry_manifest::parse_manifest;
 
 pub fn command(filepath: &str) {
     let diagnostics_emitter = DiagnosticsEmitter::new();
+
     match fs::read_to_string(filepath) {
         Err(..) => {
             diagnostics_emitter.emit_context_free_diagnostic(

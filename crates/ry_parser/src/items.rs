@@ -3,12 +3,14 @@ use ry_ast::{
     JustFunctionParameter, ModuleItem, ModuleItemKind, SelfParameter, StructField, Token,
     TraitItem, TupleField, TypeAlias, Visibility,
 };
-use ry_diagnostics::BuildDiagnostic;
 use ry_filesystem::location::Location;
 use ry_interner::symbols;
 
 use crate::{
-    diagnostics::{ParseDiagnostic, UnnecessaryVisibilityQualifierContext},
+    diagnostics::{
+        UnexpectedTokenDiagnostic, UnnecessaryVisibilityQualifierContext,
+        UnnecessaryVisibilityQualifierDiagnostic,
+    },
     expected,
     macros::parse_list,
     path::ImportPathParser,
@@ -86,13 +88,10 @@ impl Parse for ImportParser {
         let start = state.next_token.location.start;
 
         if let Some(location) = self.visibility.location_of_pub() {
-            state.diagnostics.push(
-                ParseDiagnostic::UnnecessaryVisibilityQualifierError {
-                    location,
-                    context: UnnecessaryVisibilityQualifierContext::Import,
-                }
-                .build(),
-            );
+            state.save_single_file_diagnostic(UnnecessaryVisibilityQualifierDiagnostic {
+                location,
+                context: UnnecessaryVisibilityQualifierContext::Import,
+            });
         }
 
         state.advance();
@@ -180,14 +179,11 @@ impl Parse for StructParser {
             if state.next_token.raw == Token![;] {
                 state.advance();
             } else {
-                state.diagnostics.push(
-                    ParseDiagnostic::UnexpectedTokenError {
-                        got: state.current_token,
-                        expected: expected!(Token![;]),
-                        node: "struct item".to_owned(),
-                    }
-                    .build(),
-                );
+                state.save_single_file_diagnostic(UnexpectedTokenDiagnostic::new(
+                    state.current_token,
+                    expected!(Token![;]),
+                    "struct item",
+                ));
             }
 
             Some(ModuleItem::TupleLikeStruct {
@@ -199,14 +195,11 @@ impl Parse for StructParser {
                 docstring: self.docstring,
             })
         } else {
-            state.diagnostics.push(
-                ParseDiagnostic::UnexpectedTokenError {
-                    got: state.current_token,
-                    expected: expected!(Token![;], Token!['(']),
-                    node: "item".to_owned(),
-                }
-                .build(),
-            );
+            state.save_single_file_diagnostic(UnexpectedTokenDiagnostic::new(
+                state.current_token,
+                expected!(Token![;], Token!['(']),
+                "item",
+            ));
 
             None
         }
@@ -291,14 +284,11 @@ impl Parse for FunctionParser {
                 _ => {
                     state.advance();
 
-                    state.diagnostics.push(
-                        ParseDiagnostic::UnexpectedTokenError {
-                            got: state.current_token,
-                            expected: expected!(Token![;], Token!['(']),
-                            node: "function".to_owned(),
-                        }
-                        .build(),
-                    );
+                    state.save_single_file_diagnostic(UnexpectedTokenDiagnostic::new(
+                        state.current_token,
+                        expected!(Token![;], Token!['(']),
+                        "function",
+                    ));
 
                     None
                 }
@@ -318,15 +308,12 @@ impl Parse for TraitItemsParser {
 
             if let Some(location) = VisibilityParser.parse(state).location_of_pub() {
                 if !self.type_implementation {
-                    state.diagnostics.push(
-                        ParseDiagnostic::UnnecessaryVisibilityQualifierError {
-                            location,
-                            context: UnnecessaryVisibilityQualifierContext::TraitItem {
-                                name_location: self.name_location,
-                            },
-                        }
-                        .build(),
-                    );
+                    state.save_single_file_diagnostic(UnnecessaryVisibilityQualifierDiagnostic {
+                        location,
+                        context: UnnecessaryVisibilityQualifierContext::TraitItem {
+                            name_location: self.name_location,
+                        },
+                    });
                 }
             }
 
@@ -346,14 +333,11 @@ impl Parse for TraitItemsParser {
                     .parse(state)?,
                 )),
                 _ => {
-                    state.diagnostics.push(
-                        ParseDiagnostic::UnexpectedTokenError {
-                            got: state.next_token,
-                            expected: expected!(Token![fun], Token![type]),
-                            node: "trait item".to_owned(),
-                        }
-                        .build(),
-                    );
+                    state.save_single_file_diagnostic(UnexpectedTokenDiagnostic::new(
+                        state.next_token,
+                        expected!(Token![fun], Token![type]),
+                        "trait item",
+                    ));
                     None
                 }
             }?);
@@ -445,13 +429,10 @@ impl Parse for ImplParser {
         let location = state.current_token.location;
 
         if let Some(location) = self.visibility.location_of_pub() {
-            state.diagnostics.push(
-                ParseDiagnostic::UnnecessaryVisibilityQualifierError {
-                    location,
-                    context: UnnecessaryVisibilityQualifierContext::Impl,
-                }
-                .build(),
-            );
+            state.save_single_file_diagnostic(UnnecessaryVisibilityQualifierDiagnostic {
+                location,
+                context: UnnecessaryVisibilityQualifierContext::Impl,
+            });
         }
 
         let generic_parameters = GenericParametersParser.optionally_parse(state)?;
@@ -696,23 +677,20 @@ impl Parse for ItemParser {
                 .parse(state)
             )),
             _ => {
-                state.diagnostics.push(
-                    ParseDiagnostic::UnexpectedTokenError {
-                        got: state.next_token,
-                        expected: expected!(
-                            Token![import],
-                            Token![fun],
-                            Token![trait],
-                            Token![enum],
-                            Token![struct],
-                            Token![impl],
-                            Token![type],
-                            RawToken::EndOfFile
-                        ),
-                        node: "item".to_owned(),
-                    }
-                    .build(),
-                );
+                state.save_single_file_diagnostic(UnexpectedTokenDiagnostic::new(
+                    state.next_token,
+                    expected!(
+                        Token![import],
+                        Token![fun],
+                        Token![trait],
+                        Token![enum],
+                        Token![struct],
+                        Token![impl],
+                        Token![type],
+                        RawToken::EndOfFile
+                    ),
+                    "item",
+                ));
 
                 loop {
                     match state.next_token.raw {

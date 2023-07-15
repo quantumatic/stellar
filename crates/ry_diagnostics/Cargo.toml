@@ -10,4 +10,5 @@ description = "Implements diagnostics for the Ry programming language."
 
 [dependencies]
 codespan-reporting = "0.11.1"
+ry_fx_hash = { path = "../ry_fx_hash" }
 ry_filesystem = { path = "../ry_filesystem" }

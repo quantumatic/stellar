@@ -3,10 +3,9 @@ use ry_ast::{
     LambdaFunctionParameter, MatchExpressionItem, PostfixOperator, PrefixOperator,
     RawBinaryOperator, RawPostfixOperator, RawPrefixOperator, StructExpressionItem, Token,
 };
-use ry_diagnostics::BuildDiagnostic;
 
 use crate::{
-    diagnostics::ParseDiagnostic,
+    diagnostics::UnexpectedTokenDiagnostic,
     expected,
     literal::LiteralParser,
     macros::parse_list,
@@ -230,28 +229,25 @@ impl Parse for PrimaryExpressionParser {
                     }
                     .parse(state);
                 }
-                state.diagnostics.push(
-                    ParseDiagnostic::UnexpectedTokenError {
-                        got: state.next_token,
-                        expected: expected!(
-                            "integer literal",
-                            "float literal",
-                            "string literal",
-                            "char literal",
-                            "boolean literal",
-                            Token![|],
-                            Token!['('],
-                            Token!['{'],
-                            Token!['['],
-                            "identifier",
-                            Token![if],
-                            Token![while],
-                            Token![match]
-                        ),
-                        node: "expression".to_owned(),
-                    }
-                    .build(),
-                );
+                state.save_single_file_diagnostic(UnexpectedTokenDiagnostic::new(
+                    state.next_token,
+                    expected!(
+                        "integer literal",
+                        "float literal",
+                        "string literal",
+                        "char literal",
+                        "boolean literal",
+                        Token![|],
+                        Token!['('],
+                        Token!['{'],
+                        Token!['['],
+                        "identifier",
+                        Token![if],
+                        Token![while],
+                        Token![match]
+                    ),
+                    "expression",
+                ));
                 None
             }
         }

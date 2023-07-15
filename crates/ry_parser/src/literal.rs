@@ -1,7 +1,9 @@
 use ry_ast::{token::RawToken, Literal, Token};
-use ry_diagnostics::BuildDiagnostic;
 
-use crate::{diagnostics::ParseDiagnostic, Parse};
+use crate::{
+    diagnostics::{FloatOverflowDiagnostic, IntegerOverflowDiagnostic},
+    Parse,
+};
 
 pub(crate) struct LiteralParser;
 
@@ -18,12 +20,9 @@ impl Parse for LiteralParser {
                         location: state.current_token.location,
                     })
                 } else {
-                    state.diagnostics.push(
-                        ParseDiagnostic::IntegerOverflowError {
-                            location: state.current_token.location,
-                        }
-                        .build(),
-                    );
+                    state.save_single_file_diagnostic(IntegerOverflowDiagnostic {
+                        location: state.current_token.location,
+                    });
                     None
                 }
             }
@@ -35,12 +34,9 @@ impl Parse for LiteralParser {
                         location: state.current_token.location,
                     })
                 } else {
-                    state.diagnostics.push(
-                        ParseDiagnostic::FloatOverflowError {
-                            location: state.current_token.location,
-                        }
-                        .build(),
-                    );
+                    state.save_single_file_diagnostic(FloatOverflowDiagnostic {
+                        location: state.current_token.location,
+                    });
                     None
                 }
             }

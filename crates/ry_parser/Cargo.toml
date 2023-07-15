@@ -15,3 +15,4 @@ ry_filesystem = { path = "../ry_filesystem" }
 ry_interner = { path = "../ry_interner" }
 ry_lexer = { path = "../ry_lexer" }
 tracing = "0.1.29"
+codespan-reporting = "0.11.1"

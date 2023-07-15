@@ -2,7 +2,7 @@ use std::{io::Write, path::PathBuf, time::Instant};
 
 use codespan_reporting::diagnostic::Diagnostic;
 use ry_ast::serialize::serialize_ast;
-use ry_diagnostics::{check_file_diagnostics, DiagnosticsEmitter, DiagnosticsStatus};
+use ry_diagnostics::{DiagnosticsEmitter, GlobalDiagnostics};
 use ry_filesystem::path_storage::PathStorage;
 use ry_interner::Interner;
 use ry_parser::read_and_parse_module;
@@ -13,7 +13,7 @@ pub fn command(path_str: &str) {
     let mut path_storage = PathStorage::new();
     let file_path_id = path_storage.add_path(PathBuf::from(path_str));
 
-    let mut diagnostics = vec![];
+    let mut diagnostics = GlobalDiagnostics::new();
     let mut interner = Interner::default();
 
     let diagnostics_emitter = DiagnosticsEmitter::new();
@@ -30,9 +30,9 @@ pub fn command(path_str: &str) {
             log_with_left_padded_prefix("Parsed", path_str);
             let parsing_time = now.elapsed().as_secs_f64();
 
-            // diagnostics_emitter.emit_file_diagnostics(path, &diagnostics);
+            diagnostics_emitter.emit_global_diagnostics(&path_storage, &diagnostics);
 
-            if check_file_diagnostics(&diagnostics) == DiagnosticsStatus::Ok {
+            if diagnostics.is_ok() {
                 log_with_left_padded_prefix("Parsed", format!("in {}s", parsing_time));
 
                 let now = Instant::now();

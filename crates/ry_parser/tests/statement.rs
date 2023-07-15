@@ -1,14 +1,13 @@
 use ry_ast::{Expression, IdentifierAst, Literal, Pattern, Statement};
+use ry_diagnostics::GlobalDiagnostics;
 use ry_filesystem::{location::Location, path_storage::DUMMY_PATH_ID};
 use ry_interner::Interner;
 use ry_parser::parse_statement;
 
-mod r#macro;
-
 #[test]
 fn defer() {
     let mut interner = Interner::default();
-    let mut diagnostics = vec![];
+    let mut diagnostics = GlobalDiagnostics::new();
 
     assert_eq!(
         parse_statement(
@@ -56,7 +55,7 @@ fn defer() {
 #[test]
 fn r#break() {
     let mut interner = Interner::default();
-    let mut diagnostics = vec![];
+    let mut diagnostics = GlobalDiagnostics::new();
 
     assert_eq!(
         parse_statement(DUMMY_PATH_ID, "break;", &mut diagnostics, &mut interner),
@@ -73,7 +72,7 @@ fn r#break() {
 #[test]
 fn r#continue() {
     let mut interner = Interner::default();
-    let mut diagnostics = vec![];
+    let mut diagnostics = GlobalDiagnostics::new();
 
     assert_eq!(
         parse_statement(DUMMY_PATH_ID, "continue;", &mut diagnostics, &mut interner),
@@ -90,7 +89,7 @@ fn r#continue() {
 #[test]
 fn r#let() {
     let mut interner = Interner::default();
-    let mut diagnostics = vec![];
+    let mut diagnostics = GlobalDiagnostics::new();
 
     assert_eq!(
         parse_statement(DUMMY_PATH_ID, "let x = 1;", &mut diagnostics, &mut interner),

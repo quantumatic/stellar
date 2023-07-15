@@ -76,7 +76,7 @@ mod r#type;
 
 use std::{fs, io};
 
-use diagnostics::ParseDiagnostic;
+use diagnostics::LexErrorDiagnostic;
 use expression::ExpressionParser;
 use items::{ItemParser, ItemsParser};
 use pattern::PatternParser;
@@ -85,7 +85,7 @@ use ry_ast::{
     token::{LexError, RawToken, Token},
     Expression, IdentifierAst, Module, ModuleItem, Pattern, Statement, Token, Type, Visibility,
 };
-use ry_diagnostics::{BuildDiagnostic, Diagnostic};
+use ry_diagnostics::{BuildSingleFileDiagnostic, GlobalDiagnostics};
 use ry_filesystem::{
     location::{Location, LocationIndex},
     path_storage::{PathID, PathStorage},
@@ -94,6 +94,8 @@ use ry_interner::Interner;
 use ry_lexer::Lexer;
 use statement::StatementParser;
 use tracing::trace;
+
+use crate::diagnostics::UnexpectedTokenDiagnostic;
 
 #[macro_use]
 mod macros;
@@ -109,7 +111,7 @@ pub struct ParseState<'source, 'diagnostics, 'interner> {
     next_token: Token,
 
     /// Diagnostics that is emitted during parsing.
-    diagnostics: &'diagnostics mut Vec<Diagnostic>,
+    diagnostics: &'diagnostics mut GlobalDiagnostics,
 }
 
 /// Represents AST node that can be parsed.
@@ -158,7 +160,7 @@ where
 pub fn read_and_parse_module(
     path_storage: &PathStorage,
     file_path_id: PathID,
-    diagnostics: &mut Vec<Diagnostic>,
+    diagnostics: &mut GlobalDiagnostics,
     interner: &mut Interner,
 ) -> Result<Module, io::Error> {
     Ok(parse_module_using(ParseState::new(
@@ -175,7 +177,7 @@ pub fn read_and_parse_module(
 pub fn parse_module(
     file_path_id: PathID,
     source: &str,
-    diagnostics: &mut Vec<Diagnostic>,
+    diagnostics: &mut GlobalDiagnostics,
     interner: &mut Interner,
 ) -> Module {
     parse_module_using(ParseState::new(file_path_id, source, diagnostics, interner))
@@ -197,7 +199,7 @@ pub fn parse_module_using(mut state: ParseState<'_, '_, '_>) -> Module {
 pub fn parse_item(
     file_path_id: PathID,
     source: impl AsRef<str>,
-    diagnostics: &mut Vec<Diagnostic>,
+    diagnostics: &mut GlobalDiagnostics,
     interner: &mut Interner,
 ) -> Option<ModuleItem> {
     parse_item_using(&mut ParseState::new(
@@ -221,7 +223,7 @@ pub fn parse_item_using(state: &mut ParseState<'_, '_, '_>) -> Option<ModuleItem
 pub fn parse_expression(
     file_path_id: PathID,
     source: impl AsRef<str>,
-    diagnostics: &mut Vec<Diagnostic>,
+    diagnostics: &mut GlobalDiagnostics,
     interner: &mut Interner,
 ) -> Option<Expression> {
     parse_expression_using(&mut ParseState::new(
@@ -245,7 +247,7 @@ pub fn parse_expression_using(state: &mut ParseState<'_, '_, '_>) -> Option<Expr
 pub fn parse_statement(
     file_path_id: PathID,
     source: impl AsRef<str>,
-    diagnostics: &mut Vec<Diagnostic>,
+    diagnostics: &mut GlobalDiagnostics,
     interner: &mut Interner,
 ) -> Option<Statement> {
     parse_statement_using(&mut ParseState::new(
@@ -269,7 +271,7 @@ pub fn parse_statement_using(state: &mut ParseState<'_, '_, '_>) -> Option<State
 pub fn parse_type(
     file_path_id: PathID,
     source: impl AsRef<str>,
-    diagnostics: &mut Vec<Diagnostic>,
+    diagnostics: &mut GlobalDiagnostics,
     interner: &mut Interner,
 ) -> Option<Type> {
     parse_type_using(&mut ParseState::new(
@@ -293,7 +295,7 @@ pub fn parse_type_using(state: &mut ParseState<'_, '_, '_>) -> Option<Type> {
 pub fn parse_pattern(
     file_path_id: PathID,
     source: impl AsRef<str>,
-    diagnostics: &mut Vec<Diagnostic>,
+    diagnostics: &mut GlobalDiagnostics,
     interner: &mut Interner,
 ) -> Option<Pattern> {
     parse_pattern_using(&mut ParseState::new(
@@ -317,7 +319,7 @@ impl<'source, 'diagnostics, 'interner> ParseState<'source, 'diagnostics, 'intern
     pub fn new(
         file_path_id: PathID,
         source: &'source str,
-        diagnostics: &'diagnostics mut Vec<Diagnostic>,
+        diagnostics: &'diagnostics mut GlobalDiagnostics,
         interner: &'interner mut Interner,
     ) -> Self {
         let mut lexer = Lexer::new(file_path_id, source, interner);
@@ -343,15 +345,13 @@ impl<'source, 'diagnostics, 'interner> ParseState<'source, 'diagnostics, 'intern
     }
 
     /// Adds diagnostic if the next token has lex error in itself.
+    #[inline]
     fn check_next_token(&mut self) {
         if let RawToken::Error(error) = self.next_token.raw {
-            self.diagnostics.push(
-                ParseDiagnostic::LexError(LexError {
-                    location: self.next_token.location,
-                    raw: error,
-                })
-                .build(),
-            );
+            self.save_single_file_diagnostic(LexErrorDiagnostic(LexError {
+                location: self.next_token.location,
+                raw: error,
+            }));
         }
     }
 
@@ -384,7 +384,7 @@ impl<'source, 'diagnostics, 'interner> ParseState<'source, 'diagnostics, 'intern
     }
 
     /// Checks if the next token is [`expected`].
-    fn expect(&mut self, expected: RawToken, node: impl Into<String>) -> Option<()> {
+    fn expect(&mut self, expected: RawToken, node: impl ToString) -> Option<()> {
         trace!(
             "excepted {} to be {} at: {}",
             self.next_token.raw,
@@ -395,21 +395,18 @@ impl<'source, 'diagnostics, 'interner> ParseState<'source, 'diagnostics, 'intern
         if self.next_token.raw == expected {
             Some(())
         } else {
-            self.diagnostics.push(
-                ParseDiagnostic::UnexpectedTokenError {
-                    got: self.next_token,
-                    expected: expected!(expected),
-                    node: node.into(),
-                }
-                .build(),
-            );
+            self.save_single_file_diagnostic(UnexpectedTokenDiagnostic::new(
+                self.next_token,
+                expected!(expected),
+                node,
+            ));
 
             None
         }
     }
 
     /// Checks if the next token is [`expected`] and advances the parse state.
-    fn consume(&mut self, expected: RawToken, node: impl Into<String>) -> Option<()> {
+    fn consume(&mut self, expected: RawToken, node: impl ToString) -> Option<()> {
         self.expect(expected, node)?;
         self.advance();
         Some(())
@@ -435,7 +432,7 @@ impl<'source, 'diagnostics, 'interner> ParseState<'source, 'diagnostics, 'intern
 
     /// Checks if the next token is identifiers, advances the parse state and if
     /// everything is ok, returns the identifier symbol.
-    fn consume_identifier(&mut self, node: impl Into<String>) -> Option<IdentifierAst> {
+    fn consume_identifier(&mut self, node: impl ToString) -> Option<IdentifierAst> {
         trace!(
             "expected next_token {} to be an identifier at: {}",
             self.next_token.raw,
@@ -448,14 +445,11 @@ impl<'source, 'diagnostics, 'interner> ParseState<'source, 'diagnostics, 'intern
                 symbol: self.lexer.scanned_identifier,
             }
         } else {
-            self.diagnostics.push(
-                ParseDiagnostic::UnexpectedTokenError {
-                    got: self.next_token,
-                    expected: expected!("identifier"),
-                    node: node.into(),
-                }
-                .build(),
-            );
+            self.save_single_file_diagnostic(UnexpectedTokenDiagnostic::new(
+                self.next_token,
+                expected!("identifier"),
+                node,
+            ));
             return None;
         };
 
@@ -500,6 +494,17 @@ impl<'source, 'diagnostics, 'interner> ParseState<'source, 'diagnostics, 'intern
         } else {
             None
         }
+    }
+
+    /// Saves a single file diagnostic.
+    #[inline]
+    #[allow(clippy::needless_pass_by_value)]
+    pub(crate) fn save_single_file_diagnostic(
+        &mut self,
+        diagnostic: impl BuildSingleFileDiagnostic,
+    ) {
+        self.diagnostics
+            .save_single_file_diagnostic(self.lexer.file_path_id, diagnostic.build());
     }
 }
 

@@ -1,7 +1,6 @@
 [workspace]
 members = [
     "crates/ry",
-    "crates/ry_analyze",
     "crates/ry_ast",
     "crates/ry_diagnostics",
     "crates/ry_filesystem",
