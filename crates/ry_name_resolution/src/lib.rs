@@ -63,6 +63,7 @@
     clippy::option_if_let_else,
     clippy::cast_possible_truncation
 )]
+
 use std::path::PathBuf;
 
 use ry_ast::{IdentifierAst, Impl, ImportPath, ModuleItem};
@@ -79,11 +80,16 @@ pub mod diagnostics;
 /// references.
 #[derive(Debug, PartialEq, Clone)]
 pub struct GlobalContext {
+    /// File path storage.
+    pub file_path_storage: FilePathStorage,
+
     /// Projects, that are going to be resolved.
     pub projects: FxHashMap<Symbol, ProjectContext>,
 }
 
 impl Default for GlobalContext {
+    #[inline]
+    #[must_use]
     fn default() -> Self {
         Self::new()
     }
@@ -91,9 +97,11 @@ impl Default for GlobalContext {
 
 impl GlobalContext {
     /// Creates new name empty resolution tree.
+    #[inline]
     #[must_use]
     pub fn new() -> Self {
         Self {
+            file_path_storage: FilePathStorage::new(),
             projects: FxHashMap::default(),
         }
     }
@@ -345,5 +353,64 @@ impl<'ctx> Scope<'ctx> {
         } else {
             None
         }
+    }
+}
+
+/// Storage for file paths (to avoid copying and fast comparing, basically the same
+/// movitation as with [`Interner`]).
+///
+/// The ID-s that correspond to file paths have a type of [`FilePathID`].
+///
+/// [`Interner`]: ry_interner::Interner
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub struct FilePathStorage {
+    storage: Vec<PathBuf>,
+}
+
+/// ID of a file path in a [`FilePathStorage`].
+pub type FilePathID = usize;
+
+impl Default for FilePathStorage {
+    #[inline]
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl FilePathStorage {
+    /// Creates a new empty file path storage.
+    #[inline]
+    #[must_use]
+    pub const fn new() -> Self {
+        Self {
+            storage: Vec::new(),
+        }
+    }
+
+    /// Adds a path to the storage.
+    #[inline]
+    #[must_use]
+    pub fn add_path(&mut self, path: PathBuf) -> FilePathID {
+        self.storage.push(path);
+        self.storage.len() - 1
+    }
+
+    /// Resolves a path stored in the storage.
+    #[inline]
+    #[must_use]
+    pub fn resolve_path(&self, id: FilePathID) -> Option<PathBuf> {
+        self.storage.get(id).cloned()
+    }
+
+    /// Resolves a path stored in the storage (same as `resolve_path()`),
+    /// but panics if the path is not found.
+    #[inline]
+    #[must_use]
+    #[allow(clippy::missing_panics_doc)]
+    pub fn resolve_path_or_panic(&self, id: FilePathID) -> PathBuf {
+        self.storage
+            .get(id)
+            .unwrap_or_else(|| panic!("Path with id: {id} is not found"))
+            .clone()
     }
 }
