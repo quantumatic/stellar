@@ -10,3 +10,4 @@ description = "Implements identifier interner for the Ry programming language."
 
 [dependencies]
 hashbrown = "0.14.0"
+ry_fx_hash = { path = "../ry_fx_hash" }

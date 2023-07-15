@@ -66,15 +66,14 @@ use core::{
     hash::{BuildHasher, Hash, Hasher},
     str::from_utf8_unchecked,
 };
+use std::hash::BuildHasherDefault;
 
 extern crate alloc;
 
 use alloc::{string::String, vec::Vec};
 
-use hashbrown::{
-    hash_map::{DefaultHashBuilder, RawEntryMut},
-    HashMap,
-};
+use hashbrown::{hash_map::RawEntryMut, HashMap};
+use ry_fx_hash::FxHasher;
 
 /// Represents unique symbol corresponding to some interned string.
 pub type Symbol = usize;
@@ -159,21 +158,20 @@ pub mod symbols {
 /// - [`Interner::default()`] to create a new empty instance of [`Interner`].
 /// - [`Interner::get_or_intern()`] to intern a new identifier.
 /// - [`Interner::resolve()`] to resolve already interned strings.
-#[derive(Debug)]
-pub struct Interner<H = DefaultHashBuilder>
-where
-    H: BuildHasher,
-{
+#[derive(Debug, Clone)]
+pub struct Interner {
     dedup: HashMap<Symbol, (), ()>,
-    hasher: H,
-    backend: Backend,
+    hasher: BuildHasherDefault<FxHasher>,
+    backend: InternerStorage,
 }
 
-/// Data structures that organizes interned strings.
-#[derive(Debug, Default)]
-struct Backend {
+/// Storage for interned strings.
+#[derive(Debug, Clone, Default)]
+struct InternerStorage {
     ends: Vec<usize>,
-    buffer: String,
+
+    /// All interned strings live here.
+    storage: String,
 }
 
 impl Default for Interner {
@@ -184,6 +182,7 @@ impl Default for Interner {
     }
 }
 
+#[inline]
 fn hash_value<T>(hasher: &impl BuildHasher, value: &T) -> u64
 where
     T: ?Sized + Hash,
@@ -193,13 +192,13 @@ where
     state.finish()
 }
 
-impl Backend {
+impl InternerStorage {
     #[must_use]
     #[inline]
     fn with_capacity(capacity: usize) -> Self {
         Self {
             ends: Vec::with_capacity(capacity),
-            buffer: String::default(),
+            storage: String::default(),
         }
     }
 
@@ -224,7 +223,7 @@ impl Backend {
     /// Shrink capacity to fit interned symbols exactly.
     fn shrink_to_fit(&mut self) {
         self.ends.shrink_to_fit();
-        self.buffer.shrink_to_fit();
+        self.storage.shrink_to_fit();
     }
 
     /// Returns the index of the next symbol.
@@ -249,14 +248,14 @@ impl Backend {
     }
 
     fn str_at(&self, span: Span) -> &str {
-        unsafe { from_utf8_unchecked(&self.buffer.as_bytes()[span.start..span.end]) }
+        unsafe { from_utf8_unchecked(&self.storage.as_bytes()[span.start..span.end]) }
     }
 
     /// Pushes the string into the buffer and returns corresponding symbol.
     fn push(&mut self, string: &str) -> Symbol {
-        self.buffer.push_str(string);
+        self.storage.push_str(string);
 
-        let end = self.buffer.as_bytes().len();
+        let end = self.storage.as_bytes().len();
         let symbol = self.next_symbol();
 
         self.ends.push(end);
@@ -273,18 +272,15 @@ macro_rules! intern_primitive_symbols {
     }
 }
 
-impl<H> Interner<H>
-where
-    H: BuildHasher + Default,
-{
+impl Interner {
     /// Creates a new empty [`Interner`], that only contains builtin symbols.
     #[must_use]
     #[inline]
-    fn new() -> Self {
+    pub fn new() -> Self {
         let mut interner = Self {
             dedup: HashMap::default(),
-            hasher: Default::default(),
-            backend: Backend::default(),
+            hasher: BuildHasherDefault::default(),
+            backend: InternerStorage::default(),
         };
 
         interner.get_or_intern("_");
@@ -297,39 +293,20 @@ where
         interner
     }
 
-    /// Creates a new empty `Interner` with the given hasher.
-    #[inline]
-    pub fn with_hasher(hasher: H) -> Self {
-        Self {
-            dedup: HashMap::default(),
-            hasher,
-            backend: Backend::default(),
-        }
-    }
-
     /// Creates a new empty `Interner` with the given capacity.
     #[must_use]
     #[inline]
     pub fn with_capacity(capacity: usize) -> Self {
         Self {
             dedup: HashMap::with_capacity_and_hasher(capacity, ()),
-            hasher: Default::default(),
-            backend: Backend::with_capacity(capacity),
-        }
-    }
-
-    /// Creates a new empty `Interner` with the given capacity and hasher.
-    #[inline]
-    pub fn with_capacity_and_hasher(capacity: usize, hasher: H) -> Self {
-        Self {
-            dedup: HashMap::with_capacity_and_hasher(capacity, ()),
-            hasher,
-            backend: Backend::with_capacity(capacity),
+            hasher: BuildHasherDefault::default(),
+            backend: InternerStorage::with_capacity(capacity),
         }
     }
 
     /// Returns the number of symbols/strings interned by the interner.
     #[inline]
+    #[must_use]
     #[allow(clippy::len_without_is_empty)] // interner is never empty
     pub fn len(&self) -> usize {
         self.dedup.len()
@@ -345,18 +322,14 @@ where
     /// assert_eq!(Some(hello_symbol), interner.get("hello"));
     /// ```
     #[inline]
-    pub fn get<T>(&self, string: T) -> Option<Symbol>
-    where
-        T: AsRef<str>,
-    {
-        let string_ref = string.as_ref();
-        let hasher = &self.hasher;
-        let hash = hash_value(hasher, string_ref);
+    pub fn get(&self, string: impl AsRef<str>) -> Option<Symbol> {
+        let string = string.as_ref();
+        let hash = hash_value(&self.hasher, string);
 
         self.dedup
             .raw_entry()
             .from_hash(hash, |symbol| {
-                string_ref == unsafe { self.backend.unchecked_resolve(*symbol) }
+                string == unsafe { self.backend.unchecked_resolve(*symbol) }
             })
             .map(|(&symbol, ())| symbol)
     }
@@ -366,7 +339,7 @@ where
     fn get_or_intern_using<T>(
         &mut self,
         string: T,
-        intern_fn: fn(&mut Backend, T) -> Symbol,
+        intern_fn: fn(&mut InternerStorage, T) -> Symbol,
     ) -> Symbol
     where
         T: AsRef<str> + Copy + Hash + for<'a> PartialEq<&'a str>,
@@ -395,14 +368,12 @@ where
 
     /// Interns the given string and returns a corresponding symbol.
     #[inline]
-    pub fn get_or_intern<T>(&mut self, string: T) -> Symbol
-    where
-        T: AsRef<str>,
-    {
-        self.get_or_intern_using(string.as_ref(), Backend::intern)
+    pub fn get_or_intern(&mut self, string: impl AsRef<str>) -> Symbol {
+        self.get_or_intern_using(string.as_ref(), InternerStorage::intern)
     }
 
     /// Shrink backend capacity to fit the interned strings exactly.
+    #[inline]
     pub fn shrink_to_fit(&mut self) {
         self.backend.shrink_to_fit();
     }
@@ -420,6 +391,7 @@ where
     /// assert_eq!(interner.get("!"), None);
     /// ```
     #[inline]
+    #[must_use]
     pub fn resolve(&self, symbol: Symbol) -> Option<&str> {
         self.backend.resolve(symbol)
     }
