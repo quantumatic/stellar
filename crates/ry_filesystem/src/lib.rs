@@ -62,6 +62,6 @@
 )]
 
 pub mod file;
+pub mod location;
 pub mod path_resolver;
 pub mod path_storage;
-pub mod location;
