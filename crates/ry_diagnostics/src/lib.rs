@@ -71,7 +71,7 @@ use codespan_reporting::{
     },
 };
 use ry_filesystem::{
-    file::InMemoryFile,
+    in_memory_file::InMemoryFile,
     path_storage::{PathID, PathStorage},
 };
 use ry_fx_hash::FxHashMap;

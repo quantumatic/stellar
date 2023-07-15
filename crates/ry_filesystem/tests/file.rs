@@ -1,6 +1,6 @@
 use std::path::Path;
 
-use ry_filesystem::file::InMemoryFile;
+use ry_filesystem::in_memory_file::InMemoryFile;
 
 const TEST_SOURCE: &str = "foo\nbar\r\n\nbaz";
 

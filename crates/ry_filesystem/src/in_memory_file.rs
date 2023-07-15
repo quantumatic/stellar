@@ -1,22 +1,19 @@
 //! Defines a [`InMemoryFile`] to represent a Ry source file and provides some utilities.
 
-use std::cmp::Ordering;
 use std::io;
 use std::ops::Range;
-use std::path::Path;
+use std::{cmp::Ordering, path::PathBuf};
 
 use codespan_reporting::files::{Error, Files};
 
 use crate::location::{Location, LocationIndex};
+use crate::path_storage::{PathID, PathStorage};
 
 /// A Ry source file.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct InMemoryFile<'file> {
+pub struct InMemoryFile {
     /// The path of the source file.
-    pub path: &'file Path,
-
-    /// The path of the source file as a string slice.
-    pub path_str: &'file str,
+    pub path: PathBuf,
 
     /// The source content of the file.
     pub source: String,
@@ -28,31 +25,62 @@ pub struct InMemoryFile<'file> {
     pub line_starts: Vec<usize>,
 }
 
-impl<'file> InMemoryFile<'file> {
+impl InMemoryFile {
     /// Creates a new [`InMemoryFile`].
     ///
     /// # Errors
-    /// Returns an error if the source of the file cannot be read.
+    /// If the source of the file cannot be read.
     #[inline]
-    pub fn new(path: &'file Path) -> Result<Self, io::Error> {
-        Ok(Self::new_from_source(path, std::fs::read_to_string(path)?))
+    pub fn new(path: impl Into<PathBuf> + Clone) -> Result<Self, io::Error> {
+        Ok(Self::new_from_source(
+            path.clone(),
+            std::fs::read_to_string(path.into())?,
+        ))
+    }
+
+    /// Creates a new [`InMemoryFile`] from its path id.
+    ///
+    /// # Panics
+    /// If the path id cannot be resolved in the path storage.
+    ///
+    /// # Errors
+    /// If the source of the file cannot be read.
+    #[inline]
+    pub fn new_from_path_id(
+        path_storage: &PathStorage,
+        path_id: PathID,
+    ) -> Result<Self, io::Error> {
+        Self::new(path_storage.resolve_path_or_panic(path_id))
     }
 
     /// Creates a new [`InMemoryFile`] and panics if its contents
     /// cannot be read.
+    ///
+    /// # Panics
+    /// If the file contents cannot be read.
     #[inline]
     #[must_use]
-    pub fn new_or_panic(path: &'file Path) -> Self {
-        Self::new(path).expect("Invalid UTF-8 data in path")
+    pub fn new_or_panic(path: impl Into<PathBuf> + Clone) -> Self {
+        Self::new(path).expect("Cannot read the file")
+    }
+
+    /// Creates a new [`InMemoryFile`] from its path id.
+    ///
+    /// # Panics
+    /// * If the path id cannot be resolved in the path storage.
+    /// * If the source of the file cannot be read.
+    #[inline]
+    #[must_use]
+    pub fn new_from_path_id_or_panic(path_storage: &PathStorage, path_id: PathID) -> Self {
+        Self::new_or_panic(path_storage.resolve_path_or_panic(path_id))
     }
 
     /// Creates a new [`InMemoryFile`] with the given source.
     #[inline]
     #[must_use]
-    pub fn new_from_source(path: &'file Path, source: String) -> Self {
+    pub fn new_from_source(path: impl Into<PathBuf>, source: String) -> Self {
         Self {
-            path,
-            path_str: path.to_str().expect("Invalid UTF-8 data in path"),
+            path: path.into(),
             source_len: source.len(),
             line_starts: std::iter::once(0)
                 .chain(source.match_indices('\n').map(|(i, _)| i + 1))
@@ -155,26 +183,30 @@ impl<'file> InMemoryFile<'file> {
 }
 
 // For proper error reporting
-impl<'file> Files<'file> for InMemoryFile<'file> {
+impl<'a> Files<'a> for InMemoryFile {
     // we don't care about file IDs, because we have only one individual file here
     type FileId = ();
 
-    type Name = &'file str;
-    type Source = &'file str;
+    type Name = String;
+    type Source = &'a str;
 
-    fn name(&'file self, _: ()) -> Result<Self::Name, Error> {
-        Ok(self.path_str)
+    #[inline]
+    fn name(&self, _: ()) -> Result<Self::Name, Error> {
+        Ok(format!("{}", self.path.display()))
     }
 
-    fn source(&'file self, _: ()) -> Result<Self::Source, Error> {
+    #[inline]
+    fn source(&'a self, _: ()) -> Result<Self::Source, Error> {
         Ok(&self.source)
     }
 
-    fn line_index(&'file self, _: (), byte_index: usize) -> Result<usize, Error> {
+    #[inline]
+    fn line_index(&self, _: (), byte_index: usize) -> Result<usize, Error> {
         Ok(self.get_line_index_by_byte_index(byte_index))
     }
 
-    fn line_range(&'file self, _: (), line_index: usize) -> Result<Range<usize>, Error> {
+    #[inline]
+    fn line_range(&self, _: (), line_index: usize) -> Result<Range<usize>, Error> {
         let line_start = self.get_line_start_by_index(line_index)?;
         let next_line_start = self.get_line_start_by_index(line_index + 1)?;
 
