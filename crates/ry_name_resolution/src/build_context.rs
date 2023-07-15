@@ -3,8 +3,8 @@
 use std::io;
 
 use ry_ast::{Module, ModuleItem};
-use ry_diagnostics::{BuildSingleFileDiagnostic, GlobalDiagnostics};
-use ry_filesystem::path_storage::{PathID, PathStorage};
+use ry_diagnostics::{BuildDiagnostic, GlobalDiagnostics};
+use ry_filesystem::path_interner::{PathID, PathInterner};
 use ry_fx_hash::FxHashMap;
 use ry_interner::Interner;
 use ry_parser::read_and_parse_module;
@@ -45,8 +45,8 @@ pub fn build_module_context_from_ast(
                 if let Some(ModuleItemNameBindingData::NotAnalyzed(previous_item)) =
                     bindings.get(&name)
                 {
-                    diagnostics.save_single_file_diagnostic(
-                        file_path_id,
+                    diagnostics.add_file_diagnostic(
+                        [file_path_id],
                         ItemDefinedMultipleTimesDiagnostic::new(
                             interner.resolve(name).unwrap(),
                             DefinitionInfo {
@@ -89,13 +89,13 @@ pub fn build_module_context_from_ast(
 /// If the file cannot be read.
 #[inline]
 pub fn read_and_build_module_context(
-    file_path_storage: &PathStorage,
+    file_path_interner: &PathInterner,
     file_path_id: PathID,
     interner: &mut Interner,
     file_diagnostics: &mut GlobalDiagnostics,
 ) -> Result<ModuleContext, io::Error> {
     let module =
-        read_and_parse_module(file_path_storage, file_path_id, file_diagnostics, interner)?;
+        read_and_parse_module(file_path_interner, file_path_id, file_diagnostics, interner)?;
 
     Ok(build_module_context_from_ast(
         file_path_id,

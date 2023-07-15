@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
     use ry_ast::token::{RawLexError, RawToken::*};
-    use ry_filesystem::path_storage::DUMMY_PATH_ID;
+    use ry_filesystem::path_interner::DUMMY_PATH_ID;
     use ry_interner::Interner;
     use ry_lexer::Lexer;
 

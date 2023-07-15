@@ -4,8 +4,8 @@
 
 use codespan_reporting::diagnostic::Diagnostic;
 use ry_ast::ModuleItemKind;
-use ry_diagnostics::BuildSingleFileDiagnostic;
-use ry_filesystem::location::Location;
+use ry_diagnostics::BuildDiagnostic;
+use ry_filesystem::{location::Location, path_interner::PathID};
 
 /// An information about an item defined in the module.
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
@@ -47,9 +47,9 @@ impl ItemDefinedMultipleTimesDiagnostic {
     }
 }
 
-impl BuildSingleFileDiagnostic for ItemDefinedMultipleTimesDiagnostic {
+impl BuildDiagnostic for ItemDefinedMultipleTimesDiagnostic {
     #[inline]
-    fn build(&self) -> Diagnostic<()> {
+    fn build(&self) -> Diagnostic<PathID> {
         Diagnostic::error()
             .with_code("E005")
             .with_message(format!(
@@ -102,23 +102,23 @@ impl ImportingProjectDiagnostic {
     }
 }
 
-impl BuildSingleFileDiagnostic for ImportingProjectDiagnostic {
+impl BuildDiagnostic for ImportingProjectDiagnostic {
     #[inline]
-    fn build(&self) -> Diagnostic<()> {
+    fn build(&self) -> Diagnostic<PathID> {
         Diagnostic::error()
-                .with_code("E005")
-                .with_message("trying to import the project".to_owned())
-                .with_labels(vec![
-                    self.location.to_primary_label()
-                        .with_message("consider removing this import"),
-                    self.project_name_location.to_secondary_label().with_message(format!(
-                        "{} is a project, not a particular module", self.project_name
-                    )),
-                ])
-                .with_notes(
-                    vec![
-                        "note: importing a project is meaningless, you can still you its namespace without an import".to_owned(),
-                    ]
-                )
+            .with_code("E005")
+            .with_message("trying to import the project".to_owned())
+            .with_labels(vec![
+                self.location.to_primary_label()
+                    .with_message("consider removing this import"),
+                self.project_name_location.to_secondary_label().with_message(format!(
+                    "{} is a project, not a particular module", self.project_name
+                )),
+            ])
+            .with_notes(
+                vec![
+                    "note: importing a project is meaningless, you can still you its namespace without an import".to_owned(),
+                ]
+            )
     }
 }

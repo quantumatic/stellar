@@ -1,6 +1,6 @@
 use std::{fs, path::PathBuf, process::exit};
 
-use ry_filesystem::path_storage::PathStorage;
+use ry_filesystem::path_interner::PathInterner;
 use ry_interner::Interner;
 use ry_lexer::Lexer;
 
@@ -10,8 +10,8 @@ pub fn command(filepath: &str, show_locations: bool) {
     match fs::read_to_string(filepath) {
         Ok(source) => {
             let mut interner = Interner::default();
-            let mut path_storage = PathStorage::new();
-            let file_path_id = path_storage.add_path(PathBuf::from(filepath));
+            let mut path_interner = PathInterner::new();
+            let file_path_id = path_interner.get_or_intern_path(PathBuf::from(filepath));
 
             let mut lexer = Lexer::new(file_path_id, &source, &mut interner);
             let mut current_token_index = 0;

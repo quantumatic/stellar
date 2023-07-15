@@ -7,24 +7,24 @@ use ry_fx_hash::FxHashMap;
 
 use crate::{
     in_memory_file::InMemoryFile,
-    path_storage::{PathID, PathStorage},
+    path_interner::{PathID, PathInterner},
 };
 
 /// In memory file storage. The storage can be used for example when emitting
 /// some diagnostics, to avoid rereading the same file multiple times.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct InMemoryFileStorage<'path_storage> {
-    path_storage: &'path_storage PathStorage,
+#[derive(Debug, Clone)]
+pub struct InMemoryFileStorage<'path_interner> {
+    path_interner: &'path_interner PathInterner,
     storage: FxHashMap<PathID, InMemoryFile>,
 }
 
-impl<'path_storage> InMemoryFileStorage<'path_storage> {
+impl<'path_interner> InMemoryFileStorage<'path_interner> {
     /// Creates an empty storage.
     #[inline]
     #[must_use]
-    pub fn new(path_storage: &'path_storage PathStorage) -> Self {
+    pub fn new(path_interner: &'path_interner PathInterner) -> Self {
         Self {
-            path_storage,
+            path_interner,
             storage: FxHashMap::default(),
         }
     }
@@ -41,10 +41,51 @@ impl<'path_storage> InMemoryFileStorage<'path_storage> {
     /// If the file contents cannot be read.
     #[inline]
     pub fn read_and_add_file(&mut self, path_id: PathID) -> Result<(), io::Error> {
-        let file = InMemoryFile::new_from_path_id(self.path_storage, path_id)?;
+        let file = InMemoryFile::new_from_path_id(self.path_interner, path_id)?;
         self.add_file(path_id, file);
 
         Ok(())
+    }
+
+    /// Reads and adds a file into the storage.
+    ///
+    /// # Panics
+    /// If the file contents cannot be read.
+    #[inline]
+    pub fn read_and_add_file_or_panic(&mut self, path_id: PathID) {
+        self.storage.insert(
+            path_id,
+            InMemoryFile::new_or_panic(self.path_interner.resolve_path_or_panic(path_id)),
+        );
+    }
+
+    /// Adds a file into the storage if it does not exist.
+    #[inline]
+    pub fn add_file_if_not_exists(&mut self, path_id: PathID, file: InMemoryFile) {
+        if !self.storage.contains_key(&path_id) {
+            self.add_file(path_id, file);
+        }
+    }
+
+    /// Reads and adds a file into the storage if it does not exist.
+    ///
+    /// # Errors
+    /// If the file contents cannot be read.
+    #[inline]
+    pub fn read_and_add_file_if_not_exists(&mut self, path_id: PathID) -> Result<(), io::Error> {
+        if !self.storage.contains_key(&path_id) {
+            self.read_and_add_file(path_id)?;
+        }
+
+        Ok(())
+    }
+
+    /// Reads and adds a file into the storage if it does not exist.
+    ///
+    /// # Panics
+    /// If the file contents cannot be read.
+    pub fn read_and_add_file_if_not_exists_or_panic(&mut self, path_id: PathID) -> InMemoryFile {
+        InMemoryFile::new_or_panic(self.path_interner.resolve_path_or_panic(path_id))
     }
 
     /// Resolves a file from the storage by its path id.

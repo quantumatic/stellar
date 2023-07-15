@@ -65,7 +65,7 @@
 )]
 
 use ry_ast::{IdentifierAst, Impl, ImportPath, ModuleItem};
-use ry_filesystem::{location::Location, path_storage::PathID};
+use ry_filesystem::{location::Location, path_interner::PathID};
 use ry_fx_hash::FxHashMap;
 use ry_interner::Symbol;
 use ry_typed_ast::{ty::Type, Path};

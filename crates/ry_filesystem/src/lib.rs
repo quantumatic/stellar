@@ -64,5 +64,5 @@
 pub mod in_memory_file;
 pub mod in_memory_file_storage;
 pub mod location;
+pub mod path_interner;
 pub mod path_resolver;
-pub mod path_storage;

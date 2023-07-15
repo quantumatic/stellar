@@ -2,10 +2,12 @@ use std::fs;
 
 use codespan_reporting::diagnostic::Diagnostic;
 use ry_diagnostics::DiagnosticsEmitter;
+use ry_filesystem::path_interner::PathInterner;
 use ry_manifest::parse_manifest;
 
 pub fn command(filepath: &str) {
-    let diagnostics_emitter = DiagnosticsEmitter::new();
+    let path_interner = PathInterner::new();
+    let diagnostics_emitter = DiagnosticsEmitter::new(&path_interner);
 
     match fs::read_to_string(filepath) {
         Err(..) => {

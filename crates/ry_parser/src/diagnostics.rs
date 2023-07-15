@@ -9,8 +9,8 @@ use ry_ast::{
     token::{LexError, Token},
     ModuleItemKind,
 };
-use ry_diagnostics::BuildSingleFileDiagnostic;
-use ry_filesystem::location::Location;
+use ry_diagnostics::BuildDiagnostic;
+use ry_filesystem::{location::Location, path_interner::PathID};
 
 /// Represents list of expected tokens.
 #[derive(Debug, PartialEq, Eq, Clone)]
@@ -64,9 +64,9 @@ pub enum UnnecessaryVisibilityQualifierContext {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct LexErrorDiagnostic(pub LexError);
 
-impl BuildSingleFileDiagnostic for LexErrorDiagnostic {
+impl BuildDiagnostic for LexErrorDiagnostic {
     #[inline]
-    fn build(&self) -> Diagnostic<()> {
+    fn build(&self) -> Diagnostic<PathID> {
         Diagnostic::error()
             .with_message(self.0.raw.to_string())
             .with_code("E000")
@@ -100,9 +100,9 @@ impl UnexpectedTokenDiagnostic {
     }
 }
 
-impl BuildSingleFileDiagnostic for UnexpectedTokenDiagnostic {
+impl BuildDiagnostic for UnexpectedTokenDiagnostic {
     #[inline]
-    fn build(&self) -> Diagnostic<()> {
+    fn build(&self) -> Diagnostic<PathID> {
         Diagnostic::error()
             .with_message(format!("unexpected {}", self.got.raw))
             .with_code("E001")
@@ -119,18 +119,18 @@ pub struct IntegerOverflowDiagnostic {
     pub location: Location,
 }
 
-impl BuildSingleFileDiagnostic for IntegerOverflowDiagnostic {
+impl BuildDiagnostic for IntegerOverflowDiagnostic {
     #[inline]
-    fn build(&self) -> Diagnostic<()> {
+    fn build(&self) -> Diagnostic<PathID> {
         Diagnostic::error()
-                    .with_message("unexpected integer overflow".to_owned())
-                    .with_code("E002")
-                    .with_labels(vec![self.location.to_primary_label()
-                        .with_message("error appeared when parsing this integer")])
-                    .with_notes(vec![
-                        "note: integer cannot exceed the maximum value of `u64` (u64.max() == 18_446_744_073_709_551_615)".to_owned(),
-                        "note: you can use exponent to do so, but be careful!".to_owned()
-                    ])
+            .with_message("unexpected integer overflow".to_owned())
+            .with_code("E002")
+            .with_labels(vec![self.location.to_primary_label()
+                .with_message("error appeared when parsing this integer")])
+            .with_notes(vec![
+                "note: integer cannot exceed the maximum value of `u64` (u64.max() == 18_446_744_073_709_551_615)".to_owned(),
+                "note: you can use exponent to do so, but be careful!".to_owned()
+            ])
     }
 }
 
@@ -141,19 +141,19 @@ pub struct FloatOverflowDiagnostic {
     pub location: Location,
 }
 
-impl BuildSingleFileDiagnostic for FloatOverflowDiagnostic {
+impl BuildDiagnostic for FloatOverflowDiagnostic {
     #[inline]
-    fn build(&self) -> Diagnostic<()> {
+    fn build(&self) -> Diagnostic<PathID> {
         Diagnostic::error()
-                    .with_message("unexpected float overflow".to_owned())
-                    .with_code("E003")
-                    .with_labels(vec![self.location.to_primary_label()
-                        .with_message("error appeared when parsing this float literal")
-                    ])
-                    .with_notes(vec![
-                        "note: float literal cannot exceed the maximum value of `f64` (f64.max() == 1.7976931348623157E+308)".to_owned(),
-                        "note: you can use exponent to do so, but be careful, especially when working with floats!".to_owned()
-                    ])
+            .with_message("unexpected float overflow".to_owned())
+            .with_code("E003")
+            .with_labels(vec![self.location.to_primary_label()
+                .with_message("error appeared when parsing this float literal")
+            ])
+            .with_notes(vec![
+                "note: float literal cannot exceed the maximum value of `f64` (f64.max() == 1.7976931348623157E+308)".to_owned(),
+                "note: you can use exponent to do so, but be careful, especially when working with floats!".to_owned()
+            ])
     }
 }
 
@@ -167,9 +167,9 @@ pub struct UnnecessaryVisibilityQualifierDiagnostic {
     pub context: UnnecessaryVisibilityQualifierContext,
 }
 
-impl BuildSingleFileDiagnostic for UnnecessaryVisibilityQualifierDiagnostic {
+impl BuildDiagnostic for UnnecessaryVisibilityQualifierDiagnostic {
     #[inline]
-    fn build(&self) -> Diagnostic<()> {
+    fn build(&self) -> Diagnostic<PathID> {
         let mut labels = vec![self
             .location
             .to_primary_label()
@@ -219,9 +219,9 @@ pub struct EOFInsteadOfCloseBrace {
     pub location: Location,
 }
 
-impl BuildSingleFileDiagnostic for EOFInsteadOfCloseBrace {
+impl BuildDiagnostic for EOFInsteadOfCloseBrace {
     #[inline]
-    fn build(&self) -> Diagnostic<()> {
+    fn build(&self) -> Diagnostic<PathID> {
         Diagnostic::error()
             .with_message("unexpected end of file".to_owned())
             .with_code("E001")

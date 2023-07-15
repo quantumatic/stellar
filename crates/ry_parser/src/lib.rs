@@ -85,10 +85,10 @@ use ry_ast::{
     token::{LexError, RawToken, Token},
     Expression, IdentifierAst, Module, ModuleItem, Pattern, Statement, Token, Type, Visibility,
 };
-use ry_diagnostics::{BuildSingleFileDiagnostic, GlobalDiagnostics};
+use ry_diagnostics::{BuildDiagnostic, GlobalDiagnostics};
 use ry_filesystem::{
     location::{Location, LocationIndex},
-    path_storage::{PathID, PathStorage},
+    path_interner::{PathID, PathInterner},
 };
 use ry_interner::Interner;
 use ry_lexer::Lexer;
@@ -158,14 +158,14 @@ where
 /// Panics if the file path cannot be resolved in the path storage.
 #[inline]
 pub fn read_and_parse_module(
-    path_storage: &PathStorage,
+    path_interner: &PathInterner,
     file_path_id: PathID,
     diagnostics: &mut GlobalDiagnostics,
     interner: &mut Interner,
 ) -> Result<Module, io::Error> {
     Ok(parse_module_using(ParseState::new(
         file_path_id,
-        &fs::read_to_string(path_storage.resolve_path_or_panic(file_path_id))?,
+        &fs::read_to_string(path_interner.resolve_path_or_panic(file_path_id))?,
         diagnostics,
         interner,
     )))
@@ -499,12 +499,9 @@ impl<'source, 'diagnostics, 'interner> ParseState<'source, 'diagnostics, 'intern
     /// Saves a single file diagnostic.
     #[inline]
     #[allow(clippy::needless_pass_by_value)]
-    pub(crate) fn save_single_file_diagnostic(
-        &mut self,
-        diagnostic: impl BuildSingleFileDiagnostic,
-    ) {
+    pub(crate) fn save_single_file_diagnostic(&mut self, diagnostic: impl BuildDiagnostic) {
         self.diagnostics
-            .save_single_file_diagnostic(self.lexer.file_path_id, diagnostic.build());
+            .add_file_diagnostic([self.lexer.file_path_id], diagnostic.build());
     }
 }
 

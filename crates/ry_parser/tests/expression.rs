@@ -5,7 +5,7 @@ use ry_ast::{
     TypePathSegment,
 };
 use ry_diagnostics::GlobalDiagnostics;
-use ry_filesystem::{location::Location, path_storage::DUMMY_PATH_ID};
+use ry_filesystem::{location::Location, path_interner::DUMMY_PATH_ID};
 use ry_interner::{symbols, Interner};
 use ry_parser::parse_expression;
 

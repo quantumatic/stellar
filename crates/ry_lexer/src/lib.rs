@@ -72,7 +72,7 @@ use ry_ast::{
     token::{LexError, RawLexError, RawToken, Token, RESERVED},
     Token,
 };
-use ry_filesystem::{location::Location, path_storage::PathID};
+use ry_filesystem::{location::Location, path_interner::PathID};
 use ry_interner::{Interner, Symbol};
 use ry_stable_likely::unlikely;
 
@@ -85,7 +85,7 @@ mod number;
 /// # use ry_lexer::Lexer;
 /// # use ry_ast::token::{Token, RawToken::EndOfFile};
 /// # use ry_interner::Interner;
-/// # use ry_filesystem::{location::Location, path_storage::DUMMY_PATH_ID};
+/// # use ry_filesystem::{location::Location, path_interner::DUMMY_PATH_ID};
 /// let mut interner = Interner::default();
 /// let mut lexer = Lexer::new(DUMMY_PATH_ID, "", &mut interner);
 ///
@@ -104,7 +104,7 @@ mod number;
 /// # use ry_lexer::Lexer;
 /// # use ry_ast::token::{RawLexError, RawToken::Error};
 /// # use ry_interner::Interner;
-/// # use ry_filesystem::path_storage::DUMMY_PATH_ID;
+/// # use ry_filesystem::path_interner::DUMMY_PATH_ID;
 /// let mut interner = Interner::default();
 /// let mut lexer = Lexer::new(DUMMY_PATH_ID, "١", &mut interner);
 ///

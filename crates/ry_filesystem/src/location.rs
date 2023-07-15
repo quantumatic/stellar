@@ -4,7 +4,7 @@ use std::{fmt::Display, ops::Range};
 
 use codespan_reporting::diagnostic::Label;
 
-use crate::path_storage::PathID;
+use crate::path_interner::PathID;
 
 /// Represents location in the source text.
 #[derive(Copy, Clone, Hash, Debug, Default, PartialEq, Eq)]
@@ -42,16 +42,16 @@ impl Location {
     /// in the location.
     #[inline]
     #[must_use]
-    pub fn to_primary_label(self) -> Label<()> {
-        Label::primary((), self)
+    pub fn to_primary_label(self) -> Label<PathID> {
+        Label::primary(self.file_path_id, self)
     }
 
     /// Gets secondary diagnostics label ([`Label`] from [`codespan_reporting`])
     /// in the location.
     #[inline]
     #[must_use]
-    pub fn to_secondary_label(self) -> Label<()> {
-        Label::secondary((), self)
+    pub fn to_secondary_label(self) -> Label<PathID> {
+        Label::secondary(self.file_path_id, self)
     }
 }
 
@@ -76,7 +76,7 @@ pub trait LocationIndex {
     ///
     /// # Example
     /// ```
-    /// # use ry_filesystem::{location::{Location, LocationIndex}, path_storage::DUMMY_PATH_ID};
+    /// # use ry_filesystem::{location::{Location, LocationIndex}, path_interner::DUMMY_PATH_ID};
     /// let location = Location { file_path_id: DUMMY_PATH_ID, start: 0, end: 3 };
     /// assert_eq!("test".index(location), "tes");
     /// ```
