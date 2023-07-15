@@ -9,10 +9,10 @@ readme = "../../README.md"
 description = "Implements syntax parser for the Ry programming language."
 
 [dependencies]
+codespan-reporting = "0.11.1"
 ry_ast = { path = "../ry_ast" }
 ry_diagnostics = { path = "../ry_diagnostics" }
 ry_filesystem = { path = "../ry_filesystem" }
 ry_interner = { path = "../ry_interner" }
 ry_lexer = { path = "../ry_lexer" }
 tracing = "0.1.29"
-codespan-reporting = "0.11.1"
