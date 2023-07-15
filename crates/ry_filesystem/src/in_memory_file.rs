@@ -105,7 +105,7 @@ impl InMemoryFile {
     ///
     /// ```ignore
     /// # use std::path::Path;
-    /// # use ry_filesystem::file::InMemoryFile;
+    /// # use ry_filesystem::in_memory_file::InMemoryFile;
     /// let file = InMemoryFile::new(
     ///     Path::new("test.ry"),
     ///     "fun main() {
@@ -137,7 +137,7 @@ impl InMemoryFile {
     ///
     /// ```
     /// # use std::path::Path;
-    /// # use ry_filesystem::file::InMemoryFile;
+    /// # use ry_filesystem::in_memory_file::InMemoryFile;
     /// let file = InMemoryFile::new_from_source(
     ///     Path::new("test.ry"),
     ///     "fun main() {
@@ -161,7 +161,7 @@ impl InMemoryFile {
     ///
     /// ```
     /// # use std::path::Path;
-    /// # use ry_filesystem::file::InMemoryFile;
+    /// # use ry_filesystem::in_memory_file::InMemoryFile;
     /// let file = InMemoryFile::new_from_source(
     ///     Path::new("test.ry"),
     ///     "fun main() {
