@@ -32,7 +32,6 @@ impl Default for PathInterner {
 
 impl PathInterner {
     /// Creates a new empty file path storage.
-    #[inline]
     #[must_use]
     pub fn new() -> Self {
         Self {
