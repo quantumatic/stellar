@@ -1,7 +1,7 @@
 use ry_ast::{
-    token::RawToken, EnumItem, Function, FunctionParameter, FunctionSignature, IdentifierAst, Impl,
-    JustFunctionParameter, ModuleItem, ModuleItemKind, SelfParameter, StructField, Token,
-    TraitItem, TupleField, TypeAlias, Visibility,
+    token::RawToken, EnumItem, Function, FunctionParameter, FunctionParameterType,
+    FunctionSignature, IdentifierAst, Impl, ModuleItem, ModuleItemKind, NotSelfFunctionParameter,
+    SelfFunctionParameter, StructField, Token, TraitItem, TupleField, TypeAlias, Visibility,
 };
 use ry_filesystem::location::Location;
 use ry_interner::symbols;
@@ -14,7 +14,7 @@ use crate::{
     expected,
     macros::parse_list,
     path::ImportPathParser,
-    r#type::{GenericParametersParser, TypeBoundsParser, TypeParser, WhereClauseParser},
+    r#type::{GenericParametersParser, TypeBoundsParser, TypeParser, WherePredicatesParser},
     statement::StatementsBlockParser,
     OptionalParser, Parse, ParseState, VisibilityParser,
 };
@@ -39,7 +39,9 @@ struct FunctionParser {
     pub(crate) docstring: Option<String>,
 }
 
-pub(crate) struct FunctionParameterParser;
+pub(crate) struct FunctionParameterTypeParser;
+
+pub(crate) struct NotSelfFunctionParameterParser;
 
 struct TypeAliasParser {
     pub(crate) visibility: Visibility,
@@ -158,7 +160,7 @@ impl Parse for StructParser {
 
         let generic_parameters = GenericParametersParser.optionally_parse(state)?;
 
-        let where_clause = WhereClauseParser.optionally_parse(state)?;
+        let where_predicates = WherePredicatesParser.optionally_parse(state)?;
 
         if state.next_token.raw == Token!['{'] {
             let fields = StructFieldsParser.parse(state)?;
@@ -166,7 +168,7 @@ impl Parse for StructParser {
                 visibility: self.visibility,
                 name,
                 generic_parameters,
-                where_clause,
+                where_predicates,
                 fields,
                 docstring: self.docstring,
             })
@@ -190,7 +192,7 @@ impl Parse for StructParser {
                 visibility: self.visibility,
                 name,
                 generic_parameters,
-                where_clause,
+                where_predicates,
                 fields,
                 docstring: self.docstring,
             })
@@ -206,17 +208,33 @@ impl Parse for StructParser {
     }
 }
 
-impl Parse for FunctionParameterParser {
-    type Output = Option<JustFunctionParameter>;
+impl Parse for FunctionParameterTypeParser {
+    type Output = Option<FunctionParameterType>;
+
+    fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
+        if state.next_token.raw == Token![impl] {
+            state.advance();
+
+            let bounds = TypeBoundsParser.parse(state)?;
+
+            Some(FunctionParameterType::Impl(bounds))
+        } else {
+            TypeParser.parse(state).map(FunctionParameterType::Type)
+        }
+    }
+}
+
+impl Parse for NotSelfFunctionParameterParser {
+    type Output = Option<NotSelfFunctionParameter>;
 
     fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
         let name = state.consume_identifier("function parameter name")?;
 
         state.consume(Token![:], "function parameter name")?;
 
-        let ty = TypeParser.parse(state)?;
+        let ty = FunctionParameterTypeParser.parse(state)?;
 
-        Some(JustFunctionParameter { name, ty })
+        Some(NotSelfFunctionParameter { name, ty })
     }
 }
 
@@ -236,7 +254,7 @@ impl Parse for FunctionParser {
             if state.lexer.scanned_identifier == symbols::SMALL_SELF {
                 state.advance();
 
-                Some(FunctionParameter::Self_(SelfParameter {
+                Some(FunctionParameter::SelfParameter(SelfFunctionParameter {
                     self_location: state.current_token.location,
                     ty: if state.next_token.raw == Token![:] {
                         state.advance();
@@ -247,8 +265,8 @@ impl Parse for FunctionParser {
                     },
                 }))
             } else {
-                Some(FunctionParameter::Just(
-                    FunctionParameterParser.parse(state)?,
+                Some(FunctionParameter::NotSelfParameter(
+                    NotSelfFunctionParameterParser.parse(state)?,
                 ))
             }
         });
@@ -262,7 +280,7 @@ impl Parse for FunctionParser {
             None
         };
 
-        let where_clause = WhereClauseParser.optionally_parse(state)?;
+        let where_predicates = WherePredicatesParser.optionally_parse(state)?;
 
         Some(Function {
             signature: FunctionSignature {
@@ -271,7 +289,7 @@ impl Parse for FunctionParser {
                 generic_parameters,
                 parameters,
                 return_type,
-                where_clause,
+                where_predicates,
                 docstring: self.docstring,
             },
             body: match state.next_token.raw {
@@ -395,7 +413,7 @@ impl Parse for TraitParser {
 
         let generic_parameters = GenericParametersParser.optionally_parse(state)?;
 
-        let where_clause = WhereClauseParser.optionally_parse(state)?;
+        let where_predicates = WherePredicatesParser.optionally_parse(state)?;
 
         state.consume(Token!['{'], "trait declaration")?;
 
@@ -413,7 +431,7 @@ impl Parse for TraitParser {
             visibility: self.visibility,
             name,
             generic_parameters,
-            where_clause,
+            where_predicates,
             items: items.0,
             docstring: self.docstring,
         })
@@ -447,7 +465,7 @@ impl Parse for ImplParser {
             ty = TypeParser.parse(state)?;
         }
 
-        let where_clause = WhereClauseParser.optionally_parse(state)?;
+        let where_predicates = WherePredicatesParser.optionally_parse(state)?;
 
         state.consume(Token!['{'], "type implementation")?;
 
@@ -466,7 +484,7 @@ impl Parse for ImplParser {
             generic_parameters,
             ty,
             r#trait,
-            where_clause,
+            where_predicates,
             items: items.0,
             docstring: self.docstring,
         }))
@@ -491,13 +509,13 @@ impl Parse for EnumParser {
 
         state.advance(); // `}`
 
-        let where_clause = WhereClauseParser.optionally_parse(state)?;
+        let where_predicates = WherePredicatesParser.optionally_parse(state)?;
 
         Some(ModuleItem::Enum {
             visibility: self.visibility,
             name,
             generic_parameters,
-            where_clause,
+            where_predicates,
             items,
             docstring: self.docstring,
         })

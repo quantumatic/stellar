@@ -1,8 +1,8 @@
 use ry_ast::{
-    EnumItem, Expression, Function, FunctionParameter, FunctionSignature, GenericArgument,
-    GenericParameter, IdentifierAst, Impl, ImportPath, JustFunctionParameter, ModuleItem, Path,
-    SelfParameter, Statement, StructField, TraitItem, TupleField, Type, TypeAlias, TypePath,
-    TypePathSegment, Visibility, WhereClauseItem,
+    EnumItem, Expression, Function, FunctionParameter, FunctionParameterType, FunctionSignature,
+    GenericArgument, GenericParameter, IdentifierAst, Impl, ImportPath, ModuleItem,
+    NotSelfFunctionParameter, Path, SelfFunctionParameter, Statement, StructField, TraitItem,
+    TupleField, Type, TypeAlias, TypePath, TypePathSegment, Visibility, WherePredicate,
 };
 use ry_diagnostics::GlobalDiagnostics;
 use ry_filesystem::{location::Location, path_interner::DUMMY_PATH_ID};
@@ -118,46 +118,48 @@ fn function() {
                         }))
                     }
                 ]),
-                parameters: vec![FunctionParameter::Just(JustFunctionParameter {
-                    name: IdentifierAst {
-                        location: Location {
-                            file_path_id: DUMMY_PATH_ID,
-                            start: 26,
-                            end: 27
+                parameters: vec![FunctionParameter::NotSelfParameter(
+                    NotSelfFunctionParameter {
+                        name: IdentifierAst {
+                            location: Location {
+                                file_path_id: DUMMY_PATH_ID,
+                                start: 26,
+                                end: 27
+                            },
+                            symbol: interner.get_or_intern("a")
                         },
-                        symbol: interner.get_or_intern("a")
-                    },
-                    ty: Type::Path(TypePath {
-                        location: Location {
-                            file_path_id: DUMMY_PATH_ID,
-                            start: 29,
-                            end: 30
-                        },
-                        segments: vec![TypePathSegment {
+                        ty: FunctionParameterType::Type(Type::Path(TypePath {
                             location: Location {
                                 file_path_id: DUMMY_PATH_ID,
                                 start: 29,
                                 end: 30
                             },
-                            path: Path {
+                            segments: vec![TypePathSegment {
                                 location: Location {
                                     file_path_id: DUMMY_PATH_ID,
                                     start: 29,
                                     end: 30
                                 },
-                                identifiers: vec![IdentifierAst {
+                                path: Path {
                                     location: Location {
                                         file_path_id: DUMMY_PATH_ID,
                                         start: 29,
                                         end: 30
                                     },
-                                    symbol: interner.get_or_intern("B")
-                                }]
-                            },
-                            generic_arguments: None
-                        }]
-                    })
-                })],
+                                    identifiers: vec![IdentifierAst {
+                                        location: Location {
+                                            file_path_id: DUMMY_PATH_ID,
+                                            start: 29,
+                                            end: 30
+                                        },
+                                        symbol: interner.get_or_intern("B")
+                                    }]
+                                },
+                                generic_arguments: None
+                            }]
+                        }))
+                    }
+                )],
                 return_type: Some(Type::Path(TypePath {
                     location: Location {
                         file_path_id: DUMMY_PATH_ID,
@@ -188,7 +190,7 @@ fn function() {
                         generic_arguments: None
                     }]
                 })),
-                where_clause: None,
+                where_predicates: None,
                 docstring: None,
             },
             body: Some(vec![Statement::Expression {
@@ -469,7 +471,7 @@ fn r#impl() {
                     }))])
                 }]
             })),
-            where_clause: None,
+            where_predicates: None,
             items: vec![],
             docstring: None
         }))
@@ -567,7 +569,7 @@ fn r#struct() {
                 bounds: None,
                 default_value: None
             }]),
-            where_clause: Some(vec![WhereClauseItem::Satisfies {
+            where_predicates: Some(vec![WherePredicate::Satisfies {
                 ty: Type::Path(TypePath {
                     location: Location {
                         file_path_id: DUMMY_PATH_ID,
@@ -741,7 +743,7 @@ fn into() {
                 bounds: None,
                 default_value: None
             }]),
-            where_clause: None,
+            where_predicates: None,
             items: vec![TraitItem::AssociatedFunction(Function {
                 signature: FunctionSignature {
                     visibility: Visibility::private(),
@@ -754,7 +756,7 @@ fn into() {
                         symbol: interner.get_or_intern("into")
                     },
                     generic_parameters: None,
-                    parameters: vec![FunctionParameter::Self_(SelfParameter {
+                    parameters: vec![FunctionParameter::SelfParameter(SelfFunctionParameter {
                         self_location: Location {
                             file_path_id: DUMMY_PATH_ID,
                             start: 25,
@@ -792,7 +794,7 @@ fn into() {
                             generic_arguments: None
                         }]
                     })),
-                    where_clause: None,
+                    where_predicates: None,
                     docstring: None
                 },
                 body: None,
@@ -1055,7 +1057,7 @@ fn r#enum() {
                     default_value: None
                 }
             ]),
-            where_clause: None,
+            where_predicates: None,
             items: vec![
                 EnumItem::TupleLike {
                     name: IdentifierAst {

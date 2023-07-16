@@ -54,7 +54,6 @@
     unused_crate_dependencies,
     unused_import_braces,
     unused_lifetimes,
-    unused_qualifications,
     unused_tuple_struct_fields,
     variant_size_differences,
     // rustdoc lints https://doc.rust-lang.org/rustdoc/lints.html
@@ -82,94 +81,34 @@
     clippy::unnested_or_patterns
 )]
 
+pub mod ty;
+
 use std::fmt::Display;
 
+use ry_ast::{IdentifierAst, ImportPath, Path, TypeBounds, Visibility};
 use ry_filesystem::location::Location;
 use ry_interner::Symbol;
-use token::RawToken;
+use ty::{Type, Typed};
 
-pub mod precedence;
-pub mod serialize;
-pub mod token;
-pub mod visit;
-
-pub type DefinitionIndex = usize;
-pub type PackageID = usize;
-
-#[derive(Debug, PartialEq, Eq, Clone, Copy)]
-pub struct DefinitionID {
-    pub index: DefinitionIndex,
-    pub package: PackageID,
-}
-
-/// A literal, e.g. `true`, `3`, `\"hello\"`.
 #[derive(Debug, PartialEq, Clone)]
-pub enum Literal {
-    /// Boolean literal, e.g. `true` or `false`.
-    Boolean { value: bool, location: Location },
-
-    /// Character literal, e.g. `'a'`, `'\u{1234}'`.
-    Character { value: char, location: Location },
-
-    /// String literal, e.g. `"hello"`.
-    String { value: String, location: Location },
-
-    /// Integer literal, e.g. `123`,
-    Integer { value: u64, location: Location },
-
-    /// Float literal, e.g. `3.14`.
-    Float { value: f64, location: Location },
+pub struct Literal {
+    pub literal: ry_ast::Literal,
+    pub ty: Type,
 }
 
 impl Literal {
     #[inline]
     #[must_use]
     pub const fn location(&self) -> Location {
-        match self {
-            Self::Boolean { location, .. }
-            | Self::Character { location, .. }
-            | Self::String { location, .. }
-            | Self::Integer { location, .. }
-            | Self::Float { location, .. } => *location,
-        }
+        self.literal.location()
     }
 }
 
-/// A symbol with a specified location, e.g. `foo`, `std`.
-#[derive(Debug, PartialEq, Eq, Clone, Copy)]
-pub struct IdentifierAst {
-    pub location: Location,
-    pub symbol: Symbol,
-}
-
-/// A sequence of identifiers separated by `.`, e.g. `std.io`, `foo`.
-#[derive(Debug, PartialEq, Eq, Clone)]
-pub struct Path {
-    pub location: Location,
-    pub identifiers: Vec<IdentifierAst>,
-}
-
-/// An import path, e.g. `std.io`, `std.io as myio`.
-#[derive(Debug, PartialEq, Eq, Clone)]
-pub struct ImportPath {
-    pub path: Path,
-    pub r#as: Option<IdentifierAst>,
-}
-
-/// A type path, e.g. `Iterator[Item = uint32].Item`, `F.Output`.
-#[derive(Debug, PartialEq, Clone)]
-pub struct TypePath {
-    pub location: Location,
-    pub segments: Vec<TypePathSegment>,
-}
-
-/// A segment of a type path, e.g. `Iterator[Item = uint32]` and `Item` in
-/// `Iterator[Item = uint32].Item`.
-#[derive(Debug, PartialEq, Clone)]
-pub struct TypePathSegment {
-    pub location: Location,
-    pub path: Path,
-    pub generic_arguments: Option<Vec<GenericArgument>>,
+impl Typed for Literal {
+    #[inline]
+    fn ty(&self) -> Type {
+        self.ty.clone()
+    }
 }
 
 /// A pattern, e.g. `Some(x)`, `None`, `a @ [3, ..]`, `[1, .., 3]`, `(1, \"hello\")`, `3.2`.
@@ -183,6 +122,7 @@ pub enum Pattern {
         location: Location,
         identifier: IdentifierAst,
         pattern: Option<Box<Self>>,
+        ty: Type,
     },
 
     /// A struct pattern, e.g. `Person { name, age, .. }`.
@@ -190,6 +130,7 @@ pub enum Pattern {
         location: Location,
         path: Path,
         fields: Vec<StructFieldPattern>,
+        ty: Type,
     },
 
     /// A tuple-like pattern - used to match a tuple-like structs and enum tuple-like items,
@@ -198,27 +139,24 @@ pub enum Pattern {
         location: Location,
         path: Path,
         inner_patterns: Vec<Self>,
+        ty: Type,
     },
 
     /// A tuple pattern, e.g. `(a, "hello", ..)`.
     Tuple {
         location: Location,
         elements: Vec<Self>,
+        ty: Type,
     },
 
     /// A path pattern.
-    Path { path: Path },
+    Path { path: Path, ty: Type },
 
     /// A list pattern, e.g. `[1, .., 10]`.
     List {
         location: Location,
         inner_patterns: Vec<Self>,
-    },
-
-    /// A grouped pattern - surrounded by parentheses, e.g. `(a)`, `([1, .., 9])`.
-    Grouped {
-        location: Location,
-        inner: Box<Self>,
+        ty: Type,
     },
 
     /// An or pattern, e.g. `Some(..) | None`.
@@ -226,10 +164,11 @@ pub enum Pattern {
         location: Location,
         left: Box<Self>,
         right: Box<Self>,
+        ty: Type,
     },
 
     /// A rest pattern - `..`.
-    Rest { location: Location },
+    Rest { location: Location, ty: Type },
 }
 
 impl Pattern {
@@ -238,24 +177,18 @@ impl Pattern {
     #[must_use]
     pub const fn location(&self) -> Location {
         match self {
-            Self::Literal(
-                Literal::Boolean { location, .. }
-                | Literal::Character { location, .. }
-                | Literal::String { location, .. }
-                | Literal::Integer { location, .. }
-                | Literal::Float { location, .. },
-            )
-            | Self::Grouped { location, .. }
-            | Self::Identifier { location, .. }
+            Self::Identifier { location, .. }
             | Self::List { location, .. }
             | Self::Or { location, .. }
-            | Self::Rest { location }
+            | Self::Rest { location, .. }
             | Self::Struct { location, .. }
             | Self::Tuple { location, .. }
             | Self::TupleLike { location, .. }
             | Self::Path {
                 path: Path { location, .. },
+                ..
             } => *location,
+            Self::Literal(literal) => literal.location(),
         }
     }
 }
@@ -270,19 +203,17 @@ pub enum StructFieldPattern {
         location: Location,
         field_name: IdentifierAst,
         value_pattern: Option<Pattern>,
+        ty: Type,
     },
     /// A rest pattern, e.g. `..`.
-    Rest { location: Location },
+    Rest { location: Location, ty: Type },
 }
-
-/// A list of trait bounds being type pathes, e.g. `Debug + Into[T]`.
-pub type TypeBounds = Vec<TypePath>;
 
 /// A type, e.g. `int32`, `[S, dyn Iterator[Item = uint32]]`, `(char, char)`.
 #[derive(Debug, PartialEq, Clone)]
-pub enum Type {
+pub enum TypeExpression {
     /// A type path, e.g. `Iterator[Item = uint32].Item`, `R.Output`, `char`.
-    Path(TypePath),
+    Path(ry_ast::TypePath),
 
     /// A tuple type, e.g. `(int32, String, char)`.
     Tuple {
@@ -297,39 +228,29 @@ pub enum Type {
         return_type: Box<Self>,
     },
 
-    /// A parenthesized type, e.g. `(int32)`.
-    ///
-    /// **Note**: parenthesized type is not a single element tuple type, because
-    /// its syntax is: `(T,)`!
-    Parenthesized {
-        location: Location,
-        inner: Box<Self>,
-    },
-
     /// A trait object type, e.g. `dyn Iterator[Item = uint32]`, `dyn Debug + Clone`.
     TraitObject {
         location: Location,
-        bounds: TypeBounds,
+        bounds: ry_ast::TypeBounds,
     },
 
     /// A type with a qualified path, e.g. `[A as Iterator].Item`.
     WithQualifiedPath {
         location: Location,
         left: Box<Self>,
-        right: TypePath,
-        segments: Vec<TypePathSegment>,
+        right: ry_ast::TypePath,
+        segments: Vec<ry_ast::TypePathSegment>,
     },
 }
 
-impl Type {
+impl TypeExpression {
     /// Returns the location of the type.
     #[inline]
     #[must_use]
     pub const fn location(&self) -> Location {
         match self {
             Self::Function { location, .. }
-            | Self::Parenthesized { location, .. }
-            | Self::Path(TypePath { location, .. })
+            | Self::Path(ry_ast::TypePath { location, .. })
             | Self::TraitObject { location, .. }
             | Self::Tuple { location, .. }
             | Self::WithQualifiedPath { location, .. } => *location,
@@ -341,8 +262,9 @@ impl Type {
 #[derive(Debug, PartialEq, Clone)]
 pub struct GenericParameter {
     pub name: IdentifierAst,
-    pub bounds: Option<TypeBounds>,
-    pub default_value: Option<Type>,
+    pub bounds: Option<ry_ast::TypeBounds>,
+    pub default_value_type_expression: Option<TypeExpression>,
+    pub ty: Type,
 }
 
 /// A type alias, e.g. `type MyResult = Result[String, MyError]`.
@@ -350,9 +272,10 @@ pub struct GenericParameter {
 pub struct TypeAlias {
     pub visibility: Visibility,
     pub name: IdentifierAst,
-    pub generic_parameters: Option<Vec<GenericParameter>>,
-    pub bounds: Option<TypeBounds>,
-    pub value: Option<Type>,
+    pub generic_parameters: Vec<GenericParameter>,
+    pub bounds: Option<ry_ast::TypeBounds>,
+    pub value_type_expression: Option<TypeExpression>,
+    pub value: Type,
     pub docstring: Option<String>,
 }
 
@@ -360,8 +283,17 @@ pub struct TypeAlias {
 /// `where T: Into<String>, [T as Iterator].Item = char`.
 #[derive(Debug, PartialEq, Clone)]
 pub enum WherePredicate {
-    Eq { left: Type, right: Type },
-    Satisfies { ty: Type, bounds: TypeBounds },
+    Eq {
+        left_type_expression: TypeExpression,
+        left_ty: Type,
+        right_type_expression: TypeExpression,
+        right_ty: Type,
+    },
+    Satisfies {
+        type_expression: TypeExpression,
+        ty: Type,
+        bounds: ry_ast::TypeBounds,
+    },
 }
 
 /// An expression.
@@ -377,14 +309,14 @@ pub enum Expression {
     As {
         location: Location,
         left: Box<Self>,
-        right: Type,
+        right: TypeExpression,
     },
 
     /// Binary expression, e.g. `1 + 2`.
     Binary {
         location: Location,
         left: Box<Self>,
-        operator: BinaryOperator,
+        operator: ry_ast::BinaryOperator,
         right: Box<Self>,
     },
 
@@ -404,6 +336,7 @@ pub enum Expression {
     Parenthesized {
         location: Location,
         inner: Box<Self>,
+        ty: Type,
     },
 
     /// If expression, e.g. `if x { ... } else { ... }`.
@@ -411,6 +344,7 @@ pub enum Expression {
         location: Location,
         if_blocks: Vec<(Self, Vec<Statement>)>,
         r#else: Option<Vec<Statement>>,
+        ty: Type,
     },
 
     /// Field access expression, e.g. `x.y`.
@@ -418,20 +352,23 @@ pub enum Expression {
         location: Location,
         left: Box<Self>,
         right: IdentifierAst,
+        ty: Type,
     },
 
     /// Prefix expression, e.g. `!false`, `++a`.
     Prefix {
         location: Location,
         inner: Box<Self>,
-        operator: PrefixOperator,
+        operator: ry_ast::PrefixOperator,
+        ty: Type,
     },
 
     /// Postfix expression, e.g. `safe_div(1, 0)?`, `a++`.
     Postfix {
         location: Location,
         inner: Box<Self>,
-        operator: PostfixOperator,
+        operator: ry_ast::PostfixOperator,
+        ty: Type,
     },
 
     /// While expression, e.g. `while x != 0 {}`.
@@ -439,6 +376,7 @@ pub enum Expression {
         location: Location,
         condition: Box<Self>,
         body: Vec<Statement>,
+        ty: Type,
     },
 
     /// Call expression, e.g. `s.to_string()`.
@@ -446,19 +384,28 @@ pub enum Expression {
         location: Location,
         left: Box<Self>,
         arguments: Vec<Self>,
+        ty: Type,
     },
 
-    /// Generic arguments expression, e.g. `sizeof[uint32]`.
     GenericArguments {
         location: Location,
         left: Box<Self>,
         generic_arguments: Vec<GenericArgument>,
+        ty: Type,
+    },
+
+    TypeFieldAccess {
+        location: Location,
+        left: Type,
+        right: IdentifierAst,
+        ty: Type,
     },
 
     /// Tuple expression, e.g. `(a, 32, \"hello\")`.
     Tuple {
         location: Location,
         elements: Vec<Self>,
+        ty: Type,
     },
 
     /// Struct expression, e.g. `Person { name: \"John\", age: 25 }`.
@@ -466,6 +413,7 @@ pub enum Expression {
         location: Location,
         left: Box<Self>,
         fields: Vec<StructExpressionItem>,
+        ty: Type,
     },
 
     /// Match expression (`match fs.read_file(...) { ... }`).
@@ -473,14 +421,16 @@ pub enum Expression {
         location: Location,
         expression: Box<Self>,
         block: Vec<MatchExpressionItem>,
+        ty: Type,
     },
 
     /// Lambda expression (`|x| { x + 1 }`).
     Lambda {
         location: Location,
         parameters: Vec<LambdaFunctionParameter>,
-        return_type: Option<Type>,
+        return_type: Option<TypeExpression>,
         block: Vec<Statement>,
+        ty: Type,
     },
 }
 
@@ -488,16 +438,24 @@ pub enum Expression {
 #[derive(Debug, Clone, PartialEq)]
 pub struct LambdaFunctionParameter {
     pub name: IdentifierAst,
-    pub ty: Option<Type>,
+    pub type_expression: Option<TypeExpression>,
+    pub ty: Type,
 }
 
 /// A generic argument, e.g. `Item = uint32` in `Iterator[Item = uint32]`, `usize` in `sizeof[usize]()`.
 #[derive(Debug, PartialEq, Clone)]
 pub enum GenericArgument {
     /// Just a type, e.g. `usize` in `sizeof[usize]()`.
-    Type(Type),
+    Type {
+        type_expression: TypeExpression,
+        ty: Type,
+    },
     /// Type with a name, e.g. `Item = uint32` in `Iterator[Item = uint32]`.
-    AssociatedType { name: IdentifierAst, value: Type },
+    AssociatedType {
+        name: IdentifierAst,
+        value_type_expression: TypeExpression,
+        value: Type,
+    },
 }
 
 impl Expression {
@@ -510,13 +468,6 @@ impl Expression {
             | Self::As { location, .. }
             | Self::Binary { location, .. }
             | Self::StatementsBlock { location, .. }
-            | Self::Literal(
-                Literal::Integer { location, .. }
-                | Literal::Float { location, .. }
-                | Literal::Character { location, .. }
-                | Literal::String { location, .. }
-                | Literal::Boolean { location, .. },
-            )
             | Self::Identifier(IdentifierAst { location, .. })
             | Self::Parenthesized { location, .. }
             | Self::If { location, .. }
@@ -525,307 +476,14 @@ impl Expression {
             | Self::Postfix { location, .. }
             | Self::While { location, .. }
             | Self::Call { location, .. }
-            | Self::GenericArguments { location, .. }
             | Self::Tuple { location, .. }
             | Self::Struct { location, .. }
             | Self::Match { location, .. }
-            | Self::Lambda { location, .. } => *location,
+            | Self::Lambda { location, .. }
+            | Self::GenericArguments { location, .. }
+            | Self::TypeFieldAccess { location, .. } => *location,
+            Self::Literal(literal) => literal.location(),
         }
-    }
-}
-
-/// A binary operator with a specific location.
-///
-/// See [`BinaryOperator`] for more information.
-#[derive(Debug, PartialEq, Copy, Clone, Eq, Hash)]
-pub struct BinaryOperator {
-    pub location: Location,
-    pub raw: RawBinaryOperator,
-}
-
-/// A binary operator, e.g. `+`, `**`, `/`.
-#[derive(Debug, PartialEq, Copy, Clone, Eq, Hash)]
-pub enum RawBinaryOperator {
-    /// Plus Equal (`+=`).
-    PlusEq,
-
-    /// Plus (`+`).
-    Plus,
-
-    /// Minus Equal (`-=`).
-    MinusEq,
-
-    /// Minus (`-`).
-    Minus,
-
-    /// Double star (`**`).
-    DoubleStar,
-
-    /// Star Equal (`*=`).
-    StarEq,
-
-    /// Star (`*`).
-    Star,
-
-    /// Slash Equal (`/=`).
-    SlashEq,
-
-    /// Slash (`/`).
-    Slash,
-
-    /// Not Equal (`!=`).
-    BangEq,
-
-    /// Right Shift (`>>`).
-    RightShift,
-
-    /// Left Shift (`<<`).
-    LeftShift,
-
-    /// Less Equal (`<=`).
-    LessEq,
-
-    /// Less (`<`).
-    Less,
-
-    /// Greater Equal (`>=`).
-    GreaterEq,
-
-    /// Greater (`>`).
-    Greater,
-
-    /// Double Equal (`==`).
-    EqEq,
-
-    /// Equal (`=`).
-    Eq,
-
-    /// Or (`|`).
-    Or,
-
-    /// And (`&`).
-    And,
-
-    /// Double Or (`||`).
-    DoubleOr,
-
-    /// Double And (`&&`).
-    DoubleAnd,
-
-    /// Or Equal (`|=`).
-    OrEq,
-
-    /// And Equal (`&=`).
-    AndEq,
-
-    /// Percent (`%`).
-    Percent,
-
-    /// Percent Equal (`%=`).
-    PercentEq,
-}
-
-impl From<RawToken> for RawBinaryOperator {
-    fn from(token: RawToken) -> Self {
-        match token {
-            Token![+=] => Self::PlusEq,
-            Token![+] => Self::Plus,
-            Token![-=] => Self::MinusEq,
-            Token![-] => Self::Minus,
-            Token![*=] => Self::StarEq,
-            Token![**] => Self::DoubleStar,
-            Token![*] => Self::Star,
-            Token![/=] => Self::SlashEq,
-            Token![/] => Self::Slash,
-            Token![!=] => Self::BangEq,
-            Token![>>] => Self::RightShift,
-            Token![<<] => Self::LeftShift,
-            Token![<=] => Self::LessEq,
-            Token![<] => Self::Less,
-            Token![>=] => Self::GreaterEq,
-            Token![>] => Self::Greater,
-            Token![==] => Self::EqEq,
-            Token![=] => Self::Eq,
-            Token![|] => Self::Or,
-            Token![&] => Self::And,
-            Token![||] => Self::DoubleOr,
-            Token![&&] => Self::DoubleAnd,
-            Token![|=] => Self::OrEq,
-            Token![&=] => Self::AndEq,
-            Token![%] => Self::Percent,
-            Token![%=] => Self::PercentEq,
-            _ => unreachable!(),
-        }
-    }
-}
-
-impl From<RawBinaryOperator> for RawToken {
-    fn from(operator: RawBinaryOperator) -> Self {
-        match operator {
-            RawBinaryOperator::PlusEq => Token![+=],
-            RawBinaryOperator::Plus => Token![+],
-            RawBinaryOperator::MinusEq => Token![-=],
-            RawBinaryOperator::Minus => Token![-],
-            RawBinaryOperator::StarEq => Token![*=],
-            RawBinaryOperator::DoubleStar => Token![**],
-            RawBinaryOperator::Star => Token![*],
-            RawBinaryOperator::SlashEq => Token![/=],
-            RawBinaryOperator::Slash => Token![/],
-            RawBinaryOperator::BangEq => Token![!=],
-            RawBinaryOperator::RightShift => Token![>>],
-            RawBinaryOperator::LeftShift => Token![<<],
-            RawBinaryOperator::LessEq => Token![<=],
-            RawBinaryOperator::Less => Token![<],
-            RawBinaryOperator::GreaterEq => Token![>=],
-            RawBinaryOperator::Greater => Token![>],
-            RawBinaryOperator::EqEq => Token![==],
-            RawBinaryOperator::Eq => Token![=],
-            RawBinaryOperator::Or => Token![|],
-            RawBinaryOperator::And => Token![&],
-            RawBinaryOperator::DoubleOr => Token![||],
-            RawBinaryOperator::DoubleAnd => Token![&&],
-            RawBinaryOperator::OrEq => Token![|=],
-            RawBinaryOperator::AndEq => Token![&=],
-            RawBinaryOperator::Percent => Token![%],
-            RawBinaryOperator::PercentEq => Token![%=],
-        }
-    }
-}
-
-impl From<RawBinaryOperator> for String {
-    fn from(value: RawBinaryOperator) -> Self {
-        RawToken::from(value).into()
-    }
-}
-
-impl Display for RawBinaryOperator {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        RawToken::from(*self).fmt(f)
-    }
-}
-
-/// A prefix operator with a specific location.
-///
-/// See [`PrefixOperator`] for more information.
-#[derive(Debug, PartialEq, Copy, Clone, Eq, Hash)]
-pub struct PrefixOperator {
-    pub location: Location,
-    pub raw: RawPrefixOperator,
-}
-
-/// A prefix operator, e.g. `!`, `++`, `-`.
-#[derive(Debug, PartialEq, Copy, Clone, Eq, Hash)]
-pub enum RawPrefixOperator {
-    /// Bang (`!`).
-    Bang,
-
-    /// Not (`~`).
-    Not,
-
-    /// Double Plus (`++`).
-    DoublePlus,
-
-    /// Double Minus (`--`).
-    DoubleMinus,
-
-    /// Plus (`+`).
-    Plus,
-
-    /// Minus (`-`).
-    Minus,
-}
-
-impl From<RawToken> for RawPrefixOperator {
-    fn from(token: RawToken) -> Self {
-        match token {
-            Token![++] => Self::DoublePlus,
-            Token![--] => Self::DoubleMinus,
-            Token![+] => Self::Plus,
-            Token![-] => Self::Minus,
-            Token![!] => Self::Bang,
-            Token![~] => Self::Not,
-            _ => unreachable!(),
-        }
-    }
-}
-
-impl From<RawPrefixOperator> for RawToken {
-    fn from(operator: RawPrefixOperator) -> Self {
-        match operator {
-            RawPrefixOperator::Bang => Token![!],
-            RawPrefixOperator::Not => Token![~],
-            RawPrefixOperator::DoublePlus => Token![++],
-            RawPrefixOperator::DoubleMinus => Token![--],
-            RawPrefixOperator::Plus => Token![+],
-            RawPrefixOperator::Minus => Token![-],
-        }
-    }
-}
-
-impl From<RawPrefixOperator> for String {
-    fn from(value: RawPrefixOperator) -> Self {
-        RawToken::from(value).into()
-    }
-}
-
-impl Display for RawPrefixOperator {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        RawToken::from(*self).fmt(f)
-    }
-}
-
-/// A postfix operator with a specific location.
-///
-/// See [`PostfixOperator`] for more information.
-#[derive(Debug, PartialEq, Copy, Clone, Eq, Hash)]
-pub struct PostfixOperator {
-    pub location: Location,
-    pub raw: RawPostfixOperator,
-}
-
-/// A postfix operator, e.g. `?`, `++`.
-#[derive(Debug, PartialEq, Copy, Clone, Eq, Hash)]
-pub enum RawPostfixOperator {
-    /// Question Mark (`?`).
-    QuestionMark,
-
-    /// Double Plus (`++`).
-    DoublePlus,
-
-    /// Double Minus (`--`).
-    DoubleMinus,
-}
-
-impl From<RawToken> for RawPostfixOperator {
-    fn from(token: RawToken) -> Self {
-        match token {
-            Token![?] => Self::QuestionMark,
-            Token![++] => Self::DoublePlus,
-            Token![--] => Self::DoubleMinus,
-            _ => unreachable!(),
-        }
-    }
-}
-
-impl From<RawPostfixOperator> for RawToken {
-    fn from(operator: RawPostfixOperator) -> Self {
-        match operator {
-            RawPostfixOperator::QuestionMark => Token![?],
-            RawPostfixOperator::DoublePlus => Token![++],
-            RawPostfixOperator::DoubleMinus => Token![--],
-        }
-    }
-}
-
-impl From<RawPostfixOperator> for String {
-    fn from(value: RawPostfixOperator) -> Self {
-        RawToken::from(value).into()
-    }
-}
-
-impl Display for RawPostfixOperator {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        RawToken::from(*self).fmt(f)
     }
 }
 
@@ -883,7 +541,8 @@ pub enum Statement {
     Let {
         pattern: Pattern,
         value: Expression,
-        ty: Option<Type>,
+        type_expression: Option<TypeExpression>,
+        ty: Type,
     },
 }
 
@@ -895,11 +554,31 @@ pub type StatementsBlock = Vec<Statement>;
 pub struct Impl {
     /// Location of the `impl` keyword.
     pub location: Location,
-    pub generic_parameters: Option<Vec<GenericParameter>>,
-    pub ty: Type,
-    pub r#trait: Option<Type>,
-    pub where_predicates: Option<Vec<WherePredicate>>,
+    pub generic_parameters: Vec<GenericParameter>,
+    pub ty: TypeExpression,
+    pub r#trait: Option<ry_ast::TypePath>,
+    pub where_predicates: Vec<WherePredicate>,
     pub items: Vec<TraitItem>,
+    pub docstring: Option<String>,
+}
+
+/// A function.
+#[derive(Debug, PartialEq, Clone)]
+pub struct Function {
+    pub signature: FunctionSignature,
+    pub body: Option<StatementsBlock>,
+}
+
+/// A function signature - information about function except a block.
+#[derive(Debug, PartialEq, Clone)]
+pub struct FunctionSignature {
+    pub visibility: Visibility,
+    pub name: IdentifierAst,
+    pub generic_parameters: Vec<GenericParameter>,
+    pub parameters: Vec<FunctionParameter>,
+    pub return_type_expression: Option<TypeExpression>,
+    pub return_type: Type,
+    pub where_predicates: Vec<WherePredicate>,
     pub docstring: Option<String>,
 }
 
@@ -910,8 +589,8 @@ pub enum ModuleItem {
     Enum {
         visibility: Visibility,
         name: IdentifierAst,
-        generic_parameters: Option<Vec<GenericParameter>>,
-        where_predicates: Option<Vec<WherePredicate>>,
+        generic_parameters: Vec<GenericParameter>,
+        where_predicates: Vec<WherePredicate>,
         items: Vec<EnumItem>,
         docstring: Option<String>,
     },
@@ -932,8 +611,8 @@ pub enum ModuleItem {
     Trait {
         visibility: Visibility,
         name: IdentifierAst,
-        generic_parameters: Option<Vec<GenericParameter>>,
-        where_predicates: Option<Vec<WherePredicate>>,
+        generic_parameters: Vec<GenericParameter>,
+        where_predicates: Vec<WherePredicate>,
         items: Vec<TraitItem>,
         docstring: Option<String>,
     },
@@ -945,8 +624,8 @@ pub enum ModuleItem {
     Struct {
         visibility: Visibility,
         name: IdentifierAst,
-        generic_parameters: Option<Vec<GenericParameter>>,
-        where_predicates: Option<Vec<WherePredicate>>,
+        generic_parameters: Vec<GenericParameter>,
+        where_predicates: Vec<WherePredicate>,
         fields: Vec<StructField>,
         docstring: Option<String>,
     },
@@ -955,8 +634,8 @@ pub enum ModuleItem {
     TupleLikeStruct {
         visibility: Visibility,
         name: IdentifierAst,
-        generic_parameters: Option<Vec<GenericParameter>>,
-        where_predicates: Option<Vec<WherePredicate>>,
+        generic_parameters: Vec<GenericParameter>,
+        where_predicates: Vec<WherePredicate>,
         fields: Vec<TupleField>,
         docstring: Option<String>,
     },
@@ -1158,6 +837,7 @@ pub enum EnumItem {
 #[derive(Debug, PartialEq, Clone)]
 pub struct TupleField {
     pub visibility: Visibility,
+    pub type_expression: TypeExpression,
     pub ty: Type,
 }
 
@@ -1166,6 +846,7 @@ pub struct TupleField {
 pub struct StructField {
     pub visibility: Visibility,
     pub name: IdentifierAst,
+    pub type_expression: TypeExpression,
     pub ty: Type,
     pub docstring: Option<String>,
 }
@@ -1178,25 +859,6 @@ pub enum TraitItem {
 
     /// Function item.
     AssociatedFunction(Function),
-}
-
-/// A function.
-#[derive(Debug, PartialEq, Clone)]
-pub struct Function {
-    pub signature: FunctionSignature,
-    pub body: Option<StatementsBlock>,
-}
-
-/// A function signature - information about function except a block.
-#[derive(Debug, PartialEq, Clone)]
-pub struct FunctionSignature {
-    pub visibility: Visibility,
-    pub name: IdentifierAst,
-    pub generic_parameters: Option<Vec<GenericParameter>>,
-    pub parameters: Vec<FunctionParameter>,
-    pub return_type: Option<Type>,
-    pub where_predicates: Option<Vec<WherePredicate>>,
-    pub docstring: Option<String>,
 }
 
 /// A function parameter, e.g. `self`, `self: Self`, `a: uint32`.
@@ -1213,7 +875,8 @@ pub enum FunctionParameter {
 #[derive(Debug, PartialEq, Clone)]
 pub struct SelfFunctionParameter {
     pub self_location: Location,
-    pub ty: Option<Type>,
+    pub type_expression: Option<TypeExpression>,
+    pub ty: Type,
 }
 
 /// A function parameter that is not `self`, e.g. `a: uint32`.
@@ -1225,8 +888,11 @@ pub struct NotSelfFunctionParameter {
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum FunctionParameterType {
-    Type(Type),
     Impl(TypeBounds),
+    Type {
+        type_expression: TypeExpression,
+        ty: Type,
+    },
 }
 
 /// A Ry module.
@@ -1234,34 +900,4 @@ pub enum FunctionParameterType {
 pub struct Module {
     pub items: Vec<ModuleItem>,
     pub docstring: Option<String>,
-}
-
-/// A visibility qualifier - `pub` or nothing (private visibility).
-#[derive(Debug, PartialEq, Eq, Clone, Copy)]
-pub struct Visibility(Option<Location>);
-
-impl Visibility {
-    #[inline]
-    #[must_use]
-    pub const fn private() -> Self {
-        Self(None)
-    }
-
-    #[inline]
-    #[must_use]
-    pub const fn public(location: Location) -> Self {
-        Self(Some(location))
-    }
-
-    #[inline]
-    #[must_use]
-    pub const fn location_of_pub(&self) -> Option<Location> {
-        self.0
-    }
-}
-
-impl Default for Visibility {
-    fn default() -> Self {
-        Self::private()
-    }
 }

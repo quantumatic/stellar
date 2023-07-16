@@ -84,6 +84,8 @@ impl<'path_interner> InMemoryFileStorage<'path_interner> {
     ///
     /// # Panics
     /// If the file contents cannot be read.
+    #[inline]
+    #[must_use]
     pub fn read_and_add_file_if_not_exists_or_panic(&mut self, path_id: PathID) -> InMemoryFile {
         InMemoryFile::new_or_panic(self.path_interner.resolve_path_or_panic(path_id))
     }

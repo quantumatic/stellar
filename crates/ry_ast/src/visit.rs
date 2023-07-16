@@ -5,11 +5,11 @@
 
 use crate::{
     BinaryOperator, EnumItem, Expression, Function, FunctionParameter, FunctionSignature,
-    GenericArgument, GenericParameter, IdentifierAst, Impl, ImportPath, JustFunctionParameter,
-    LambdaFunctionParameter, Literal, MatchExpressionItem, Module, ModuleItem, Path, Pattern,
-    PostfixOperator, PrefixOperator, SelfParameter, Statement, StatementsBlock,
+    GenericArgument, GenericParameter, IdentifierAst, Impl, ImportPath, LambdaFunctionParameter,
+    Literal, MatchExpressionItem, Module, ModuleItem, NotSelfFunctionParameter, Path, Pattern,
+    PostfixOperator, PrefixOperator, SelfFunctionParameter, Statement, StatementsBlock,
     StructExpressionItem, StructField, StructFieldPattern, TraitItem, TupleField, Type, TypeAlias,
-    TypePath, TypePathSegment, Visibility, WhereClauseItem,
+    TypePath, TypePathSegment, Visibility, WherePredicate,
 };
 
 pub trait Visitor<'ast>: Sized {
@@ -47,12 +47,12 @@ pub trait Visitor<'ast>: Sized {
 
     fn visit_visibility(&mut self, _visibility: Visibility) {}
 
-    fn visit_where_clause(&mut self, items: Option<&'ast [WhereClauseItem]>) {
-        walk_where_clause(self, items);
+    fn visit_where_predicates(&mut self, items: Option<&'ast [WherePredicate]>) {
+        walk_where_predicates(self, items);
     }
 
-    fn visit_where_clause_item(&mut self, item: &'ast WhereClauseItem) {
-        walk_where_clause_item(self, item);
+    fn visit_where_predicate(&mut self, item: &'ast WherePredicate) {
+        walk_there_predicate(self, item);
     }
 
     fn visit_enum_items(&mut self, items: &'ast [EnumItem]) {
@@ -159,12 +159,12 @@ pub trait Visitor<'ast>: Sized {
         walk_function_parameter(self, parameter);
     }
 
-    fn visit_self_function_parameter(&mut self, parameter: &'ast SelfParameter) {
+    fn visit_self_function_parameter(&mut self, parameter: &'ast SelfFunctionParameter) {
         walk_self_function_parameter(self, parameter);
     }
 
-    fn visit_just_function_parameter(&mut self, parameter: &'ast JustFunctionParameter) {
-        walk_just_function_parameter(self, parameter);
+    fn visit_not_self_function_parameter(&mut self, parameter: &'ast NotSelfFunctionParameter) {
+        walk_not_self_function_parameter(self, parameter);
     }
 
     fn visit_match_expression_items(&mut self, items: &'ast [MatchExpressionItem]) {
@@ -243,7 +243,7 @@ where
             visibility,
             name,
             generic_parameters,
-            where_clause,
+            where_predicates,
             items,
             docstring,
         } => {
@@ -251,7 +251,7 @@ where
             visitor.visit_visibility(*visibility);
             visitor.visit_identifier(*name);
             visitor.visit_generic_parameters(generic_parameters.as_deref());
-            visitor.visit_where_clause(where_clause.as_deref());
+            visitor.visit_where_predicates(where_predicates.as_deref());
             visitor.visit_enum_items(items);
         }
         ModuleItem::Function(function) => {
@@ -264,7 +264,7 @@ where
             visibility,
             name,
             generic_parameters,
-            where_clause,
+            where_predicates,
             items,
             docstring,
         } => {
@@ -272,14 +272,14 @@ where
             visitor.visit_visibility(*visibility);
             visitor.visit_identifier(*name);
             visitor.visit_generic_parameters(generic_parameters.as_deref());
-            visitor.visit_where_clause(where_clause.as_deref());
+            visitor.visit_where_predicates(where_predicates.as_deref());
             visitor.visit_trait_items(items);
         }
         ModuleItem::TupleLikeStruct {
             visibility,
             name,
             generic_parameters,
-            where_clause,
+            where_predicates,
             fields,
             docstring,
         } => {
@@ -287,7 +287,7 @@ where
             visitor.visit_visibility(*visibility);
             visitor.visit_identifier(*name);
             visitor.visit_generic_parameters(generic_parameters.as_deref());
-            visitor.visit_where_clause(where_clause.as_deref());
+            visitor.visit_where_predicates(where_predicates.as_deref());
             visitor.visit_tuple_fields(fields);
         }
         ModuleItem::Impl(implementation) => visitor.visit_type_implementation(implementation),
@@ -295,14 +295,14 @@ where
             visibility,
             name,
             generic_parameters,
-            where_clause,
+            where_predicates,
             fields,
             docstring,
         } => {
             visitor.visit_visibility(*visibility);
             visitor.visit_identifier(*name);
             visitor.visit_generic_parameters(generic_parameters.as_deref());
-            visitor.visit_where_clause(where_clause.as_deref());
+            visitor.visit_where_predicates(where_predicates.as_deref());
             visitor.visit_struct_fields(fields);
             visitor.visit_local_docstring(docstring.as_deref());
         }
@@ -321,7 +321,7 @@ where
     }
 
     visitor.visit_type(&implementation.ty);
-    visitor.visit_where_clause(implementation.where_clause.as_deref());
+    visitor.visit_where_predicates(implementation.where_predicates.as_deref());
 
     visitor.visit_trait_items(&implementation.items);
 }
@@ -347,27 +347,27 @@ where
     visitor.visit_function_parameters(&signature.parameters);
 }
 
-pub fn walk_where_clause<'ast, V>(visitor: &mut V, items: Option<&'ast [WhereClauseItem]>)
+pub fn walk_where_predicates<'ast, V>(visitor: &mut V, items: Option<&'ast [WherePredicate]>)
 where
     V: Visitor<'ast>,
 {
     if let Some(items) = items {
         for item in items {
-            visitor.visit_where_clause_item(item);
+            visitor.visit_where_predicate(item);
         }
     }
 }
 
-pub fn walk_where_clause_item<'ast, V>(visitor: &mut V, item: &'ast WhereClauseItem)
+pub fn walk_there_predicate<'ast, V>(visitor: &mut V, item: &'ast WherePredicate)
 where
     V: Visitor<'ast>,
 {
     match item {
-        WhereClauseItem::Eq { left, right } => {
+        WherePredicate::Eq { left, right } => {
             visitor.visit_type(left);
             visitor.visit_type(right);
         }
-        WhereClauseItem::Satisfies { ty, bounds } => {
+        WherePredicate::Satisfies { ty, bounds } => {
             visitor.visit_type(ty);
             visitor.visit_trait_bounds(bounds);
         }
@@ -784,13 +784,19 @@ where
     V: Visitor<'ast>,
 {
     match parameter {
-        FunctionParameter::Just(just) => visitor.visit_just_function_parameter(just),
-        FunctionParameter::Self_(self_) => visitor.visit_self_function_parameter(self_),
+        FunctionParameter::NotSelfParameter(parameter) => {
+            visitor.visit_not_self_function_parameter(parameter)
+        }
+        FunctionParameter::SelfParameter(parameter) => {
+            visitor.visit_self_function_parameter(parameter)
+        }
     }
 }
 
-pub fn walk_self_function_parameter<'ast, V>(visitor: &mut V, parameter: &'ast SelfParameter)
-where
+pub fn walk_self_function_parameter<'ast, V>(
+    visitor: &mut V,
+    parameter: &'ast SelfFunctionParameter,
+) where
     V: Visitor<'ast>,
 {
     if let Some(ty) = &parameter.ty {
@@ -798,14 +804,14 @@ where
     }
 }
 
-pub fn walk_just_function_parameter<'ast, V>(
+pub fn walk_not_self_function_parameter<'ast, V>(
     visitor: &mut V,
-    parameter: &'ast JustFunctionParameter,
+    parameter: &'ast NotSelfFunctionParameter,
 ) where
     V: Visitor<'ast>,
 {
     visitor.visit_identifier(parameter.name);
-    visitor.visit_type(&parameter.ty);
+    // visitor.visit_type(&parameter.ty);
 }
 
 pub fn walk_match_expression_item<'ast, V>(visitor: &mut V, item: &'ast MatchExpressionItem)

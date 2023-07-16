@@ -1,6 +1,6 @@
 use ry_ast::{
     token::RawToken, GenericArgument, GenericParameter, Path, Token, Type, TypeBounds, TypePath,
-    TypePathSegment, WhereClause, WhereClauseItem,
+    TypePathSegment, WherePredicate,
 };
 
 use crate::{
@@ -26,7 +26,7 @@ pub(crate) struct GenericParametersParser;
 
 pub(crate) struct GenericArgumentsParser;
 
-pub(crate) struct WhereClauseParser;
+pub(crate) struct WherePredicatesParser;
 
 impl Parse for TypeBoundsParser {
     type Output = Option<TypeBounds>;
@@ -302,8 +302,8 @@ impl Parse for GenericArgumentsParser {
     }
 }
 
-impl OptionalParser for WhereClauseParser {
-    type Output = Option<Option<WhereClause>>;
+impl OptionalParser for WherePredicatesParser {
+    type Output = Option<Option<Vec<WherePredicate>>>;
 
     fn optionally_parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
         if state.next_token.raw != Token![where] {
@@ -316,19 +316,19 @@ impl OptionalParser for WhereClauseParser {
             state,
             "where clause",
             (Token!['{']) or (Token![;]),
-             {
+            {
                 let left = TypeParser.parse(state)?;
 
                 match state.next_token.raw {
                     Token![:] => {
                         state.advance();
 
-                        Some(WhereClauseItem::Satisfies { ty: left, bounds: TypeBoundsParser.parse(state)? })
+                        Some(WherePredicate::Satisfies { ty: left, bounds: TypeBoundsParser.parse(state)? })
                     },
                     Token![=] => {
                         state.advance();
 
-                        Some(WhereClauseItem::Eq { left, right: TypeParser.parse(state)? })
+                        Some(WherePredicate::Eq { left, right: TypeParser.parse(state)? })
                     },
                     _ => {
                         state.save_single_file_diagnostic(
