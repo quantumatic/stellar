@@ -95,7 +95,7 @@ fn call() {
                 start: 0,
                 end: 5
             },
-            left: Box::new(Expression::Identifier(IdentifierAst {
+            callee: Box::new(Expression::Identifier(IdentifierAst {
                 location: Location {
                     file_path_id: DUMMY_PATH_ID,
                     start: 0,
@@ -159,7 +159,7 @@ fn generic_argument() {
                 start: 0,
                 end: 16
             },
-            left: Box::new(Expression::GenericArguments {
+            callee: Box::new(Expression::GenericArguments {
                 location: Location {
                     file_path_id: DUMMY_PATH_ID,
                     start: 0,
@@ -250,7 +250,7 @@ fn list() {
                         start: 10,
                         end: 20
                     },
-                    left: Box::new(Expression::FieldAccess {
+                    callee: Box::new(Expression::FieldAccess {
                         location: Location {
                             file_path_id: DUMMY_PATH_ID,
                             start: 10,
@@ -321,7 +321,7 @@ fn tuple() {
                         start: 10,
                         end: 20
                     },
-                    left: Box::new(Expression::FieldAccess {
+                    callee: Box::new(Expression::FieldAccess {
                         location: Location {
                             file_path_id: DUMMY_PATH_ID,
                             start: 10,
@@ -479,7 +479,7 @@ fn binary() {
                             start: 19,
                             end: 22
                         },
-                        left: Box::new(Expression::Identifier(IdentifierAst {
+                        callee: Box::new(Expression::Identifier(IdentifierAst {
                             location: Location {
                                 file_path_id: DUMMY_PATH_ID,
                                 start: 19,
@@ -750,7 +750,7 @@ fn r#while() {
                             start: 13,
                             end: 19
                         },
-                        left: Box::new(Expression::Identifier(IdentifierAst {
+                        callee: Box::new(Expression::Identifier(IdentifierAst {
                             location: Location {
                                 file_path_id: DUMMY_PATH_ID,
                                 start: 13,
@@ -769,7 +769,7 @@ fn r#while() {
                             start: 21,
                             end: 26
                         },
-                        left: Box::new(Expression::Identifier(IdentifierAst {
+                        callee: Box::new(Expression::Identifier(IdentifierAst {
                             location: Location {
                                 file_path_id: DUMMY_PATH_ID,
                                 start: 21,
@@ -788,7 +788,7 @@ fn r#while() {
                             start: 28,
                             end: 35
                         },
-                        left: Box::new(Expression::Identifier(IdentifierAst {
+                        callee: Box::new(Expression::Identifier(IdentifierAst {
                             location: Location {
                                 file_path_id: DUMMY_PATH_ID,
                                 start: 28,
@@ -939,7 +939,7 @@ fn r#match() {
                     start: 6,
                     end: 13
                 },
-                left: Box::new(Expression::Identifier(IdentifierAst {
+                callee: Box::new(Expression::Identifier(IdentifierAst {
                     location: Location {
                         file_path_id: DUMMY_PATH_ID,
                         start: 6,
@@ -1002,7 +1002,7 @@ fn r#match() {
                             start: 27,
                             end: 37
                         },
-                        left: Box::new(Expression::Identifier(IdentifierAst {
+                        callee: Box::new(Expression::Identifier(IdentifierAst {
                             location: Location {
                                 file_path_id: DUMMY_PATH_ID,
                                 start: 27,

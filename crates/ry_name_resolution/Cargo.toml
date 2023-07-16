@@ -16,4 +16,3 @@ ry_filesystem = { path = "../ry_filesystem" }
 ry_fx_hash = { path = "../ry_fx_hash" }
 ry_interner = { path = "../ry_interner" }
 ry_parser = { path = "../ry_parser" }
-ry_typed_ast = { path = "../ry_typed_ast" }

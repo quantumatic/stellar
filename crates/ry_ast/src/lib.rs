@@ -444,7 +444,7 @@ pub enum Expression {
     /// Call expression, e.g. `s.to_string()`.
     Call {
         location: Location,
-        left: Box<Self>,
+        callee: Box<Self>,
         arguments: Vec<Self>,
     },
 

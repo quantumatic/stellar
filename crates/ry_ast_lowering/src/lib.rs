@@ -157,7 +157,406 @@ impl<'diagnostics> LoweringContext<'diagnostics> {
     fn lower_function(&mut self, ast: ry_ast::Function) -> ry_hir::Function {
         ry_hir::Function {
             signature: self.lower_function_signature(ast.signature),
-            body: todo!(),
+            body: ast.body.map(|block| self.lower_statements_block(block)),
+        }
+    }
+
+    fn lower_statements_block(&mut self, ast: ry_ast::StatementsBlock) -> ry_hir::StatementsBlock {
+        ast.into_iter()
+            .map(|statement| self.lower_statement(statement))
+            .collect()
+    }
+
+    fn lower_statement(&mut self, ast: ry_ast::Statement) -> ry_hir::Statement {
+        match ast {
+            ry_ast::Statement::Break { location } => ry_hir::Statement::Break { location },
+            ry_ast::Statement::Continue { location } => ry_hir::Statement::Continue { location },
+            ry_ast::Statement::Defer { call } => {
+                let call = self.lower_expression(call);
+
+                // todo: emit diagnostics if call is not call expression
+
+                ry_hir::Statement::Defer { call }
+            }
+            ry_ast::Statement::Return { expression } => ry_hir::Statement::Return {
+                expression: self.lower_expression(expression),
+            },
+            ry_ast::Statement::Let { pattern, value, ty } => ry_hir::Statement::Let {
+                pattern: self.lower_pattern(pattern),
+                value: self.lower_expression(value),
+                type_expression: ty.map(|ty| self.lower_type_expression(ty)),
+                ty: self.type_variable_generator.next_type(),
+            },
+            ry_ast::Statement::Expression {
+                expression,
+                has_semicolon,
+            } => ry_hir::Statement::Expression {
+                expression: self.lower_expression(expression),
+                has_semicolon,
+            },
+        }
+    }
+
+    fn lower_pattern(&mut self, ast: ry_ast::Pattern) -> ry_hir::Pattern {
+        match ast {
+            ry_ast::Pattern::Grouped { location, inner } => {
+                // todo: emit diagnostics
+
+                self.lower_pattern(*inner)
+            }
+            ry_ast::Pattern::Identifier {
+                location,
+                identifier,
+                pattern,
+            } => ry_hir::Pattern::Identifier {
+                location,
+                identifier,
+                pattern: pattern.map(|pattern| Box::new(self.lower_pattern(*pattern))),
+                ty: self.type_variable_generator.next_type(),
+            },
+            ry_ast::Pattern::List {
+                location,
+                inner_patterns,
+            } => ry_hir::Pattern::List {
+                location,
+                inner_patterns: inner_patterns
+                    .into_iter()
+                    .map(|pattern| self.lower_pattern(pattern))
+                    .collect(),
+                ty: self.type_variable_generator.next_type(),
+            },
+            ry_ast::Pattern::Literal(literal) => {
+                ry_hir::Pattern::Literal(self.lower_literal(literal))
+            }
+            ry_ast::Pattern::Or {
+                location,
+                left,
+                right,
+            } => ry_hir::Pattern::Or {
+                location,
+                left: Box::new(self.lower_pattern(*left)),
+                right: Box::new(self.lower_pattern(*right)),
+                ty: self.type_variable_generator.next_type(),
+            },
+            ry_ast::Pattern::Path { path } => ry_hir::Pattern::Path {
+                path,
+                ty: self.type_variable_generator.next_type(),
+            },
+            ry_ast::Pattern::Rest { location } => ry_hir::Pattern::Rest {
+                location,
+                ty: self.type_variable_generator.next_type(),
+            },
+            ry_ast::Pattern::Struct {
+                location,
+                path,
+                fields,
+            } => ry_hir::Pattern::Struct {
+                location,
+                path,
+                fields: fields
+                    .into_iter()
+                    .map(|field| self.lower_struct_field_pattern(field))
+                    .collect(),
+                ty: self.type_variable_generator.next_type(),
+            },
+            ry_ast::Pattern::Tuple { location, elements } => ry_hir::Pattern::Tuple {
+                location,
+                elements: elements
+                    .into_iter()
+                    .map(|element| self.lower_pattern(element))
+                    .collect(),
+                ty: self.type_variable_generator.next_type(),
+            },
+            ry_ast::Pattern::TupleLike {
+                location,
+                path,
+                inner_patterns,
+            } => ry_hir::Pattern::TupleLike {
+                location,
+                path,
+                inner_patterns: inner_patterns
+                    .into_iter()
+                    .map(|pattern| self.lower_pattern(pattern))
+                    .collect(),
+                ty: self.type_variable_generator.next_type(),
+            },
+        }
+    }
+
+    fn lower_struct_field_pattern(
+        &mut self,
+        ast: ry_ast::StructFieldPattern,
+    ) -> ry_hir::StructFieldPattern {
+        match ast {
+            ry_ast::StructFieldPattern::NotRest {
+                location,
+                field_name,
+                value_pattern,
+            } => ry_hir::StructFieldPattern::NotRest {
+                location,
+                field_name,
+                value_pattern: value_pattern.map(|pattern| self.lower_pattern(pattern)),
+                ty: self.type_variable_generator.next_type(),
+            },
+            ry_ast::StructFieldPattern::Rest { location } => ry_hir::StructFieldPattern::Rest {
+                location,
+                ty: self.type_variable_generator.next_type(),
+            },
+        }
+    }
+
+    fn lower_expression(&mut self, ast: ry_ast::Expression) -> ry_hir::Expression {
+        match ast {
+            ry_ast::Expression::Literal(literal) => {
+                ry_hir::Expression::Literal(self.lower_literal(literal))
+            }
+            ry_ast::Expression::Identifier(identifier) => {
+                ry_hir::Expression::Identifier(identifier)
+            }
+            ry_ast::Expression::Tuple { location, elements } => ry_hir::Expression::Tuple {
+                location,
+                elements: elements
+                    .into_iter()
+                    .map(|element| self.lower_expression(element))
+                    .collect(),
+                ty: self.type_variable_generator.next_type(),
+            },
+            ry_ast::Expression::Lambda {
+                location,
+                parameters,
+                return_type,
+                block,
+            } => ry_hir::Expression::Lambda {
+                location,
+                parameters: parameters
+                    .into_iter()
+                    .map(|parameter| self.lower_lambda_function_parameter(parameter))
+                    .collect(),
+                return_type_expression: return_type.map(|ty| self.lower_type_expression(ty)),
+                block: self.lower_statements_block(block),
+                ty: self.type_variable_generator.next_type(),
+            },
+            ry_ast::Expression::Match {
+                location,
+                expression,
+                block,
+            } => ry_hir::Expression::Match {
+                location,
+                expression: Box::new(self.lower_expression(*expression)),
+                block: block
+                    .into_iter()
+                    .map(|item| self.lower_match_expression_item(item))
+                    .collect(),
+                ty: self.type_variable_generator.next_type(),
+            },
+            ry_ast::Expression::Struct {
+                location,
+                left,
+                fields,
+            } => ry_hir::Expression::Struct {
+                location,
+                left: Box::new(self.lower_expression(*left)),
+                fields: fields
+                    .into_iter()
+                    .map(|field| self.lower_struct_expression_item(field))
+                    .collect(),
+                ty: self.type_variable_generator.next_type(),
+            },
+            ry_ast::Expression::While {
+                location,
+                condition,
+                body,
+            } => ry_hir::Expression::While {
+                location,
+                condition: Box::new(self.lower_expression(*condition)),
+                body: self.lower_statements_block(body),
+                ty: self.type_variable_generator.next_type(),
+            },
+            ry_ast::Expression::Prefix {
+                location,
+                inner,
+                operator,
+            } => ry_hir::Expression::Prefix {
+                location,
+                inner: Box::new(self.lower_expression(*inner)),
+                operator,
+                ty: self.type_variable_generator.next_type(),
+            },
+            ry_ast::Expression::Postfix {
+                location,
+                inner,
+                operator,
+            } => ry_hir::Expression::Postfix {
+                location,
+                inner: Box::new(self.lower_expression(*inner)),
+                operator,
+                ty: self.type_variable_generator.next_type(),
+            },
+            ry_ast::Expression::If {
+                location,
+                if_blocks,
+                r#else,
+            } => ry_hir::Expression::If {
+                location,
+                if_blocks: self.lower_if_blocks(if_blocks),
+                r#else: r#else.map(|else_block| self.lower_statements_block(else_block)),
+                ty: self.type_variable_generator.next_type(),
+            },
+            ry_ast::Expression::Parenthesized { location, inner } => self.lower_expression(*inner),
+            ry_ast::Expression::Binary {
+                location,
+                left,
+                right,
+                operator,
+            } => ry_hir::Expression::Binary {
+                location,
+                left: Box::new(self.lower_expression(*left)),
+                right: Box::new(self.lower_expression(*right)),
+                operator,
+                ty: self.type_variable_generator.next_type(),
+            },
+            ry_ast::Expression::Call {
+                location,
+                callee,
+                arguments,
+            } => ry_hir::Expression::Call {
+                location,
+                callee: Box::new(self.lower_expression(*callee)),
+                arguments: arguments
+                    .into_iter()
+                    .map(|argument| self.lower_expression(argument))
+                    .collect(),
+                ty: self.type_variable_generator.next_type(),
+            },
+            ry_ast::Expression::As {
+                location,
+                left,
+                right,
+            } => ry_hir::Expression::As {
+                location,
+                left: Box::new(self.lower_expression(*left)),
+                right: self.lower_type_expression(right),
+                ty: self.type_variable_generator.next_type(),
+            },
+            ry_ast::Expression::List { location, elements } => ry_hir::Expression::List {
+                location,
+                elements: elements
+                    .into_iter()
+                    .map(|element| self.lower_expression(element))
+                    .collect(),
+                ty: self.type_variable_generator.next_type(),
+            },
+            ry_ast::Expression::FieldAccess {
+                location,
+                left,
+                right,
+            } => ry_hir::Expression::FieldAccess {
+                location,
+                left: Box::new(self.lower_expression(*left)),
+                right,
+                ty: self.type_variable_generator.next_type(),
+            },
+            ry_ast::Expression::GenericArguments {
+                location,
+                left,
+                generic_arguments,
+            } => ry_hir::Expression::GenericArguments {
+                location,
+                left: Box::new(self.lower_expression(*left)),
+                generic_arguments: self.lower_generic_arguments(generic_arguments),
+                ty: self.type_variable_generator.next_type(),
+            },
+            ry_ast::Expression::StatementsBlock { location, block } => {
+                ry_hir::Expression::StatementsBlock {
+                    location,
+                    block: self.lower_statements_block(block),
+                    ty: self.type_variable_generator.next_type(),
+                }
+            }
+        }
+    }
+
+    fn lower_match_expression_item(
+        &mut self,
+        ast: ry_ast::MatchExpressionItem,
+    ) -> ry_hir::MatchExpressionItem {
+        ry_hir::MatchExpressionItem {
+            left: self.lower_pattern(ast.left),
+            right: self.lower_expression(ast.right),
+        }
+    }
+
+    fn lower_struct_expression_item(
+        &mut self,
+        ast: ry_ast::StructExpressionItem,
+    ) -> ry_hir::StructExpressionItem {
+        ry_hir::StructExpressionItem {
+            name: ast.name,
+            value: ast.value.map(|value| self.lower_expression(value)),
+            ty: self.type_variable_generator.next_type(),
+        }
+    }
+
+    fn lower_lambda_function_parameter(
+        &mut self,
+        ast: ry_ast::LambdaFunctionParameter,
+    ) -> ry_hir::LambdaFunctionParameter {
+        ry_hir::LambdaFunctionParameter {
+            name: ast.name,
+            type_expression: ast.ty.map(|ty| self.lower_type_expression(ty)),
+            ty: self.type_variable_generator.next_type(),
+        }
+    }
+
+    fn lower_if_blocks(
+        &mut self,
+        if_blocks: Vec<(ry_ast::Expression, ry_ast::StatementsBlock)>,
+    ) -> Vec<(ry_hir::Expression, ry_hir::StatementsBlock)> {
+        if_blocks
+            .into_iter()
+            .map(|if_block| self.lower_if_block(if_block))
+            .collect()
+    }
+
+    fn lower_if_block(
+        &mut self,
+        if_block: (ry_ast::Expression, ry_ast::StatementsBlock),
+    ) -> (ry_hir::Expression, ry_hir::StatementsBlock) {
+        (
+            self.lower_expression(if_block.0),
+            self.lower_statements_block(if_block.1),
+        )
+    }
+
+    fn lower_literal(&mut self, ast: ry_ast::Literal) -> ry_hir::Literal {
+        ry_hir::Literal {
+            literal: ast,
+            ty: self.type_variable_generator.next_type(),
+        }
+    }
+
+    fn lower_generic_arguments(
+        &mut self,
+        ast: Vec<ry_ast::GenericArgument>,
+    ) -> Vec<ry_hir::GenericArgument> {
+        ast.into_iter()
+            .map(|generic_argument| self.lower_generic_argument(generic_argument))
+            .collect()
+    }
+
+    fn lower_generic_argument(&mut self, ast: ry_ast::GenericArgument) -> ry_hir::GenericArgument {
+        match ast {
+            ry_ast::GenericArgument::Type(ty) => ry_hir::GenericArgument::Type {
+                type_expression: self.lower_type_expression(ty),
+                ty: self.type_variable_generator.next_type(),
+            },
+            ry_ast::GenericArgument::AssociatedType { name, value } => {
+                ry_hir::GenericArgument::AssociatedType {
+                    name,
+                    value_type_expression: self.lower_type_expression(value),
+                    value: self.type_variable_generator.next_type(),
+                }
+            }
         }
     }
 

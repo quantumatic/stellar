@@ -303,6 +303,7 @@ pub enum Expression {
     List {
         location: Location,
         elements: Vec<Self>,
+        ty: Type,
     },
 
     /// As expression, e.g. `a as float32`.
@@ -310,6 +311,7 @@ pub enum Expression {
         location: Location,
         left: Box<Self>,
         right: TypeExpression,
+        ty: Type,
     },
 
     /// Binary expression, e.g. `1 + 2`.
@@ -318,12 +320,14 @@ pub enum Expression {
         left: Box<Self>,
         operator: ry_ast::BinaryOperator,
         right: Box<Self>,
+        ty: Type,
     },
 
     /// Block expression, e.g. `{ let b = 1; b }`.
     StatementsBlock {
         location: Location,
         block: Vec<Statement>,
+        ty: Type,
     },
 
     /// Literal expression, e.g. `true`, `\"hello\"`, `1.2`.
@@ -382,7 +386,7 @@ pub enum Expression {
     /// Call expression, e.g. `s.to_string()`.
     Call {
         location: Location,
-        left: Box<Self>,
+        callee: Box<Self>,
         arguments: Vec<Self>,
         ty: Type,
     },
@@ -428,7 +432,7 @@ pub enum Expression {
     Lambda {
         location: Location,
         parameters: Vec<LambdaFunctionParameter>,
-        return_type: Option<TypeExpression>,
+        return_type_expression: Option<TypeExpression>,
         block: Vec<Statement>,
         ty: Type,
     },
@@ -500,6 +504,7 @@ pub struct MatchExpressionItem {
 pub struct StructExpressionItem {
     pub name: IdentifierAst,
     pub value: Option<Expression>,
+    pub ty: Type,
 }
 
 impl Expression {

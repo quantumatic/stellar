@@ -460,7 +460,7 @@ impl Parse for CallExpressionParser {
 
         Some(Expression::Call {
             location: state.location_from(self.left.location().start),
-            left: Box::new(self.left),
+            callee: Box::new(self.left),
             arguments,
         })
     }

@@ -23,7 +23,7 @@ fn defer() {
                     start: 6,
                     end: 18
                 },
-                left: Box::new(Expression::FieldAccess {
+                callee: Box::new(Expression::FieldAccess {
                     location: Location {
                         file_path_id: DUMMY_PATH_ID,
                         start: 6,

@@ -200,7 +200,7 @@ fn function() {
                         start: 37,
                         end: 47
                     },
-                    left: Box::new(Expression::FieldAccess {
+                    callee: Box::new(Expression::FieldAccess {
                         location: Location {
                             file_path_id: DUMMY_PATH_ID,
                             start: 37,

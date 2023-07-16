@@ -665,7 +665,9 @@ where
             visitor.visit_expression(right);
         }
         Expression::Call {
-            left, arguments, ..
+            callee: left,
+            arguments,
+            ..
         } => {
             visitor.visit_expression(left);
             walk_list!(visitor, visit_expression, arguments);
@@ -785,10 +787,10 @@ where
 {
     match parameter {
         FunctionParameter::NotSelfParameter(parameter) => {
-            visitor.visit_not_self_function_parameter(parameter)
+            visitor.visit_not_self_function_parameter(parameter);
         }
         FunctionParameter::SelfParameter(parameter) => {
-            visitor.visit_self_function_parameter(parameter)
+            visitor.visit_self_function_parameter(parameter);
         }
     }
 }
