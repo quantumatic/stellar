@@ -1,9 +1,9 @@
 //! # Name resolution
 //!
-//! The name resolution allows to resolve names, after parsing all the projects in stages like
+//! The name resolution allows to resolve names, after parsing all the packages in stages like
 //! type checking and MIR lowering.
 //!
-//! See [`GlobalContext`], [`ProjectContext`] and [`ModuleContext`] for more details.
+//! See [`GlobalContext`], [`PackageContext`] and [`ModuleContext`] for more details.
 
 #![doc(
     html_logo_url = "https://raw.githubusercontent.com/abs0luty/Ry/main/additional/icon/ry.png",
@@ -78,8 +78,8 @@ pub mod diagnostics;
 /// references.
 #[derive(Debug, PartialEq, Clone)]
 pub struct GlobalContext {
-    /// Projects, that are going to be resolved.
-    pub projects: FxHashMap<Symbol, ProjectContext>,
+    /// Packages, that are going to be resolved.
+    pub packages: FxHashMap<Symbol, PackageContext>,
 }
 
 impl Default for GlobalContext {
@@ -96,13 +96,13 @@ impl GlobalContext {
     #[must_use]
     pub fn new() -> Self {
         Self {
-            projects: FxHashMap::default(),
+            packages: FxHashMap::default(),
         }
     }
 
     /// Resolves absolute path.
     ///
-    /// * Path must start with a project name (not `serialize`, but `json.serialization.serialize`).
+    /// * Path must start with a package name (not `serialize`, but `json.serialization.serialize`).
     /// * Imports are not resolved here, because the context is global.
     #[must_use]
     pub fn resolve_module_item_by_absolute_path(&self, path: &Path) -> Option<NameBindingData<'_>> {
@@ -117,7 +117,7 @@ impl GlobalContext {
 
         // json.serialization.serialize
         // ^^^^ module before
-        let mut module = &self.projects.get(first)?.root;
+        let mut module = &self.packages.get(first)?.root;
 
         // json.serialization.serialize
         //      ^^^^^^^^^^^^^ module after
@@ -137,16 +137,16 @@ impl GlobalContext {
     }
 }
 
-/// Data that Ry compiler has about a project.
+/// Data that Ry compiler has about a package.
 #[derive(Debug, PartialEq, Clone)]
-pub struct ProjectContext {
-    /// Path to the project.
+pub struct PackageContext {
+    /// Path to the package.
     pub path_id: PathID,
 
-    /// The root module of the project (the module that is located in the `project.ry`).
+    /// The root module of the package (the module that is located in the `package.ry`).
     pub root: ModuleContext,
 
-    /// The dependencies of the project (must be included in the resolution tree).
+    /// Package dependencies be included in the resolution tree).
     pub dependencies: Vec<Symbol>,
 }
 

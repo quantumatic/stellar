@@ -1,17 +1,17 @@
 use std::collections::BTreeMap;
 
-use ry_manifest::TomlDependency;
-use ry_manifest::{parse_manifest, DetailedTomlDependency, TomlManifest, TomlProject};
+use ry_manifest::{parse_manifest, DetailedTomlDependency, TomlManifest};
+use ry_manifest::{TomlDependency, TomlPackage};
 
 #[test]
 fn simple_manifest() {
-    let manifest = "[project]
+    let manifest = "[package]
 name = \"json\"
 version = \"1.0.0\"";
     assert_eq!(
         parse_manifest(manifest),
         Ok(TomlManifest {
-            project: TomlProject {
+            package: TomlPackage {
                 name: "json".to_owned(),
                 version: "1.0.0".to_owned(),
                 description: None,
@@ -27,8 +27,8 @@ version = \"1.0.0\"";
 }
 
 #[test]
-fn full_project_metadata() {
-    let manifest = "[project]
+fn full_package_metadata() {
+    let manifest = "[package]
 name = \"json\"
 version = \"1.0.0\"
 author = \"abs0luty\"
@@ -42,7 +42,7 @@ keywords = [\"json\", \"config\"]";
     assert_eq!(
         parse_manifest(manifest),
         Ok(TomlManifest {
-            project: TomlProject {
+            package: TomlPackage {
                 name: "json".to_owned(),
                 version: "1.0.0".to_owned(),
                 description: Some("Parses and processes json.".to_owned()),
@@ -65,7 +65,7 @@ keywords = [\"json\", \"config\"]";
 
 #[test]
 fn dependencies() {
-    let manifest = "[project]
+    let manifest = "[package]
 name = \"json\"
 version = \"1.0.0\"
 author = \"abs0luty\"
@@ -95,7 +95,7 @@ foo2 = { path = \"../foo\" }";
     assert_eq!(
         parse_manifest(manifest),
         Ok(TomlManifest {
-            project: TomlProject {
+            package: TomlPackage {
                 name: "json".to_owned(),
                 version: "1.0.0".to_owned(),
                 author: Some("abs0luty".to_owned()),

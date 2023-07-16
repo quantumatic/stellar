@@ -2,7 +2,7 @@ use ry_ast::{IdentifierAst, ImportPath};
 use ry_filesystem::{location::DUMMY_LOCATION, path_interner::DUMMY_PATH_ID};
 use ry_fx_hash::FxHashMap;
 use ry_interner::Interner;
-use ry_name_resolution::{GlobalContext, ModuleContext, NameBindingData, ProjectContext};
+use ry_name_resolution::{GlobalContext, ModuleContext, NameBindingData, PackageContext};
 use ry_typed_ast::Path;
 
 /// ```txt
@@ -28,7 +28,7 @@ fn resolve_module() {
         imports: vec![],
     };
 
-    let mut project_root_module = ModuleContext {
+    let mut package_root_module = ModuleContext {
         path_id: DUMMY_PATH_ID,
         docstring: None,
         bindings: FxHashMap::default(),
@@ -36,15 +36,15 @@ fn resolve_module() {
         implementations: vec![],
         imports: vec![],
     };
-    project_root_module.submodules.insert(a, child_module_data);
+    package_root_module.submodules.insert(a, child_module_data);
 
-    let project = ProjectContext {
+    let package = PackageContext {
         path_id: DUMMY_PATH_ID,
-        root: project_root_module,
+        root: package_root_module,
         dependencies: vec![],
     };
 
-    tree.projects.insert(a, project);
+    tree.packages.insert(a, package);
 
     assert!(matches!(
         tree.resolve_module_item_by_absolute_path(&Path {
@@ -65,12 +65,12 @@ fn resolve_module() {
 
 /// ```txt
 /// a
-/// |_ project.ry
+/// |_ package.ry
 ///    |_ `import a.b;`
 ///    |_ `import a.b as c;`
 /// |_ b.ry
 ///
-/// a/project.ry: resolve(b) = a.b, resolve(c) = a.b
+/// a/package.ry: resolve(b) = a.b, resolve(c) = a.b
 /// ```
 #[test]
 fn import() {
@@ -93,7 +93,7 @@ fn import() {
     let mut submodules = FxHashMap::default();
     submodules.insert(b, child_module_data);
 
-    let project_root_module = ModuleContext {
+    let package_root_module = ModuleContext {
         path_id: DUMMY_PATH_ID,
         docstring: None,
         bindings: FxHashMap::default(),
@@ -143,16 +143,16 @@ fn import() {
             ),
         ],
     };
-    let project = ProjectContext {
+    let package = PackageContext {
         path_id: DUMMY_PATH_ID,
-        root: project_root_module,
+        root: package_root_module,
         dependencies: vec![],
     };
 
-    tree.projects.insert(a, project);
+    tree.packages.insert(a, package);
 
     assert!(matches!(
-        tree.projects
+        tree.packages
             .get(&a)
             .unwrap()
             .root
@@ -160,7 +160,7 @@ fn import() {
         Some(..)
     ));
     assert!(matches!(
-        tree.projects
+        tree.packages
             .get(&a)
             .unwrap()
             .root
@@ -168,7 +168,7 @@ fn import() {
         Some(..)
     ));
     assert_eq!(
-        tree.projects
+        tree.packages
             .get(&a)
             .unwrap()
             .root

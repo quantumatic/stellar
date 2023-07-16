@@ -75,8 +75,8 @@ enum Commands {
     Parse { filepath: String },
     #[command(about = "Parse Ry manifest file")]
     ParseManifest { filepath: String },
-    #[command(about = "Create a new Ry project")]
-    New { project_name: String },
+    #[command(about = "Create a new Ry package")]
+    New { package_name: String },
 }
 
 fn main() {
@@ -98,8 +98,8 @@ fn main() {
         Commands::ParseManifest { filepath } => {
             parse_manifest::command(&filepath);
         }
-        Commands::New { project_name } => {
-            new::command(&project_name);
+        Commands::New { package_name } => {
+            new::command(&package_name);
         }
     }
 }

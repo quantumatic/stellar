@@ -72,52 +72,52 @@ impl BuildDiagnostic for ItemDefinedMultipleTimesDiagnostic {
     }
 }
 
-/// Diagnostic related to trying to import a project error.
+/// Diagnostic related to trying to import a package error.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct ImportingProjectDiagnostic {
+pub struct ImportingPackageDiagnostic {
     /// Location of the entire import module item.
     pub location: Location,
 
-    /// Name of the project.
-    pub project_name: String,
+    /// Name of the package.
+    pub package_name: String,
 
-    /// Location of the project name in the import.
-    pub project_name_location: Location,
+    /// Location of the package name in the import.
+    pub package_name_location: Location,
 }
 
-impl ImportingProjectDiagnostic {
-    /// Creates a new instance of [`ImportingProjectDiagnostic`].
+impl ImportingPackageDiagnostic {
+    /// Creates a new instance of [`ImportingPackageDiagnostic`].
     #[inline]
     #[must_use]
     pub fn new(
         location: Location,
-        project_name: impl ToString,
-        project_name_location: Location,
+        package_name: impl ToString,
+        package_name_location: Location,
     ) -> Self {
         Self {
             location,
-            project_name: project_name.to_string(),
-            project_name_location,
+            package_name: package_name.to_string(),
+            package_name_location,
         }
     }
 }
 
-impl BuildDiagnostic for ImportingProjectDiagnostic {
+impl BuildDiagnostic for ImportingPackageDiagnostic {
     #[inline]
     fn build(&self) -> Diagnostic<PathID> {
         Diagnostic::error()
             .with_code("E005")
-            .with_message("trying to import the project".to_owned())
+            .with_message("trying to import a package".to_owned())
             .with_labels(vec![
                 self.location.to_primary_label()
                     .with_message("consider removing this import"),
-                self.project_name_location.to_secondary_label().with_message(format!(
-                    "{} is a project, not a particular module", self.project_name
+                self.package_name_location.to_secondary_label().with_message(format!(
+                    "{} is a package, not a particular module", self.package_name
                 )),
             ])
             .with_notes(
                 vec![
-                    "note: importing a project is meaningless, you can still you its namespace without an import".to_owned(),
+                    "note: importing a package is meaningless, you can still you its namespace without an import".to_owned(),
                 ]
             )
     }

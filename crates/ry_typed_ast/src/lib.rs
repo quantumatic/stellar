@@ -156,7 +156,7 @@ pub struct TraitModuleItem {
     pub items: FxHashMap<Symbol, TraitItem>,
 
     /// All the trait implementations (implementations in the foreign
-    /// modules and even projects are also here).
+    /// modules and even packages are also here).
     pub implementations: TraitImplementation,
 }
 
@@ -302,7 +302,7 @@ pub struct StructModuleItem {
     pub fields: FxHashMap<Symbol, StructField>,
 
     /// All the struct raw type implementations (implementations in the foreign
-    /// modules and even projects are also here).
+    /// modules and even packages are also here).
     pub implementations: TraitImplementation,
 }
 
@@ -383,7 +383,7 @@ pub struct EnumModuleItem {
     pub items: FxHashMap<Symbol, EnumItem>,
 
     /// All the enum raw type implementations (implementations in the foreign
-    /// modules and even projects are also here).
+    /// modules and even packages are also here).
     pub implementations: TraitImplementation,
 }
 

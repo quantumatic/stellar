@@ -1,12 +1,12 @@
 //! # Manifest
 //!
-//! Every Ry project has an associated manifest file, which contains metadata
+//! Every Ry package has an associated manifest file, which contains metadata
 //! that compiler needs to know to be able to compile it.
 //!
-//! Every project manifest is written in [TOML] format and consists of 2 parts:
+//! Every package manifest is written in [TOML] format and consists of 2 parts:
 //!
 //! ```toml
-//! [project]
+//! [package]
 //! name = "json"
 //! version = "0.1.0"
 //! author = "abs0luty"
@@ -20,8 +20,8 @@
 //! serialization_engine = { path = "../serialization_engine" }
 //! ```
 //!
-//! The first part is a general information about the project, the second part is optional
-//! and contains information about the dependencies of the current project.
+//! The first part is a general information about the package, the second part is optional
+//! and contains information about the dependencies of the current package.
 //!
 //! [TOML]: https://toml.io/en/v1.0.0
 
@@ -92,37 +92,37 @@ use serde::{de::IntoDeserializer, Deserialize, Serialize};
 use toml as _;
 use toml_edit::Document;
 
-/// Describes the project manifest, which contains information about the project.
+/// Describes the package manifest, which contains information about the package.
 ///
 /// See [crate level documentation] for more information.
 ///
 /// [crate level documentation]: crate
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 pub struct TomlManifest {
-    /// The `[project]` section of the manifest.
-    pub project: TomlProject,
+    /// The `[package]` section of the manifest.
+    pub package: TomlPackage,
     /// The `[dependencies]` section of the manifest.
     pub dependencies: Option<BTreeMap<String, TomlDependency>>,
 }
 
-/// Represents data in the `[project]` section of the manifest.
+/// Represents data in the `[package]` section of the manifest.
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
-pub struct TomlProject {
-    /// The name of the project.
+pub struct TomlPackage {
+    /// The name of the package.
     pub name: String,
-    /// The latest version of the project.
+    /// The latest version of the package.
     pub version: String,
-    /// The authors of the project.
+    /// The authors of the package.
     pub description: Option<String>,
-    /// The license of the project.
+    /// The license of the package.
     pub license: Option<String>,
-    /// Author of the project.
+    /// Author of the package.
     pub author: Option<String>,
-    /// Link to the repository of the project.
+    /// Link to the repository of the package.
     pub repository: Option<String>,
-    /// Keywords associated with the project.
+    /// Keywords associated with the package.
     pub keywords: Option<Vec<String>>,
-    /// Categories associated with the project.
+    /// Categories associated with the package.
     pub categories: Option<Vec<String>>,
 }
 

@@ -6,7 +6,7 @@ use std::{
 
 use crate::prefix::log_with_prefix;
 
-fn check_project_name(name: &str) -> Option<usize> {
+fn check_package_name(name: &str) -> Option<usize> {
     let mut chars = name.chars();
     let first_char = chars.next()?;
 
@@ -23,15 +23,15 @@ fn check_project_name(name: &str) -> Option<usize> {
     None
 }
 
-pub fn command(project_name: &str) {
-    if let Some(e) = check_project_name(project_name) {
-        log_with_prefix("error", ": cannot create project with a given name");
+pub fn command(package_name: &str) {
+    if let Some(e) = check_package_name(package_name) {
+        log_with_prefix("error", ": cannot create package with a given name");
         log_with_prefix(
             "note",
             format!(
                 ": character `{}` doesn't correspond to the pattern: {}",
-                project_name.chars().nth(e).unwrap_or_else(|| panic!(
-                    "Cannot get the {}-nth character of project name",
+                package_name.chars().nth(e).unwrap_or_else(|| panic!(
+                    "Cannot get the {}-nth character of package name",
                     e
                 )),
                 if e != 0 {
@@ -44,18 +44,18 @@ pub fn command(project_name: &str) {
         exit(1);
     }
 
-    fs::create_dir(project_name).unwrap_or_else(|_| {
-        log_with_prefix("error", ": cannot create project folder");
+    fs::create_dir(package_name).unwrap_or_else(|_| {
+        log_with_prefix("error", ": cannot create package folder");
         exit(1);
     });
 
-    fs::create_dir(format!("{}/bin", project_name)).unwrap_or_else(|_| {
+    fs::create_dir(format!("{}/bin", package_name)).unwrap_or_else(|_| {
         log_with_prefix("error", ": cannot create `bin` package folder");
         exit(1);
     });
 
     let mut main_file =
-        File::create(format!("{}/bin/main.ry", project_name)).unwrap_or_else(|_| {
+        File::create(format!("{}/bin/main.ry", package_name)).unwrap_or_else(|_| {
             log_with_prefix("error", ": cannot create `bin/main.ry`");
             exit(1);
         });
@@ -67,13 +67,13 @@ pub fn command(project_name: &str) {
             exit(1);
         });
 
-    let mut project_file =
-        File::create(format!("{}/project.json", project_name)).unwrap_or_else(|_| {
-            log_with_prefix("error", ": cannot create `project.json`");
+    let mut package_file =
+        File::create(format!("{}/package.json", package_name)).unwrap_or_else(|_| {
+            log_with_prefix("error", ": cannot create `package.json`");
             exit(1);
         });
 
-    project_file
+    package_file
         .write_all(
             format!(
                 "{{
@@ -81,14 +81,14 @@ pub fn command(project_name: &str) {
 \"version\": \"0.0.1\",
 \"dependencies\": []
 }}",
-                project_name
+                package_name
             )
             .as_bytes(),
         )
         .unwrap_or_else(|_| {
-            log_with_prefix("error", ": cannot write to `project.json`");
+            log_with_prefix("error", ": cannot write to `package.json`");
             exit(1);
         });
 
-    log_with_prefix("   Created ", project_name);
+    log_with_prefix("   Created ", package_name);
 }
