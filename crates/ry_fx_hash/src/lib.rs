@@ -82,7 +82,7 @@ pub type FxHashSet<V> = HashSet<V, BuildHasherDefault<FxHasher>>;
 /// This is the same as the algorithm used by Firefox -- which is a homespun
 /// one not based on any widely-known algorithm -- though modified to produce
 /// 64-bit hash values instead of 32-bit hash values. It consistently
-/// out-performs an FNV-based hash within rustc itself -- the collision rate is
+/// out-performs an FNV-based hash within ry itself -- the collision rate is
 /// similar or slightly worse than FNV, but the speed of the hash function
 /// itself is much higher because it works on up to 8 bytes at a time.
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Default)]
