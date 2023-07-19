@@ -3,7 +3,7 @@ use ry_filesystem::{location::DUMMY_LOCATION, path_interner::DUMMY_PATH_ID};
 use ry_fx_hash::FxHashMap;
 use ry_hir::ty::Path;
 use ry_interner::Interner;
-use ry_name_resolution::{GlobalContext, ModuleContext, NameBindingData, PackageContext};
+use ry_name_resolution::{ModuleContext, NameBindingData, NameResolutionContext, PackageContext};
 
 /// ```txt
 /// a
@@ -17,14 +17,13 @@ fn resolve_module() {
     let a = interner.get_or_intern("a");
     let b = interner.get_or_intern("b");
 
-    let mut tree = GlobalContext::new();
+    let mut tree = NameResolutionContext::new();
 
     let child_module_data = ModuleContext {
         path_id: DUMMY_PATH_ID,
         docstring: None,
         bindings: FxHashMap::default(),
         submodules: FxHashMap::default(),
-        implementations: vec![],
         imports: vec![],
     };
 
@@ -33,7 +32,6 @@ fn resolve_module() {
         docstring: None,
         bindings: FxHashMap::default(),
         submodules: FxHashMap::default(),
-        implementations: vec![],
         imports: vec![],
     };
     package_root_module.submodules.insert(a, child_module_data);
@@ -79,14 +77,13 @@ fn import() {
     let b = interner.get_or_intern("b");
     let c = interner.get_or_intern("c");
 
-    let mut tree = GlobalContext::new();
+    let mut tree = NameResolutionContext::new();
 
     let child_module_data = ModuleContext {
         path_id: DUMMY_PATH_ID,
         docstring: None,
         bindings: FxHashMap::default(),
         submodules: FxHashMap::default(),
-        implementations: vec![],
         imports: vec![],
     };
 
@@ -98,7 +95,6 @@ fn import() {
         docstring: None,
         bindings: FxHashMap::default(),
         submodules,
-        implementations: vec![],
         imports: vec![
             (
                 DUMMY_LOCATION,

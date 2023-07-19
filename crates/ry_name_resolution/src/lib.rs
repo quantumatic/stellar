@@ -64,7 +64,7 @@
     clippy::cast_possible_truncation
 )]
 
-use ry_ast::{DefinitionID, IdentifierAst, Impl, ImportPath};
+use ry_ast::{DefinitionID, IdentifierAst, ImportPath};
 use ry_filesystem::{location::Location, path_interner::PathID};
 use ry_fx_hash::FxHashMap;
 use ry_hir::ty::{Path, Type};
@@ -76,12 +76,12 @@ pub mod diagnostics;
 /// definition is used somewhere else. This approach allows to resolve forward
 /// references.
 #[derive(Debug, PartialEq, Clone)]
-pub struct GlobalContext {
+pub struct NameResolutionContext {
     /// Packages, that are going to be resolved.
     pub packages: FxHashMap<Symbol, PackageContext>,
 }
 
-impl Default for GlobalContext {
+impl Default for NameResolutionContext {
     #[inline]
     #[must_use]
     fn default() -> Self {
@@ -89,7 +89,7 @@ impl Default for GlobalContext {
     }
 }
 
-impl GlobalContext {
+impl NameResolutionContext {
     /// Creates new name empty resolution tree.
     #[inline]
     #[must_use]
@@ -166,9 +166,6 @@ pub struct ModuleContext {
     /// The submodules of the module.
     pub submodules: FxHashMap<Symbol, ModuleContext>,
 
-    /// The type implementations, that are not yet analyzed (type checked) in the module.
-    pub implementations: Vec<Impl>,
-
     /// The imports used in the module ([`Span`] stores a location of an entire import item).
     pub imports: Vec<(Location, ImportPath)>,
 }
@@ -179,7 +176,7 @@ impl ModuleContext {
     pub fn resolve_module_item_path<'ctx>(
         &'ctx self,
         path: &Path,
-        tree: &'ctx GlobalContext,
+        tree: &'ctx NameResolutionContext,
     ) -> Option<NameBindingData<'ctx>> {
         // serializer.serialize
         // ^^^^^^^^^^ first symbol
@@ -219,7 +216,7 @@ impl ModuleContext {
     fn resolve_symbol<'ctx>(
         &'ctx self,
         symbol: Symbol,
-        tree: &'ctx GlobalContext,
+        tree: &'ctx NameResolutionContext,
     ) -> Option<NameBindingData<'ctx>> {
         // If symbol is related to an item defined in the module, return it.
         //

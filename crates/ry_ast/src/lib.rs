@@ -84,7 +84,7 @@
 
 use std::fmt::Display;
 
-use ry_filesystem::location::Location;
+use ry_filesystem::{location::Location, path_interner::PathID};
 use ry_interner::Symbol;
 use token::RawToken;
 
@@ -94,12 +94,11 @@ pub mod token;
 pub mod visit;
 
 pub type DefinitionIndex = usize;
-pub type PackageID = usize;
 
-#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
 pub struct DefinitionID {
     pub index: DefinitionIndex,
-    pub package: PackageID,
+    pub file_path_id: PathID,
 }
 
 /// A literal, e.g. `true`, `3`, `\"hello\"`.

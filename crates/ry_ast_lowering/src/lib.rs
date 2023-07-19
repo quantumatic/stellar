@@ -47,12 +47,12 @@ impl<'diagnostics> LoweringContext<'diagnostics> {
     #[inline]
     #[must_use]
     pub fn new(
-        path_id: PathID,
+        file_path_id: PathID,
         type_variable_generator: TypeVariableGenerator,
         diagnostics: &'diagnostics mut GlobalDiagnostics,
     ) -> Self {
         Self {
-            file_path_id: path_id,
+            file_path_id,
             type_variable_generator,
             diagnostics,
         }
