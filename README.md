@@ -224,3 +224,17 @@ You can access their inner values using pattern matching:
 let MyStringWrapper(str) = wrapper;
 println(str);
 ```
+
+# Active patterns
+
+You can define active patterns like in F#:
+
+```
+pattern (Even | Odd) (n: uint32) {
+  if n % 2 == 0 {
+    Even
+  } else {
+    Odd
+  }
+}
+```
