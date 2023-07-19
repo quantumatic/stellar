@@ -38,6 +38,30 @@ impl Display for Location {
 }
 
 impl Location {
+    /// Returns location of the first byte corresponding to the
+    /// current location.
+    #[inline]
+    #[must_use]
+    pub const fn start_byte_location(self) -> Self {
+        Self {
+            file_path_id: self.file_path_id,
+            start: self.start,
+            end: self.start + 1,
+        }
+    }
+
+    /// Returns location of the last byte corresponding to the
+    /// current location.
+    #[inline]
+    #[must_use]
+    pub const fn end_byte_location(self) -> Self {
+        Self {
+            file_path_id: self.file_path_id,
+            start: self.end - 1,
+            end: self.end,
+        }
+    }
+
     /// Gets primary diagnostics label ([`Label`] from [`codespan_reporting`])
     /// in the location.
     #[inline]

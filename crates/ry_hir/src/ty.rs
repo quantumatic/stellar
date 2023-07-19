@@ -103,3 +103,15 @@ pub fn list_of(element_type: Type) -> Type {
         },
     }
 }
+
+impl From<ry_ast::Path> for Path {
+    fn from(value: ry_ast::Path) -> Self {
+        Self {
+            symbols: value
+                .identifiers
+                .into_iter()
+                .map(|identifier| identifier.symbol)
+                .collect(),
+        }
+    }
+}

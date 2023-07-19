@@ -64,13 +64,12 @@
     clippy::cast_possible_truncation
 )]
 
-use ry_ast::{IdentifierAst, Impl, ImportPath, ModuleItem};
+use ry_ast::{DefinitionID, IdentifierAst, Impl, ImportPath};
 use ry_filesystem::{location::Location, path_interner::PathID};
 use ry_fx_hash::FxHashMap;
+use ry_hir::ty::{Path, Type};
 use ry_interner::Symbol;
-use ry_typed_ast::{ty::Type, Path};
 
-pub mod build_context;
 pub mod diagnostics;
 
 /// A symbol data, in which types in a definition are processed, once the the
@@ -128,7 +127,7 @@ impl GlobalContext {
         // json.serialization.serialize
         //                    ^^^^^^^^^ binding or submodule
         if let Some(binding) = module.bindings.get(last) {
-            return Some(NameBindingData::Item(binding));
+            return Some(NameBindingData::Item(*binding));
         } else if let Some(submodule) = module.submodules.get(last) {
             return Some(NameBindingData::Module(submodule));
         }
@@ -162,7 +161,7 @@ pub struct ModuleContext {
     /// The module items name bindings.
     ///
     /// See [`ModuleItemNameBindingData`] for more details.
-    pub bindings: FxHashMap<Symbol, ModuleItemNameBindingData>,
+    pub bindings: FxHashMap<Symbol, DefinitionID>,
 
     /// The submodules of the module.
     pub submodules: FxHashMap<Symbol, ModuleContext>,
@@ -229,7 +228,11 @@ impl ModuleContext {
         // fun main() { foo(); }
         //              ^^^ function item
         // ```
-        if let Some(binding) = self.bindings.get(&symbol).map(NameBindingData::Item) {
+        if let Some(binding) = self
+            .bindings
+            .get(&symbol)
+            .map(|binding| NameBindingData::Item(*binding))
+        {
             return Some(binding);
         }
 
@@ -279,17 +282,7 @@ pub enum NameBindingData<'ctx> {
     Module(&'ctx ModuleContext),
 
     /// A module item.
-    Item(&'ctx ModuleItemNameBindingData),
-}
-
-/// Data that Ry compiler has about a module item.
-#[derive(Debug, PartialEq, Clone)]
-pub enum ModuleItemNameBindingData {
-    /// An item that has gone through type checking.
-    Analyzed(ry_typed_ast::ModuleItem),
-
-    /// An item that has not been analyzed yet - AST ref.
-    NotAnalyzed(ModuleItem),
+    Item(DefinitionID),
 }
 
 /// Data that Ry compiler has about a particular symbol.

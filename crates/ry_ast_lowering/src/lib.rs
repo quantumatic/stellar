@@ -1,5 +1,9 @@
-use ry_diagnostics::GlobalDiagnostics;
+use diagnostics::{UnnecessaryParenthesesInPatternDiagnostic, UnnecessaryParenthesizedExpression};
+use ry_diagnostics::{BuildDiagnostic, GlobalDiagnostics};
+use ry_filesystem::path_interner::PathID;
 use ry_hir::ty::{self, Type, TypeVariableID};
+
+mod diagnostics;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub struct TypeVariableGenerator {
@@ -15,15 +19,15 @@ impl TypeVariableGenerator {
 
     #[inline]
     #[must_use]
-    pub fn next(&mut self) -> TypeVariableID {
+    pub fn generate_type_variable(&mut self) -> TypeVariableID {
         self.state += 1;
         self.state
     }
 
     #[inline]
     #[must_use]
-    pub fn next_type(&mut self) -> ty::Type {
-        ty::Type::Variable(self.next())
+    pub fn generate_type(&mut self) -> ty::Type {
+        ty::Type::Variable(self.generate_type_variable())
     }
 
     #[inline]
@@ -34,6 +38,7 @@ impl TypeVariableGenerator {
 }
 
 pub struct LoweringContext<'diagnostics> {
+    file_path_id: PathID,
     type_variable_generator: TypeVariableGenerator,
     diagnostics: &'diagnostics mut GlobalDiagnostics,
 }
@@ -42,10 +47,12 @@ impl<'diagnostics> LoweringContext<'diagnostics> {
     #[inline]
     #[must_use]
     pub fn new(
+        path_id: PathID,
         type_variable_generator: TypeVariableGenerator,
         diagnostics: &'diagnostics mut GlobalDiagnostics,
     ) -> Self {
         Self {
+            file_path_id: path_id,
             type_variable_generator,
             diagnostics,
         }
@@ -185,7 +192,7 @@ impl<'diagnostics> LoweringContext<'diagnostics> {
                 pattern: self.lower_pattern(pattern),
                 value: self.lower_expression(value),
                 type_expression: ty.map(|ty| self.lower_type_expression(ty)),
-                ty: self.type_variable_generator.next_type(),
+                ty: self.type_variable_generator.generate_type(),
             },
             ry_ast::Statement::Expression {
                 expression,
@@ -202,6 +209,11 @@ impl<'diagnostics> LoweringContext<'diagnostics> {
             ry_ast::Pattern::Grouped { location, inner } => {
                 // todo: emit diagnostics
 
+                self.diagnostics.add_file_diagnostic(
+                    [self.file_path_id],
+                    UnnecessaryParenthesesInPatternDiagnostic { location }.build(),
+                );
+
                 self.lower_pattern(*inner)
             }
             ry_ast::Pattern::Identifier {
@@ -212,7 +224,7 @@ impl<'diagnostics> LoweringContext<'diagnostics> {
                 location,
                 identifier,
                 pattern: pattern.map(|pattern| Box::new(self.lower_pattern(*pattern))),
-                ty: self.type_variable_generator.next_type(),
+                ty: self.type_variable_generator.generate_type(),
             },
             ry_ast::Pattern::List {
                 location,
@@ -223,7 +235,7 @@ impl<'diagnostics> LoweringContext<'diagnostics> {
                     .into_iter()
                     .map(|pattern| self.lower_pattern(pattern))
                     .collect(),
-                ty: self.type_variable_generator.next_type(),
+                ty: self.type_variable_generator.generate_type(),
             },
             ry_ast::Pattern::Literal(literal) => {
                 ry_hir::Pattern::Literal(self.lower_literal(literal))
@@ -236,15 +248,15 @@ impl<'diagnostics> LoweringContext<'diagnostics> {
                 location,
                 left: Box::new(self.lower_pattern(*left)),
                 right: Box::new(self.lower_pattern(*right)),
-                ty: self.type_variable_generator.next_type(),
+                ty: self.type_variable_generator.generate_type(),
             },
             ry_ast::Pattern::Path { path } => ry_hir::Pattern::Path {
                 path,
-                ty: self.type_variable_generator.next_type(),
+                ty: self.type_variable_generator.generate_type(),
             },
             ry_ast::Pattern::Rest { location } => ry_hir::Pattern::Rest {
                 location,
-                ty: self.type_variable_generator.next_type(),
+                ty: self.type_variable_generator.generate_type(),
             },
             ry_ast::Pattern::Struct {
                 location,
@@ -257,7 +269,7 @@ impl<'diagnostics> LoweringContext<'diagnostics> {
                     .into_iter()
                     .map(|field| self.lower_struct_field_pattern(field))
                     .collect(),
-                ty: self.type_variable_generator.next_type(),
+                ty: self.type_variable_generator.generate_type(),
             },
             ry_ast::Pattern::Tuple { location, elements } => ry_hir::Pattern::Tuple {
                 location,
@@ -265,7 +277,7 @@ impl<'diagnostics> LoweringContext<'diagnostics> {
                     .into_iter()
                     .map(|element| self.lower_pattern(element))
                     .collect(),
-                ty: self.type_variable_generator.next_type(),
+                ty: self.type_variable_generator.generate_type(),
             },
             ry_ast::Pattern::TupleLike {
                 location,
@@ -278,7 +290,7 @@ impl<'diagnostics> LoweringContext<'diagnostics> {
                     .into_iter()
                     .map(|pattern| self.lower_pattern(pattern))
                     .collect(),
-                ty: self.type_variable_generator.next_type(),
+                ty: self.type_variable_generator.generate_type(),
             },
         }
     }
@@ -296,11 +308,11 @@ impl<'diagnostics> LoweringContext<'diagnostics> {
                 location,
                 field_name,
                 value_pattern: value_pattern.map(|pattern| self.lower_pattern(pattern)),
-                ty: self.type_variable_generator.next_type(),
+                ty: self.type_variable_generator.generate_type(),
             },
             ry_ast::StructFieldPattern::Rest { location } => ry_hir::StructFieldPattern::Rest {
                 location,
-                ty: self.type_variable_generator.next_type(),
+                ty: self.type_variable_generator.generate_type(),
             },
         }
     }
@@ -319,7 +331,7 @@ impl<'diagnostics> LoweringContext<'diagnostics> {
                     .into_iter()
                     .map(|element| self.lower_expression(element))
                     .collect(),
-                ty: self.type_variable_generator.next_type(),
+                ty: self.type_variable_generator.generate_type(),
             },
             ry_ast::Expression::Lambda {
                 location,
@@ -334,21 +346,30 @@ impl<'diagnostics> LoweringContext<'diagnostics> {
                     .collect(),
                 return_type_expression: return_type.map(|ty| self.lower_type_expression(ty)),
                 block: self.lower_statements_block(block),
-                ty: self.type_variable_generator.next_type(),
+                ty: self.type_variable_generator.generate_type(),
             },
             ry_ast::Expression::Match {
                 location,
                 expression,
                 block,
-            } => ry_hir::Expression::Match {
-                location,
-                expression: Box::new(self.lower_expression(*expression)),
-                block: block
-                    .into_iter()
-                    .map(|item| self.lower_match_expression_item(item))
-                    .collect(),
-                ty: self.type_variable_generator.next_type(),
-            },
+            } => {
+                if let ry_ast::Expression::Parenthesized { location, .. } = *expression {
+                    self.diagnostics.add_file_diagnostic(
+                        [self.file_path_id],
+                        UnnecessaryParenthesizedExpression { location }.build(),
+                    );
+                }
+
+                ry_hir::Expression::Match {
+                    location,
+                    expression: Box::new(self.lower_expression(*expression)),
+                    block: block
+                        .into_iter()
+                        .map(|item| self.lower_match_expression_item(item))
+                        .collect(),
+                    ty: self.type_variable_generator.generate_type(),
+                }
+            }
             ry_ast::Expression::Struct {
                 location,
                 left,
@@ -360,18 +381,27 @@ impl<'diagnostics> LoweringContext<'diagnostics> {
                     .into_iter()
                     .map(|field| self.lower_struct_expression_item(field))
                     .collect(),
-                ty: self.type_variable_generator.next_type(),
+                ty: self.type_variable_generator.generate_type(),
             },
             ry_ast::Expression::While {
                 location,
                 condition,
                 body,
-            } => ry_hir::Expression::While {
-                location,
-                condition: Box::new(self.lower_expression(*condition)),
-                body: self.lower_statements_block(body),
-                ty: self.type_variable_generator.next_type(),
-            },
+            } => {
+                if let ry_ast::Expression::Parenthesized { location, .. } = *condition {
+                    self.diagnostics.add_file_diagnostic(
+                        [self.file_path_id],
+                        UnnecessaryParenthesizedExpression { location }.build(),
+                    );
+                }
+
+                ry_hir::Expression::While {
+                    location,
+                    condition: Box::new(self.lower_expression(*condition)),
+                    body: self.lower_statements_block(body),
+                    ty: self.type_variable_generator.generate_type(),
+                }
+            }
             ry_ast::Expression::Prefix {
                 location,
                 inner,
@@ -380,7 +410,7 @@ impl<'diagnostics> LoweringContext<'diagnostics> {
                 location,
                 inner: Box::new(self.lower_expression(*inner)),
                 operator,
-                ty: self.type_variable_generator.next_type(),
+                ty: self.type_variable_generator.generate_type(),
             },
             ry_ast::Expression::Postfix {
                 location,
@@ -390,7 +420,7 @@ impl<'diagnostics> LoweringContext<'diagnostics> {
                 location,
                 inner: Box::new(self.lower_expression(*inner)),
                 operator,
-                ty: self.type_variable_generator.next_type(),
+                ty: self.type_variable_generator.generate_type(),
             },
             ry_ast::Expression::If {
                 location,
@@ -400,9 +430,18 @@ impl<'diagnostics> LoweringContext<'diagnostics> {
                 location,
                 if_blocks: self.lower_if_blocks(if_blocks),
                 r#else: r#else.map(|else_block| self.lower_statements_block(else_block)),
-                ty: self.type_variable_generator.next_type(),
+                ty: self.type_variable_generator.generate_type(),
             },
-            ry_ast::Expression::Parenthesized { location, inner } => self.lower_expression(*inner),
+            ry_ast::Expression::Parenthesized { inner, .. } => {
+                if let ry_ast::Expression::Parenthesized { location, .. } = *inner {
+                    self.diagnostics.add_file_diagnostic(
+                        [self.file_path_id],
+                        UnnecessaryParenthesizedExpression { location }.build(),
+                    );
+                }
+
+                self.lower_expression(*inner)
+            }
             ry_ast::Expression::Binary {
                 location,
                 left,
@@ -413,7 +452,7 @@ impl<'diagnostics> LoweringContext<'diagnostics> {
                 left: Box::new(self.lower_expression(*left)),
                 right: Box::new(self.lower_expression(*right)),
                 operator,
-                ty: self.type_variable_generator.next_type(),
+                ty: self.type_variable_generator.generate_type(),
             },
             ry_ast::Expression::Call {
                 location,
@@ -426,7 +465,7 @@ impl<'diagnostics> LoweringContext<'diagnostics> {
                     .into_iter()
                     .map(|argument| self.lower_expression(argument))
                     .collect(),
-                ty: self.type_variable_generator.next_type(),
+                ty: self.type_variable_generator.generate_type(),
             },
             ry_ast::Expression::As {
                 location,
@@ -436,7 +475,7 @@ impl<'diagnostics> LoweringContext<'diagnostics> {
                 location,
                 left: Box::new(self.lower_expression(*left)),
                 right: self.lower_type_expression(right),
-                ty: self.type_variable_generator.next_type(),
+                ty: self.type_variable_generator.generate_type(),
             },
             ry_ast::Expression::List { location, elements } => ry_hir::Expression::List {
                 location,
@@ -444,7 +483,7 @@ impl<'diagnostics> LoweringContext<'diagnostics> {
                     .into_iter()
                     .map(|element| self.lower_expression(element))
                     .collect(),
-                ty: self.type_variable_generator.next_type(),
+                ty: self.type_variable_generator.generate_type(),
             },
             ry_ast::Expression::FieldAccess {
                 location,
@@ -454,7 +493,7 @@ impl<'diagnostics> LoweringContext<'diagnostics> {
                 location,
                 left: Box::new(self.lower_expression(*left)),
                 right,
-                ty: self.type_variable_generator.next_type(),
+                ty: self.type_variable_generator.generate_type(),
             },
             ry_ast::Expression::GenericArguments {
                 location,
@@ -464,13 +503,13 @@ impl<'diagnostics> LoweringContext<'diagnostics> {
                 location,
                 left: Box::new(self.lower_expression(*left)),
                 generic_arguments: self.lower_generic_arguments(generic_arguments),
-                ty: self.type_variable_generator.next_type(),
+                ty: self.type_variable_generator.generate_type(),
             },
             ry_ast::Expression::StatementsBlock { location, block } => {
                 ry_hir::Expression::StatementsBlock {
                     location,
                     block: self.lower_statements_block(block),
-                    ty: self.type_variable_generator.next_type(),
+                    ty: self.type_variable_generator.generate_type(),
                 }
             }
         }
@@ -480,6 +519,13 @@ impl<'diagnostics> LoweringContext<'diagnostics> {
         &mut self,
         ast: ry_ast::MatchExpressionItem,
     ) -> ry_hir::MatchExpressionItem {
+        if let ry_ast::Expression::Parenthesized { location, .. } = ast.right {
+            self.diagnostics.add_file_diagnostic(
+                [self.file_path_id],
+                UnnecessaryParenthesizedExpression { location }.build(),
+            );
+        }
+
         ry_hir::MatchExpressionItem {
             left: self.lower_pattern(ast.left),
             right: self.lower_expression(ast.right),
@@ -493,7 +539,7 @@ impl<'diagnostics> LoweringContext<'diagnostics> {
         ry_hir::StructExpressionItem {
             name: ast.name,
             value: ast.value.map(|value| self.lower_expression(value)),
-            ty: self.type_variable_generator.next_type(),
+            ty: self.type_variable_generator.generate_type(),
         }
     }
 
@@ -504,7 +550,7 @@ impl<'diagnostics> LoweringContext<'diagnostics> {
         ry_hir::LambdaFunctionParameter {
             name: ast.name,
             type_expression: ast.ty.map(|ty| self.lower_type_expression(ty)),
-            ty: self.type_variable_generator.next_type(),
+            ty: self.type_variable_generator.generate_type(),
         }
     }
 
@@ -522,6 +568,13 @@ impl<'diagnostics> LoweringContext<'diagnostics> {
         &mut self,
         if_block: (ry_ast::Expression, ry_ast::StatementsBlock),
     ) -> (ry_hir::Expression, ry_hir::StatementsBlock) {
+        if let ry_ast::Expression::Parenthesized { location, .. } = if_block.0 {
+            self.diagnostics.add_file_diagnostic(
+                [self.file_path_id],
+                UnnecessaryParenthesizedExpression { location }.build(),
+            );
+        }
+
         (
             self.lower_expression(if_block.0),
             self.lower_statements_block(if_block.1),
@@ -531,7 +584,7 @@ impl<'diagnostics> LoweringContext<'diagnostics> {
     fn lower_literal(&mut self, ast: ry_ast::Literal) -> ry_hir::Literal {
         ry_hir::Literal {
             literal: ast,
-            ty: self.type_variable_generator.next_type(),
+            ty: self.type_variable_generator.generate_type(),
         }
     }
 
@@ -548,13 +601,13 @@ impl<'diagnostics> LoweringContext<'diagnostics> {
         match ast {
             ry_ast::GenericArgument::Type(ty) => ry_hir::GenericArgument::Type {
                 type_expression: self.lower_type_expression(ty),
-                ty: self.type_variable_generator.next_type(),
+                ty: self.type_variable_generator.generate_type(),
             },
             ry_ast::GenericArgument::AssociatedType { name, value } => {
                 ry_hir::GenericArgument::AssociatedType {
                     name,
                     value_type_expression: self.lower_type_expression(value),
-                    value: self.type_variable_generator.next_type(),
+                    value: self.type_variable_generator.generate_type(),
                 }
             }
         }
@@ -576,7 +629,7 @@ impl<'diagnostics> LoweringContext<'diagnostics> {
             return_type: if ast.return_type.is_none() {
                 Type::Unit
             } else {
-                self.type_variable_generator.next_type()
+                self.type_variable_generator.generate_type()
             },
             return_type_expression: ast.return_type.map(|ty| self.lower_type_expression(ty)),
             where_predicates: self.lower_where_predicates(ast.where_predicates),
@@ -618,7 +671,7 @@ impl<'diagnostics> LoweringContext<'diagnostics> {
     ) -> ry_hir::FunctionParameterType {
         match ast {
             ry_ast::FunctionParameterType::Type(ty) => ry_hir::FunctionParameterType::Type {
-                ty: self.type_variable_generator.next_type(),
+                ty: self.type_variable_generator.generate_type(),
                 type_expression: self.lower_type_expression(ty),
             },
             ry_ast::FunctionParameterType::Impl(bounds) => {
@@ -634,7 +687,7 @@ impl<'diagnostics> LoweringContext<'diagnostics> {
         ry_hir::SelfFunctionParameter {
             self_location: ast.self_location,
             type_expression: ast.ty.map(|ty| self.lower_type_expression(ty)),
-            ty: self.type_variable_generator.next_type(),
+            ty: self.type_variable_generator.generate_type(),
         }
     }
 
@@ -672,7 +725,7 @@ impl<'diagnostics> LoweringContext<'diagnostics> {
             generic_parameters: self.lower_generic_parameters(ast.generic_parameters),
             bounds: ast.bounds,
             value_type_expression: ast.value.map(|ty| self.lower_type_expression(ty)),
-            value: self.type_variable_generator.next_type(),
+            value: self.type_variable_generator.generate_type(),
             docstring: ast.docstring,
         }
     }
@@ -714,7 +767,7 @@ impl<'diagnostics> LoweringContext<'diagnostics> {
             visibility: ast.visibility,
             name: ast.name,
             type_expression: self.lower_type_expression(ast.ty),
-            ty: self.type_variable_generator.next_type(),
+            ty: self.type_variable_generator.generate_type(),
             docstring: ast.docstring,
         }
     }
@@ -723,7 +776,7 @@ impl<'diagnostics> LoweringContext<'diagnostics> {
         ry_hir::TupleField {
             visibility: ast.visibility,
             type_expression: self.lower_type_expression(ast.ty),
-            ty: self.type_variable_generator.next_type(),
+            ty: self.type_variable_generator.generate_type(),
         }
     }
 
@@ -751,7 +804,7 @@ impl<'diagnostics> LoweringContext<'diagnostics> {
             default_value_type_expression: ast
                 .default_value
                 .map(|ty| self.lower_type_expression(ty)),
-            ty: self.type_variable_generator.next_type(),
+            ty: self.type_variable_generator.generate_type(),
         }
     }
 
@@ -773,12 +826,12 @@ impl<'diagnostics> LoweringContext<'diagnostics> {
         match ast {
             ry_ast::WherePredicate::Eq { left, right } => ry_hir::WherePredicate::Eq {
                 left_type_expression: self.lower_type_expression(left),
-                left_ty: self.type_variable_generator.next_type(),
+                left_ty: self.type_variable_generator.generate_type(),
                 right_type_expression: self.lower_type_expression(right),
-                right_ty: self.type_variable_generator.next_type(),
+                right_ty: self.type_variable_generator.generate_type(),
             },
             ry_ast::WherePredicate::Satisfies { ty, bounds } => ry_hir::WherePredicate::Satisfies {
-                ty: self.type_variable_generator.next_type(),
+                ty: self.type_variable_generator.generate_type(),
                 type_expression: self.lower_type_expression(ty),
                 bounds,
             },
@@ -801,7 +854,12 @@ impl<'diagnostics> LoweringContext<'diagnostics> {
             },
             ry_ast::Type::Path(path) => ry_hir::TypeExpression::Path(path),
             ry_ast::Type::Parenthesized { inner, .. } => {
-                // todo: emit some diagnostics here
+                if let ry_ast::Type::Parenthesized { location, .. } = *inner {
+                    self.diagnostics.add_file_diagnostic(
+                        [self.file_path_id],
+                        UnnecessaryParenthesizedExpression { location }.build(),
+                    );
+                }
 
                 self.lower_type_expression(*inner)
             }
