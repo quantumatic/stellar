@@ -178,7 +178,7 @@ struct InternerStorage {
 }
 
 impl Default for Interner {
-    /// Creates a new empty [`Interner`], that only contains builtin symbols.
+    /// Creates a new empty [`Interner`].
     #[inline]
     fn default() -> Self {
         Self::new()
