@@ -135,7 +135,7 @@ impl Literal {
 }
 
 /// A symbol with a specified location, e.g. `foo`, `std`.
-#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
 pub struct IdentifierAst {
     pub location: Location,
     pub symbol: Symbol,

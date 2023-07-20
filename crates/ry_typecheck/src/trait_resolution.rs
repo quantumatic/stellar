@@ -1,38 +1,216 @@
+use std::iter::zip;
+use std::sync::Arc;
+
 use ry_ast::{IdentifierAst, TypeBounds};
-use ry_fx_hash::FxHashMap;
+use ry_fx_hash::{FxHashMap, FxHashSet};
 use ry_hir::ty::{Path, Type};
 
+#[derive(Debug, Default)]
 pub struct TraitResolutionContext {
     traits: FxHashMap<Path, TraitData>,
-    implementations: FxHashMap<Path, TraitImplementationData>,
-}
-
-impl Default for TraitResolutionContext {
-    fn default() -> Self {
-        Self::new()
-    }
+    type_implementations: Vec<ImplementationData>,
 }
 
 impl TraitResolutionContext {
+    #[inline]
+    #[must_use]
     pub fn new() -> Self {
-        Self {
-            traits: FxHashMap::default(),
-            implementations: FxHashMap::default(),
+        Self::default()
+    }
+
+    pub fn add_implementation(
+        &mut self,
+        trait_path: Path,
+        implementation_data: ImplementationData,
+    ) {
+        todo!()
+    }
+
+    pub fn check_overlap(&self, trait_path: &Path, implementation_data: &ImplementationData) {
+        let Some(candidates) = self.traits.get(trait_path).map(|r#trait| &r#trait.implementations) else {
+            return;
+        };
+
+        for candidate_data in candidates {
+            self.check_overlap_with_candidate(trait_path, candidate_data, implementation_data);
         }
     }
 
-    pub fn check_overlap(&self, trait_: Path, data: &TraitImplementationData) {
+    pub fn get_constrained_type_parameters(
+        &self,
+        implemented_type: Arc<Type>,
+        generics: &FxHashSet<IdentifierAst>,
+    ) -> FxHashSet<IdentifierAst> {
+        match implemented_type.as_ref() {
+            Type::Function {
+                parameter_types,
+                return_type,
+            } => {
+                let mut result = FxHashSet::default();
+
+                for parameter_type in parameter_types {
+                    result.extend(
+                        self.get_constrained_type_parameters(parameter_type.clone(), generics),
+                    );
+                }
+
+                result.extend(self.get_constrained_type_parameters(return_type.clone(), generics));
+
+                result
+            }
+            Type::Unit => FxHashSet::default(),
+            Type::WithQualifiedPath { .. } => FxHashSet::default(),
+            Type::Variable(..) => FxHashSet::default(),
+            Type::Tuple { element_types } => {
+                let mut result = FxHashSet::default();
+
+                for element_type in element_types {
+                    result.extend(
+                        self.get_constrained_type_parameters(element_type.clone(), generics),
+                    );
+                }
+
+                result
+            }
+            Type::TraitObject { bounds } => {
+                let mut result = FxHashSet::default();
+
+                for bound in bounds {
+                    for used_generic in &bound.right {
+                        result.extend(
+                            self.get_constrained_type_parameters(used_generic.clone(), generics),
+                        );
+                    }
+                }
+
+                result
+            }
+            Type::Constructor { path } => {
+                if let [first_segment] = path.segments.as_slice() {
+                    let mut result = FxHashSet::default();
+
+                    if let &[maybe_used_generic] = first_segment.left.symbols.as_slice() {
+                        for generic in generics {
+                            if generic.symbol == maybe_used_generic {
+                                result.insert(generic.clone());
+                            }
+                        }
+                    }
+
+                    result
+                } else {
+                    let mut result = FxHashSet::default();
+
+                    for segment in &path.segments {
+                        for used_generic in &segment.right {
+                            result.extend(
+                                self.get_constrained_type_parameters(
+                                    used_generic.clone(),
+                                    generics,
+                                ),
+                            );
+                        }
+                    }
+
+                    result
+                }
+            }
+        }
+    }
+
+    pub fn get_not_constrained_type_parameters(
+        &self,
+        implemented_type: Arc<Type>,
+        generics: &FxHashSet<IdentifierAst>,
+    ) -> FxHashSet<IdentifierAst> {
+        let constrained = self.get_constrained_type_parameters(implemented_type.clone(), generics);
+
+        generics.difference(&constrained).cloned().collect()
+    }
+
+    /// The function checks for type equality in implementations. For example
+    /// implemented types in `impl[T] T` and `impl[T, M] HashMap[T, M]` can
+    /// be equal and so, there is an implementation overlap.
+    pub fn implemented_types_can_be_equal(
+        &self,
+        left_generics: &[IdentifierAst],
+        left_type: Arc<Type>,
+        right_type_generics: &[IdentifierAst],
+        right_type: Arc<Type>,
+    ) -> bool {
+        match (left_type.as_ref(), right_type.as_ref()) {
+            (Type::Unit, Type::Unit) => true,
+            (Type::Constructor { path: left_path }, Type::Constructor { path: right_path }) => {
+                // impl[T] [T as A].B where T: A {}
+                //      ^ unconstrained type parameter
+                unreachable!()
+            }
+            (
+                Type::WithQualifiedPath {
+                    left: left1,
+                    right: right1,
+                    segments: segments1,
+                },
+                Type::WithQualifiedPath {
+                    left: left2,
+                    right: right2,
+                    segments: segments2,
+                },
+            ) => true,
+            (
+                Type::Tuple {
+                    element_types: left,
+                },
+                Type::Tuple {
+                    element_types: right,
+                },
+            ) => zip(left, right).all(|(left, right)| {
+                self.implemented_types_can_be_equal(
+                    left_generics,
+                    left.clone(),
+                    right_type_generics,
+                    right.clone(),
+                )
+            }),
+            (
+                Type::TraitObject {
+                    bounds: left_bounds,
+                },
+                Type::TraitObject {
+                    bounds: right_bounds,
+                },
+            ) => left_bounds.iter().any(|b| right_bounds.contains(b)),
+            (Type::Variable(left_var), Type::Variable(right_var)) => left_var == right_var,
+            _ => unreachable!(),
+        }
+    }
+
+    pub fn check_overlap_with_candidate(
+        &self,
+        trait_path: &Path,
+        candidate_implementation_data: &ImplementationData,
+        implementation_data: &ImplementationData,
+    ) {
         todo!()
     }
 }
 
+#[derive(Debug, Clone)]
 pub struct TraitData {
-    generics: Vec<IdentifierAst>,
+    generics: Vec<GenericData>,
     constraints: FxHashMap<Type, TypeBounds>,
+    implementations: Vec<ImplementationData>,
 }
 
-pub struct TraitImplementationData {
-    generics: Vec<IdentifierAst>,
+#[derive(Debug, Clone)]
+pub struct ImplementationData {
+    generics: Vec<GenericData>,
     constraints: FxHashMap<Type, TypeBounds>,
-    r#for: Type,
+    ty: Type,
+}
+
+#[derive(Debug, Clone)]
+pub struct GenericData {
+    identifier: IdentifierAst,
+    default_value: Type,
 }

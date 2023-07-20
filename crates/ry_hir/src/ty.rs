@@ -18,10 +18,41 @@ pub enum Type {
         return_type: Arc<Self>,
     },
     Variable(TypeVariableID),
-    Placeholder,
     TraitObject {
-        bounds: Vec<TypePath>,
+        bounds: Vec<TypePathSegment>,
     },
+    WithQualifiedPath {
+        left: Arc<Self>,
+        right: TypePathSegment,
+        segments: Vec<TypePathSegment>,
+    },
+}
+
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
+pub enum TypeKind {
+    Unit,
+    Constructor,
+    Tuple,
+    Function,
+    Variable,
+    TraitObject,
+    WithQualifiedPath,
+}
+
+impl Type {
+    #[inline]
+    #[must_use]
+    pub fn kind(&self) -> TypeKind {
+        match self {
+            Self::Constructor { .. } => TypeKind::Constructor,
+            Self::Tuple { .. } => TypeKind::Tuple,
+            Self::Function { .. } => TypeKind::Function,
+            Self::Variable(..) => TypeKind::Variable,
+            Self::TraitObject { .. } => TypeKind::TraitObject,
+            Self::WithQualifiedPath { .. } => TypeKind::WithQualifiedPath,
+            Self::Unit => TypeKind::Unit,
+        }
+    }
 }
 
 pub type TypeVariableID = usize;
@@ -79,10 +110,10 @@ pub struct TypePath {
 #[derive(Debug, PartialEq, Clone)]
 pub struct TypePathSegment {
     pub left: Path,
-    pub right: Vec<Type>,
+    pub right: Vec<Arc<Type>>,
 }
 
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone, Hash)]
 
 pub struct Path {
     pub symbols: Vec<Symbol>,
@@ -91,8 +122,8 @@ pub struct Path {
 /// Returns a list type with the given element type.
 #[inline]
 #[must_use]
-pub fn list_of(element_type: Type) -> Type {
-    Type::Constructor {
+pub fn list_of(element_type: Arc<Type>) -> Arc<Type> {
+    Arc::new(Type::Constructor {
         path: TypePath {
             segments: vec![TypePathSegment {
                 left: Path {
@@ -101,7 +132,7 @@ pub fn list_of(element_type: Type) -> Type {
                 right: vec![element_type],
             }],
         },
-    }
+    })
 }
 
 impl From<ry_ast::Path> for Path {
