@@ -5,9 +5,9 @@ use std::ops::Range;
 use std::{cmp::Ordering, path::PathBuf};
 
 use codespan_reporting::files::{Error, Files};
+use ry_interner::{PathID, PathInterner};
 
 use crate::location::{Location, LocationIndex};
-use crate::path_interner::{PathID, PathInterner};
 
 /// A Ry source file.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -50,7 +50,7 @@ impl InMemoryFile {
         path_interner: &PathInterner,
         path_id: PathID,
     ) -> Result<Self, io::Error> {
-        Self::new(path_interner.resolve_path_or_panic(path_id))
+        Self::new(path_interner.resolve_or_panic(path_id))
     }
 
     /// Creates a new [`InMemoryFile`] and panics if its contents
@@ -72,7 +72,7 @@ impl InMemoryFile {
     #[inline]
     #[must_use]
     pub fn new_from_path_id_or_panic(path_interner: &PathInterner, path_id: PathID) -> Self {
-        Self::new_or_panic(path_interner.resolve_path_or_panic(path_id))
+        Self::new_or_panic(path_interner.resolve_or_panic(path_id))
     }
 
     /// Creates a new [`InMemoryFile`] with the given source.

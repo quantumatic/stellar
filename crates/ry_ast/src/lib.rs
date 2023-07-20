@@ -84,8 +84,8 @@
 
 use std::fmt::Display;
 
-use ry_filesystem::{location::Location, path_interner::PathID};
-use ry_interner::Symbol;
+use ry_filesystem::location::Location;
+use ry_interner::{PathID, Symbol};
 use token::RawToken;
 
 pub mod precedence;

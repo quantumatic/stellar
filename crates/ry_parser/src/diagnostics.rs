@@ -10,7 +10,8 @@ use ry_ast::{
     ModuleItemKind,
 };
 use ry_diagnostics::BuildDiagnostic;
-use ry_filesystem::{location::Location, path_interner::PathID};
+use ry_filesystem::location::Location;
+use ry_interner::PathID;
 
 /// Represents list of expected tokens.
 #[derive(Debug, PartialEq, Eq, Clone)]

@@ -5,13 +5,13 @@ use ry_ast::{
     TupleField, Type, TypeAlias, TypePath, TypePathSegment, Visibility, WherePredicate,
 };
 use ry_diagnostics::GlobalDiagnostics;
-use ry_filesystem::{location::Location, path_interner::DUMMY_PATH_ID};
-use ry_interner::{symbols, Interner};
+use ry_filesystem::location::Location;
+use ry_interner::{builtin_symbols, IdentifierInterner, DUMMY_PATH_ID};
 use ry_parser::parse_item;
 
 #[test]
 fn function() {
-    let mut interner = Interner::default();
+    let mut identifier_interner = IdentifierInterner::new();
     let mut diagnostics = GlobalDiagnostics::new();
 
     assert_eq!(
@@ -19,7 +19,7 @@ fn function() {
             DUMMY_PATH_ID,
             "fun foo[T, B = Option[T]](a: B): T { a.unwrap() }",
             &mut diagnostics,
-            &mut interner
+            &mut identifier_interner
         ),
         Some(ModuleItem::Function(Function {
             signature: FunctionSignature {
@@ -30,7 +30,7 @@ fn function() {
                         start: 4,
                         end: 7
                     },
-                    symbol: interner.get_or_intern("foo")
+                    symbol: identifier_interner.get_or_intern("foo")
                 },
                 generic_parameters: Some(vec![
                     GenericParameter {
@@ -40,7 +40,7 @@ fn function() {
                                 start: 8,
                                 end: 9
                             },
-                            symbol: interner.get_or_intern("T")
+                            symbol: identifier_interner.get_or_intern("T")
                         },
                         bounds: None,
                         default_value: None
@@ -52,7 +52,7 @@ fn function() {
                                 start: 11,
                                 end: 12
                             },
-                            symbol: interner.get_or_intern("B")
+                            symbol: identifier_interner.get_or_intern("B")
                         },
                         bounds: None,
                         default_value: Some(Type::Path(TypePath {
@@ -79,7 +79,7 @@ fn function() {
                                             start: 15,
                                             end: 21
                                         },
-                                        symbol: interner.get_or_intern("Option")
+                                        symbol: identifier_interner.get_or_intern("Option")
                                     }]
                                 },
                                 generic_arguments: Some(vec![GenericArgument::Type(Type::Path(
@@ -107,7 +107,7 @@ fn function() {
                                                         start: 22,
                                                         end: 23
                                                     },
-                                                    symbol: interner.get_or_intern("T")
+                                                    symbol: identifier_interner.get_or_intern("T")
                                                 }]
                                             },
                                             generic_arguments: None
@@ -126,7 +126,7 @@ fn function() {
                                 start: 26,
                                 end: 27
                             },
-                            symbol: interner.get_or_intern("a")
+                            symbol: identifier_interner.get_or_intern("a")
                         },
                         ty: FunctionParameterType::Type(Type::Path(TypePath {
                             location: Location {
@@ -152,7 +152,7 @@ fn function() {
                                             start: 29,
                                             end: 30
                                         },
-                                        symbol: interner.get_or_intern("B")
+                                        symbol: identifier_interner.get_or_intern("B")
                                     }]
                                 },
                                 generic_arguments: None
@@ -184,7 +184,7 @@ fn function() {
                                     start: 33,
                                     end: 34
                                 },
-                                symbol: interner.get_or_intern("T")
+                                symbol: identifier_interner.get_or_intern("T")
                             }]
                         },
                         generic_arguments: None
@@ -212,7 +212,7 @@ fn function() {
                                 start: 37,
                                 end: 38
                             },
-                            symbol: interner.get_or_intern("a")
+                            symbol: identifier_interner.get_or_intern("a")
                         })),
                         right: IdentifierAst {
                             location: Location {
@@ -220,7 +220,7 @@ fn function() {
                                 start: 39,
                                 end: 45
                             },
-                            symbol: interner.get_or_intern("unwrap")
+                            symbol: identifier_interner.get_or_intern("unwrap")
                         }
                     }),
                     arguments: vec![]
@@ -233,7 +233,7 @@ fn function() {
 
 #[test]
 fn r#impl() {
-    let mut interner = Interner::default();
+    let mut identifier_interner = IdentifierInterner::new();
     let mut diagnostics = GlobalDiagnostics::new();
 
     assert_eq!(
@@ -241,7 +241,7 @@ fn r#impl() {
             DUMMY_PATH_ID,
             "impl[A, B] Into[Option[(A, B)]] for (A, B) {}",
             &mut diagnostics,
-            &mut interner,
+            &mut identifier_interner,
         ),
         Some(ModuleItem::Impl(Impl {
             location: Location {
@@ -257,7 +257,7 @@ fn r#impl() {
                             start: 5,
                             end: 6
                         },
-                        symbol: interner.get_or_intern("A")
+                        symbol: identifier_interner.get_or_intern("A")
                     },
                     bounds: None,
                     default_value: None
@@ -269,7 +269,7 @@ fn r#impl() {
                             start: 8,
                             end: 9
                         },
-                        symbol: interner.get_or_intern("B")
+                        symbol: identifier_interner.get_or_intern("B")
                     },
                     bounds: None,
                     default_value: None
@@ -306,7 +306,7 @@ fn r#impl() {
                                         start: 37,
                                         end: 38
                                     },
-                                    symbol: interner.get_or_intern("A")
+                                    symbol: identifier_interner.get_or_intern("A")
                                 }]
                             },
                             generic_arguments: None
@@ -336,7 +336,7 @@ fn r#impl() {
                                         start: 40,
                                         end: 41
                                     },
-                                    symbol: interner.get_or_intern("B")
+                                    symbol: identifier_interner.get_or_intern("B")
                                 }]
                             },
                             generic_arguments: None
@@ -368,7 +368,7 @@ fn r#impl() {
                                 start: 11,
                                 end: 15
                             },
-                            symbol: interner.get_or_intern("Into")
+                            symbol: identifier_interner.get_or_intern("Into")
                         }]
                     },
                     generic_arguments: Some(vec![GenericArgument::Type(Type::Path(TypePath {
@@ -395,7 +395,7 @@ fn r#impl() {
                                         start: 16,
                                         end: 22
                                     },
-                                    symbol: interner.get_or_intern("Option")
+                                    symbol: identifier_interner.get_or_intern("Option")
                                 }]
                             },
                             generic_arguments: Some(vec![GenericArgument::Type(Type::Tuple {
@@ -429,7 +429,7 @@ fn r#impl() {
                                                         start: 24,
                                                         end: 25
                                                     },
-                                                    symbol: interner.get_or_intern("A")
+                                                    symbol: identifier_interner.get_or_intern("A")
                                                 }]
                                             },
                                             generic_arguments: None
@@ -459,7 +459,7 @@ fn r#impl() {
                                                         start: 27,
                                                         end: 28
                                                     },
-                                                    symbol: interner.get_or_intern("B")
+                                                    symbol: identifier_interner.get_or_intern("B")
                                                 }]
                                             },
                                             generic_arguments: None
@@ -480,7 +480,7 @@ fn r#impl() {
 
 #[test]
 fn import() {
-    let mut interner = Interner::default();
+    let mut identifier_interner = IdentifierInterner::new();
     let mut diagnostics = GlobalDiagnostics::new();
 
     assert_eq!(
@@ -488,7 +488,7 @@ fn import() {
             DUMMY_PATH_ID,
             "import std.io as myio;",
             &mut diagnostics,
-            &mut interner
+            &mut identifier_interner
         ),
         Some(ModuleItem::Import {
             location: Location {
@@ -510,7 +510,7 @@ fn import() {
                                 start: 7,
                                 end: 10
                             },
-                            symbol: symbols::STD
+                            symbol: builtin_symbols::STD
                         },
                         IdentifierAst {
                             location: Location {
@@ -518,7 +518,7 @@ fn import() {
                                 start: 11,
                                 end: 13
                             },
-                            symbol: interner.get_or_intern("io")
+                            symbol: identifier_interner.get_or_intern("io")
                         }
                     ]
                 },
@@ -528,7 +528,7 @@ fn import() {
                         start: 17,
                         end: 21
                     },
-                    symbol: interner.get_or_intern("myio")
+                    symbol: identifier_interner.get_or_intern("myio")
                 })
             }
         })
@@ -537,7 +537,7 @@ fn import() {
 
 #[test]
 fn r#struct() {
-    let mut interner = Interner::default();
+    let mut identifier_interner = IdentifierInterner::new();
     let mut diagnostics = GlobalDiagnostics::new();
 
     assert_eq!(
@@ -545,7 +545,7 @@ fn r#struct() {
             DUMMY_PATH_ID,
             "struct Lexer[S] where S: Iterator[char] { contents: S }",
             &mut diagnostics,
-            &mut interner
+            &mut identifier_interner
         ),
         Some(ModuleItem::Struct {
             visibility: Visibility::private(),
@@ -555,7 +555,7 @@ fn r#struct() {
                     start: 7,
                     end: 12
                 },
-                symbol: interner.get_or_intern("Lexer")
+                symbol: identifier_interner.get_or_intern("Lexer")
             },
             generic_parameters: Some(vec![GenericParameter {
                 name: IdentifierAst {
@@ -564,7 +564,7 @@ fn r#struct() {
                         start: 13,
                         end: 14
                     },
-                    symbol: interner.get_or_intern("S")
+                    symbol: identifier_interner.get_or_intern("S")
                 },
                 bounds: None,
                 default_value: None
@@ -594,7 +594,7 @@ fn r#struct() {
                                     start: 22,
                                     end: 23
                                 },
-                                symbol: interner.get_or_intern("S")
+                                symbol: identifier_interner.get_or_intern("S")
                             }]
                         },
                         generic_arguments: None
@@ -624,7 +624,7 @@ fn r#struct() {
                                     start: 25,
                                     end: 33
                                 },
-                                symbol: interner.get_or_intern("Iterator")
+                                symbol: identifier_interner.get_or_intern("Iterator")
                             }]
                         },
                         generic_arguments: Some(vec![GenericArgument::Type(Type::Path(
@@ -652,7 +652,7 @@ fn r#struct() {
                                                 start: 34,
                                                 end: 38
                                             },
-                                            symbol: symbols::CHAR
+                                            symbol: builtin_symbols::CHAR
                                         }]
                                     },
                                     generic_arguments: None
@@ -670,7 +670,7 @@ fn r#struct() {
                         start: 42,
                         end: 50
                     },
-                    symbol: interner.get_or_intern("contents")
+                    symbol: identifier_interner.get_or_intern("contents")
                 },
                 ty: Type::Path(TypePath {
                     location: Location {
@@ -696,7 +696,7 @@ fn r#struct() {
                                     start: 52,
                                     end: 53
                                 },
-                                symbol: interner.get_or_intern("S")
+                                symbol: identifier_interner.get_or_intern("S")
                             }]
                         },
                         generic_arguments: None
@@ -711,7 +711,7 @@ fn r#struct() {
 
 #[test]
 fn into() {
-    let mut interner = Interner::default();
+    let mut identifier_interner = IdentifierInterner::new();
     let mut diagnostics = GlobalDiagnostics::new();
 
     assert_eq!(
@@ -719,7 +719,7 @@ fn into() {
             DUMMY_PATH_ID,
             "trait Into[T] { fun into(self): T; }",
             &mut diagnostics,
-            &mut interner
+            &mut identifier_interner
         ),
         Some(ModuleItem::Trait {
             visibility: Visibility::private(),
@@ -729,7 +729,7 @@ fn into() {
                     start: 6,
                     end: 10
                 },
-                symbol: interner.get_or_intern("Into")
+                symbol: identifier_interner.get_or_intern("Into")
             },
             generic_parameters: Some(vec![GenericParameter {
                 name: IdentifierAst {
@@ -738,7 +738,7 @@ fn into() {
                         start: 11,
                         end: 12
                     },
-                    symbol: interner.get_or_intern("T")
+                    symbol: identifier_interner.get_or_intern("T")
                 },
                 bounds: None,
                 default_value: None
@@ -753,7 +753,7 @@ fn into() {
                             start: 20,
                             end: 24
                         },
-                        symbol: interner.get_or_intern("into")
+                        symbol: identifier_interner.get_or_intern("into")
                     },
                     generic_parameters: None,
                     parameters: vec![FunctionParameter::SelfParameter(SelfFunctionParameter {
@@ -788,7 +788,7 @@ fn into() {
                                         start: 32,
                                         end: 33
                                     },
-                                    symbol: interner.get_or_intern("T")
+                                    symbol: identifier_interner.get_or_intern("T")
                                 }]
                             },
                             generic_arguments: None
@@ -806,7 +806,7 @@ fn into() {
 
 #[test]
 fn alias() {
-    let mut interner = Interner::default();
+    let mut identifier_interner = IdentifierInterner::new();
     let mut diagnostics = GlobalDiagnostics::new();
 
     assert_eq!(
@@ -814,7 +814,7 @@ fn alias() {
             DUMMY_PATH_ID,
             "type KeyValuePair[K, V] = [HashMap[K, V] as IntoIterator].Item;",
             &mut diagnostics,
-            &mut interner,
+            &mut identifier_interner,
         ),
         Some(ModuleItem::TypeAlias(TypeAlias {
             visibility: Visibility::private(),
@@ -824,7 +824,7 @@ fn alias() {
                     start: 5,
                     end: 17
                 },
-                symbol: interner.get_or_intern("KeyValuePair")
+                symbol: identifier_interner.get_or_intern("KeyValuePair")
             },
             generic_parameters: Some(vec![
                 GenericParameter {
@@ -834,7 +834,7 @@ fn alias() {
                             start: 18,
                             end: 19
                         },
-                        symbol: interner.get_or_intern("K")
+                        symbol: identifier_interner.get_or_intern("K")
                     },
                     bounds: None,
                     default_value: None
@@ -846,7 +846,7 @@ fn alias() {
                             start: 21,
                             end: 22
                         },
-                        symbol: interner.get_or_intern("V")
+                        symbol: identifier_interner.get_or_intern("V")
                     },
                     bounds: None,
                     default_value: None
@@ -883,7 +883,7 @@ fn alias() {
                                     start: 27,
                                     end: 34
                                 },
-                                symbol: interner.get_or_intern("HashMap")
+                                symbol: identifier_interner.get_or_intern("HashMap")
                             }]
                         },
                         generic_arguments: Some(vec![
@@ -911,7 +911,7 @@ fn alias() {
                                                 start: 35,
                                                 end: 36
                                             },
-                                            symbol: interner.get_or_intern("K")
+                                            symbol: identifier_interner.get_or_intern("K")
                                         }]
                                     },
                                     generic_arguments: None
@@ -941,7 +941,7 @@ fn alias() {
                                                 start: 38,
                                                 end: 39
                                             },
-                                            symbol: interner.get_or_intern("V")
+                                            symbol: identifier_interner.get_or_intern("V")
                                         }]
                                     },
                                     generic_arguments: None
@@ -974,7 +974,7 @@ fn alias() {
                                     start: 44,
                                     end: 56
                                 },
-                                symbol: interner.get_or_intern("IntoIterator")
+                                symbol: identifier_interner.get_or_intern("IntoIterator")
                             }]
                         },
                         generic_arguments: None
@@ -998,7 +998,7 @@ fn alias() {
                                 start: 58,
                                 end: 62
                             },
-                            symbol: interner.get_or_intern("Item")
+                            symbol: identifier_interner.get_or_intern("Item")
                         }]
                     },
                     generic_arguments: None
@@ -1011,7 +1011,7 @@ fn alias() {
 
 #[test]
 fn r#enum() {
-    let mut interner = Interner::default();
+    let mut identifier_interner = IdentifierInterner::new();
     let mut diagnostics = GlobalDiagnostics::new();
 
     assert_eq!(
@@ -1019,7 +1019,7 @@ fn r#enum() {
             DUMMY_PATH_ID,
             "enum Result[T, E] { Ok(T), Err(E) }",
             &mut diagnostics,
-            &mut interner
+            &mut identifier_interner
         ),
         Some(ModuleItem::Enum {
             visibility: Visibility::private(),
@@ -1029,7 +1029,7 @@ fn r#enum() {
                     start: 5,
                     end: 11
                 },
-                symbol: interner.get_or_intern("Result")
+                symbol: identifier_interner.get_or_intern("Result")
             },
             generic_parameters: Some(vec![
                 GenericParameter {
@@ -1039,7 +1039,7 @@ fn r#enum() {
                             start: 12,
                             end: 13
                         },
-                        symbol: interner.get_or_intern("T")
+                        symbol: identifier_interner.get_or_intern("T")
                     },
                     bounds: None,
                     default_value: None
@@ -1051,7 +1051,7 @@ fn r#enum() {
                             start: 15,
                             end: 16
                         },
-                        symbol: interner.get_or_intern("E")
+                        symbol: identifier_interner.get_or_intern("E")
                     },
                     bounds: None,
                     default_value: None
@@ -1066,7 +1066,7 @@ fn r#enum() {
                             start: 20,
                             end: 22
                         },
-                        symbol: interner.get_or_intern("Ok")
+                        symbol: identifier_interner.get_or_intern("Ok")
                     },
                     fields: vec![TupleField {
                         visibility: Visibility::private(),
@@ -1094,7 +1094,7 @@ fn r#enum() {
                                             start: 23,
                                             end: 24
                                         },
-                                        symbol: interner.get_or_intern("T")
+                                        symbol: identifier_interner.get_or_intern("T")
                                     }]
                                 },
                                 generic_arguments: None
@@ -1110,7 +1110,7 @@ fn r#enum() {
                             start: 27,
                             end: 30
                         },
-                        symbol: interner.get_or_intern("Err")
+                        symbol: identifier_interner.get_or_intern("Err")
                     },
                     fields: vec![TupleField {
                         visibility: Visibility::private(),
@@ -1138,7 +1138,7 @@ fn r#enum() {
                                             start: 31,
                                             end: 32
                                         },
-                                        symbol: interner.get_or_intern("E")
+                                        symbol: identifier_interner.get_or_intern("E")
                                     }]
                                 },
                                 generic_arguments: None

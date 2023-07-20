@@ -4,25 +4,23 @@ use std::io;
 
 use codespan_reporting::files::{self, Files};
 use ry_fx_hash::FxHashMap;
+use ry_interner::{PathID, PathInterner};
 
-use crate::{
-    in_memory_file::InMemoryFile,
-    path_interner::{PathID, PathInterner},
-};
+use crate::in_memory_file::InMemoryFile;
 
 /// In memory file storage. The storage can be used for example when emitting
 /// some diagnostics, to avoid rereading the same file multiple times.
 #[derive(Debug, Clone)]
-pub struct InMemoryFileStorage<'path_interner> {
-    path_interner: &'path_interner PathInterner,
+pub struct InMemoryFileStorage<'p> {
+    path_interner: &'p PathInterner,
     storage: FxHashMap<PathID, InMemoryFile>,
 }
 
-impl<'path_interner> InMemoryFileStorage<'path_interner> {
+impl<'p> InMemoryFileStorage<'p> {
     /// Creates an empty storage.
     #[inline]
     #[must_use]
-    pub fn new(path_interner: &'path_interner PathInterner) -> Self {
+    pub fn new(path_interner: &'p PathInterner) -> Self {
         Self {
             path_interner,
             storage: FxHashMap::default(),
@@ -55,7 +53,7 @@ impl<'path_interner> InMemoryFileStorage<'path_interner> {
     pub fn read_and_add_file_or_panic(&mut self, path_id: PathID) {
         self.storage.insert(
             path_id,
-            InMemoryFile::new_or_panic(self.path_interner.resolve_path_or_panic(path_id)),
+            InMemoryFile::new_or_panic(self.path_interner.resolve_or_panic(path_id)),
         );
     }
 
@@ -87,7 +85,7 @@ impl<'path_interner> InMemoryFileStorage<'path_interner> {
     #[inline]
     #[must_use]
     pub fn read_and_add_file_if_not_exists_or_panic(&mut self, path_id: PathID) -> InMemoryFile {
-        InMemoryFile::new_or_panic(self.path_interner.resolve_path_or_panic(path_id))
+        InMemoryFile::new_or_panic(self.path_interner.resolve_or_panic(path_id))
     }
 
     /// Resolves a file from the storage by its path id.

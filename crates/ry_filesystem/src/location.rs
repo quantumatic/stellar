@@ -3,8 +3,7 @@
 use std::{fmt::Display, ops::Range};
 
 use codespan_reporting::diagnostic::Label;
-
-use crate::path_interner::PathID;
+use ry_interner::PathID;
 
 /// Represents location in the source text.
 #[derive(Copy, Clone, Hash, Debug, Default, PartialEq, Eq)]
@@ -40,6 +39,17 @@ impl Display for Location {
 impl Location {
     /// Returns location of the first byte corresponding to the
     /// current location.
+    ///
+    /// ```
+    /// # use ry_filesystem::location::{Location, LocationIndex};
+    /// # use ry_interner::DUMMY_PATH_ID;
+    /// let location = Location { file_path_id: DUMMY_PATH_ID, start: 0, end: 3 };
+    ///
+    /// assert_eq!(
+    ///     location.start_byte_location(),
+    ///     Location { file_path_id: DUMMY_PATH_ID, start: 0, end: 1 }
+    /// );
+    /// ```
     #[inline]
     #[must_use]
     pub const fn start_byte_location(self) -> Self {
@@ -52,6 +62,17 @@ impl Location {
 
     /// Returns location of the last byte corresponding to the
     /// current location.
+    ///
+    /// ```
+    /// # use ry_filesystem::location::{Location, LocationIndex};
+    /// # use ry_interner::DUMMY_PATH_ID;
+    /// let location = Location { file_path_id: DUMMY_PATH_ID, start: 0, end: 3 };
+    ///
+    /// assert_eq!(
+    ///     location.end_byte_location(),
+    ///     Location { file_path_id: DUMMY_PATH_ID, start: 2, end: 3 }
+    /// );
+    /// ```
     #[inline]
     #[must_use]
     pub const fn end_byte_location(self) -> Self {
@@ -100,7 +121,8 @@ pub trait LocationIndex {
     ///
     /// # Example
     /// ```
-    /// # use ry_filesystem::{location::{Location, LocationIndex}, path_interner::DUMMY_PATH_ID};
+    /// # use ry_filesystem::{location::{Location, LocationIndex}};
+    /// # use ry_interner::DUMMY_PATH_ID;
     /// let location = Location { file_path_id: DUMMY_PATH_ID, start: 0, end: 3 };
     /// assert_eq!("test".index(location), "tes");
     /// ```

@@ -72,8 +72,8 @@ use ry_ast::{
     token::{LexError, RawLexError, RawToken, Token, RESERVED},
     Token,
 };
-use ry_filesystem::{location::Location, path_interner::PathID};
-use ry_interner::{Interner, Symbol};
+use ry_filesystem::location::Location;
+use ry_interner::{IdentifierInterner, PathID, Symbol};
 use ry_stable_likely::unlikely;
 
 mod number;
@@ -84,10 +84,11 @@ mod number;
 /// ```
 /// # use ry_lexer::Lexer;
 /// # use ry_ast::token::{Token, RawToken::EndOfFile};
-/// # use ry_interner::Interner;
-/// # use ry_filesystem::{location::Location, path_interner::DUMMY_PATH_ID};
-/// let mut interner = Interner::default();
-/// let mut lexer = Lexer::new(DUMMY_PATH_ID, "", &mut interner);
+/// # use ry_interner::IdentifierInterner;
+/// # use ry_filesystem::location::Location;
+/// # use ry_interner::DUMMY_PATH_ID;
+/// let mut identifier_interner = IdentifierInterner::default();
+/// let mut lexer = Lexer::new(DUMMY_PATH_ID, "", &mut identifier_interner);
 ///
 /// assert_eq!(
 ///     lexer.next_token(),
@@ -103,10 +104,9 @@ mod number;
 /// ```
 /// # use ry_lexer::Lexer;
 /// # use ry_ast::token::{RawLexError, RawToken::Error};
-/// # use ry_interner::Interner;
-/// # use ry_filesystem::path_interner::DUMMY_PATH_ID;
-/// let mut interner = Interner::default();
-/// let mut lexer = Lexer::new(DUMMY_PATH_ID, "١", &mut interner);
+/// # use ry_interner::{IdentifierInterner, DUMMY_PATH_ID};
+/// let mut identifier_interner = IdentifierInterner::default();
+/// let mut lexer = Lexer::new(DUMMY_PATH_ID, "١", &mut identifier_interner);
 ///
 /// assert_eq!(lexer.next_token().raw, Error(RawLexError::UnexpectedChar));
 /// ```
@@ -119,15 +119,15 @@ mod number;
 /// [`EndOfFile`]: ry_ast::token::RawToken::EndOfFile
 /// [`Error`]: ry_ast::token::RawToken::Error
 #[derive(Debug)]
-pub struct Lexer<'source, 'interner> {
+pub struct Lexer<'s, 'i> {
     /// ID of the path of the file being scanned.
     pub file_path_id: PathID,
 
     /// Content of the file being scanned.
-    pub source: &'source str,
+    pub source: &'s str,
 
     /// Identifier interner.
-    pub interner: &'interner mut Interner,
+    pub identifier_interner: &'i mut IdentifierInterner,
 
     /// Current character.
     current: char,
@@ -135,7 +135,7 @@ pub struct Lexer<'source, 'interner> {
     next: char,
 
     /// Iterator through source text characters.
-    chars: Chars<'source>,
+    chars: Chars<'s>,
 
     /// Offset of the current character being processed.
     offset: usize,
@@ -148,13 +148,13 @@ pub struct Lexer<'source, 'interner> {
     scanned_string: String,
 }
 
-impl<'source, 'interner> Lexer<'source, 'interner> {
+impl<'s, 'i> Lexer<'s, 'i> {
     /// Creates a new [`Lexer`] instance.
     #[must_use]
     pub fn new(
         file_path_id: PathID,
-        source: &'source str,
-        interner: &'interner mut Interner,
+        source: &'s str,
+        identifier_interner: &'i mut IdentifierInterner,
     ) -> Self {
         let mut chars = source.chars();
 
@@ -167,7 +167,7 @@ impl<'source, 'interner> Lexer<'source, 'interner> {
             current,
             next,
             chars,
-            interner,
+            identifier_interner,
             offset: 0,
             scanned_identifier: 0,
             scanned_char: '\0',
@@ -273,7 +273,7 @@ impl<'source, 'interner> Lexer<'source, 'interner> {
     /// Returns the string slice of source text between `start_offset`
     /// and `self.offset` when `f` returns `false` OR `self.eof() == true`.
     #[inline]
-    fn advance_while<F>(&mut self, start_offset: usize, mut f: F) -> &'source str
+    fn advance_while<F>(&mut self, start_offset: usize, mut f: F) -> &'s str
     where
         F: FnMut(char, char) -> bool,
     {
@@ -572,7 +572,7 @@ impl<'source, 'interner> Lexer<'source, 'interner> {
 
         self.advance();
 
-        self.scanned_identifier = self.interner.get_or_intern(name);
+        self.scanned_identifier = self.identifier_interner.get_or_intern(name);
 
         Token {
             raw: RawToken::Identifier,
@@ -628,7 +628,7 @@ impl<'source, 'interner> Lexer<'source, 'interner> {
                 location: self.location_from(start_location),
             }
         } else {
-            self.scanned_identifier = self.interner.get_or_intern(name);
+            self.scanned_identifier = self.identifier_interner.get_or_intern(name);
             Token {
                 raw: RawToken::Identifier,
                 location: self.location_from(start_location),

@@ -3,20 +3,19 @@ use std::{io::Write, path::PathBuf, time::Instant};
 use codespan_reporting::diagnostic::Diagnostic;
 use ry_ast::serialize::serialize_ast;
 use ry_diagnostics::{DiagnosticsEmitter, GlobalDiagnostics};
-use ry_filesystem::path_interner::PathInterner;
-use ry_interner::Interner;
+use ry_interner::{IdentifierInterner, PathInterner};
 use ry_parser::read_and_parse_module;
 
 use crate::{prefix::log_with_left_padded_prefix, unique_file::create_unique_file};
 
 pub fn command(path_str: &str) {
     let mut path_interner = PathInterner::new();
-    let file_path_id = path_interner.get_or_intern_path(PathBuf::from(path_str));
+    let mut identifier_interner = IdentifierInterner::new();
+
+    let file_path_id = path_interner.get_or_intern(PathBuf::from(path_str));
 
     let mut diagnostics = GlobalDiagnostics::new();
     let mut diagnostics_emitter = DiagnosticsEmitter::new(&path_interner);
-
-    let mut interner = Interner::default();
 
     let now = Instant::now();
 
@@ -24,7 +23,7 @@ pub fn command(path_str: &str) {
         &path_interner,
         file_path_id,
         &mut diagnostics,
-        &mut interner,
+        &mut identifier_interner,
     ) {
         Err(..) => {
             diagnostics_emitter.emit_context_free_diagnostic(
@@ -41,7 +40,7 @@ pub fn command(path_str: &str) {
                 log_with_left_padded_prefix("Parsed", format!("in {}s", parsing_time));
 
                 let now = Instant::now();
-                let ast_string = serialize_ast(&ast, &interner);
+                let ast_string = serialize_ast(&ast, &identifier_interner);
 
                 log_with_left_padded_prefix(
                     "Serialized",

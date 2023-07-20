@@ -1,16 +1,15 @@
 #[cfg(test)]
 mod tests {
     use ry_ast::token::{RawLexError, RawToken::*};
-    use ry_filesystem::path_interner::DUMMY_PATH_ID;
-    use ry_interner::Interner;
+    use ry_interner::{IdentifierInterner, DUMMY_PATH_ID};
     use ry_lexer::Lexer;
 
     macro_rules! lexer_test {
         ($name:ident, $source:expr, $expected:pat) => {
             #[test]
             fn $name() {
-                let mut interner = Interner::default();
-                let mut lexer = Lexer::new(DUMMY_PATH_ID, $source, &mut interner);
+                let mut identifier_interner = IdentifierInterner::new();
+                let mut lexer = Lexer::new(DUMMY_PATH_ID, $source, &mut identifier_interner);
                 assert!(matches!(lexer.next_token().raw, $expected));
             }
         };

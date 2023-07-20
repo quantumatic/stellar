@@ -1,6 +1,7 @@
 use codespan_reporting::diagnostic::Diagnostic;
 use ry_diagnostics::BuildDiagnostic;
-use ry_filesystem::{location::Location, path_interner::PathID};
+use ry_filesystem::location::Location;
+use ry_interner::PathID;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub struct UnnecessaryParenthesesInPatternDiagnostic {

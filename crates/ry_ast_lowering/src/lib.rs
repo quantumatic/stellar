@@ -1,6 +1,6 @@
 use diagnostics::{UnnecessaryParenthesesInPatternDiagnostic, UnnecessaryParenthesizedExpression};
 use ry_diagnostics::{BuildDiagnostic, GlobalDiagnostics};
-use ry_filesystem::path_interner::PathID;
+use ry_interner::PathID;
 use ry_hir::ty::{self, Type, TypeVariableID};
 
 mod diagnostics;

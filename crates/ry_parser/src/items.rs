@@ -4,7 +4,7 @@ use ry_ast::{
     SelfFunctionParameter, StructField, Token, TraitItem, TupleField, TypeAlias, Visibility,
 };
 use ry_filesystem::location::Location;
-use ry_interner::symbols;
+use ry_interner::builtin_symbols;
 
 use crate::{
     diagnostics::{
@@ -251,7 +251,7 @@ impl Parse for FunctionParser {
         state.consume(Token!['('], "function")?;
 
         let parameters = parse_list!(state, "function parameters", Token![')'], {
-            if state.lexer.scanned_identifier == symbols::SMALL_SELF {
+            if state.lexer.scanned_identifier == builtin_symbols::SMALL_SELF {
                 state.advance();
 
                 Some(FunctionParameter::SelfParameter(SelfFunctionParameter {

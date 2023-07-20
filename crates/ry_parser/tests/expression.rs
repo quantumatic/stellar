@@ -5,17 +5,22 @@ use ry_ast::{
     TypePathSegment,
 };
 use ry_diagnostics::GlobalDiagnostics;
-use ry_filesystem::{location::Location, path_interner::DUMMY_PATH_ID};
-use ry_interner::{symbols, Interner};
+use ry_filesystem::location::Location;
+use ry_interner::{builtin_symbols, IdentifierInterner, DUMMY_PATH_ID};
 use ry_parser::parse_expression;
 
 #[test]
 fn literal() {
-    let mut interner = Interner::default();
+    let mut identifier_interner = IdentifierInterner::new();
     let mut diagnostics = GlobalDiagnostics::new();
 
     assert_eq!(
-        parse_expression(DUMMY_PATH_ID, "3", &mut diagnostics, &mut interner),
+        parse_expression(
+            DUMMY_PATH_ID,
+            "3",
+            &mut diagnostics,
+            &mut identifier_interner
+        ),
         Some(Expression::Literal(Literal::Integer {
             value: 3,
             location: Location {
@@ -26,7 +31,12 @@ fn literal() {
         }))
     );
     assert_eq!(
-        parse_expression(DUMMY_PATH_ID, "true", &mut diagnostics, &mut interner),
+        parse_expression(
+            DUMMY_PATH_ID,
+            "true",
+            &mut diagnostics,
+            &mut identifier_interner
+        ),
         Some(Expression::Literal(Literal::Boolean {
             value: true,
             location: Location {
@@ -37,7 +47,12 @@ fn literal() {
         }))
     );
     assert_eq!(
-        parse_expression(DUMMY_PATH_ID, "false", &mut diagnostics, &mut interner),
+        parse_expression(
+            DUMMY_PATH_ID,
+            "false",
+            &mut diagnostics,
+            &mut identifier_interner
+        ),
         Some(Expression::Literal(Literal::Boolean {
             value: false,
             location: Location {
@@ -48,7 +63,12 @@ fn literal() {
         }))
     );
     assert_eq!(
-        parse_expression(DUMMY_PATH_ID, "\"hello\"", &mut diagnostics, &mut interner),
+        parse_expression(
+            DUMMY_PATH_ID,
+            "\"hello\"",
+            &mut diagnostics,
+            &mut identifier_interner
+        ),
         Some(Expression::Literal(Literal::String {
             value: "hello".to_owned(),
             location: Location {
@@ -59,7 +79,12 @@ fn literal() {
         }))
     );
     assert_eq!(
-        parse_expression(DUMMY_PATH_ID, "3.2e-2", &mut diagnostics, &mut interner),
+        parse_expression(
+            DUMMY_PATH_ID,
+            "3.2e-2",
+            &mut diagnostics,
+            &mut identifier_interner
+        ),
         Some(Expression::Literal(Literal::Float {
             value: 3.2e-2,
             location: Location {
@@ -70,7 +95,12 @@ fn literal() {
         }))
     );
     assert_eq!(
-        parse_expression(DUMMY_PATH_ID, "'a'", &mut diagnostics, &mut interner),
+        parse_expression(
+            DUMMY_PATH_ID,
+            "'a'",
+            &mut diagnostics,
+            &mut identifier_interner
+        ),
         Some(Expression::Literal(Literal::Character {
             value: 'a',
             location: Location {
@@ -84,11 +114,16 @@ fn literal() {
 
 #[test]
 fn call() {
-    let mut interner = Interner::default();
+    let mut identifier_interner = IdentifierInterner::new();
     let mut diagnostics = GlobalDiagnostics::new();
 
     assert_eq!(
-        parse_expression(DUMMY_PATH_ID, "foo()", &mut diagnostics, &mut interner),
+        parse_expression(
+            DUMMY_PATH_ID,
+            "foo()",
+            &mut diagnostics,
+            &mut identifier_interner
+        ),
         Some(Expression::Call {
             location: Location {
                 file_path_id: DUMMY_PATH_ID,
@@ -101,7 +136,7 @@ fn call() {
                     start: 0,
                     end: 3
                 },
-                symbol: interner.get_or_intern("foo"),
+                symbol: identifier_interner.get_or_intern("foo"),
             })),
             arguments: vec![],
         })
@@ -110,11 +145,16 @@ fn call() {
 
 #[test]
 fn postfix() {
-    let mut interner = Interner::default();
+    let mut identifier_interner = IdentifierInterner::new();
     let mut diagnostics = GlobalDiagnostics::new();
 
     assert_eq!(
-        parse_expression(DUMMY_PATH_ID, "x++", &mut diagnostics, &mut interner),
+        parse_expression(
+            DUMMY_PATH_ID,
+            "x++",
+            &mut diagnostics,
+            &mut identifier_interner
+        ),
         Some(Expression::Postfix {
             location: Location {
                 file_path_id: DUMMY_PATH_ID,
@@ -127,7 +167,7 @@ fn postfix() {
                     start: 0,
                     end: 1
                 },
-                symbol: interner.get_or_intern("x")
+                symbol: identifier_interner.get_or_intern("x")
             })),
             operator: PostfixOperator {
                 location: Location {
@@ -143,7 +183,7 @@ fn postfix() {
 
 #[test]
 fn generic_argument() {
-    let mut interner = Interner::default();
+    let mut identifier_interner = IdentifierInterner::new();
     let mut diagnostics = GlobalDiagnostics::new();
 
     assert_eq!(
@@ -151,7 +191,7 @@ fn generic_argument() {
             DUMMY_PATH_ID,
             "sizeof[uint32]()",
             &mut diagnostics,
-            &mut interner
+            &mut identifier_interner
         ),
         Some(Expression::Call {
             location: Location {
@@ -171,7 +211,7 @@ fn generic_argument() {
                         start: 0,
                         end: 6
                     },
-                    symbol: symbols::SIZE_OF
+                    symbol: builtin_symbols::SIZE_OF
                 })),
                 generic_arguments: vec![GenericArgument::Type(Type::Path(TypePath {
                     location: Location {
@@ -197,7 +237,7 @@ fn generic_argument() {
                                     start: 7,
                                     end: 13
                                 },
-                                symbol: symbols::UINT32
+                                symbol: builtin_symbols::UINT32
                             }]
                         },
                         generic_arguments: None
@@ -211,7 +251,7 @@ fn generic_argument() {
 
 #[test]
 fn list() {
-    let mut interner = Interner::default();
+    let mut identifier_interner = IdentifierInterner::new();
     let mut diagnostics = GlobalDiagnostics::new();
 
     assert_eq!(
@@ -219,7 +259,7 @@ fn list() {
             DUMMY_PATH_ID,
             "[1, true, \"3\".into()]",
             &mut diagnostics,
-            &mut interner
+            &mut identifier_interner
         ),
         Some(Expression::List {
             location: Location {
@@ -270,7 +310,7 @@ fn list() {
                                 start: 14,
                                 end: 18
                             },
-                            symbol: interner.get_or_intern("into")
+                            symbol: identifier_interner.get_or_intern("into")
                         },
                     }),
                     arguments: vec![]
@@ -282,7 +322,7 @@ fn list() {
 
 #[test]
 fn tuple() {
-    let mut interner = Interner::default();
+    let mut identifier_interner = IdentifierInterner::new();
     let mut diagnostics = GlobalDiagnostics::new();
 
     assert_eq!(
@@ -290,7 +330,7 @@ fn tuple() {
             DUMMY_PATH_ID,
             "(1, true, \"3\".into())",
             &mut diagnostics,
-            &mut interner
+            &mut identifier_interner
         ),
         Some(Expression::Tuple {
             location: Location {
@@ -341,7 +381,7 @@ fn tuple() {
                                 start: 14,
                                 end: 18
                             },
-                            symbol: interner.get_or_intern("into")
+                            symbol: identifier_interner.get_or_intern("into")
                         }
                     }),
                     arguments: vec![]
@@ -353,7 +393,7 @@ fn tuple() {
 
 #[test]
 fn binary() {
-    let mut interner = Interner::default();
+    let mut identifier_interner = IdentifierInterner::new();
     let mut diagnostics = GlobalDiagnostics::new();
 
     assert_eq!(
@@ -361,7 +401,7 @@ fn binary() {
             DUMMY_PATH_ID,
             "(1 + (0 * 2 + c) + d()) - !a?",
             &mut diagnostics,
-            &mut interner
+            &mut identifier_interner
         ),
         Some(Expression::Binary {
             location: Location {
@@ -460,7 +500,7 @@ fn binary() {
                                         start: 14,
                                         end: 15
                                     },
-                                    symbol: interner.get_or_intern("c")
+                                    symbol: identifier_interner.get_or_intern("c")
                                 }))
                             })
                         })
@@ -485,7 +525,7 @@ fn binary() {
                                 start: 19,
                                 end: 20
                             },
-                            symbol: interner.get_or_intern("d")
+                            symbol: identifier_interner.get_or_intern("d")
                         })),
                         arguments: vec![]
                     })
@@ -517,7 +557,7 @@ fn binary() {
                             start: 27,
                             end: 28
                         },
-                        symbol: interner.get_or_intern("a")
+                        symbol: identifier_interner.get_or_intern("a")
                     })),
                     operator: PrefixOperator {
                         location: Location {
@@ -543,7 +583,7 @@ fn binary() {
 
 #[test]
 fn r#as() {
-    let mut interner = Interner::default();
+    let mut identifier_interner = IdentifierInterner::new();
     let mut diagnostics = GlobalDiagnostics::new();
 
     assert_eq!(
@@ -551,7 +591,7 @@ fn r#as() {
             DUMMY_PATH_ID,
             "1 as float32",
             &mut diagnostics,
-            &mut interner
+            &mut identifier_interner
         ),
         Some(Expression::As {
             location: Location {
@@ -591,7 +631,7 @@ fn r#as() {
                                 start: 5,
                                 end: 12
                             },
-                            symbol: symbols::FLOAT32
+                            symbol: builtin_symbols::FLOAT32
                         }]
                     },
                     generic_arguments: None
@@ -603,7 +643,7 @@ fn r#as() {
 
 #[test]
 fn ifelse() {
-    let mut interner = Interner::default();
+    let mut identifier_interner = IdentifierInterner::new();
     let mut diagnostics = GlobalDiagnostics::new();
 
     assert_eq!(
@@ -611,7 +651,7 @@ fn ifelse() {
             DUMMY_PATH_ID,
             "if true { 1 } else { 0 }",
             &mut diagnostics,
-            &mut interner
+            &mut identifier_interner
         ),
         Some(Expression::If {
             location: Location {
@@ -657,7 +697,7 @@ fn ifelse() {
 
 #[test]
 fn r#struct() {
-    let mut interner = Interner::default();
+    let mut identifier_interner = IdentifierInterner::new();
     let mut diagnostics = GlobalDiagnostics::new();
 
     assert_eq!(
@@ -665,7 +705,7 @@ fn r#struct() {
             DUMMY_PATH_ID,
             "Person { age: 25, name }",
             &mut diagnostics,
-            &mut interner
+            &mut identifier_interner
         ),
         Some(Expression::Struct {
             location: Location {
@@ -679,7 +719,7 @@ fn r#struct() {
                     start: 0,
                     end: 6
                 },
-                symbol: interner.get_or_intern("Person")
+                symbol: identifier_interner.get_or_intern("Person")
             })),
             fields: vec![
                 StructExpressionItem {
@@ -689,7 +729,7 @@ fn r#struct() {
                             start: 9,
                             end: 12
                         },
-                        symbol: interner.get_or_intern("age")
+                        symbol: identifier_interner.get_or_intern("age")
                     },
                     value: Some(Expression::Literal(Literal::Integer {
                         location: Location {
@@ -707,7 +747,7 @@ fn r#struct() {
                             start: 18,
                             end: 22
                         },
-                        symbol: interner.get_or_intern("name")
+                        symbol: identifier_interner.get_or_intern("name")
                     },
                     value: None
                 }
@@ -718,7 +758,7 @@ fn r#struct() {
 
 #[test]
 fn r#while() {
-    let mut interner = Interner::default();
+    let mut identifier_interner = IdentifierInterner::new();
     let mut diagnostics = GlobalDiagnostics::new();
 
     assert_eq!(
@@ -726,7 +766,7 @@ fn r#while() {
             DUMMY_PATH_ID,
             "while true { code(); eat(); sleep(); }",
             &mut diagnostics,
-            &mut interner
+            &mut identifier_interner
         ),
         Some(Expression::While {
             location: Location {
@@ -756,7 +796,7 @@ fn r#while() {
                                 start: 13,
                                 end: 17
                             },
-                            symbol: interner.get_or_intern("code")
+                            symbol: identifier_interner.get_or_intern("code")
                         })),
                         arguments: vec![]
                     },
@@ -775,7 +815,7 @@ fn r#while() {
                                 start: 21,
                                 end: 24
                             },
-                            symbol: interner.get_or_intern("eat")
+                            symbol: identifier_interner.get_or_intern("eat")
                         })),
                         arguments: vec![]
                     },
@@ -794,7 +834,7 @@ fn r#while() {
                                 start: 28,
                                 end: 33
                             },
-                            symbol: interner.get_or_intern("sleep")
+                            symbol: identifier_interner.get_or_intern("sleep")
                         })),
                         arguments: vec![]
                     },
@@ -807,7 +847,7 @@ fn r#while() {
 
 #[test]
 fn lambda() {
-    let mut interner = Interner::default();
+    let mut identifier_interner = IdentifierInterner::new();
     let mut diagnostics = GlobalDiagnostics::new();
 
     assert_eq!(
@@ -815,7 +855,7 @@ fn lambda() {
             DUMMY_PATH_ID,
             "|a, b: uint32| { a + b }",
             &mut diagnostics,
-            &mut interner
+            &mut identifier_interner
         ),
         Some(Expression::Lambda {
             location: Location {
@@ -831,7 +871,7 @@ fn lambda() {
                             start: 1,
                             end: 2
                         },
-                        symbol: interner.get_or_intern("a")
+                        symbol: identifier_interner.get_or_intern("a")
                     },
                     ty: None
                 },
@@ -842,7 +882,7 @@ fn lambda() {
                             start: 4,
                             end: 5
                         },
-                        symbol: interner.get_or_intern("b")
+                        symbol: identifier_interner.get_or_intern("b")
                     },
                     ty: Some(Type::Path(TypePath {
                         location: Location {
@@ -868,7 +908,7 @@ fn lambda() {
                                         start: 7,
                                         end: 13
                                     },
-                                    symbol: symbols::UINT32
+                                    symbol: builtin_symbols::UINT32
                                 }]
                             },
                             generic_arguments: None
@@ -890,7 +930,7 @@ fn lambda() {
                             start: 17,
                             end: 18
                         },
-                        symbol: interner.get_or_intern("a")
+                        symbol: identifier_interner.get_or_intern("a")
                     })),
                     operator: BinaryOperator {
                         location: Location {
@@ -906,7 +946,7 @@ fn lambda() {
                             start: 21,
                             end: 22
                         },
-                        symbol: interner.get_or_intern("b")
+                        symbol: identifier_interner.get_or_intern("b")
                     }))
                 },
                 has_semicolon: false
@@ -917,7 +957,7 @@ fn lambda() {
 
 #[test]
 fn r#match() {
-    let mut interner = Interner::default();
+    let mut identifier_interner = IdentifierInterner::new();
     let mut diagnostics = GlobalDiagnostics::new();
 
     assert_eq!(
@@ -925,7 +965,7 @@ fn r#match() {
             DUMMY_PATH_ID,
             "match Some(3) { Some(a) => println(a), .. => {} }",
             &mut diagnostics,
-            &mut interner
+            &mut identifier_interner
         ),
         Some(Expression::Match {
             location: Location {
@@ -945,7 +985,7 @@ fn r#match() {
                         start: 6,
                         end: 10
                     },
-                    symbol: interner.get_or_intern("Some")
+                    symbol: identifier_interner.get_or_intern("Some")
                 })),
                 arguments: vec![Expression::Literal(Literal::Integer {
                     value: 3,
@@ -976,7 +1016,7 @@ fn r#match() {
                                     start: 16,
                                     end: 20
                                 },
-                                symbol: interner.get_or_intern("Some")
+                                symbol: identifier_interner.get_or_intern("Some")
                             }]
                         },
                         inner_patterns: vec![Pattern::Identifier {
@@ -991,7 +1031,7 @@ fn r#match() {
                                     start: 21,
                                     end: 22
                                 },
-                                symbol: interner.get_or_intern("a")
+                                symbol: identifier_interner.get_or_intern("a")
                             },
                             pattern: None
                         }]
@@ -1008,7 +1048,7 @@ fn r#match() {
                                 start: 27,
                                 end: 34
                             },
-                            symbol: interner.get_or_intern("println")
+                            symbol: identifier_interner.get_or_intern("println")
                         })),
                         arguments: vec![Expression::Identifier(IdentifierAst {
                             location: Location {
@@ -1016,7 +1056,7 @@ fn r#match() {
                                 start: 35,
                                 end: 36
                             },
-                            symbol: interner.get_or_intern("a")
+                            symbol: identifier_interner.get_or_intern("a")
                         })]
                     }
                 },

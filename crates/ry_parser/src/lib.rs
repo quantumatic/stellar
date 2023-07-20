@@ -86,11 +86,8 @@ use ry_ast::{
     Expression, IdentifierAst, Module, ModuleItem, Pattern, Statement, Token, Type, Visibility,
 };
 use ry_diagnostics::{BuildDiagnostic, GlobalDiagnostics};
-use ry_filesystem::{
-    location::{Location, LocationIndex},
-    path_interner::{PathID, PathInterner},
-};
-use ry_interner::Interner;
+use ry_filesystem::location::{Location, LocationIndex};
+use ry_interner::{IdentifierInterner, PathID, PathInterner};
 use ry_lexer::Lexer;
 use statement::StatementParser;
 use tracing::trace;
@@ -102,16 +99,16 @@ mod macros;
 
 /// Represents a parse state.
 #[derive(Debug)]
-pub struct ParseState<'source, 'diagnostics, 'interner> {
+pub struct ParseState<'s, 'd, 'i> {
     /// Lexer that is used for parsing.
-    lexer: Lexer<'source, 'interner>,
+    lexer: Lexer<'s, 'i>,
     /// Current token.
     current_token: Token,
     /// Next token.
     next_token: Token,
 
     /// Diagnostics that is emitted during parsing.
-    diagnostics: &'diagnostics mut GlobalDiagnostics,
+    diagnostics: &'d mut GlobalDiagnostics,
 }
 
 /// Represents AST node that can be parsed.
@@ -158,16 +155,16 @@ where
 /// Panics if the file path cannot be resolved in the path storage.
 #[inline]
 pub fn read_and_parse_module(
-    path_interner: &PathInterner,
+    path_identifier_interner: &PathInterner,
     file_path_id: PathID,
     diagnostics: &mut GlobalDiagnostics,
-    interner: &mut Interner,
+    identifier_interner: &mut IdentifierInterner,
 ) -> Result<Module, io::Error> {
     Ok(parse_module_using(ParseState::new(
         file_path_id,
-        &fs::read_to_string(path_interner.resolve_path_or_panic(file_path_id))?,
+        &fs::read_to_string(path_identifier_interner.resolve_or_panic(file_path_id))?,
         diagnostics,
-        interner,
+        identifier_interner,
     )))
 }
 
@@ -178,9 +175,14 @@ pub fn parse_module(
     file_path_id: PathID,
     source: &str,
     diagnostics: &mut GlobalDiagnostics,
-    interner: &mut Interner,
+    identifier_interner: &mut IdentifierInterner,
 ) -> Module {
-    parse_module_using(ParseState::new(file_path_id, source, diagnostics, interner))
+    parse_module_using(ParseState::new(
+        file_path_id,
+        source,
+        diagnostics,
+        identifier_interner,
+    ))
 }
 
 /// Parse a Ry module using a given parse state.
@@ -200,13 +202,13 @@ pub fn parse_item(
     file_path_id: PathID,
     source: impl AsRef<str>,
     diagnostics: &mut GlobalDiagnostics,
-    interner: &mut Interner,
+    identifier_interner: &mut IdentifierInterner,
 ) -> Option<ModuleItem> {
     parse_item_using(&mut ParseState::new(
         file_path_id,
         source.as_ref(),
         diagnostics,
-        interner,
+        identifier_interner,
     ))
 }
 
@@ -224,13 +226,13 @@ pub fn parse_expression(
     file_path_id: PathID,
     source: impl AsRef<str>,
     diagnostics: &mut GlobalDiagnostics,
-    interner: &mut Interner,
+    identifier_interner: &mut IdentifierInterner,
 ) -> Option<Expression> {
     parse_expression_using(&mut ParseState::new(
         file_path_id,
         source.as_ref(),
         diagnostics,
-        interner,
+        identifier_interner,
     ))
 }
 
@@ -248,13 +250,13 @@ pub fn parse_statement(
     file_path_id: PathID,
     source: impl AsRef<str>,
     diagnostics: &mut GlobalDiagnostics,
-    interner: &mut Interner,
+    identifier_interner: &mut IdentifierInterner,
 ) -> Option<Statement> {
     parse_statement_using(&mut ParseState::new(
         file_path_id,
         source.as_ref(),
         diagnostics,
-        interner,
+        identifier_interner,
     ))
 }
 
@@ -272,13 +274,13 @@ pub fn parse_type(
     file_path_id: PathID,
     source: impl AsRef<str>,
     diagnostics: &mut GlobalDiagnostics,
-    interner: &mut Interner,
+    identifier_interner: &mut IdentifierInterner,
 ) -> Option<Type> {
     parse_type_using(&mut ParseState::new(
         file_path_id,
         source.as_ref(),
         diagnostics,
-        interner,
+        identifier_interner,
     ))
 }
 
@@ -296,13 +298,13 @@ pub fn parse_pattern(
     file_path_id: PathID,
     source: impl AsRef<str>,
     diagnostics: &mut GlobalDiagnostics,
-    interner: &mut Interner,
+    identifier_interner: &mut IdentifierInterner,
 ) -> Option<Pattern> {
     parse_pattern_using(&mut ParseState::new(
         file_path_id,
         source.as_ref(),
         diagnostics,
-        interner,
+        identifier_interner,
     ))
 }
 
@@ -313,16 +315,16 @@ pub fn parse_pattern_using(state: &mut ParseState<'_, '_, '_>) -> Option<Pattern
     PatternParser.parse(state)
 }
 
-impl<'source, 'diagnostics, 'interner> ParseState<'source, 'diagnostics, 'interner> {
+impl<'s, 'd, 'i> ParseState<'s, 'd, 'i> {
     /// Creates an initial parse state from file source.
     #[must_use]
     pub fn new(
         file_path_id: PathID,
-        source: &'source str,
-        diagnostics: &'diagnostics mut GlobalDiagnostics,
-        interner: &'interner mut Interner,
+        source: &'s str,
+        diagnostics: &'d mut GlobalDiagnostics,
+        identifier_interner: &'i mut IdentifierInterner,
     ) -> Self {
-        let mut lexer = Lexer::new(file_path_id, source, interner);
+        let mut lexer = Lexer::new(file_path_id, source, identifier_interner);
 
         let current_token = lexer.next_no_comments();
         trace!(

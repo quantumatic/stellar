@@ -1,12 +1,12 @@
 use ry_ast::{Expression, IdentifierAst, Literal, Pattern, Statement};
 use ry_diagnostics::GlobalDiagnostics;
-use ry_filesystem::{location::Location, path_interner::DUMMY_PATH_ID};
-use ry_interner::Interner;
+use ry_filesystem::location::Location;
+use ry_interner::{IdentifierInterner, DUMMY_PATH_ID};
 use ry_parser::parse_statement;
 
 #[test]
 fn defer() {
-    let mut interner = Interner::default();
+    let mut identifier_interner = IdentifierInterner::new();
     let mut diagnostics = GlobalDiagnostics::new();
 
     assert_eq!(
@@ -14,7 +14,7 @@ fn defer() {
             DUMMY_PATH_ID,
             "defer file.close();",
             &mut diagnostics,
-            &mut interner
+            &mut identifier_interner
         ),
         Some(Statement::Defer {
             call: Expression::Call {
@@ -35,7 +35,7 @@ fn defer() {
                             start: 6,
                             end: 10
                         },
-                        symbol: interner.get_or_intern("file")
+                        symbol: identifier_interner.get_or_intern("file")
                     })),
                     right: IdentifierAst {
                         location: Location {
@@ -43,7 +43,7 @@ fn defer() {
                             start: 11,
                             end: 16
                         },
-                        symbol: interner.get_or_intern("close")
+                        symbol: identifier_interner.get_or_intern("close")
                     }
                 }),
                 arguments: vec![]
@@ -54,11 +54,16 @@ fn defer() {
 
 #[test]
 fn r#break() {
-    let mut interner = Interner::default();
+    let mut identifier_interner = IdentifierInterner::new();
     let mut diagnostics = GlobalDiagnostics::new();
 
     assert_eq!(
-        parse_statement(DUMMY_PATH_ID, "break;", &mut diagnostics, &mut interner),
+        parse_statement(
+            DUMMY_PATH_ID,
+            "break;",
+            &mut diagnostics,
+            &mut identifier_interner
+        ),
         Some(Statement::Break {
             location: Location {
                 file_path_id: DUMMY_PATH_ID,
@@ -71,11 +76,16 @@ fn r#break() {
 
 #[test]
 fn r#continue() {
-    let mut interner = Interner::default();
+    let mut identifier_interner = IdentifierInterner::new();
     let mut diagnostics = GlobalDiagnostics::new();
 
     assert_eq!(
-        parse_statement(DUMMY_PATH_ID, "continue;", &mut diagnostics, &mut interner),
+        parse_statement(
+            DUMMY_PATH_ID,
+            "continue;",
+            &mut diagnostics,
+            &mut identifier_interner
+        ),
         Some(Statement::Continue {
             location: Location {
                 file_path_id: DUMMY_PATH_ID,
@@ -88,11 +98,16 @@ fn r#continue() {
 
 #[test]
 fn r#let() {
-    let mut interner = Interner::default();
+    let mut identifier_interner = IdentifierInterner::new();
     let mut diagnostics = GlobalDiagnostics::new();
 
     assert_eq!(
-        parse_statement(DUMMY_PATH_ID, "let x = 1;", &mut diagnostics, &mut interner),
+        parse_statement(
+            DUMMY_PATH_ID,
+            "let x = 1;",
+            &mut diagnostics,
+            &mut identifier_interner
+        ),
         Some(Statement::Let {
             pattern: Pattern::Identifier {
                 location: Location {
@@ -106,7 +121,7 @@ fn r#let() {
                         start: 4,
                         end: 5
                     },
-                    symbol: interner.get_or_intern("x")
+                    symbol: identifier_interner.get_or_intern("x")
                 },
                 pattern: None
             },

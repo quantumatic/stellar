@@ -65,10 +65,10 @@
 )]
 
 use ry_ast::{DefinitionID, IdentifierAst, ImportPath};
-use ry_filesystem::{location::Location, path_interner::PathID};
+use ry_filesystem::location::Location;
 use ry_fx_hash::FxHashMap;
 use ry_hir::ty::{Path, Type};
-use ry_interner::Symbol;
+use ry_interner::{PathID, Symbol};
 
 pub mod diagnostics;
 

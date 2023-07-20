@@ -2,7 +2,7 @@
 
 use std::sync::Arc;
 
-use ry_interner::{symbols, Symbol};
+use ry_interner::{builtin_symbols, Symbol};
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Type {
@@ -84,7 +84,7 @@ macro_rules! t {
         #[must_use]
         #[doc = concat!("Returns a `", stringify!($name), "` type.")]
         pub fn $name() -> Type {
-            primitive_constructor(symbols::$symbol)
+            primitive_constructor(builtin_symbols::$symbol)
         }
     };
 }
@@ -127,7 +127,7 @@ pub fn list_of(element_type: Arc<Type>) -> Arc<Type> {
         path: TypePath {
             segments: vec![TypePathSegment {
                 left: Path {
-                    symbols: vec![symbols::LIST],
+                    symbols: vec![builtin_symbols::LIST],
                 },
                 right: vec![element_type],
             }],

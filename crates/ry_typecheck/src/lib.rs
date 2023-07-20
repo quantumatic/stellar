@@ -1,38 +1,38 @@
+use std::sync::Arc;
+
 use ry_ast::DefinitionID;
 use ry_ast_lowering::TypeVariableGenerator;
 use ry_diagnostics::GlobalDiagnostics;
-use ry_filesystem::path_interner::{PathID, PathInterner};
 use ry_fx_hash::FxHashMap;
 use ry_hir::{ty::Type, Module, ModuleItem};
-use ry_interner::{Interner, Symbol};
+use ry_interner::{IdentifierInterner, PathID, PathInterner, Symbol};
 use ry_name_resolution::NameResolutionContext;
 use trait_resolution::TraitResolutionContext;
 
 mod trait_resolution;
 
 #[derive(Debug)]
-pub struct TypeCheckingContext<'hir, 'identifier_interner, 'path_interner, 'diagnostics> {
-    identifier_interner: &'identifier_interner mut Interner,
-    path_interner: &'path_interner PathInterner,
+pub struct TypeCheckingContext<'i, 'p, 'hir, 't, 'd> {
+    identifier_interner: &'i mut IdentifierInterner,
+    path_interner: &'p PathInterner,
     name_resolution_context: NameResolutionContext,
     trait_resolution_context: TraitResolutionContext,
 
     items: FxHashMap<DefinitionID, &'hir mut ModuleItem>,
     module_docstrings: FxHashMap<PathID, Option<&'hir str>>,
 
-    substitutions: FxHashMap<Symbol, Type>,
-    type_variable_generator: TypeVariableGenerator,
+    substitutions: FxHashMap<Symbol, Arc<Type>>,
+    type_variable_generator: &'t mut TypeVariableGenerator,
 
-    diagnostics: &'diagnostics mut GlobalDiagnostics,
+    diagnostics: &'d mut GlobalDiagnostics,
 }
 
-impl<'hir, 'identifier_interner, 'path_interner, 'diagnostics>
-    TypeCheckingContext<'hir, 'identifier_interner, 'path_interner, 'diagnostics>
-{
+impl<'i, 'p, 'hir, 't, 'd> TypeCheckingContext<'i, 'p, 'hir, 't, 'd> {
     pub fn new(
-        identifier_interner: &'identifier_interner mut Interner,
-        path_interner: &'path_interner PathInterner,
-        diagnostics: &'diagnostics mut GlobalDiagnostics,
+        identifier_interner: &'i mut IdentifierInterner,
+        path_interner: &'p PathInterner,
+        type_variable_generator: &'t mut TypeVariableGenerator,
+        diagnostics: &'d mut GlobalDiagnostics,
     ) -> Self {
         Self {
             identifier_interner,
@@ -42,7 +42,7 @@ impl<'hir, 'identifier_interner, 'path_interner, 'diagnostics>
             substitutions: FxHashMap::default(),
             items: FxHashMap::default(),
             module_docstrings: FxHashMap::default(),
-            type_variable_generator: TypeVariableGenerator::new(),
+            type_variable_generator,
             diagnostics,
         }
     }

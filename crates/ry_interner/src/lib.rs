@@ -66,7 +66,10 @@ use core::{
     hash::{BuildHasher, Hash, Hasher},
     str::from_utf8_unchecked,
 };
-use std::hash::BuildHasherDefault;
+use std::{
+    hash::BuildHasherDefault,
+    path::{Path, PathBuf},
+};
 
 extern crate alloc;
 
@@ -79,7 +82,7 @@ use ry_fx_hash::FxHasher;
 pub type Symbol = usize;
 
 /// Defines all primitive symbols that are interned by default.
-pub mod symbols {
+pub mod builtin_symbols {
     use crate::Symbol;
 
     /// `_` symbol.
@@ -146,7 +149,7 @@ pub mod symbols {
     pub const STD: Symbol = 20;
 }
 
-/// # Identifier Interner
+/// # String Interner
 ///
 /// Data structure that allows to resolve/intern strings.
 ///
@@ -155,8 +158,8 @@ pub mod symbols {
 /// whenever the same value is encountered again.
 ///
 /// See:
-/// - [`Interner::default()`] to create a new empty instance of [`Interner`].
-/// - [`Interner::get_or_intern()`] to intern a new identifier.
+/// - [`Interner::new()`] to create a new empty instance of [`Interner`].
+/// - [`Interner::get_or_intern()`] to intern a new string.
 /// - [`Interner::resolve()`] to resolve already interned strings.
 #[derive(Debug, Clone)]
 pub struct Interner {
@@ -274,28 +277,19 @@ macro_rules! intern_primitive_symbols {
 
 impl Interner {
     /// Creates a new empty [`Interner`], that only contains builtin symbols.
-    #[must_use]
     #[inline]
+    #[must_use]
     pub fn new() -> Self {
-        let mut interner = Self {
+        Self {
             dedup: HashMap::default(),
             hasher: BuildHasherDefault::default(),
             backend: InternerStorage::default(),
-        };
-
-        interner.get_or_intern("_");
-
-        intern_primitive_symbols!(
-            interner, int8, int16, int32, int64, uint8, uint16, uint32, uint64, float32, float64,
-            isize, usize, bool, String, List, char, self, Self, sizeof, std
-        );
-
-        interner
+        }
     }
 
     /// Creates a new empty `Interner` with the given capacity.
-    #[must_use]
     #[inline]
+    #[must_use]
     pub fn with_capacity(capacity: usize) -> Self {
         Self {
             dedup: HashMap::with_capacity_and_hasher(capacity, ()),
@@ -382,12 +376,11 @@ impl Interner {
     ///
     /// # Example
     /// ```
-    /// # use ry_interner::{Interner, symbols::UINT8};
+    /// # use ry_interner::Interner;
     /// let mut interner = Interner::default();
     /// let hello_symbol = interner.get_or_intern("hello");
     ///
     /// assert_eq!(interner.get("hello"), Some(hello_symbol));
-    /// assert_eq!(interner.get("uint8"), Some(UINT8)); // interned by default
     /// assert_eq!(interner.get("!"), None);
     /// ```
     #[inline]
@@ -403,4 +396,140 @@ impl Interner {
 struct Span {
     start: usize,
     end: usize,
+}
+
+/// # Identifier Interner
+///
+/// Data structure that allows to resolve/intern identifiers. The only
+/// difference between identifier interner and [string interner] is that
+/// the former contains builtin identifiers (see [`builtin_symbols`] for more details).
+///
+/// See:
+/// - [`IdentifierInterner::new()`] to create a new empty instance of [`IdentifierInterner`].
+/// - [`IdentifierInterner::get_or_intern()`] to intern a new string.
+/// - [`IdentifierInterner::resolve()`] to resolve already interned strings.
+#[derive(Debug, Clone, Default)]
+pub struct IdentifierInterner(Interner);
+
+impl IdentifierInterner {
+    /// Creates a new empty [`IdentifierInterner`], that **already contains builtin identifiers**!
+    #[must_use]
+    pub fn new() -> Self {
+        let mut interner = Interner::new();
+
+        interner.get_or_intern("_");
+
+        intern_primitive_symbols!(
+            interner, int8, int16, int32, int64, uint8, uint16, uint32, uint64, float32, float64,
+            isize, usize, bool, String, List, char, self, Self, sizeof, std
+        );
+
+        Self(interner)
+    }
+
+    /// Returns the number of identifiers interned by the interner.
+    #[inline]
+    #[must_use]
+    #[allow(clippy::len_without_is_empty)] // interner is never empty
+    pub fn len(&self) -> usize {
+        self.0.len()
+    }
+
+    /// Returns the symbol for the given identifier if it is interned.
+    ///
+    /// # Example
+    /// ```
+    /// # use ry_interner::IdentifierInterner;
+    /// let mut identifier_interner = IdentifierInterner::new();
+    /// let hello_symbol = identifier_interner.get_or_intern("hello");
+    /// assert_eq!(Some(hello_symbol), identifier_interner.get("hello"));
+    /// ```
+    #[inline]
+    pub fn get(&self, identifier: impl AsRef<str>) -> Option<Symbol> {
+        self.0.get(identifier)
+    }
+
+    /// Interns the given identifier (if it doesn't exist) and returns a corresponding symbol.
+    #[inline]
+    pub fn get_or_intern(&mut self, identifier: impl AsRef<str>) -> Symbol {
+        self.0.get_or_intern(identifier)
+    }
+
+    /// Shrink backend capacity to fit the interned identifiers exactly.
+    #[inline]
+    pub fn shrink_to_fit(&mut self) {
+        self.0.shrink_to_fit()
+    }
+
+    /// Returns the string for the given symbol if any.
+    ///
+    /// # Example
+    /// ```
+    /// # use ry_interner::{IdentifierInterner, builtin_symbols::UINT8};
+    /// let mut identifier_interner = IdentifierInterner::new();
+    /// let hello_symbol = identifier_interner.get_or_intern("hello");
+    ///
+    /// assert_eq!(identifier_interner.get("hello"), Some(hello_symbol));
+    /// assert_eq!(identifier_interner.get("uint8"), Some(UINT8)); // interned by default
+    /// assert_eq!(identifier_interner.get("!"), None);
+    /// ```
+    #[inline]
+    #[must_use]
+    pub fn resolve(&self, symbol: Symbol) -> Option<&str> {
+        self.0.resolve(symbol)
+    }
+}
+
+/// Storage for file paths (to avoid copying and fast comparing, basically the same
+/// movitation as with [`Interner`]).
+///
+/// The ID-s that correspond to file paths have a type of [`PathID`].
+#[derive(Debug, Clone)]
+pub struct PathInterner(Interner);
+
+/// ID of a path in the [`FilePathStorage`].
+pub type PathID = usize;
+
+/// ID of a path, that will never exist in the [`FilePathStorage`].
+pub const DUMMY_PATH_ID: PathID = 0;
+
+impl Default for PathInterner {
+    #[inline]
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl PathInterner {
+    /// Creates a new empty file path storage.
+    #[inline]
+    #[must_use]
+    pub fn new() -> Self {
+        Self(Interner::new())
+    }
+
+    /// Adds a path to the interner.
+    #[inline]
+    #[must_use]
+    pub fn get_or_intern(&mut self, path: impl AsRef<Path>) -> PathID {
+        self.0
+            .get_or_intern(path.as_ref().to_str().expect("Invalid UTF-8 path"))
+    }
+
+    /// Resolves a path stored in the storage.
+    #[inline]
+    #[must_use]
+    pub fn resolve(&self, id: PathID) -> Option<PathBuf> {
+        self.0.resolve(id).map(PathBuf::from)
+    }
+
+    /// Resolves a path stored in the storage (same as `resolve_path()`),
+    /// but panics if the path is not found.
+    #[inline]
+    #[must_use]
+    #[allow(clippy::missing_panics_doc)]
+    pub fn resolve_or_panic(&self, id: PathID) -> PathBuf {
+        self.resolve(id)
+            .unwrap_or_else(|| panic!("Path with id: {id} is not found"))
+    }
 }

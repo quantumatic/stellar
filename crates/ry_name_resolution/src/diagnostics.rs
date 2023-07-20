@@ -5,7 +5,8 @@
 use codespan_reporting::diagnostic::Diagnostic;
 use ry_ast::ModuleItemKind;
 use ry_diagnostics::BuildDiagnostic;
-use ry_filesystem::{location::Location, path_interner::PathID};
+use ry_filesystem::location::Location;
+use ry_interner::PathID;
 
 /// An information about an item defined in the module.
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]

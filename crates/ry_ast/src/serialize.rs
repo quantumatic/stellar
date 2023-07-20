@@ -1,6 +1,6 @@
 //! Defines [`Serializer`] to serialize AST into a string.
 
-use ry_interner::Interner;
+use ry_interner::IdentifierInterner;
 
 use crate::{
     visit::{
@@ -24,9 +24,9 @@ use crate::{
 
 /// A struct that allows to serialize a Ry module into a string, for debug purposes.
 #[derive(Debug)]
-pub struct Serializer<'interner> {
+pub struct Serializer<'i> {
     /// An interner used to resolve symbols in an AST.
-    interner: &'interner Interner,
+    identifier_interner: &'i IdentifierInterner,
 
     /// Current indentation level
     identation: usize,
@@ -35,30 +35,16 @@ pub struct Serializer<'interner> {
     output: String,
 }
 
-impl<'interner> Serializer<'interner> {
+impl<'i> Serializer<'i> {
     /// Creates a new serializer instance.
     #[inline]
     #[must_use]
-    pub const fn new(interner: &'interner Interner) -> Self {
+    pub const fn new(identifier_interner: &'i IdentifierInterner) -> Self {
         Self {
-            interner,
+            identifier_interner,
             identation: 0,
             output: String::new(),
         }
-    }
-
-    /// Returns the interner used to resolve symbols in the AST of the module being serialized.
-    #[inline]
-    #[must_use]
-    pub const fn interner(&self) -> &'interner Interner {
-        self.interner
-    }
-
-    /// Returns the current indentation level.
-    #[inline]
-    #[must_use]
-    pub const fn identation(&self) -> usize {
-        self.identation
     }
 
     /// Increments the current indentation level.
@@ -89,7 +75,7 @@ impl<'interner> Serializer<'interner> {
 
     /// Adds indentation symbols into the output.
     pub fn write_identation(&mut self) {
-        for _ in 0..self.identation() {
+        for _ in 0..self.identation {
             self.write("\t");
         }
     }
@@ -225,7 +211,9 @@ impl Visitor<'_> for Serializer<'_> {
 
         self.write(format!(
             "IDENTIFIER: {} <{}>",
-            self.interner.resolve(identifier.symbol).unwrap_or("?"),
+            self.identifier_interner
+                .resolve(identifier.symbol)
+                .unwrap_or("?"),
             identifier.location
         ));
         self.write_newline();
@@ -694,8 +682,8 @@ impl Visitor<'_> for Serializer<'_> {
 
 /// Serialize a module AST into a string.
 #[must_use]
-pub fn serialize_ast(module: &Module, interner: &Interner) -> String {
-    let mut serializer = Serializer::new(interner);
+pub fn serialize_ast(module: &Module, identifier_interner: &IdentifierInterner) -> String {
+    let mut serializer = Serializer::new(identifier_interner);
     serializer.visit_module(module);
     serializer.take_output()
 }

@@ -70,15 +70,13 @@ use codespan_reporting::{
         Config,
     },
 };
-use ry_filesystem::{
-    in_memory_file_storage::InMemoryFileStorage,
-    path_interner::{PathID, PathInterner},
-};
+use ry_filesystem::in_memory_file_storage::InMemoryFileStorage;
 use ry_fx_hash::FxHashSet;
+use ry_interner::{PathID, PathInterner};
 
 /// Stores basic [`codespan_reporting`] structs for reporting diagnostics.
 #[derive(Debug)]
-pub struct DiagnosticsEmitter<'path_interner> {
+pub struct DiagnosticsEmitter<'p> {
     /// The stream in which diagnostics is reported into.
     writer: StandardStream,
 
@@ -86,7 +84,7 @@ pub struct DiagnosticsEmitter<'path_interner> {
     config: Config,
 
     /// The files that are involved in the diagnostics are temporarily stored here.
-    file_storage: InMemoryFileStorage<'path_interner>,
+    file_storage: InMemoryFileStorage<'p>,
 }
 
 /// Multi file diagnostic.
@@ -221,11 +219,11 @@ impl Files<'_> for EmptyDiagnosticsManager {
     }
 }
 
-impl<'path_interner> DiagnosticsEmitter<'path_interner> {
+impl<'p> DiagnosticsEmitter<'p> {
     /// Create a new [`DiagnosticsEmitter`] instance.
     #[inline]
     #[must_use]
-    pub fn new(path_interner: &'path_interner PathInterner) -> Self {
+    pub fn new(path_interner: &'p PathInterner) -> Self {
         Self {
             writer: StandardStream::stderr(ColorChoice::Always),
             config: Config::default(),
