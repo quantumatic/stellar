@@ -15,9 +15,11 @@ impl BuildDiagnostic for DuplicateTraitBoundDiagnostic {
             .with_code("E007")
             .with_message("duplicate traits bounds found")
             .with_labels(vec![
-                self.first_bound_location.to_secondary_label()
+                self.first_bound_location
+                    .to_secondary_label()
                     .with_message("first occurrence of the trait bound"),
-                self.second_bound_location.to_primary_label()
+                self.second_bound_location
+                    .to_primary_label()
                     .with_message("consider removing the trait bound"),
             ])
     }
@@ -35,11 +37,12 @@ impl BuildDiagnostic for UnnecessaryEqualityPredicateDiagnostic {
             .with_code("E008")
             .with_message("unneccessary equality where predicate")
             .with_labels(vec![
-                self.generic_parameter_location.to_primary_label()
+                self.generic_parameter_location
+                    .to_primary_label()
                     .with_message("consider using generic default value syntax"),
-                self.type_location.to_secondary_label()
-                    .with_message("the type is not considered default for the generic!")
+                self.type_location
+                    .to_secondary_label()
+                    .with_message("the type is not considered default for the generic!"),
             ])
     }
 }
-

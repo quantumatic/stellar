@@ -1,4 +1,4 @@
-use ry_ast::{Expression, IdentifierAst, Literal, Pattern, Statement};
+use ry_ast::{Expression, IdentifierAST, Literal, Pattern, Statement};
 use ry_diagnostics::GlobalDiagnostics;
 use ry_filesystem::location::Location;
 use ry_interner::{IdentifierInterner, DUMMY_PATH_ID};
@@ -29,7 +29,7 @@ fn defer() {
                         start: 6,
                         end: 16
                     },
-                    left: Box::new(Expression::Identifier(IdentifierAst {
+                    left: Box::new(Expression::Identifier(IdentifierAST {
                         location: Location {
                             file_path_id: DUMMY_PATH_ID,
                             start: 6,
@@ -37,7 +37,7 @@ fn defer() {
                         },
                         symbol: identifier_interner.get_or_intern("file")
                     })),
-                    right: IdentifierAst {
+                    right: IdentifierAST {
                         location: Location {
                             file_path_id: DUMMY_PATH_ID,
                             start: 11,
@@ -115,7 +115,7 @@ fn r#let() {
                     start: 4,
                     end: 5
                 },
-                identifier: IdentifierAst {
+                identifier: IdentifierAST {
                     location: Location {
                         file_path_id: DUMMY_PATH_ID,
                         start: 4,

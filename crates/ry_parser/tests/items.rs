@@ -1,6 +1,6 @@
 use ry_ast::{
     EnumItem, Expression, Function, FunctionParameter, FunctionParameterType, FunctionSignature,
-    GenericArgument, GenericParameter, IdentifierAst, Impl, ImportPath, ModuleItem,
+    GenericArgument, GenericParameter, IdentifierAST, Impl, ImportPath, ModuleItem,
     NotSelfFunctionParameter, Path, SelfFunctionParameter, Statement, StructField, TraitItem,
     TupleField, Type, TypeAlias, TypePath, TypePathSegment, Visibility, WherePredicate,
 };
@@ -24,7 +24,7 @@ fn function() {
         Some(ModuleItem::Function(Function {
             signature: FunctionSignature {
                 visibility: Visibility::private(),
-                name: IdentifierAst {
+                name: IdentifierAST {
                     location: Location {
                         file_path_id: DUMMY_PATH_ID,
                         start: 4,
@@ -34,7 +34,7 @@ fn function() {
                 },
                 generic_parameters: Some(vec![
                     GenericParameter {
-                        name: IdentifierAst {
+                        name: IdentifierAST {
                             location: Location {
                                 file_path_id: DUMMY_PATH_ID,
                                 start: 8,
@@ -46,7 +46,7 @@ fn function() {
                         default_value: None
                     },
                     GenericParameter {
-                        name: IdentifierAst {
+                        name: IdentifierAST {
                             location: Location {
                                 file_path_id: DUMMY_PATH_ID,
                                 start: 11,
@@ -73,7 +73,7 @@ fn function() {
                                         start: 15,
                                         end: 21
                                     },
-                                    identifiers: vec![IdentifierAst {
+                                    identifiers: vec![IdentifierAST {
                                         location: Location {
                                             file_path_id: DUMMY_PATH_ID,
                                             start: 15,
@@ -101,7 +101,7 @@ fn function() {
                                                     start: 22,
                                                     end: 23
                                                 },
-                                                identifiers: vec![IdentifierAst {
+                                                identifiers: vec![IdentifierAST {
                                                     location: Location {
                                                         file_path_id: DUMMY_PATH_ID,
                                                         start: 22,
@@ -120,7 +120,7 @@ fn function() {
                 ]),
                 parameters: vec![FunctionParameter::NotSelfParameter(
                     NotSelfFunctionParameter {
-                        name: IdentifierAst {
+                        name: IdentifierAST {
                             location: Location {
                                 file_path_id: DUMMY_PATH_ID,
                                 start: 26,
@@ -146,7 +146,7 @@ fn function() {
                                         start: 29,
                                         end: 30
                                     },
-                                    identifiers: vec![IdentifierAst {
+                                    identifiers: vec![IdentifierAST {
                                         location: Location {
                                             file_path_id: DUMMY_PATH_ID,
                                             start: 29,
@@ -178,7 +178,7 @@ fn function() {
                                 start: 33,
                                 end: 34
                             },
-                            identifiers: vec![IdentifierAst {
+                            identifiers: vec![IdentifierAST {
                                 location: Location {
                                     file_path_id: DUMMY_PATH_ID,
                                     start: 33,
@@ -206,7 +206,7 @@ fn function() {
                             start: 37,
                             end: 45
                         },
-                        left: Box::new(Expression::Identifier(IdentifierAst {
+                        left: Box::new(Expression::Identifier(IdentifierAST {
                             location: Location {
                                 file_path_id: DUMMY_PATH_ID,
                                 start: 37,
@@ -214,7 +214,7 @@ fn function() {
                             },
                             symbol: identifier_interner.get_or_intern("a")
                         })),
-                        right: IdentifierAst {
+                        right: IdentifierAST {
                             location: Location {
                                 file_path_id: DUMMY_PATH_ID,
                                 start: 39,
@@ -251,7 +251,7 @@ fn r#impl() {
             },
             generic_parameters: Some(vec![
                 GenericParameter {
-                    name: IdentifierAst {
+                    name: IdentifierAST {
                         location: Location {
                             file_path_id: DUMMY_PATH_ID,
                             start: 5,
@@ -263,7 +263,7 @@ fn r#impl() {
                     default_value: None
                 },
                 GenericParameter {
-                    name: IdentifierAst {
+                    name: IdentifierAST {
                         location: Location {
                             file_path_id: DUMMY_PATH_ID,
                             start: 8,
@@ -300,7 +300,7 @@ fn r#impl() {
                                     start: 37,
                                     end: 38
                                 },
-                                identifiers: vec![IdentifierAst {
+                                identifiers: vec![IdentifierAST {
                                     location: Location {
                                         file_path_id: DUMMY_PATH_ID,
                                         start: 37,
@@ -330,7 +330,7 @@ fn r#impl() {
                                     start: 40,
                                     end: 41
                                 },
-                                identifiers: vec![IdentifierAst {
+                                identifiers: vec![IdentifierAST {
                                     location: Location {
                                         file_path_id: DUMMY_PATH_ID,
                                         start: 40,
@@ -362,7 +362,7 @@ fn r#impl() {
                             start: 11,
                             end: 15
                         },
-                        identifiers: vec![IdentifierAst {
+                        identifiers: vec![IdentifierAST {
                             location: Location {
                                 file_path_id: DUMMY_PATH_ID,
                                 start: 11,
@@ -389,7 +389,7 @@ fn r#impl() {
                                     start: 16,
                                     end: 22
                                 },
-                                identifiers: vec![IdentifierAst {
+                                identifiers: vec![IdentifierAST {
                                     location: Location {
                                         file_path_id: DUMMY_PATH_ID,
                                         start: 16,
@@ -423,7 +423,7 @@ fn r#impl() {
                                                     start: 24,
                                                     end: 25
                                                 },
-                                                identifiers: vec![IdentifierAst {
+                                                identifiers: vec![IdentifierAST {
                                                     location: Location {
                                                         file_path_id: DUMMY_PATH_ID,
                                                         start: 24,
@@ -453,7 +453,7 @@ fn r#impl() {
                                                     start: 27,
                                                     end: 28
                                                 },
-                                                identifiers: vec![IdentifierAst {
+                                                identifiers: vec![IdentifierAST {
                                                     location: Location {
                                                         file_path_id: DUMMY_PATH_ID,
                                                         start: 27,
@@ -504,7 +504,7 @@ fn import() {
                         end: 13
                     },
                     identifiers: vec![
-                        IdentifierAst {
+                        IdentifierAST {
                             location: Location {
                                 file_path_id: DUMMY_PATH_ID,
                                 start: 7,
@@ -512,7 +512,7 @@ fn import() {
                             },
                             symbol: builtin_symbols::STD
                         },
-                        IdentifierAst {
+                        IdentifierAST {
                             location: Location {
                                 file_path_id: DUMMY_PATH_ID,
                                 start: 11,
@@ -522,7 +522,7 @@ fn import() {
                         }
                     ]
                 },
-                r#as: Some(IdentifierAst {
+                r#as: Some(IdentifierAST {
                     location: Location {
                         file_path_id: DUMMY_PATH_ID,
                         start: 17,
@@ -549,7 +549,7 @@ fn r#struct() {
         ),
         Some(ModuleItem::Struct {
             visibility: Visibility::private(),
-            name: IdentifierAst {
+            name: IdentifierAST {
                 location: Location {
                     file_path_id: DUMMY_PATH_ID,
                     start: 7,
@@ -558,7 +558,7 @@ fn r#struct() {
                 symbol: identifier_interner.get_or_intern("Lexer")
             },
             generic_parameters: Some(vec![GenericParameter {
-                name: IdentifierAst {
+                name: IdentifierAST {
                     location: Location {
                         file_path_id: DUMMY_PATH_ID,
                         start: 13,
@@ -588,7 +588,7 @@ fn r#struct() {
                                 start: 22,
                                 end: 23
                             },
-                            identifiers: vec![IdentifierAst {
+                            identifiers: vec![IdentifierAST {
                                 location: Location {
                                     file_path_id: DUMMY_PATH_ID,
                                     start: 22,
@@ -601,63 +601,61 @@ fn r#struct() {
                     }]
                 }),
                 bounds: vec![TypePathSegment {
+                    location: Location {
+                        file_path_id: DUMMY_PATH_ID,
+                        start: 25,
+                        end: 39
+                    },
+                    path: Path {
                         location: Location {
                             file_path_id: DUMMY_PATH_ID,
                             start: 25,
-                            end: 39
+                            end: 33
                         },
-                        path: Path {
+                        identifiers: vec![IdentifierAST {
                             location: Location {
                                 file_path_id: DUMMY_PATH_ID,
                                 start: 25,
                                 end: 33
                             },
-                            identifiers: vec![IdentifierAst {
-                                location: Location {
-                                    file_path_id: DUMMY_PATH_ID,
-                                    start: 25,
-                                    end: 33
-                                },
-                                symbol: identifier_interner.get_or_intern("Iterator")
-                            }]
+                            symbol: identifier_interner.get_or_intern("Iterator")
+                        }]
+                    },
+                    generic_arguments: Some(vec![GenericArgument::Type(Type::Path(TypePath {
+                        location: Location {
+                            file_path_id: DUMMY_PATH_ID,
+                            start: 34,
+                            end: 38
                         },
-                        generic_arguments: Some(vec![GenericArgument::Type(Type::Path(
-                            TypePath {
+                        segments: vec![TypePathSegment {
+                            location: Location {
+                                file_path_id: DUMMY_PATH_ID,
+                                start: 34,
+                                end: 38
+                            },
+                            path: Path {
                                 location: Location {
                                     file_path_id: DUMMY_PATH_ID,
                                     start: 34,
                                     end: 38
                                 },
-                                segments: vec![TypePathSegment {
+                                identifiers: vec![IdentifierAST {
                                     location: Location {
                                         file_path_id: DUMMY_PATH_ID,
                                         start: 34,
                                         end: 38
                                     },
-                                    path: Path {
-                                        location: Location {
-                                            file_path_id: DUMMY_PATH_ID,
-                                            start: 34,
-                                            end: 38
-                                        },
-                                        identifiers: vec![IdentifierAst {
-                                            location: Location {
-                                                file_path_id: DUMMY_PATH_ID,
-                                                start: 34,
-                                                end: 38
-                                            },
-                                            symbol: builtin_symbols::CHAR
-                                        }]
-                                    },
-                                    generic_arguments: None
+                                    symbol: builtin_symbols::CHAR
                                 }]
-                            }
-                        ))])
-                    }]
+                            },
+                            generic_arguments: None
+                        }]
+                    }))])
+                }]
             }]),
             fields: vec![StructField {
                 visibility: Visibility::private(),
-                name: IdentifierAst {
+                name: IdentifierAST {
                     location: Location {
                         file_path_id: DUMMY_PATH_ID,
                         start: 42,
@@ -683,7 +681,7 @@ fn r#struct() {
                                 start: 52,
                                 end: 53
                             },
-                            identifiers: vec![IdentifierAst {
+                            identifiers: vec![IdentifierAST {
                                 location: Location {
                                     file_path_id: DUMMY_PATH_ID,
                                     start: 52,
@@ -716,7 +714,7 @@ fn into() {
         ),
         Some(ModuleItem::Trait {
             visibility: Visibility::private(),
-            name: IdentifierAst {
+            name: IdentifierAST {
                 location: Location {
                     file_path_id: DUMMY_PATH_ID,
                     start: 6,
@@ -725,7 +723,7 @@ fn into() {
                 symbol: identifier_interner.get_or_intern("Into")
             },
             generic_parameters: Some(vec![GenericParameter {
-                name: IdentifierAst {
+                name: IdentifierAST {
                     location: Location {
                         file_path_id: DUMMY_PATH_ID,
                         start: 11,
@@ -740,7 +738,7 @@ fn into() {
             items: vec![TraitItem::AssociatedFunction(Function {
                 signature: FunctionSignature {
                     visibility: Visibility::private(),
-                    name: IdentifierAst {
+                    name: IdentifierAST {
                         location: Location {
                             file_path_id: DUMMY_PATH_ID,
                             start: 20,
@@ -775,7 +773,7 @@ fn into() {
                                     start: 32,
                                     end: 33
                                 },
-                                identifiers: vec![IdentifierAst {
+                                identifiers: vec![IdentifierAST {
                                     location: Location {
                                         file_path_id: DUMMY_PATH_ID,
                                         start: 32,
@@ -811,7 +809,7 @@ fn alias() {
         ),
         Some(ModuleItem::TypeAlias(TypeAlias {
             visibility: Visibility::private(),
-            name: IdentifierAst {
+            name: IdentifierAST {
                 location: Location {
                     file_path_id: DUMMY_PATH_ID,
                     start: 5,
@@ -821,7 +819,7 @@ fn alias() {
             },
             generic_parameters: Some(vec![
                 GenericParameter {
-                    name: IdentifierAst {
+                    name: IdentifierAST {
                         location: Location {
                             file_path_id: DUMMY_PATH_ID,
                             start: 18,
@@ -833,7 +831,7 @@ fn alias() {
                     default_value: None
                 },
                 GenericParameter {
-                    name: IdentifierAst {
+                    name: IdentifierAST {
                         location: Location {
                             file_path_id: DUMMY_PATH_ID,
                             start: 21,
@@ -870,7 +868,7 @@ fn alias() {
                                 start: 27,
                                 end: 34
                             },
-                            identifiers: vec![IdentifierAst {
+                            identifiers: vec![IdentifierAST {
                                 location: Location {
                                     file_path_id: DUMMY_PATH_ID,
                                     start: 27,
@@ -898,7 +896,7 @@ fn alias() {
                                             start: 35,
                                             end: 36
                                         },
-                                        identifiers: vec![IdentifierAst {
+                                        identifiers: vec![IdentifierAST {
                                             location: Location {
                                                 file_path_id: DUMMY_PATH_ID,
                                                 start: 35,
@@ -928,7 +926,7 @@ fn alias() {
                                             start: 38,
                                             end: 39
                                         },
-                                        identifiers: vec![IdentifierAst {
+                                        identifiers: vec![IdentifierAST {
                                             location: Location {
                                                 file_path_id: DUMMY_PATH_ID,
                                                 start: 38,
@@ -961,7 +959,7 @@ fn alias() {
                                 start: 44,
                                 end: 56
                             },
-                            identifiers: vec![IdentifierAst {
+                            identifiers: vec![IdentifierAST {
                                 location: Location {
                                     file_path_id: DUMMY_PATH_ID,
                                     start: 44,
@@ -985,7 +983,7 @@ fn alias() {
                             start: 58,
                             end: 62
                         },
-                        identifiers: vec![IdentifierAst {
+                        identifiers: vec![IdentifierAST {
                             location: Location {
                                 file_path_id: DUMMY_PATH_ID,
                                 start: 58,
@@ -1016,7 +1014,7 @@ fn r#enum() {
         ),
         Some(ModuleItem::Enum {
             visibility: Visibility::private(),
-            name: IdentifierAst {
+            name: IdentifierAST {
                 location: Location {
                     file_path_id: DUMMY_PATH_ID,
                     start: 5,
@@ -1026,7 +1024,7 @@ fn r#enum() {
             },
             generic_parameters: Some(vec![
                 GenericParameter {
-                    name: IdentifierAst {
+                    name: IdentifierAST {
                         location: Location {
                             file_path_id: DUMMY_PATH_ID,
                             start: 12,
@@ -1038,7 +1036,7 @@ fn r#enum() {
                     default_value: None
                 },
                 GenericParameter {
-                    name: IdentifierAst {
+                    name: IdentifierAST {
                         location: Location {
                             file_path_id: DUMMY_PATH_ID,
                             start: 15,
@@ -1053,7 +1051,7 @@ fn r#enum() {
             where_predicates: None,
             items: vec![
                 EnumItem::TupleLike {
-                    name: IdentifierAst {
+                    name: IdentifierAST {
                         location: Location {
                             file_path_id: DUMMY_PATH_ID,
                             start: 20,
@@ -1081,7 +1079,7 @@ fn r#enum() {
                                         start: 23,
                                         end: 24
                                     },
-                                    identifiers: vec![IdentifierAst {
+                                    identifiers: vec![IdentifierAST {
                                         location: Location {
                                             file_path_id: DUMMY_PATH_ID,
                                             start: 23,
@@ -1097,7 +1095,7 @@ fn r#enum() {
                     docstring: None
                 },
                 EnumItem::TupleLike {
-                    name: IdentifierAst {
+                    name: IdentifierAST {
                         location: Location {
                             file_path_id: DUMMY_PATH_ID,
                             start: 27,
@@ -1125,7 +1123,7 @@ fn r#enum() {
                                         start: 31,
                                         end: 32
                                     },
-                                    identifiers: vec![IdentifierAst {
+                                    identifiers: vec![IdentifierAST {
                                         location: Location {
                                             file_path_id: DUMMY_PATH_ID,
                                             start: 31,

@@ -1,4 +1,4 @@
-use ry_ast::{IdentifierAst, ImportPath};
+use ry_ast::{IdentifierAST, ImportPath};
 use ry_filesystem::location::DUMMY_LOCATION;
 use ry_fx_hash::FxHashMap;
 use ry_hir::ty::Path;
@@ -102,11 +102,11 @@ fn import() {
                     path: ry_ast::Path {
                         location: DUMMY_LOCATION,
                         identifiers: vec![
-                            IdentifierAst {
+                            IdentifierAST {
                                 location: DUMMY_LOCATION,
                                 symbol: a,
                             },
-                            IdentifierAst {
+                            IdentifierAST {
                                 location: DUMMY_LOCATION,
                                 symbol: b,
                             },
@@ -121,17 +121,17 @@ fn import() {
                     path: ry_ast::Path {
                         location: DUMMY_LOCATION,
                         identifiers: vec![
-                            IdentifierAst {
+                            IdentifierAST {
                                 location: DUMMY_LOCATION,
                                 symbol: a,
                             },
-                            IdentifierAst {
+                            IdentifierAST {
                                 location: DUMMY_LOCATION,
                                 symbol: b,
                             },
                         ],
                     },
-                    r#as: Some(IdentifierAst {
+                    r#as: Some(IdentifierAST {
                         location: DUMMY_LOCATION,
                         symbol: c,
                     }),

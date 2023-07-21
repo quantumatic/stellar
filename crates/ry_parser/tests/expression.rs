@@ -1,5 +1,5 @@
 use ry_ast::{
-    BinaryOperator, Expression, GenericArgument, IdentifierAst, LambdaFunctionParameter, Literal,
+    BinaryOperator, Expression, GenericArgument, IdentifierAST, LambdaFunctionParameter, Literal,
     MatchExpressionItem, Path, Pattern, PostfixOperator, PrefixOperator, RawBinaryOperator,
     RawPostfixOperator, RawPrefixOperator, Statement, StructExpressionItem, Type, TypePath,
     TypePathSegment,
@@ -130,7 +130,7 @@ fn call() {
                 start: 0,
                 end: 5
             },
-            callee: Box::new(Expression::Identifier(IdentifierAst {
+            callee: Box::new(Expression::Identifier(IdentifierAST {
                 location: Location {
                     file_path_id: DUMMY_PATH_ID,
                     start: 0,
@@ -161,7 +161,7 @@ fn postfix() {
                 start: 0,
                 end: 3
             },
-            inner: Box::new(Expression::Identifier(IdentifierAst {
+            inner: Box::new(Expression::Identifier(IdentifierAST {
                 location: Location {
                     file_path_id: DUMMY_PATH_ID,
                     start: 0,
@@ -205,7 +205,7 @@ fn generic_argument() {
                     start: 0,
                     end: 14
                 },
-                left: Box::new(Expression::Identifier(IdentifierAst {
+                left: Box::new(Expression::Identifier(IdentifierAST {
                     location: Location {
                         file_path_id: DUMMY_PATH_ID,
                         start: 0,
@@ -231,7 +231,7 @@ fn generic_argument() {
                                 start: 7,
                                 end: 13
                             },
-                            identifiers: vec![IdentifierAst {
+                            identifiers: vec![IdentifierAST {
                                 location: Location {
                                     file_path_id: DUMMY_PATH_ID,
                                     start: 7,
@@ -304,7 +304,7 @@ fn list() {
                                 end: 13
                             }
                         })),
-                        right: IdentifierAst {
+                        right: IdentifierAST {
                             location: Location {
                                 file_path_id: DUMMY_PATH_ID,
                                 start: 14,
@@ -375,7 +375,7 @@ fn tuple() {
                                 end: 13
                             }
                         })),
-                        right: IdentifierAst {
+                        right: IdentifierAST {
                             location: Location {
                                 file_path_id: DUMMY_PATH_ID,
                                 start: 14,
@@ -494,7 +494,7 @@ fn binary() {
                                     },
                                     raw: RawBinaryOperator::Plus
                                 },
-                                right: Box::new(Expression::Identifier(IdentifierAst {
+                                right: Box::new(Expression::Identifier(IdentifierAST {
                                     location: Location {
                                         file_path_id: DUMMY_PATH_ID,
                                         start: 14,
@@ -519,7 +519,7 @@ fn binary() {
                             start: 19,
                             end: 22
                         },
-                        callee: Box::new(Expression::Identifier(IdentifierAst {
+                        callee: Box::new(Expression::Identifier(IdentifierAST {
                             location: Location {
                                 file_path_id: DUMMY_PATH_ID,
                                 start: 19,
@@ -551,7 +551,7 @@ fn binary() {
                         start: 26,
                         end: 28
                     },
-                    inner: Box::new(Expression::Identifier(IdentifierAst {
+                    inner: Box::new(Expression::Identifier(IdentifierAST {
                         location: Location {
                             file_path_id: DUMMY_PATH_ID,
                             start: 27,
@@ -625,7 +625,7 @@ fn r#as() {
                             start: 5,
                             end: 12
                         },
-                        identifiers: vec![IdentifierAst {
+                        identifiers: vec![IdentifierAST {
                             location: Location {
                                 file_path_id: DUMMY_PATH_ID,
                                 start: 5,
@@ -713,7 +713,7 @@ fn r#struct() {
                 start: 0,
                 end: 24
             },
-            left: Box::new(Expression::Identifier(IdentifierAst {
+            left: Box::new(Expression::Identifier(IdentifierAST {
                 location: Location {
                     file_path_id: DUMMY_PATH_ID,
                     start: 0,
@@ -723,7 +723,7 @@ fn r#struct() {
             })),
             fields: vec![
                 StructExpressionItem {
-                    name: IdentifierAst {
+                    name: IdentifierAST {
                         location: Location {
                             file_path_id: DUMMY_PATH_ID,
                             start: 9,
@@ -741,7 +741,7 @@ fn r#struct() {
                     }))
                 },
                 StructExpressionItem {
-                    name: IdentifierAst {
+                    name: IdentifierAST {
                         location: Location {
                             file_path_id: DUMMY_PATH_ID,
                             start: 18,
@@ -790,7 +790,7 @@ fn r#while() {
                             start: 13,
                             end: 19
                         },
-                        callee: Box::new(Expression::Identifier(IdentifierAst {
+                        callee: Box::new(Expression::Identifier(IdentifierAST {
                             location: Location {
                                 file_path_id: DUMMY_PATH_ID,
                                 start: 13,
@@ -809,7 +809,7 @@ fn r#while() {
                             start: 21,
                             end: 26
                         },
-                        callee: Box::new(Expression::Identifier(IdentifierAst {
+                        callee: Box::new(Expression::Identifier(IdentifierAST {
                             location: Location {
                                 file_path_id: DUMMY_PATH_ID,
                                 start: 21,
@@ -828,7 +828,7 @@ fn r#while() {
                             start: 28,
                             end: 35
                         },
-                        callee: Box::new(Expression::Identifier(IdentifierAst {
+                        callee: Box::new(Expression::Identifier(IdentifierAST {
                             location: Location {
                                 file_path_id: DUMMY_PATH_ID,
                                 start: 28,
@@ -865,7 +865,7 @@ fn lambda() {
             },
             parameters: vec![
                 LambdaFunctionParameter {
-                    name: IdentifierAst {
+                    name: IdentifierAST {
                         location: Location {
                             file_path_id: DUMMY_PATH_ID,
                             start: 1,
@@ -876,7 +876,7 @@ fn lambda() {
                     ty: None
                 },
                 LambdaFunctionParameter {
-                    name: IdentifierAst {
+                    name: IdentifierAST {
                         location: Location {
                             file_path_id: DUMMY_PATH_ID,
                             start: 4,
@@ -902,7 +902,7 @@ fn lambda() {
                                     start: 7,
                                     end: 13
                                 },
-                                identifiers: vec![IdentifierAst {
+                                identifiers: vec![IdentifierAST {
                                     location: Location {
                                         file_path_id: DUMMY_PATH_ID,
                                         start: 7,
@@ -924,7 +924,7 @@ fn lambda() {
                         start: 17,
                         end: 22
                     },
-                    left: Box::new(Expression::Identifier(IdentifierAst {
+                    left: Box::new(Expression::Identifier(IdentifierAST {
                         location: Location {
                             file_path_id: DUMMY_PATH_ID,
                             start: 17,
@@ -940,7 +940,7 @@ fn lambda() {
                         },
                         raw: RawBinaryOperator::Plus
                     },
-                    right: Box::new(Expression::Identifier(IdentifierAst {
+                    right: Box::new(Expression::Identifier(IdentifierAST {
                         location: Location {
                             file_path_id: DUMMY_PATH_ID,
                             start: 21,
@@ -979,7 +979,7 @@ fn r#match() {
                     start: 6,
                     end: 13
                 },
-                callee: Box::new(Expression::Identifier(IdentifierAst {
+                callee: Box::new(Expression::Identifier(IdentifierAST {
                     location: Location {
                         file_path_id: DUMMY_PATH_ID,
                         start: 6,
@@ -1010,7 +1010,7 @@ fn r#match() {
                                 start: 16,
                                 end: 20
                             },
-                            identifiers: vec![IdentifierAst {
+                            identifiers: vec![IdentifierAST {
                                 location: Location {
                                     file_path_id: DUMMY_PATH_ID,
                                     start: 16,
@@ -1025,7 +1025,7 @@ fn r#match() {
                                 start: 21,
                                 end: 22
                             },
-                            identifier: IdentifierAst {
+                            identifier: IdentifierAST {
                                 location: Location {
                                     file_path_id: DUMMY_PATH_ID,
                                     start: 21,
@@ -1042,7 +1042,7 @@ fn r#match() {
                             start: 27,
                             end: 37
                         },
-                        callee: Box::new(Expression::Identifier(IdentifierAst {
+                        callee: Box::new(Expression::Identifier(IdentifierAST {
                             location: Location {
                                 file_path_id: DUMMY_PATH_ID,
                                 start: 27,
@@ -1050,7 +1050,7 @@ fn r#match() {
                             },
                             symbol: identifier_interner.get_or_intern("println")
                         })),
-                        arguments: vec![Expression::Identifier(IdentifierAst {
+                        arguments: vec![Expression::Identifier(IdentifierAST {
                             location: Location {
                                 file_path_id: DUMMY_PATH_ID,
                                 start: 35,

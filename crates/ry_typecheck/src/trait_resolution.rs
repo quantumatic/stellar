@@ -1,7 +1,7 @@
 use std::iter::zip;
 
 use ry_ast::{IdentifierAST, TypeBounds};
-use ry_diagnostics::{GlobalDiagnostics, BuildDiagnostic};
+use ry_diagnostics::{BuildDiagnostic, GlobalDiagnostics};
 use ry_fx_hash::{FxHashMap, FxHashSet};
 use ry_hir::{
     ty::{Path, Type, TypePathSegment},
@@ -54,9 +54,7 @@ impl TraitResolutionContext {
                 let mut result = FxHashSet::default();
 
                 for parameter_type in parameter_types {
-                    result.extend(
-                        self.get_constrained_type_parameters(parameter_type, generics),
-                    );
+                    result.extend(self.get_constrained_type_parameters(parameter_type, generics));
                 }
 
                 result.extend(self.get_constrained_type_parameters(*return_type, generics));
@@ -70,9 +68,7 @@ impl TraitResolutionContext {
                 let mut result = FxHashSet::default();
 
                 for element_type in element_types {
-                    result.extend(
-                        self.get_constrained_type_parameters(element_type, generics),
-                    );
+                    result.extend(self.get_constrained_type_parameters(element_type, generics));
                 }
 
                 result
