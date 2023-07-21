@@ -458,7 +458,7 @@ impl IdentifierInterner {
     /// Shrink backend capacity to fit the interned identifiers exactly.
     #[inline]
     pub fn shrink_to_fit(&mut self) {
-        self.0.shrink_to_fit()
+        self.0.shrink_to_fit();
     }
 
     /// Returns the string for the given symbol if any.

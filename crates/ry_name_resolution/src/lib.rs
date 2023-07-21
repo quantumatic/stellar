@@ -283,7 +283,7 @@ pub enum NameBindingData<'ctx> {
 }
 
 /// Data that Ry compiler has about a particular symbol.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct ValueConstructor {
     /// Span where the symbol was defined.
     pub origin: Location,

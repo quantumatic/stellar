@@ -1,5 +1,5 @@
 use ry_ast::{
-    token::RawToken, TypeArgument, TypeParameter, Path, Token, Type, TypeBounds, TypePath,
+    token::RawToken, Path, Token, Type, TypeArgument, TypeBounds, TypeParameter, TypePath,
     TypePathSegment, WherePredicate,
 };
 

@@ -14,8 +14,8 @@ ry_ast = { path = "../ry_ast" }
 ry_ast_lowering = { path = "../ry_ast_lowering" }
 ry_diagnostics = { path = "../ry_diagnostics" }
 ry_filesystem = { path = "../ry_filesystem" }
+ry_fx_hash = { path = "../ry_fx_hash" }
 ry_hir = { path = "../ry_hir" }
 ry_interner = { path = "../ry_interner" }
 ry_name_resolution = { path = "../ry_name_resolution" }
-ry_fx_hash = { path = "../ry_fx_hash" }
 ry_parser = { path = "../ry_parser" }

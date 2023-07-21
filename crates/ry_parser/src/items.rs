@@ -14,7 +14,7 @@ use crate::{
     expected,
     macros::parse_list,
     path::ImportPathParser,
-    r#type::{TypeParametersParser, TypeBoundsParser, TypeParser, WherePredicatesParser},
+    r#type::{TypeBoundsParser, TypeParametersParser, TypeParser, WherePredicatesParser},
     statement::StatementsBlockParser,
     OptionalParser, Parse, ParseState, VisibilityParser,
 };

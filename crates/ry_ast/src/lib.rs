@@ -337,7 +337,7 @@ impl Type {
 }
 
 /// A type parameter, e.g. `T` in `fun into[T](a: T);`.
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct TypeParameter {
     pub name: IdentifierAST,
     pub bounds: Option<TypeBounds>,
@@ -345,7 +345,7 @@ pub struct TypeParameter {
 }
 
 /// A type alias, e.g. `type MyResult = Result[String, MyError]`.
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct TypeAlias {
     pub visibility: Visibility,
     pub name: IdentifierAST,
@@ -357,7 +357,7 @@ pub struct TypeAlias {
 
 /// A where clause item, e.g. `T: Into<String>` and `[T as Iterator].Item = char` in
 /// `where T: Into<String>, [T as Iterator].Item = char`.
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub enum WherePredicate {
     Eq { left: Type, right: Type },
     Satisfies { ty: Type, bounds: TypeBounds },
@@ -490,7 +490,7 @@ pub enum Expression {
 }
 
 /// A lambda function parameter, e.g. `x` in `|x| { x + 1 }`.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct LambdaFunctionParameter {
     pub name: IdentifierAST,
     pub ty: Option<Type>,
@@ -1139,7 +1139,7 @@ impl Display for ModuleItemKind {
 }
 
 /// An enum item, e.g. `None`, `Ok(T)`, `A { b: T }`.
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub enum EnumItem {
     /// Just an identifier, e.g. `None` in `enum Option[T] { Some(T), None }`.
     Just {
@@ -1161,14 +1161,14 @@ pub enum EnumItem {
 }
 
 /// A tuple field, e.g. `pub String` in `pub struct Wrapper(pub String);`.
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct TupleField {
     pub visibility: Visibility,
     pub ty: Type,
 }
 
 /// A struct field, e.g. `name: String`, `pub age: uint32`.
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct StructField {
     pub visibility: Visibility,
     pub name: IdentifierAST,
@@ -1194,7 +1194,7 @@ pub struct Function {
 }
 
 /// A function signature - information about function except a block.
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct FunctionSignature {
     pub visibility: Visibility,
     pub name: IdentifierAST,
@@ -1206,7 +1206,7 @@ pub struct FunctionSignature {
 }
 
 /// A function parameter, e.g. `self`, `self: Self`, `a: uint32`.
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub enum FunctionParameter {
     /// A function parameter that is not `self`.
     NotSelfParameter(NotSelfFunctionParameter),
@@ -1216,20 +1216,20 @@ pub enum FunctionParameter {
 }
 
 /// A self parameter, e.g. `self`, `self: Self`.
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct SelfFunctionParameter {
     pub self_location: Location,
     pub ty: Option<Type>,
 }
 
 /// A function parameter that is not `self`, e.g. `a: uint32`.
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct NotSelfFunctionParameter {
     pub name: IdentifierAST,
     pub ty: FunctionParameterType,
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub enum FunctionParameterType {
     Type(Type),
     Impl(TypeBounds),

@@ -51,7 +51,7 @@ pub enum TypeKind {
 impl Type {
     #[inline]
     #[must_use]
-    pub fn kind(&self) -> TypeKind {
+    pub const fn kind(&self) -> TypeKind {
         match self {
             Self::Constructor { .. } => TypeKind::Constructor,
             Self::Tuple { .. } => TypeKind::Tuple,

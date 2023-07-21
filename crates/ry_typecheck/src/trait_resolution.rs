@@ -189,9 +189,9 @@ impl TraitResolutionContext {
             ) => zip(left, right).all(|(left, right)| {
                 self.implemented_types_can_be_equal(
                     left_type_parameters,
-                    left.clone(),
+                    left,
                     right_type_parameters,
-                    right.clone(),
+                    right,
                 )
             }),
             // (_, int32): _ overlaps with (_, _): int32
