@@ -133,6 +133,7 @@ pub enum Keyword {
     Break,
     Continue,
     Dyn,
+    Loop,
 }
 
 impl AsRef<str> for Keyword {
@@ -159,6 +160,7 @@ impl AsRef<str> for Keyword {
             Self::Break => "`break`",
             Self::Continue => "`continue`",
             Self::Dyn => "`dyn`",
+            Self::Loop => "`loop`",
         }
     }
 }
@@ -560,6 +562,7 @@ macro_rules! Token {
     [break] =>              {$crate::token::RawToken::Keyword($crate::token::Keyword::Break)};
     [continue] =>           {$crate::token::RawToken::Keyword($crate::token::Keyword::Continue)};
     [dyn] =>                {$crate::token::RawToken::Keyword($crate::token::Keyword::Dyn)};
+    [loop] =>               {$crate::token::RawToken::Keyword($crate::token::Keyword::Loop)};
 }
 
 /// List of reserved Ry names: keywords, boolean literals & etc..
@@ -587,6 +590,7 @@ pub static RESERVED: phf::Map<&'static str, RawToken> = phf_map! {
     "break" => Token![break],
     "continue" => Token![continue],
     "dyn" => Token![dyn],
+    "loop" => Token![loop],
 };
 
 impl Punctuator {

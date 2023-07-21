@@ -119,7 +119,7 @@ pub trait Visitor<'ast>: Sized {
         walk_generic_argument(self, argument);
     }
 
-    fn visit_trait_bounds(&mut self, bounds: &'ast [TypePath]) {
+    fn visit_trait_bounds(&mut self, bounds: &'ast [TypePathSegment]) {
         walk_trait_bounds(self, bounds);
     }
 
@@ -586,12 +586,12 @@ where
     }
 }
 
-pub fn walk_trait_bounds<'ast, V>(visitor: &mut V, bounds: &'ast [TypePath])
+pub fn walk_trait_bounds<'ast, V>(visitor: &mut V, bounds: &'ast [TypePathSegment])
 where
     V: Visitor<'ast>,
 {
     for bound in bounds {
-        visitor.visit_type_path(bound);
+        visitor.visit_type_path_segment(bound);
     }
 }
 
@@ -744,10 +744,17 @@ where
             visitor.visit_struct_expression_items(fields);
         }
         Expression::While {
-            condition, body, ..
+            condition,
+            statements_block: body,
+            ..
         } => {
             visitor.visit_expression(condition);
             visitor.visit_statements_block(body);
+        }
+        Expression::Loop {
+            statements_block, ..
+        } => {
+            visitor.visit_statements_block(statements_block);
         }
     }
 }

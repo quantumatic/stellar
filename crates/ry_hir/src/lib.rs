@@ -285,9 +285,9 @@ pub struct TypeAlias {
 pub enum WherePredicate {
     Eq {
         left_type_expression: TypeExpression,
-        left_ty: Type,
+        left_type: Type,
         right_type_expression: TypeExpression,
-        right_ty: Type,
+        right_type: Type,
     },
     Satisfies {
         type_expression: TypeExpression,
@@ -379,7 +379,7 @@ pub enum Expression {
     While {
         location: Location,
         condition: Box<Self>,
-        body: Vec<Statement>,
+        statements_block: Vec<Statement>,
         ty: Type,
     },
 

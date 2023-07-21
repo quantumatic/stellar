@@ -33,12 +33,12 @@ impl Parse for TypeBoundsParser {
 
     fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
         let mut bounds = vec![];
-        bounds.push(TypePathParser.parse(state)?);
+        bounds.push(TypePathSegmentParser.parse(state)?);
 
         while state.next_token.raw == Token![+] {
             state.advance();
 
-            bounds.push(TypePathParser.parse(state)?);
+            bounds.push(TypePathSegmentParser.parse(state)?);
         }
 
         Some(bounds)

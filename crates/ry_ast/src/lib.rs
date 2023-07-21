@@ -142,7 +142,7 @@ pub struct IdentifierAst {
 }
 
 /// A sequence of identifiers separated by `.`, e.g. `std.io`, `foo`.
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone, Hash)]
 pub struct Path {
     pub location: Location,
     pub identifiers: Vec<IdentifierAst>,
@@ -156,7 +156,7 @@ pub struct ImportPath {
 }
 
 /// A type path, e.g. `Iterator[Item = uint32].Item`, `F.Output`.
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone, Hash)]
 pub struct TypePath {
     pub location: Location,
     pub segments: Vec<TypePathSegment>,
@@ -164,7 +164,7 @@ pub struct TypePath {
 
 /// A segment of a type path, e.g. `Iterator[Item = uint32]` and `Item` in
 /// `Iterator[Item = uint32].Item`.
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone, Hash)]
 pub struct TypePathSegment {
     pub location: Location,
     pub path: Path,
@@ -275,10 +275,10 @@ pub enum StructFieldPattern {
 }
 
 /// A list of trait bounds being type pathes, e.g. `Debug + Into[T]`.
-pub type TypeBounds = Vec<TypePath>;
+pub type TypeBounds = Vec<TypePathSegment>;
 
 /// A type, e.g. `int32`, `[S, dyn Iterator[Item = uint32]]`, `(char, char)`.
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone, Hash)]
 pub enum Type {
     /// A type path, e.g. `Iterator[Item = uint32].Item`, `R.Output`, `char`.
     Path(TypePath),
@@ -379,6 +379,12 @@ pub enum Expression {
         right: Type,
     },
 
+    /// Loop expression, e.g. `loop { ... }`
+    Loop {
+        location: Location,
+        statements_block: StatementsBlock,
+    },
+
     /// Binary expression, e.g. `1 + 2`.
     Binary {
         location: Location,
@@ -437,7 +443,7 @@ pub enum Expression {
     While {
         location: Location,
         condition: Box<Self>,
-        body: Vec<Statement>,
+        statements_block: Vec<Statement>,
     },
 
     /// Call expression, e.g. `s.to_string()`.
@@ -491,7 +497,7 @@ pub struct LambdaFunctionParameter {
 }
 
 /// A generic argument, e.g. `Item = uint32` in `Iterator[Item = uint32]`, `usize` in `sizeof[usize]()`.
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone, Hash)]
 pub enum GenericArgument {
     /// Just a type, e.g. `usize` in `sizeof[usize]()`.
     Type(Type),
@@ -516,6 +522,7 @@ impl Expression {
                 | Literal::String { location, .. }
                 | Literal::Boolean { location, .. },
             )
+            | Self::Loop { location, .. }
             | Self::Identifier(IdentifierAst { location, .. })
             | Self::Parenthesized { location, .. }
             | Self::If { location, .. }

@@ -107,7 +107,7 @@ impl BuildDiagnostic for ImportingPackageDiagnostic {
     #[inline]
     fn build(&self) -> Diagnostic<PathID> {
         Diagnostic::error()
-            .with_code("E005")
+            .with_code("E006")
             .with_message("trying to import a package".to_owned())
             .with_labels(vec![
                 self.location.to_primary_label()

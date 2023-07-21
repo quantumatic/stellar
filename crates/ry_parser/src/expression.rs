@@ -76,6 +76,8 @@ struct StructExpressionUnitParser;
 
 struct LambdaExpressionParser;
 
+struct LoopExpressionParser;
+
 struct StatementsBlockExpressionParser;
 
 impl Parse for ExpressionParser {
@@ -138,7 +140,7 @@ impl Parse for WhileExpressionParser {
         Some(Expression::While {
             location: state.location_from(start),
             condition: Box::new(condition),
-            body,
+            statements_block: body,
         })
     }
 }
@@ -222,6 +224,7 @@ impl Parse for PrimaryExpressionParser {
             Token![if] => IfExpressionParser.parse(state),
             Token![match] => MatchExpressionParser.parse(state),
             Token![while] => WhileExpressionParser.parse(state),
+            Token![loop] => LoopExpressionParser.parse(state),
             _ => {
                 if state.next_token.raw.prefix_operator() {
                     return PrefixExpressionParser {
@@ -604,6 +607,22 @@ impl Parse for LambdaExpressionParser {
             parameters,
             return_type,
             block,
+        })
+    }
+}
+
+impl Parse for LoopExpressionParser {
+    type Output = Option<Expression>;
+
+    fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
+        state.advance(); // `loop`
+
+        let location = state.current_token.location;
+        let statements_block = StatementsBlockParser.parse(state)?;
+
+        Some(Expression::Loop {
+            location,
+            statements_block,
         })
     }
 }

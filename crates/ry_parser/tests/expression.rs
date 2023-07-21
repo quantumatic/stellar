@@ -782,7 +782,7 @@ fn r#while() {
                     end: 10
                 }
             })),
-            body: vec![
+            statements_block: vec![
                 Statement::Expression {
                     expression: Expression::Call {
                         location: Location {

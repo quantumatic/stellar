@@ -600,13 +600,7 @@ fn r#struct() {
                         generic_arguments: None
                     }]
                 }),
-                bounds: vec![TypePath {
-                    location: Location {
-                        file_path_id: DUMMY_PATH_ID,
-                        start: 25,
-                        end: 39
-                    },
-                    segments: vec![TypePathSegment {
+                bounds: vec![TypePathSegment {
                         location: Location {
                             file_path_id: DUMMY_PATH_ID,
                             start: 25,
@@ -660,7 +654,6 @@ fn r#struct() {
                             }
                         ))])
                     }]
-                }]
             }]),
             fields: vec![StructField {
                 visibility: Visibility::private(),

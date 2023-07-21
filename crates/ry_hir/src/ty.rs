@@ -1,28 +1,26 @@
 //! Defines [`Type`] for working with types and THIR nodes.
 
-use std::sync::Arc;
-
 use ry_interner::{builtin_symbols, Symbol};
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone, Hash)]
 pub enum Type {
     Unit,
     Constructor {
         path: TypePath,
     },
     Tuple {
-        element_types: Vec<Arc<Self>>,
+        element_types: Vec<Self>,
     },
     Function {
-        parameter_types: Vec<Arc<Self>>,
-        return_type: Arc<Self>,
+        parameter_types: Vec<Self>,
+        return_type: Box<Self>,
     },
     Variable(TypeVariableID),
     TraitObject {
         bounds: Vec<TypePathSegment>,
     },
     WithQualifiedPath {
-        left: Arc<Self>,
+        left: Box<Self>,
         right: TypePathSegment,
         segments: Vec<TypePathSegment>,
     },
@@ -102,15 +100,15 @@ t!(float64, FLOAT64);
 t!(char, CHAR);
 t!(string, STRING);
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone, Hash)]
 pub struct TypePath {
     pub segments: Vec<TypePathSegment>,
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone, Hash)]
 pub struct TypePathSegment {
     pub left: Path,
-    pub right: Vec<Arc<Type>>,
+    pub right: Vec<Type>,
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
@@ -122,8 +120,8 @@ pub struct Path {
 /// Returns a list type with the given element type.
 #[inline]
 #[must_use]
-pub fn list_of(element_type: Arc<Type>) -> Arc<Type> {
-    Arc::new(Type::Constructor {
+pub fn list_of(element_type: Type) -> Type {
+    Type::Constructor {
         path: TypePath {
             segments: vec![TypePathSegment {
                 left: Path {
@@ -132,7 +130,7 @@ pub fn list_of(element_type: Arc<Type>) -> Arc<Type> {
                 right: vec![element_type],
             }],
         },
-    })
+    }
 }
 
 impl From<ry_ast::Path> for Path {

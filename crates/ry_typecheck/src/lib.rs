@@ -9,6 +9,7 @@ use ry_interner::{IdentifierInterner, PathID, PathInterner, Symbol};
 use ry_name_resolution::NameResolutionContext;
 use trait_resolution::TraitResolutionContext;
 
+mod diagnostics;
 mod trait_resolution;
 
 #[derive(Debug)]
@@ -19,7 +20,6 @@ pub struct TypeCheckingContext<'i, 'p, 'hir, 't, 'd> {
     trait_resolution_context: TraitResolutionContext,
 
     items: FxHashMap<DefinitionID, &'hir mut ModuleItem>,
-    module_docstrings: FxHashMap<PathID, Option<&'hir str>>,
 
     substitutions: FxHashMap<Symbol, Arc<Type>>,
     type_variable_generator: &'t mut TypeVariableGenerator,
@@ -41,16 +41,12 @@ impl<'i, 'p, 'hir, 't, 'd> TypeCheckingContext<'i, 'p, 'hir, 't, 'd> {
             trait_resolution_context: TraitResolutionContext::new(),
             substitutions: FxHashMap::default(),
             items: FxHashMap::default(),
-            module_docstrings: FxHashMap::default(),
             type_variable_generator,
             diagnostics,
         }
     }
 
     pub fn add_module(&mut self, file_path_id: PathID, hir: &'hir mut Module) {
-        self.module_docstrings
-            .insert(file_path_id, hir.docstring.as_deref());
-
         for (idx, item) in hir.items.iter_mut().enumerate() {
             self.items.insert(
                 DefinitionID {

@@ -133,6 +133,7 @@ impl Visitor<'_> for Serializer<'_> {
             Expression::Lambda { .. } => self.write("LAMBDA"),
             Expression::List { .. } => self.write("LIST"),
             Expression::Literal(..) => self.write("LITERAL"),
+            Expression::Loop { .. } => self.write("LOOP"),
             Expression::Match { .. } => self.write("MATCH"),
             Expression::Parenthesized { .. } => self.write("PARENTHESIZED"),
             Expression::Postfix { .. } => self.write("POSTFIX"),
@@ -513,7 +514,7 @@ impl Visitor<'_> for Serializer<'_> {
         self.decrement_indentation();
     }
 
-    fn visit_trait_bounds(&mut self, bounds: &'_ [TypePath]) {
+    fn visit_trait_bounds(&mut self, bounds: &'_ [TypePathSegment]) {
         self.increment_indentation();
         self.write_identation();
 

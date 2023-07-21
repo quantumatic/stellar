@@ -1,7 +1,7 @@
 use diagnostics::{UnnecessaryParenthesesInPatternDiagnostic, UnnecessaryParenthesizedExpression};
 use ry_diagnostics::{BuildDiagnostic, GlobalDiagnostics};
-use ry_interner::PathID;
 use ry_hir::ty::{self, Type, TypeVariableID};
+use ry_interner::PathID;
 
 mod diagnostics;
 
@@ -37,19 +37,19 @@ impl TypeVariableGenerator {
     }
 }
 
-pub struct LoweringContext<'diagnostics> {
+pub struct LoweringContext<'t, 'd> {
     file_path_id: PathID,
-    type_variable_generator: TypeVariableGenerator,
-    diagnostics: &'diagnostics mut GlobalDiagnostics,
+    type_variable_generator: &'t mut TypeVariableGenerator,
+    diagnostics: &'d mut GlobalDiagnostics,
 }
 
-impl<'diagnostics> LoweringContext<'diagnostics> {
+impl<'t, 'd> LoweringContext<'t, 'd> {
     #[inline]
     #[must_use]
     pub fn new(
         file_path_id: PathID,
-        type_variable_generator: TypeVariableGenerator,
-        diagnostics: &'diagnostics mut GlobalDiagnostics,
+        type_variable_generator: &'t mut TypeVariableGenerator,
+        diagnostics: &'d mut GlobalDiagnostics,
     ) -> Self {
         Self {
             file_path_id,
@@ -325,6 +325,21 @@ impl<'diagnostics> LoweringContext<'diagnostics> {
             ry_ast::Expression::Identifier(identifier) => {
                 ry_hir::Expression::Identifier(identifier)
             }
+            ry_ast::Expression::Loop {
+                location,
+                statements_block,
+            } => ry_hir::Expression::While {
+                location,
+                condition: Box::new(ry_hir::Expression::Literal(ry_hir::Literal {
+                    literal: ry_ast::Literal::Boolean {
+                        value: true,
+                        location,
+                    },
+                    ty: self.type_variable_generator.generate_type(),
+                })),
+                statements_block: self.lower_statements_block(statements_block),
+                ty: Type::Unit,
+            },
             ry_ast::Expression::Tuple { location, elements } => ry_hir::Expression::Tuple {
                 location,
                 elements: elements
@@ -386,7 +401,7 @@ impl<'diagnostics> LoweringContext<'diagnostics> {
             ry_ast::Expression::While {
                 location,
                 condition,
-                body,
+                statements_block: body,
             } => {
                 if let ry_ast::Expression::Parenthesized { location, .. } = *condition {
                     self.diagnostics.add_file_diagnostic(
@@ -398,7 +413,7 @@ impl<'diagnostics> LoweringContext<'diagnostics> {
                 ry_hir::Expression::While {
                     location,
                     condition: Box::new(self.lower_expression(*condition)),
-                    body: self.lower_statements_block(body),
+                    statements_block: self.lower_statements_block(body),
                     ty: self.type_variable_generator.generate_type(),
                 }
             }
@@ -826,9 +841,9 @@ impl<'diagnostics> LoweringContext<'diagnostics> {
         match ast {
             ry_ast::WherePredicate::Eq { left, right } => ry_hir::WherePredicate::Eq {
                 left_type_expression: self.lower_type_expression(left),
-                left_ty: self.type_variable_generator.generate_type(),
+                left_type: self.type_variable_generator.generate_type(),
                 right_type_expression: self.lower_type_expression(right),
-                right_ty: self.type_variable_generator.generate_type(),
+                right_type: self.type_variable_generator.generate_type(),
             },
             ry_ast::WherePredicate::Satisfies { ty, bounds } => ry_hir::WherePredicate::Satisfies {
                 ty: self.type_variable_generator.generate_type(),

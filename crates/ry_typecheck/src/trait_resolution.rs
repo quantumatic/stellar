@@ -1,9 +1,14 @@
 use std::iter::zip;
-use std::sync::Arc;
 
-use ry_ast::{IdentifierAst, TypeBounds};
+use ry_ast::{IdentifierAST, TypeBounds};
+use ry_diagnostics::{GlobalDiagnostics, BuildDiagnostic};
 use ry_fx_hash::{FxHashMap, FxHashSet};
-use ry_hir::ty::{Path, Type};
+use ry_hir::{
+    ty::{Path, Type, TypePathSegment},
+    WherePredicate,
+};
+
+use crate::diagnostics::DuplicateTraitBoundDiagnostic;
 
 #[derive(Debug, Default)]
 pub struct TraitResolutionContext {
@@ -38,10 +43,10 @@ impl TraitResolutionContext {
 
     pub fn get_constrained_type_parameters(
         &self,
-        implemented_type: Arc<Type>,
-        generics: &FxHashSet<IdentifierAst>,
-    ) -> FxHashSet<IdentifierAst> {
-        match implemented_type.as_ref() {
+        implemented_type: Type,
+        generics: &FxHashSet<IdentifierAST>,
+    ) -> FxHashSet<IdentifierAST> {
+        match implemented_type {
             Type::Function {
                 parameter_types,
                 return_type,
@@ -50,11 +55,11 @@ impl TraitResolutionContext {
 
                 for parameter_type in parameter_types {
                     result.extend(
-                        self.get_constrained_type_parameters(parameter_type.clone(), generics),
+                        self.get_constrained_type_parameters(parameter_type, generics),
                     );
                 }
 
-                result.extend(self.get_constrained_type_parameters(return_type.clone(), generics));
+                result.extend(self.get_constrained_type_parameters(*return_type, generics));
 
                 result
             }
@@ -66,7 +71,7 @@ impl TraitResolutionContext {
 
                 for element_type in element_types {
                     result.extend(
-                        self.get_constrained_type_parameters(element_type.clone(), generics),
+                        self.get_constrained_type_parameters(element_type, generics),
                     );
                 }
 
@@ -92,7 +97,7 @@ impl TraitResolutionContext {
                     if let &[maybe_used_generic] = first_segment.left.symbols.as_slice() {
                         for generic in generics {
                             if generic.symbol == maybe_used_generic {
-                                result.insert(generic.clone());
+                                result.insert(*generic);
                             }
                         }
                     }
@@ -120,10 +125,10 @@ impl TraitResolutionContext {
 
     pub fn get_not_constrained_type_parameters(
         &self,
-        implemented_type: Arc<Type>,
-        generics: &FxHashSet<IdentifierAst>,
-    ) -> FxHashSet<IdentifierAst> {
-        let constrained = self.get_constrained_type_parameters(implemented_type.clone(), generics);
+        implemented_type: Type,
+        generics: &FxHashSet<IdentifierAST>,
+    ) -> FxHashSet<IdentifierAST> {
+        let constrained = self.get_constrained_type_parameters(implemented_type, generics);
 
         generics.difference(&constrained).cloned().collect()
     }
@@ -133,12 +138,12 @@ impl TraitResolutionContext {
     /// be equal and so, there is an implementation overlap.
     pub fn implemented_types_can_be_equal(
         &self,
-        left_generics: &[IdentifierAst],
-        left_type: Arc<Type>,
-        right_type_generics: &[IdentifierAst],
-        right_type: Arc<Type>,
+        left_generics: &[IdentifierAST],
+        left_type: Type,
+        right_type_generics: &[IdentifierAST],
+        right_type: Type,
     ) -> bool {
-        match (left_type.as_ref(), right_type.as_ref()) {
+        match (left_type, right_type) {
             (Type::Unit, Type::Unit) => true,
             (Type::Constructor { path: left_path }, Type::Constructor { path: right_path }) => {
                 // impl[T] [T as A].B where T: A {}
@@ -211,6 +216,6 @@ pub struct ImplementationData {
 
 #[derive(Debug, Clone)]
 pub struct GenericData {
-    identifier: IdentifierAst,
+    identifier: IdentifierAST,
     default_value: Type,
 }
