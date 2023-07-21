@@ -26,6 +26,19 @@ pub enum Type {
     },
 }
 
+impl Type {
+    #[inline]
+    #[must_use]
+    pub fn check_single_identifier_type_constructor(&self, symbol: Symbol) -> bool {
+        match self {
+            Self::Constructor { path } => {
+                path.check_single_identifier_type_constructor(symbol)
+            },
+            _ => unreachable!(),
+        }
+    }
+}
+
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
 pub enum TypeKind {
     Unit,
@@ -103,6 +116,20 @@ t!(string, STRING);
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
 pub struct TypePath {
     pub segments: Vec<TypePathSegment>,
+}
+
+impl TypePath {
+    #[inline]
+    #[must_use]
+    pub fn check_single_identifier_type_constructor(&self, symbol: Symbol) -> bool {
+        if let [TypePathSegment { left, right } ] = &self.segments[..] {
+            if let [matching_symbol] = left.symbols[..] {
+                return right.is_empty() && matching_symbol == symbol;
+            }
+        }
+
+        false
+    }
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]

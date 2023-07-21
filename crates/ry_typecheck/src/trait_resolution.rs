@@ -7,7 +7,7 @@ use ry_hir::ty::{Path, Type};
 #[derive(Debug, Default)]
 pub struct TraitResolutionContext {
     traits: FxHashMap<Path, TraitData>,
-    type_implementations: Vec<ImplementationData>,
+    raw_type_implementations: FxHashMap<Path, ImplementationData>,
 }
 
 impl TraitResolutionContext {
@@ -33,12 +33,32 @@ impl TraitResolutionContext {
         self.traits.get_mut(absolute_path.as_ref())
     }
 
-    pub fn add_implementation(
+    #[inline]
+    pub fn get_raw_type_implementation_data(
+        &self,
+        type_absolute_path: impl AsRef<Path>
+    ) -> Option<&ImplementationData> {
+        self.raw_type_implementations.get(type_absolute_path.as_ref()) 
+    }
+
+    #[inline]
+    pub fn get_raw_type_implementation_data_mut(
+        &mut self,
+        type_absolute_path: impl AsRef<Path>
+    ) -> Option<&mut ImplementationData> {
+        self.raw_type_implementations.get_mut(type_absolute_path.as_ref()) 
+    }
+
+    pub fn add_trait_implementation(
         &mut self,
         _trait_path: Path,
         _implementation_data: ImplementationData,
     ) {
         todo!()
+    }
+
+    pub fn add_raw_type_implementation(&mut self, implementation: &ImplementationData) {
+        
     }
 
     pub fn check_overlap(&self, trait_path: &Path, implementation_data: &ImplementationData) {
@@ -151,28 +171,14 @@ impl TraitResolutionContext {
     #[must_use]
     pub fn implemented_types_can_be_equal(
         &self,
-        left_generic_parameters: &[IdentifierAST],
+        left_type_parameters: &[IdentifierAST],
         left_implemented_type: Type,
-        right_generic_parameters: &[IdentifierAST],
+        right_type_parameters: &[IdentifierAST],
         right_implemented_type: Type,
     ) -> bool {
         match (left_implemented_type, right_implemented_type) {
             (Type::Unit, Type::Unit) => true,
-            (Type::Constructor { path: left_path }, Type::Constructor { path: right_path }) => {
-                todo!()
-            }
-            (
-                Type::WithQualifiedPath {
-                    left: left1,
-                    right: right1,
-                    segments: segments1,
-                },
-                Type::WithQualifiedPath {
-                    left: left2,
-                    right: right2,
-                    segments: segments2,
-                },
-            ) => true,
+            // (_, _) overlaps with (int32, (String, _))
             (
                 Type::Tuple {
                     element_types: left,
@@ -182,12 +188,32 @@ impl TraitResolutionContext {
                 },
             ) => zip(left, right).all(|(left, right)| {
                 self.implemented_types_can_be_equal(
-                    left_generic_parameters,
+                    left_type_parameters,
                     left.clone(),
-                    right_generic_parameters,
+                    right_type_parameters,
                     right.clone(),
                 )
             }),
+            // (_, int32): _ overlaps with (_, _): int32
+            (
+                Type::Function { parameter_types: left_parameter_types, return_type: left_return_type },
+                Type::Function { parameter_types: right_parameter_types, return_type: right_return_type }
+            ) => {
+                zip(left_parameter_types, right_parameter_types).all(|(left, right)| {
+                    self.implemented_types_can_be_equal(
+                        left_type_parameters,
+                        left,
+                        right_type_parameters,
+                        right,
+                    )
+                }) && self.implemented_types_can_be_equal(
+                    left_type_parameters,
+                    *left_return_type,
+                    right_type_parameters,
+                    *right_return_type,
+                )
+            }
+            // dyn Debug + ToString overlaps with dyn ToString 
             (
                 Type::TraitObject {
                     bounds: left_bounds,
@@ -197,7 +223,28 @@ impl TraitResolutionContext {
                 },
             ) => left_bounds.iter().any(|b| right_bounds.contains(b)),
             (Type::Variable(left_var), Type::Variable(right_var)) => left_var == right_var,
-            _ => unreachable!(),
+
+            // _ overlaps with a
+            // a overlaps with _
+            // _ overlaps with _
+            // a overlaps with a
+            (Type::Constructor { path: left_path }, Type::Constructor { path: right_path }) => {
+                return left_path == right_path || left_type_parameters.iter().any(|parameter| {
+                    left_path.check_single_identifier_type_constructor(parameter.symbol)
+                }) || right_type_parameters.iter().any(|parameter| {
+                    right_path.check_single_identifier_type_constructor(parameter.symbol)
+                })
+            }
+
+            // _ overlaps with any type
+            (Type::Constructor { path }, _) => {
+                left_type_parameters.iter().any(|parameter| path.check_single_identifier_type_constructor(parameter.symbol))
+            }
+            (_, Type::Constructor { path }) => {
+                right_type_parameters.iter().any(|parameter| path.check_single_identifier_type_constructor(parameter.symbol))
+            }
+
+            _ => false,
         }
     }
 
@@ -223,6 +270,7 @@ pub struct ImplementationData {
     pub generic_parameters: Vec<GenericParameterData>,
     pub constraints: Vec<ConstraintData>,
     pub ty: Type,
+    // pub aliases: Vec<TypeAliasData>,
 }
 
 #[derive(Debug, Clone, Hash)]
