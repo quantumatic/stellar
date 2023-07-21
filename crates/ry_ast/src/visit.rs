@@ -5,7 +5,7 @@
 
 use crate::{
     BinaryOperator, EnumItem, Expression, Function, FunctionParameter, FunctionSignature,
-    GenericArgument, GenericParameter, IdentifierAst, Impl, ImportPath, LambdaFunctionParameter,
+    GenericArgument, GenericParameter, IdentifierAST, Impl, ImportPath, LambdaFunctionParameter,
     Literal, MatchExpressionItem, Module, ModuleItem, NotSelfFunctionParameter, Path, Pattern,
     PostfixOperator, PrefixOperator, SelfFunctionParameter, Statement, StatementsBlock,
     StructExpressionItem, StructField, StructFieldPattern, TraitItem, TupleField, Type, TypeAlias,
@@ -13,7 +13,7 @@ use crate::{
 };
 
 pub trait Visitor<'ast>: Sized {
-    fn visit_identifier(&mut self, _identifier: IdentifierAst) {}
+    fn visit_identifier(&mut self, _identifier: IdentifierAST) {}
 
     fn visit_path(&mut self, path: &'ast Path) {
         walk_path(self, path);

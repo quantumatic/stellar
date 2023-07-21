@@ -16,7 +16,7 @@ use crate::{
         walk_where_predicates, Visitor,
     },
     BinaryOperator, EnumItem, Expression, Function, GenericArgument, GenericParameter,
-    IdentifierAst, Impl, ImportPath, LambdaFunctionParameter, Literal, MatchExpressionItem, Module,
+    IdentifierAST, Impl, ImportPath, LambdaFunctionParameter, Literal, MatchExpressionItem, Module,
     ModuleItem, Path, Pattern, PostfixOperator, PrefixOperator, Statement, StatementsBlock,
     StructExpressionItem, StructField, StructFieldPattern, TraitItem, TupleField, Type, TypeAlias,
     TypePath, TypePathSegment, Visibility, WherePredicate,
@@ -206,7 +206,7 @@ impl Visitor<'_> for Serializer<'_> {
         self.decrement_indentation();
     }
 
-    fn visit_identifier(&mut self, identifier: IdentifierAst) {
+    fn visit_identifier(&mut self, identifier: IdentifierAST) {
         self.increment_indentation();
         self.write_identation();
 

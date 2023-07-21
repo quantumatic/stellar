@@ -1,6 +1,6 @@
 use ry_ast::{
     token::RawToken, EnumItem, Function, FunctionParameter, FunctionParameterType,
-    FunctionSignature, IdentifierAst, Impl, ModuleItem, ModuleItemKind, NotSelfFunctionParameter,
+    FunctionSignature, IdentifierAST, Impl, ModuleItem, ModuleItemKind, NotSelfFunctionParameter,
     SelfFunctionParameter, StructField, Token, TraitItem, TupleField, TypeAlias, Visibility,
 };
 use ry_filesystem::location::Location;
@@ -75,7 +75,7 @@ struct TupleFieldsParser {
 }
 
 struct EnumItemStructParser {
-    pub(crate) name: IdentifierAst,
+    pub(crate) name: IdentifierAST,
     pub(crate) docstring: Option<String>,
 }
 

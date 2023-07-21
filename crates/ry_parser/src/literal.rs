@@ -2,7 +2,7 @@ use ry_ast::{token::RawToken, Literal, Token};
 
 use crate::{
     diagnostics::{FloatOverflowDiagnostic, IntegerOverflowDiagnostic},
-    Parse,
+    Parse, ParseState,
 };
 
 pub(crate) struct LiteralParser;
@@ -10,7 +10,7 @@ pub(crate) struct LiteralParser;
 impl Parse for LiteralParser {
     type Output = Option<Literal>;
 
-    fn parse(self, state: &mut crate::ParseState<'_, '_, '_>) -> Self::Output {
+    fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
         match state.next_token.raw {
             RawToken::IntegerLiteral => {
                 state.advance();

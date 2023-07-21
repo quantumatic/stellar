@@ -83,7 +83,7 @@ use pattern::PatternParser;
 use r#type::TypeParser;
 use ry_ast::{
     token::{LexError, RawToken, Token},
-    Expression, IdentifierAst, Module, ModuleItem, Pattern, Statement, Token, Type, Visibility,
+    Expression, IdentifierAST, Module, ModuleItem, Pattern, Statement, Token, Type, Visibility,
 };
 use ry_diagnostics::{BuildDiagnostic, GlobalDiagnostics};
 use ry_filesystem::location::{Location, LocationIndex};
@@ -434,7 +434,7 @@ impl<'s, 'd, 'i> ParseState<'s, 'd, 'i> {
 
     /// Checks if the next token is identifiers, advances the parse state and if
     /// everything is ok, returns the identifier symbol.
-    fn consume_identifier(&mut self, node: impl ToString) -> Option<IdentifierAst> {
+    fn consume_identifier(&mut self, node: impl ToString) -> Option<IdentifierAST> {
         trace!(
             "expected next_token {} to be an identifier at: {}",
             self.next_token.raw,
@@ -442,7 +442,7 @@ impl<'s, 'd, 'i> ParseState<'s, 'd, 'i> {
         );
 
         let locationned_symbol = if self.next_token.raw == RawToken::Identifier {
-            IdentifierAst {
+            IdentifierAST {
                 location: self.next_token.location,
                 symbol: self.lexer.scanned_identifier,
             }

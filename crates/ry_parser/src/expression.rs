@@ -1,5 +1,5 @@
 use ry_ast::{
-    precedence::Precedence, token::RawToken, BinaryOperator, Expression, IdentifierAst,
+    precedence::Precedence, token::RawToken, BinaryOperator, Expression, IdentifierAST,
     LambdaFunctionParameter, MatchExpressionItem, PostfixOperator, PrefixOperator,
     RawBinaryOperator, RawPostfixOperator, RawPrefixOperator, StructExpressionItem, Token,
 };
@@ -212,7 +212,7 @@ impl Parse for PrimaryExpressionParser {
                 let symbol = state.lexer.scanned_identifier;
                 state.advance();
 
-                Some(Expression::Identifier(IdentifierAst {
+                Some(Expression::Identifier(IdentifierAST {
                     location: state.current_token.location,
                     symbol,
                 }))

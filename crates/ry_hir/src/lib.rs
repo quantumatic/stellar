@@ -85,7 +85,7 @@ pub mod ty;
 
 use std::fmt::Display;
 
-use ry_ast::{IdentifierAst, ImportPath, Path, TypeBounds, Visibility};
+use ry_ast::{IdentifierAST, ImportPath, Path, TypeBounds, Visibility};
 use ry_filesystem::location::Location;
 use ry_interner::Symbol;
 use ty::{Type, Typed};
@@ -120,7 +120,7 @@ pub enum Pattern {
     /// An identifier pattern, e.g. `f`, `list @ [3, ..]`.
     Identifier {
         location: Location,
-        identifier: IdentifierAst,
+        identifier: IdentifierAST,
         pattern: Option<Box<Self>>,
         ty: Type,
     },
@@ -201,7 +201,7 @@ pub enum StructFieldPattern {
     /// e.g. `citizen: "USA"` and `name` in `Person { citizen: "USA", name, .. }`.
     NotRest {
         location: Location,
-        field_name: IdentifierAst,
+        field_name: IdentifierAST,
         value_pattern: Option<Pattern>,
         ty: Type,
     },
@@ -261,7 +261,7 @@ impl TypeExpression {
 /// A generic parameter, e.g. `T` in `fun into[T](a: T);`.
 #[derive(Debug, PartialEq, Clone)]
 pub struct GenericParameter {
-    pub name: IdentifierAst,
+    pub name: IdentifierAST,
     pub bounds: Option<ry_ast::TypeBounds>,
     pub default_value_type_expression: Option<TypeExpression>,
     pub ty: Type,
@@ -271,7 +271,7 @@ pub struct GenericParameter {
 #[derive(Debug, PartialEq, Clone)]
 pub struct TypeAlias {
     pub visibility: Visibility,
-    pub name: IdentifierAst,
+    pub name: IdentifierAST,
     pub generic_parameters: Vec<GenericParameter>,
     pub bounds: Option<ry_ast::TypeBounds>,
     pub value_type_expression: Option<TypeExpression>,
@@ -334,7 +334,7 @@ pub enum Expression {
     Literal(Literal),
 
     /// Identifier expression, e.g. `foo`.
-    Identifier(IdentifierAst),
+    Identifier(IdentifierAST),
 
     /// Parenthesized expression, e.g. `(1 + 2)`.
     Parenthesized {
@@ -355,7 +355,7 @@ pub enum Expression {
     FieldAccess {
         location: Location,
         left: Box<Self>,
-        right: IdentifierAst,
+        right: IdentifierAST,
         ty: Type,
     },
 
@@ -401,7 +401,7 @@ pub enum Expression {
     TypeFieldAccess {
         location: Location,
         left: Type,
-        right: IdentifierAst,
+        right: IdentifierAST,
         ty: Type,
     },
 
@@ -441,7 +441,7 @@ pub enum Expression {
 /// A lambda function parameter, e.g. `x` in `|x| { x + 1 }`.
 #[derive(Debug, Clone, PartialEq)]
 pub struct LambdaFunctionParameter {
-    pub name: IdentifierAst,
+    pub name: IdentifierAST,
     pub type_expression: Option<TypeExpression>,
     pub ty: Type,
 }
@@ -456,7 +456,7 @@ pub enum GenericArgument {
     },
     /// Type with a name, e.g. `Item = uint32` in `Iterator[Item = uint32]`.
     AssociatedType {
-        name: IdentifierAst,
+        name: IdentifierAST,
         value_type_expression: TypeExpression,
         value: Type,
     },
@@ -472,7 +472,7 @@ impl Expression {
             | Self::As { location, .. }
             | Self::Binary { location, .. }
             | Self::StatementsBlock { location, .. }
-            | Self::Identifier(IdentifierAst { location, .. })
+            | Self::Identifier(IdentifierAST { location, .. })
             | Self::Parenthesized { location, .. }
             | Self::If { location, .. }
             | Self::FieldAccess { location, .. }
@@ -502,7 +502,7 @@ pub struct MatchExpressionItem {
 /// e.g. `name: "John"` and `age` in `Person { name: "John", age }`.
 #[derive(Debug, PartialEq, Clone)]
 pub struct StructExpressionItem {
-    pub name: IdentifierAst,
+    pub name: IdentifierAST,
     pub value: Option<Expression>,
     pub ty: Type,
 }
@@ -578,7 +578,7 @@ pub struct Function {
 #[derive(Debug, PartialEq, Clone)]
 pub struct FunctionSignature {
     pub visibility: Visibility,
-    pub name: IdentifierAst,
+    pub name: IdentifierAST,
     pub generic_parameters: Vec<GenericParameter>,
     pub parameters: Vec<FunctionParameter>,
     pub return_type_expression: Option<TypeExpression>,
@@ -593,7 +593,7 @@ pub enum ModuleItem {
     /// Enum item.
     Enum {
         visibility: Visibility,
-        name: IdentifierAst,
+        name: IdentifierAST,
         generic_parameters: Vec<GenericParameter>,
         where_predicates: Vec<WherePredicate>,
         items: Vec<EnumItem>,
@@ -615,7 +615,7 @@ pub enum ModuleItem {
     /// Trait item.
     Trait {
         visibility: Visibility,
-        name: IdentifierAst,
+        name: IdentifierAST,
         generic_parameters: Vec<GenericParameter>,
         where_predicates: Vec<WherePredicate>,
         items: Vec<TraitItem>,
@@ -628,7 +628,7 @@ pub enum ModuleItem {
     /// Struct item.
     Struct {
         visibility: Visibility,
-        name: IdentifierAst,
+        name: IdentifierAST,
         generic_parameters: Vec<GenericParameter>,
         where_predicates: Vec<WherePredicate>,
         fields: Vec<StructField>,
@@ -638,7 +638,7 @@ pub enum ModuleItem {
     /// Tuple-like struct item.
     TupleLikeStruct {
         visibility: Visibility,
-        name: IdentifierAst,
+        name: IdentifierAST,
         generic_parameters: Vec<GenericParameter>,
         where_predicates: Vec<WherePredicate>,
         fields: Vec<TupleField>,
@@ -656,13 +656,13 @@ impl ModuleItem {
     pub const fn location(&self) -> Location {
         match self {
             Self::Enum {
-                name: IdentifierAst { location, .. },
+                name: IdentifierAST { location, .. },
                 ..
             }
             | Self::Function(Function {
                 signature:
                     FunctionSignature {
-                        name: IdentifierAst { location, .. },
+                        name: IdentifierAST { location, .. },
                         ..
                     },
                 ..
@@ -670,19 +670,19 @@ impl ModuleItem {
             | Self::Impl(Impl { location, .. })
             | Self::Import { location, .. }
             | Self::Struct {
-                name: IdentifierAst { location, .. },
+                name: IdentifierAST { location, .. },
                 ..
             }
             | Self::Trait {
-                name: IdentifierAst { location, .. },
+                name: IdentifierAST { location, .. },
                 ..
             }
             | Self::TupleLikeStruct {
-                name: IdentifierAst { location, .. },
+                name: IdentifierAST { location, .. },
                 ..
             }
             | Self::TypeAlias(TypeAlias {
-                name: IdentifierAst { location, .. },
+                name: IdentifierAST { location, .. },
                 ..
             }) => *location,
         }
@@ -694,31 +694,31 @@ impl ModuleItem {
     pub const fn name(&self) -> Option<Symbol> {
         match self {
             Self::Enum {
-                name: IdentifierAst { symbol, .. },
+                name: IdentifierAST { symbol, .. },
                 ..
             }
             | Self::Function(Function {
                 signature:
                     FunctionSignature {
-                        name: IdentifierAst { symbol, .. },
+                        name: IdentifierAST { symbol, .. },
                         ..
                     },
                 ..
             })
             | Self::Struct {
-                name: IdentifierAst { symbol, .. },
+                name: IdentifierAST { symbol, .. },
                 ..
             }
             | Self::TupleLikeStruct {
-                name: IdentifierAst { symbol, .. },
+                name: IdentifierAST { symbol, .. },
                 ..
             }
             | Self::Trait {
-                name: IdentifierAst { symbol, .. },
+                name: IdentifierAST { symbol, .. },
                 ..
             }
             | Self::TypeAlias(TypeAlias {
-                name: IdentifierAst { symbol, .. },
+                name: IdentifierAST { symbol, .. },
                 ..
             }) => Some(*symbol),
             Self::Import { .. } | Self::Impl(..) => None,
@@ -821,18 +821,18 @@ impl Display for ModuleItemKind {
 pub enum EnumItem {
     /// Just an identifier, e.g. `None` in `enum Option[T] { Some(T), None }`.
     Just {
-        name: IdentifierAst,
+        name: IdentifierAST,
         docstring: Option<String>,
     },
     /// A tuple-like enum item, e.g. `None` in `enum Option<T> { Some(T), None }`.
     TupleLike {
-        name: IdentifierAst,
+        name: IdentifierAST,
         fields: Vec<TupleField>,
         docstring: Option<String>,
     },
     /// A struct item, e.g. `A { b: T }` in `enum B { A { b: T } }`.
     Struct {
-        name: IdentifierAst,
+        name: IdentifierAST,
         fields: Vec<StructField>,
         docstring: Option<String>,
     },
@@ -850,7 +850,7 @@ pub struct TupleField {
 #[derive(Debug, PartialEq, Clone)]
 pub struct StructField {
     pub visibility: Visibility,
-    pub name: IdentifierAst,
+    pub name: IdentifierAST,
     pub type_expression: TypeExpression,
     pub ty: Type,
     pub docstring: Option<String>,
@@ -887,7 +887,7 @@ pub struct SelfFunctionParameter {
 /// A function parameter that is not `self`, e.g. `a: uint32`.
 #[derive(Debug, PartialEq, Clone)]
 pub struct NotSelfFunctionParameter {
-    pub name: IdentifierAst,
+    pub name: IdentifierAST,
     pub ty: FunctionParameterType,
 }
 

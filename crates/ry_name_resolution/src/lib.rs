@@ -64,7 +64,7 @@
     clippy::cast_possible_truncation
 )]
 
-use ry_ast::{DefinitionID, IdentifierAst, ImportPath};
+use ry_ast::{DefinitionID, IdentifierAST, ImportPath};
 use ry_filesystem::location::Location;
 use ry_fx_hash::FxHashMap;
 use ry_hir::ty::{Path, Type};
@@ -239,7 +239,7 @@ impl ModuleContext {
         // fun main() { foo(); }
         // ```
         for (_, import) in &self.imports {
-            if let Some(IdentifierAst {
+            if let Some(IdentifierAST {
                 symbol: id_symbol, ..
             }) = import.r#as
             {
