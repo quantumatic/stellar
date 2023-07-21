@@ -258,9 +258,9 @@ impl TypeExpression {
     }
 }
 
-/// A generic parameter, e.g. `T` in `fun into[T](a: T);`.
+/// A type parameter, e.g. `T` in `fun into[T](a: T);`.
 #[derive(Debug, PartialEq, Clone)]
-pub struct GenericParameter {
+pub struct TypeParameter {
     pub name: IdentifierAST,
     pub bounds: Option<ry_ast::TypeBounds>,
     pub default_value_type_expression: Option<TypeExpression>,
@@ -272,7 +272,7 @@ pub struct GenericParameter {
 pub struct TypeAlias {
     pub visibility: Visibility,
     pub name: IdentifierAST,
-    pub generic_parameters: Vec<GenericParameter>,
+    pub type_parameters: Vec<TypeParameter>,
     pub bounds: Option<ry_ast::TypeBounds>,
     pub value_type_expression: Option<TypeExpression>,
     pub value: Type,
@@ -391,10 +391,10 @@ pub enum Expression {
         ty: Type,
     },
 
-    GenericArguments {
+    TypeArguments {
         location: Location,
         left: Box<Self>,
-        generic_arguments: Vec<GenericArgument>,
+        type_arguments: Vec<TypeArgument>,
         ty: Type,
     },
 
@@ -446,9 +446,9 @@ pub struct LambdaFunctionParameter {
     pub ty: Type,
 }
 
-/// A generic argument, e.g. `Item = uint32` in `Iterator[Item = uint32]`, `usize` in `sizeof[usize]()`.
+/// A type argument, e.g. `Item = uint32` in `Iterator[Item = uint32]`, `usize` in `sizeof[usize]()`.
 #[derive(Debug, PartialEq, Clone)]
-pub enum GenericArgument {
+pub enum TypeArgument {
     /// Just a type, e.g. `usize` in `sizeof[usize]()`.
     Type {
         type_expression: TypeExpression,
@@ -484,7 +484,7 @@ impl Expression {
             | Self::Struct { location, .. }
             | Self::Match { location, .. }
             | Self::Lambda { location, .. }
-            | Self::GenericArguments { location, .. }
+            | Self::TypeArguments { location, .. }
             | Self::TypeFieldAccess { location, .. } => *location,
             Self::Literal(literal) => literal.location(),
         }
@@ -559,7 +559,7 @@ pub type StatementsBlock = Vec<Statement>;
 pub struct Impl {
     /// Location of the `impl` keyword.
     pub location: Location,
-    pub generic_parameters: Vec<GenericParameter>,
+    pub type_parameters: Vec<TypeParameter>,
     pub ty: TypeExpression,
     pub r#trait: Option<ry_ast::TypePath>,
     pub where_predicates: Vec<WherePredicate>,
@@ -579,7 +579,7 @@ pub struct Function {
 pub struct FunctionSignature {
     pub visibility: Visibility,
     pub name: IdentifierAST,
-    pub generic_parameters: Vec<GenericParameter>,
+    pub type_parameters: Vec<TypeParameter>,
     pub parameters: Vec<FunctionParameter>,
     pub return_type_expression: Option<TypeExpression>,
     pub return_type: Type,
@@ -594,7 +594,7 @@ pub enum ModuleItem {
     Enum {
         visibility: Visibility,
         name: IdentifierAST,
-        generic_parameters: Vec<GenericParameter>,
+        type_parameters: Vec<TypeParameter>,
         where_predicates: Vec<WherePredicate>,
         items: Vec<EnumItem>,
         docstring: Option<String>,
@@ -616,7 +616,7 @@ pub enum ModuleItem {
     Trait {
         visibility: Visibility,
         name: IdentifierAST,
-        generic_parameters: Vec<GenericParameter>,
+        type_parameters: Vec<TypeParameter>,
         where_predicates: Vec<WherePredicate>,
         items: Vec<TraitItem>,
         docstring: Option<String>,
@@ -629,7 +629,7 @@ pub enum ModuleItem {
     Struct {
         visibility: Visibility,
         name: IdentifierAST,
-        generic_parameters: Vec<GenericParameter>,
+        type_parameters: Vec<TypeParameter>,
         where_predicates: Vec<WherePredicate>,
         fields: Vec<StructField>,
         docstring: Option<String>,
@@ -639,7 +639,7 @@ pub enum ModuleItem {
     TupleLikeStruct {
         visibility: Visibility,
         name: IdentifierAST,
-        generic_parameters: Vec<GenericParameter>,
+        type_parameters: Vec<TypeParameter>,
         where_predicates: Vec<WherePredicate>,
         fields: Vec<TupleField>,
         docstring: Option<String>,

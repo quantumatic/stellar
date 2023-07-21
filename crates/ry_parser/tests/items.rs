@@ -1,6 +1,6 @@
 use ry_ast::{
     EnumItem, Expression, Function, FunctionParameter, FunctionParameterType, FunctionSignature,
-    GenericArgument, GenericParameter, IdentifierAST, Impl, ImportPath, ModuleItem,
+    TypeArgument, TypeParameter, IdentifierAST, Impl, ImportPath, ModuleItem,
     NotSelfFunctionParameter, Path, SelfFunctionParameter, Statement, StructField, TraitItem,
     TupleField, Type, TypeAlias, TypePath, TypePathSegment, Visibility, WherePredicate,
 };
@@ -32,8 +32,8 @@ fn function() {
                     },
                     symbol: identifier_interner.get_or_intern("foo")
                 },
-                generic_parameters: Some(vec![
-                    GenericParameter {
+                type_parameters: Some(vec![
+                    TypeParameter {
                         name: IdentifierAST {
                             location: Location {
                                 file_path_id: DUMMY_PATH_ID,
@@ -45,7 +45,7 @@ fn function() {
                         bounds: None,
                         default_value: None
                     },
-                    GenericParameter {
+                    TypeParameter {
                         name: IdentifierAST {
                             location: Location {
                                 file_path_id: DUMMY_PATH_ID,
@@ -82,7 +82,7 @@ fn function() {
                                         symbol: identifier_interner.get_or_intern("Option")
                                     }]
                                 },
-                                generic_arguments: Some(vec![GenericArgument::Type(Type::Path(
+                                type_arguments: Some(vec![TypeArgument::Type(Type::Path(
                                     TypePath {
                                         location: Location {
                                             file_path_id: DUMMY_PATH_ID,
@@ -110,7 +110,7 @@ fn function() {
                                                     symbol: identifier_interner.get_or_intern("T")
                                                 }]
                                             },
-                                            generic_arguments: None
+                                            type_arguments: None
                                         }]
                                     }
                                 ))])
@@ -155,7 +155,7 @@ fn function() {
                                         symbol: identifier_interner.get_or_intern("B")
                                     }]
                                 },
-                                generic_arguments: None
+                                type_arguments: None
                             }]
                         }))
                     }
@@ -187,7 +187,7 @@ fn function() {
                                 symbol: identifier_interner.get_or_intern("T")
                             }]
                         },
-                        generic_arguments: None
+                        type_arguments: None
                     }]
                 })),
                 where_predicates: None,
@@ -249,8 +249,8 @@ fn r#impl() {
                 start: 0,
                 end: 4
             },
-            generic_parameters: Some(vec![
-                GenericParameter {
+            type_parameters: Some(vec![
+                TypeParameter {
                     name: IdentifierAST {
                         location: Location {
                             file_path_id: DUMMY_PATH_ID,
@@ -262,7 +262,7 @@ fn r#impl() {
                     bounds: None,
                     default_value: None
                 },
-                GenericParameter {
+                TypeParameter {
                     name: IdentifierAST {
                         location: Location {
                             file_path_id: DUMMY_PATH_ID,
@@ -309,7 +309,7 @@ fn r#impl() {
                                     symbol: identifier_interner.get_or_intern("A")
                                 }]
                             },
-                            generic_arguments: None
+                            type_arguments: None
                         }]
                     }),
                     Type::Path(TypePath {
@@ -339,7 +339,7 @@ fn r#impl() {
                                     symbol: identifier_interner.get_or_intern("B")
                                 }]
                             },
-                            generic_arguments: None
+                            type_arguments: None
                         }]
                     })
                 ]
@@ -371,7 +371,7 @@ fn r#impl() {
                             symbol: identifier_interner.get_or_intern("Into")
                         }]
                     },
-                    generic_arguments: Some(vec![GenericArgument::Type(Type::Path(TypePath {
+                    type_arguments: Some(vec![TypeArgument::Type(Type::Path(TypePath {
                         location: Location {
                             file_path_id: DUMMY_PATH_ID,
                             start: 16,
@@ -398,7 +398,7 @@ fn r#impl() {
                                     symbol: identifier_interner.get_or_intern("Option")
                                 }]
                             },
-                            generic_arguments: Some(vec![GenericArgument::Type(Type::Tuple {
+                            type_arguments: Some(vec![TypeArgument::Type(Type::Tuple {
                                 location: Location {
                                     file_path_id: DUMMY_PATH_ID,
                                     start: 23,
@@ -432,7 +432,7 @@ fn r#impl() {
                                                     symbol: identifier_interner.get_or_intern("A")
                                                 }]
                                             },
-                                            generic_arguments: None
+                                            type_arguments: None
                                         }]
                                     }),
                                     Type::Path(TypePath {
@@ -462,7 +462,7 @@ fn r#impl() {
                                                     symbol: identifier_interner.get_or_intern("B")
                                                 }]
                                             },
-                                            generic_arguments: None
+                                            type_arguments: None
                                         }]
                                     })
                                 ]
@@ -557,7 +557,7 @@ fn r#struct() {
                 },
                 symbol: identifier_interner.get_or_intern("Lexer")
             },
-            generic_parameters: Some(vec![GenericParameter {
+            type_parameters: Some(vec![TypeParameter {
                 name: IdentifierAST {
                     location: Location {
                         file_path_id: DUMMY_PATH_ID,
@@ -597,7 +597,7 @@ fn r#struct() {
                                 symbol: identifier_interner.get_or_intern("S")
                             }]
                         },
-                        generic_arguments: None
+                        type_arguments: None
                     }]
                 }),
                 bounds: vec![TypePathSegment {
@@ -621,7 +621,7 @@ fn r#struct() {
                             symbol: identifier_interner.get_or_intern("Iterator")
                         }]
                     },
-                    generic_arguments: Some(vec![GenericArgument::Type(Type::Path(TypePath {
+                    type_arguments: Some(vec![TypeArgument::Type(Type::Path(TypePath {
                         location: Location {
                             file_path_id: DUMMY_PATH_ID,
                             start: 34,
@@ -648,7 +648,7 @@ fn r#struct() {
                                     symbol: builtin_symbols::CHAR
                                 }]
                             },
-                            generic_arguments: None
+                            type_arguments: None
                         }]
                     }))])
                 }]
@@ -690,7 +690,7 @@ fn r#struct() {
                                 symbol: identifier_interner.get_or_intern("S")
                             }]
                         },
-                        generic_arguments: None
+                        type_arguments: None
                     }]
                 }),
                 docstring: None
@@ -722,7 +722,7 @@ fn into() {
                 },
                 symbol: identifier_interner.get_or_intern("Into")
             },
-            generic_parameters: Some(vec![GenericParameter {
+            type_parameters: Some(vec![TypeParameter {
                 name: IdentifierAST {
                     location: Location {
                         file_path_id: DUMMY_PATH_ID,
@@ -746,7 +746,7 @@ fn into() {
                         },
                         symbol: identifier_interner.get_or_intern("into")
                     },
-                    generic_parameters: None,
+                    type_parameters: None,
                     parameters: vec![FunctionParameter::SelfParameter(SelfFunctionParameter {
                         self_location: Location {
                             file_path_id: DUMMY_PATH_ID,
@@ -782,7 +782,7 @@ fn into() {
                                     symbol: identifier_interner.get_or_intern("T")
                                 }]
                             },
-                            generic_arguments: None
+                            type_arguments: None
                         }]
                     })),
                     where_predicates: None,
@@ -817,8 +817,8 @@ fn alias() {
                 },
                 symbol: identifier_interner.get_or_intern("KeyValuePair")
             },
-            generic_parameters: Some(vec![
-                GenericParameter {
+            type_parameters: Some(vec![
+                TypeParameter {
                     name: IdentifierAST {
                         location: Location {
                             file_path_id: DUMMY_PATH_ID,
@@ -830,7 +830,7 @@ fn alias() {
                     bounds: None,
                     default_value: None
                 },
-                GenericParameter {
+                TypeParameter {
                     name: IdentifierAST {
                         location: Location {
                             file_path_id: DUMMY_PATH_ID,
@@ -877,8 +877,8 @@ fn alias() {
                                 symbol: identifier_interner.get_or_intern("HashMap")
                             }]
                         },
-                        generic_arguments: Some(vec![
-                            GenericArgument::Type(Type::Path(TypePath {
+                        type_arguments: Some(vec![
+                            TypeArgument::Type(Type::Path(TypePath {
                                 location: Location {
                                     file_path_id: DUMMY_PATH_ID,
                                     start: 35,
@@ -905,10 +905,10 @@ fn alias() {
                                             symbol: identifier_interner.get_or_intern("K")
                                         }]
                                     },
-                                    generic_arguments: None
+                                    type_arguments: None
                                 }]
                             })),
-                            GenericArgument::Type(Type::Path(TypePath {
+                            TypeArgument::Type(Type::Path(TypePath {
                                 location: Location {
                                     file_path_id: DUMMY_PATH_ID,
                                     start: 38,
@@ -935,7 +935,7 @@ fn alias() {
                                             symbol: identifier_interner.get_or_intern("V")
                                         }]
                                     },
-                                    generic_arguments: None
+                                    type_arguments: None
                                 }]
                             }))
                         ])
@@ -968,7 +968,7 @@ fn alias() {
                                 symbol: identifier_interner.get_or_intern("IntoIterator")
                             }]
                         },
-                        generic_arguments: None
+                        type_arguments: None
                     }]
                 },
                 segments: vec![TypePathSegment {
@@ -992,7 +992,7 @@ fn alias() {
                             symbol: identifier_interner.get_or_intern("Item")
                         }]
                     },
-                    generic_arguments: None
+                    type_arguments: None
                 }]
             }),
             docstring: None
@@ -1022,8 +1022,8 @@ fn r#enum() {
                 },
                 symbol: identifier_interner.get_or_intern("Result")
             },
-            generic_parameters: Some(vec![
-                GenericParameter {
+            type_parameters: Some(vec![
+                TypeParameter {
                     name: IdentifierAST {
                         location: Location {
                             file_path_id: DUMMY_PATH_ID,
@@ -1035,7 +1035,7 @@ fn r#enum() {
                     bounds: None,
                     default_value: None
                 },
-                GenericParameter {
+                TypeParameter {
                     name: IdentifierAST {
                         location: Location {
                             file_path_id: DUMMY_PATH_ID,
@@ -1088,7 +1088,7 @@ fn r#enum() {
                                         symbol: identifier_interner.get_or_intern("T")
                                     }]
                                 },
-                                generic_arguments: None
+                                type_arguments: None
                             }]
                         })
                     }],
@@ -1132,7 +1132,7 @@ fn r#enum() {
                                         symbol: identifier_interner.get_or_intern("E")
                                     }]
                                 },
-                                generic_arguments: None
+                                type_arguments: None
                             }]
                         })
                     }],

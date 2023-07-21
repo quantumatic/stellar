@@ -77,14 +77,14 @@ impl<'t, 'd> LoweringContext<'t, 'd> {
             ry_ast::ModuleItem::Enum {
                 visibility,
                 name,
-                generic_parameters,
+                type_parameters,
                 where_predicates,
                 items,
                 docstring,
             } => ry_hir::ModuleItem::Enum {
                 visibility,
                 name,
-                generic_parameters: self.lower_generic_parameters(generic_parameters),
+                type_parameters: self.lower_type_parameters(type_parameters),
                 where_predicates: self.lower_where_predicates(where_predicates),
                 items: items
                     .into_iter()
@@ -95,14 +95,14 @@ impl<'t, 'd> LoweringContext<'t, 'd> {
             ry_ast::ModuleItem::Struct {
                 visibility,
                 name,
-                generic_parameters,
+                type_parameters,
                 where_predicates,
                 fields,
                 docstring,
             } => ry_hir::ModuleItem::Struct {
                 visibility,
                 name,
-                generic_parameters: self.lower_generic_parameters(generic_parameters),
+                type_parameters: self.lower_type_parameters(type_parameters),
                 where_predicates: self.lower_where_predicates(where_predicates),
                 fields: fields
                     .into_iter()
@@ -125,14 +125,14 @@ impl<'t, 'd> LoweringContext<'t, 'd> {
             ry_ast::ModuleItem::TupleLikeStruct {
                 visibility,
                 name,
-                generic_parameters,
+                type_parameters,
                 where_predicates,
                 fields,
                 docstring,
             } => ry_hir::ModuleItem::TupleLikeStruct {
                 visibility,
                 name,
-                generic_parameters: self.lower_generic_parameters(generic_parameters),
+                type_parameters: self.lower_type_parameters(type_parameters),
                 where_predicates: self.lower_where_predicates(where_predicates),
                 fields: fields
                     .into_iter()
@@ -143,14 +143,14 @@ impl<'t, 'd> LoweringContext<'t, 'd> {
             ry_ast::ModuleItem::Trait {
                 visibility,
                 name,
-                generic_parameters,
+                type_parameters,
                 where_predicates,
                 items,
                 docstring,
             } => ry_hir::ModuleItem::Trait {
                 visibility,
                 name,
-                generic_parameters: self.lower_generic_parameters(generic_parameters),
+                type_parameters: self.lower_type_parameters(type_parameters),
                 where_predicates: self.lower_where_predicates(where_predicates),
                 items: items
                     .into_iter()
@@ -510,14 +510,14 @@ impl<'t, 'd> LoweringContext<'t, 'd> {
                 right,
                 ty: self.type_variable_generator.generate_type(),
             },
-            ry_ast::Expression::GenericArguments {
+            ry_ast::Expression::TypeArguments {
                 location,
                 left,
-                generic_arguments,
-            } => ry_hir::Expression::GenericArguments {
+                type_arguments,
+            } => ry_hir::Expression::TypeArguments {
                 location,
                 left: Box::new(self.lower_expression(*left)),
-                generic_arguments: self.lower_generic_arguments(generic_arguments),
+                type_arguments: self.lower_type_arguments(type_arguments),
                 ty: self.type_variable_generator.generate_type(),
             },
             ry_ast::Expression::StatementsBlock { location, block } => {
@@ -603,23 +603,23 @@ impl<'t, 'd> LoweringContext<'t, 'd> {
         }
     }
 
-    fn lower_generic_arguments(
+    fn lower_type_arguments(
         &mut self,
-        ast: Vec<ry_ast::GenericArgument>,
-    ) -> Vec<ry_hir::GenericArgument> {
+        ast: Vec<ry_ast::TypeArgument>,
+    ) -> Vec<ry_hir::TypeArgument> {
         ast.into_iter()
-            .map(|generic_argument| self.lower_generic_argument(generic_argument))
+            .map(|type_argument| self.lower_type_argument(type_argument))
             .collect()
     }
 
-    fn lower_generic_argument(&mut self, ast: ry_ast::GenericArgument) -> ry_hir::GenericArgument {
+    fn lower_type_argument(&mut self, ast: ry_ast::TypeArgument) -> ry_hir::TypeArgument {
         match ast {
-            ry_ast::GenericArgument::Type(ty) => ry_hir::GenericArgument::Type {
+            ry_ast::TypeArgument::Type(ty) => ry_hir::TypeArgument::Type {
                 type_expression: self.lower_type_expression(ty),
                 ty: self.type_variable_generator.generate_type(),
             },
-            ry_ast::GenericArgument::AssociatedType { name, value } => {
-                ry_hir::GenericArgument::AssociatedType {
+            ry_ast::TypeArgument::AssociatedType { name, value } => {
+                ry_hir::TypeArgument::AssociatedType {
                     name,
                     value_type_expression: self.lower_type_expression(value),
                     value: self.type_variable_generator.generate_type(),
@@ -635,7 +635,7 @@ impl<'t, 'd> LoweringContext<'t, 'd> {
         ry_hir::FunctionSignature {
             visibility: ast.visibility,
             name: ast.name,
-            generic_parameters: self.lower_generic_parameters(ast.generic_parameters),
+            type_parameters: self.lower_type_parameters(ast.type_parameters),
             parameters: ast
                 .parameters
                 .into_iter()
@@ -709,7 +709,7 @@ impl<'t, 'd> LoweringContext<'t, 'd> {
     fn lower_implementation(&mut self, ast: ry_ast::Impl) -> ry_hir::Impl {
         ry_hir::Impl {
             location: ast.location,
-            generic_parameters: self.lower_generic_parameters(ast.generic_parameters),
+            type_parameters: self.lower_type_parameters(ast.type_parameters),
             ty: self.lower_type_expression(ast.ty),
             r#trait: None,
             where_predicates: self.lower_where_predicates(ast.where_predicates),
@@ -737,7 +737,7 @@ impl<'t, 'd> LoweringContext<'t, 'd> {
         ry_hir::TypeAlias {
             visibility: ast.visibility,
             name: ast.name,
-            generic_parameters: self.lower_generic_parameters(ast.generic_parameters),
+            type_parameters: self.lower_type_parameters(ast.type_parameters),
             bounds: ast.bounds,
             value_type_expression: ast.value.map(|ty| self.lower_type_expression(ty)),
             value: self.type_variable_generator.generate_type(),
@@ -795,10 +795,10 @@ impl<'t, 'd> LoweringContext<'t, 'd> {
         }
     }
 
-    fn lower_generic_parameters(
+    fn lower_type_parameters(
         &mut self,
-        ast: Option<Vec<ry_ast::GenericParameter>>,
-    ) -> Vec<ry_hir::GenericParameter> {
+        ast: Option<Vec<ry_ast::TypeParameter>>,
+    ) -> Vec<ry_hir::TypeParameter> {
         ast.unwrap_or_else(|| {
             // todo: emit some diagnostics here
 
@@ -811,9 +811,9 @@ impl<'t, 'd> LoweringContext<'t, 'd> {
 
     fn lower_generic_parameter(
         &mut self,
-        ast: ry_ast::GenericParameter,
-    ) -> ry_hir::GenericParameter {
-        ry_hir::GenericParameter {
+        ast: ry_ast::TypeParameter,
+    ) -> ry_hir::TypeParameter {
+        ry_hir::TypeParameter {
             name: ast.name,
             bounds: ast.bounds,
             default_value_type_expression: ast

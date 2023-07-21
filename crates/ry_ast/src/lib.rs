@@ -168,7 +168,7 @@ pub struct TypePath {
 pub struct TypePathSegment {
     pub location: Location,
     pub path: Path,
-    pub generic_arguments: Option<Vec<GenericArgument>>,
+    pub type_arguments: Option<Vec<TypeArgument>>,
 }
 
 /// A pattern, e.g. `Some(x)`, `None`, `a @ [3, ..]`, `[1, .., 3]`, `(1, \"hello\")`, `3.2`.
@@ -336,9 +336,9 @@ impl Type {
     }
 }
 
-/// A generic parameter, e.g. `T` in `fun into[T](a: T);`.
+/// A type parameter, e.g. `T` in `fun into[T](a: T);`.
 #[derive(Debug, PartialEq, Clone)]
-pub struct GenericParameter {
+pub struct TypeParameter {
     pub name: IdentifierAST,
     pub bounds: Option<TypeBounds>,
     pub default_value: Option<Type>,
@@ -349,7 +349,7 @@ pub struct GenericParameter {
 pub struct TypeAlias {
     pub visibility: Visibility,
     pub name: IdentifierAST,
-    pub generic_parameters: Option<Vec<GenericParameter>>,
+    pub type_parameters: Option<Vec<TypeParameter>>,
     pub bounds: Option<TypeBounds>,
     pub value: Option<Type>,
     pub docstring: Option<String>,
@@ -453,11 +453,11 @@ pub enum Expression {
         arguments: Vec<Self>,
     },
 
-    /// Generic arguments expression, e.g. `sizeof[uint32]`.
-    GenericArguments {
+    /// Type arguments expression, e.g. `sizeof[uint32]`.
+    TypeArguments {
         location: Location,
         left: Box<Self>,
-        generic_arguments: Vec<GenericArgument>,
+        type_arguments: Vec<TypeArgument>,
     },
 
     /// Tuple expression, e.g. `(a, 32, \"hello\")`.
@@ -496,9 +496,9 @@ pub struct LambdaFunctionParameter {
     pub ty: Option<Type>,
 }
 
-/// A generic argument, e.g. `Item = uint32` in `Iterator[Item = uint32]`, `usize` in `sizeof[usize]()`.
+/// A type argument, e.g. `Item = uint32` in `Iterator[Item = uint32]`, `usize` in `sizeof[usize]()`.
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
-pub enum GenericArgument {
+pub enum TypeArgument {
     /// Just a type, e.g. `usize` in `sizeof[usize]()`.
     Type(Type),
     /// Type with a name, e.g. `Item = uint32` in `Iterator[Item = uint32]`.
@@ -531,7 +531,7 @@ impl Expression {
             | Self::Postfix { location, .. }
             | Self::While { location, .. }
             | Self::Call { location, .. }
-            | Self::GenericArguments { location, .. }
+            | Self::TypeArguments { location, .. }
             | Self::Tuple { location, .. }
             | Self::Struct { location, .. }
             | Self::Match { location, .. }
@@ -901,7 +901,7 @@ pub type StatementsBlock = Vec<Statement>;
 pub struct Impl {
     /// Location of the `impl` keyword.
     pub location: Location,
-    pub generic_parameters: Option<Vec<GenericParameter>>,
+    pub type_parameters: Option<Vec<TypeParameter>>,
     pub ty: Type,
     pub r#trait: Option<Type>,
     pub where_predicates: Option<Vec<WherePredicate>>,
@@ -916,7 +916,7 @@ pub enum ModuleItem {
     Enum {
         visibility: Visibility,
         name: IdentifierAST,
-        generic_parameters: Option<Vec<GenericParameter>>,
+        type_parameters: Option<Vec<TypeParameter>>,
         where_predicates: Option<Vec<WherePredicate>>,
         items: Vec<EnumItem>,
         docstring: Option<String>,
@@ -938,7 +938,7 @@ pub enum ModuleItem {
     Trait {
         visibility: Visibility,
         name: IdentifierAST,
-        generic_parameters: Option<Vec<GenericParameter>>,
+        type_parameters: Option<Vec<TypeParameter>>,
         where_predicates: Option<Vec<WherePredicate>>,
         items: Vec<TraitItem>,
         docstring: Option<String>,
@@ -951,7 +951,7 @@ pub enum ModuleItem {
     Struct {
         visibility: Visibility,
         name: IdentifierAST,
-        generic_parameters: Option<Vec<GenericParameter>>,
+        type_parameters: Option<Vec<TypeParameter>>,
         where_predicates: Option<Vec<WherePredicate>>,
         fields: Vec<StructField>,
         docstring: Option<String>,
@@ -961,7 +961,7 @@ pub enum ModuleItem {
     TupleLikeStruct {
         visibility: Visibility,
         name: IdentifierAST,
-        generic_parameters: Option<Vec<GenericParameter>>,
+        type_parameters: Option<Vec<TypeParameter>>,
         where_predicates: Option<Vec<WherePredicate>>,
         fields: Vec<TupleField>,
         docstring: Option<String>,
@@ -1198,7 +1198,7 @@ pub struct Function {
 pub struct FunctionSignature {
     pub visibility: Visibility,
     pub name: IdentifierAST,
-    pub generic_parameters: Option<Vec<GenericParameter>>,
+    pub type_parameters: Option<Vec<TypeParameter>>,
     pub parameters: Vec<FunctionParameter>,
     pub return_type: Option<Type>,
     pub where_predicates: Option<Vec<WherePredicate>>,

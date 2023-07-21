@@ -4,8 +4,8 @@ use ry_interner::IdentifierInterner;
 
 use crate::{
     visit::{
-        walk_enum_items, walk_expression, walk_function, walk_generic_argument,
-        walk_generic_arguments, walk_generic_parameter, walk_generic_parameters, walk_if_block,
+        walk_enum_items, walk_expression, walk_function, walk_type_argument,
+        walk_type_arguments, walk_type_parameter, walk_type_parameters, walk_if_block,
         walk_if_blocks, walk_lambda_function_parameter, walk_lambda_function_parameters,
         walk_match_expression_item, walk_match_expression_items, walk_module, walk_module_item,
         walk_path, walk_statement, walk_statements_block, walk_struct_expression_item,
@@ -15,7 +15,7 @@ use crate::{
         walk_type_alias, walk_type_implementation, walk_type_path, walk_type_path_segment,
         walk_where_predicates, Visitor,
     },
-    BinaryOperator, EnumItem, Expression, Function, GenericArgument, GenericParameter,
+    BinaryOperator, EnumItem, Expression, Function, TypeArgument, TypeParameter,
     IdentifierAST, Impl, ImportPath, LambdaFunctionParameter, Literal, MatchExpressionItem, Module,
     ModuleItem, Path, Pattern, PostfixOperator, PrefixOperator, Statement, StatementsBlock,
     StructExpressionItem, StructField, StructFieldPattern, TraitItem, TupleField, Type, TypeAlias,
@@ -127,7 +127,7 @@ impl Visitor<'_> for Serializer<'_> {
             Expression::Binary { .. } => self.write("BINARY"),
             Expression::Call { .. } => self.write("CALL"),
             Expression::FieldAccess { .. } => self.write("FIELD_ACCESS"),
-            Expression::GenericArguments { .. } => self.write("GENERIC_AGRUMENTS"),
+            Expression::TypeArguments { .. } => self.write("TYPE_ARGUMENTS"),
             Expression::Identifier(..) => self.write("IDENTIFIER"),
             Expression::If { .. } => self.write("IF"),
             Expression::Lambda { .. } => self.write("LAMBDA"),
@@ -162,46 +162,46 @@ impl Visitor<'_> for Serializer<'_> {
         self.decrement_indentation();
     }
 
-    fn visit_generic_argument(&mut self, argument: &'_ GenericArgument) {
+    fn visit_type_argument(&mut self, argument: &'_ TypeArgument) {
         self.increment_indentation();
         self.write_identation();
 
-        self.write("GENERIC_ARGUMENT");
+        self.write("TYPE_ARGUMENT");
         self.write_newline();
-        walk_generic_argument(self, argument);
+        walk_type_argument(self, argument);
 
         self.decrement_indentation();
     }
 
-    fn visit_generic_arguments(&mut self, arguments: &'_ [GenericArgument]) {
+    fn visit_type_arguments(&mut self, arguments: &'_ [TypeArgument]) {
         self.increment_indentation();
         self.write_identation();
 
-        self.write("GENERIC_ARGUMENTS");
+        self.write("TYPE_ARGUMENTS");
         self.write_newline();
-        walk_generic_arguments(self, arguments);
+        walk_type_arguments(self, arguments);
 
         self.decrement_indentation();
     }
 
-    fn visit_generic_parameter(&mut self, parameter: &'_ GenericParameter) {
+    fn visit_type_parameter(&mut self, parameter: &'_ TypeParameter) {
         self.increment_indentation();
         self.write_identation();
 
-        self.write("GENERIC_PARAMETER");
+        self.write("TYPE_PARAMETER");
         self.write_newline();
-        walk_generic_parameter(self, parameter);
+        walk_type_parameter(self, parameter);
 
         self.decrement_indentation();
     }
 
-    fn visit_generic_parameters(&mut self, parameters: Option<&'_ [GenericParameter]>) {
+    fn visit_type_parameters(&mut self, parameters: Option<&'_ [TypeParameter]>) {
         self.increment_indentation();
         self.write_identation();
 
-        self.write("GENERIC_PARAMETERS");
+        self.write("TYPE_PARAMETERS");
         self.write_newline();
-        walk_generic_parameters(self, parameters);
+        walk_type_parameters(self, parameters);
 
         self.decrement_indentation();
     }

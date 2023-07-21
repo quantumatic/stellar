@@ -1,14 +1,8 @@
 use std::iter::zip;
 
 use ry_ast::{IdentifierAST, TypeBounds};
-use ry_diagnostics::{BuildDiagnostic, GlobalDiagnostics};
 use ry_fx_hash::{FxHashMap, FxHashSet};
-use ry_hir::{
-    ty::{Path, Type, TypePathSegment},
-    WherePredicate,
-};
-
-use crate::diagnostics::DuplicateTraitBoundDiagnostic;
+use ry_hir::ty::{Path, Type};
 
 #[derive(Debug, Default)]
 pub struct TraitResolutionContext {
@@ -23,10 +17,26 @@ impl TraitResolutionContext {
         Self::default()
     }
 
+    #[inline]
+    pub fn get_trait_data(
+        &self,
+        absolute_path: impl AsRef<Path>,
+    ) -> Option<&TraitData> {
+        self.traits.get(absolute_path.as_ref()) 
+    }
+
+    #[inline]
+    pub fn get_trait_data_mut(
+        &mut self,
+        absolute_path: impl AsRef<Path>,
+    ) -> Option<&mut TraitData> {
+        self.traits.get_mut(absolute_path.as_ref())
+    }
+
     pub fn add_implementation(
         &mut self,
-        trait_path: Path,
-        implementation_data: ImplementationData,
+        _trait_path: Path,
+        _implementation_data: ImplementationData,
     ) {
         todo!()
     }
@@ -41,6 +51,8 @@ impl TraitResolutionContext {
         }
     }
 
+    /// Returns constrained type parameters.
+    #[must_use]
     pub fn get_constrained_type_parameters(
         &self,
         implemented_type: Type,
@@ -62,6 +74,8 @@ impl TraitResolutionContext {
                 result
             }
             Type::Unit => FxHashSet::default(),
+
+            // T
             Type::WithQualifiedPath { .. } => FxHashSet::default(),
             Type::Variable(..) => FxHashSet::default(),
             Type::Tuple { element_types } => {
@@ -119,32 +133,33 @@ impl TraitResolutionContext {
         }
     }
 
+    /// Get not constrained type parameters - used to validate most of type 
+    /// implementations.
+    #[inline]
+    #[must_use]
     pub fn get_not_constrained_type_parameters(
         &self,
         implemented_type: Type,
-        generics: &FxHashSet<IdentifierAST>,
+        type_parameters: &FxHashSet<IdentifierAST>,
     ) -> FxHashSet<IdentifierAST> {
-        let constrained = self.get_constrained_type_parameters(implemented_type, generics);
-
-        generics.difference(&constrained).cloned().collect()
+        type_parameters.difference(&self.get_constrained_type_parameters(implemented_type, type_parameters)).cloned().collect()
     }
 
     /// The function checks for type equality in implementations. For example
     /// implemented types in `impl[T] T` and `impl[T, M] HashMap[T, M]` can
     /// be equal and so, there is an implementation overlap.
+    #[must_use]
     pub fn implemented_types_can_be_equal(
         &self,
-        left_generics: &[IdentifierAST],
-        left_type: Type,
-        right_type_generics: &[IdentifierAST],
-        right_type: Type,
+        left_generic_parameters: &[IdentifierAST],
+        left_implemented_type: Type,
+        right_generic_parameters: &[IdentifierAST],
+        right_implemented_type: Type,
     ) -> bool {
-        match (left_type, right_type) {
+        match (left_implemented_type, right_implemented_type) {
             (Type::Unit, Type::Unit) => true,
             (Type::Constructor { path: left_path }, Type::Constructor { path: right_path }) => {
-                // impl[T] [T as A].B where T: A {}
-                //      ^ unconstrained type parameter
-                unreachable!()
+                todo!()
             }
             (
                 Type::WithQualifiedPath {
@@ -167,9 +182,9 @@ impl TraitResolutionContext {
                 },
             ) => zip(left, right).all(|(left, right)| {
                 self.implemented_types_can_be_equal(
-                    left_generics,
+                    left_generic_parameters,
                     left.clone(),
-                    right_type_generics,
+                    right_generic_parameters,
                     right.clone(),
                 )
             }),
@@ -196,22 +211,35 @@ impl TraitResolutionContext {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default, Hash)]
 pub struct TraitData {
-    generics: Vec<GenericData>,
-    constraints: FxHashMap<Type, TypeBounds>,
-    implementations: Vec<ImplementationData>,
+    pub generic_parameters: Vec<GenericParameterData>,
+    pub constraints: Vec<ConstraintData>,
+    pub implementations: Vec<ImplementationData>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Hash)]
 pub struct ImplementationData {
-    generics: Vec<GenericData>,
-    constraints: FxHashMap<Type, TypeBounds>,
-    ty: Type,
+    pub generic_parameters: Vec<GenericParameterData>,
+    pub constraints: Vec<ConstraintData>,
+    pub ty: Type,
 }
 
-#[derive(Debug, Clone)]
-pub struct GenericData {
-    identifier: IdentifierAST,
-    default_value: Type,
+#[derive(Debug, Clone, Hash)]
+pub enum ConstraintData {
+    Satisfies {
+        left: Type,
+        right: TypeBounds
+    },
+    Eq {
+        left: Type,
+        right: Type,
+    }
 }
+
+#[derive(Debug, Clone, Hash)]
+pub struct GenericParameterData {
+    pub identifier: IdentifierAST,
+    pub default_value: Type,
+}
+

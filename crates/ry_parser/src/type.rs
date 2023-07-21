@@ -1,5 +1,5 @@
 use ry_ast::{
-    token::RawToken, GenericArgument, GenericParameter, Path, Token, Type, TypeBounds, TypePath,
+    token::RawToken, TypeArgument, TypeParameter, Path, Token, Type, TypeBounds, TypePath,
     TypePathSegment, WherePredicate,
 };
 
@@ -22,9 +22,9 @@ struct TypePathParser;
 
 struct TypePathSegmentParser;
 
-pub(crate) struct GenericParametersParser;
+pub(crate) struct TypeParametersParser;
 
-pub(crate) struct GenericArgumentsParser;
+pub(crate) struct TypeArgumentsParser;
 
 pub(crate) struct WherePredicatesParser;
 
@@ -181,8 +181,8 @@ impl Parse for ParenthesizedTupleOrFunctionTypeParser {
     }
 }
 
-impl OptionalParser for GenericParametersParser {
-    type Output = Option<Option<Vec<GenericParameter>>>;
+impl OptionalParser for TypeParametersParser {
+    type Output = Option<Option<Vec<TypeParameter>>>;
 
     fn optionally_parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
         if state.next_token.raw != Token!['['] {
@@ -192,7 +192,7 @@ impl OptionalParser for GenericParametersParser {
         state.advance();
 
         let result = parse_list!(state, "generic parameters", Token![']'], {
-            Some(GenericParameter {
+            Some(TypeParameter {
                 name: state.consume_identifier("generic parameter name")?,
                 bounds: if state.next_token.raw == Token![:] {
                     state.advance();
@@ -244,18 +244,18 @@ impl Parse for TypePathSegmentParser {
 
     fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
         let path = PathParser.parse(state)?;
-        let generic_arguments = GenericArgumentsParser.optionally_parse(state)?;
+        let type_arguments = TypeArgumentsParser.optionally_parse(state)?;
 
         Some(TypePathSegment {
             location: state.location_from(path.location.start),
             path,
-            generic_arguments,
+            type_arguments,
         })
     }
 }
 
-impl OptionalParser for GenericArgumentsParser {
-    type Output = Option<Option<Vec<GenericArgument>>>;
+impl OptionalParser for TypeArgumentsParser {
+    type Output = Option<Option<Vec<TypeArgument>>>;
 
     fn optionally_parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
         if state.next_token.raw != Token!['['] {
@@ -265,8 +265,8 @@ impl OptionalParser for GenericArgumentsParser {
         Some(self.parse(state))
     }
 }
-impl Parse for GenericArgumentsParser {
-    type Output = Option<Vec<GenericArgument>>;
+impl Parse for TypeArgumentsParser {
+    type Output = Option<Vec<TypeArgument>>;
 
     fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
         state.advance();
@@ -278,12 +278,12 @@ impl Parse for GenericArgumentsParser {
                 (Token![=], Type::Path(TypePath { segments, .. })) => match segments.as_slice() {
                     [TypePathSegment {
                         path: Path { identifiers, .. },
-                        generic_arguments: None,
+                        type_arguments: None,
                         ..
                     }] if identifiers.len() == 1 => {
                         state.advance();
                         let value = TypeParser.parse(state)?;
-                        Some(GenericArgument::AssociatedType {
+                        Some(TypeArgument::AssociatedType {
                             name: *identifiers
                                 .first()
                                 .expect("Cannot get first identifier of type path"),
@@ -292,7 +292,7 @@ impl Parse for GenericArgumentsParser {
                     }
                     _ => None,
                 },
-                _ => Some(GenericArgument::Type(ty)),
+                _ => Some(TypeArgument::Type(ty)),
             }
         });
 

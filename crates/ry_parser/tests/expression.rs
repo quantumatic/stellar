@@ -1,5 +1,5 @@
 use ry_ast::{
-    BinaryOperator, Expression, GenericArgument, IdentifierAST, LambdaFunctionParameter, Literal,
+    BinaryOperator, Expression, TypeArgument, IdentifierAST, LambdaFunctionParameter, Literal,
     MatchExpressionItem, Path, Pattern, PostfixOperator, PrefixOperator, RawBinaryOperator,
     RawPostfixOperator, RawPrefixOperator, Statement, StructExpressionItem, Type, TypePath,
     TypePathSegment,
@@ -182,7 +182,7 @@ fn postfix() {
 }
 
 #[test]
-fn generic_argument() {
+fn type_argument() {
     let mut identifier_interner = IdentifierInterner::new();
     let mut diagnostics = GlobalDiagnostics::new();
 
@@ -199,7 +199,7 @@ fn generic_argument() {
                 start: 0,
                 end: 16
             },
-            callee: Box::new(Expression::GenericArguments {
+            callee: Box::new(Expression::TypeArguments {
                 location: Location {
                     file_path_id: DUMMY_PATH_ID,
                     start: 0,
@@ -213,7 +213,7 @@ fn generic_argument() {
                     },
                     symbol: builtin_symbols::SIZE_OF
                 })),
-                generic_arguments: vec![GenericArgument::Type(Type::Path(TypePath {
+                type_arguments: vec![TypeArgument::Type(Type::Path(TypePath {
                     location: Location {
                         file_path_id: DUMMY_PATH_ID,
                         start: 7,
@@ -240,7 +240,7 @@ fn generic_argument() {
                                 symbol: builtin_symbols::UINT32
                             }]
                         },
-                        generic_arguments: None
+                        type_arguments: None
                     }]
                 }))]
             }),
@@ -634,7 +634,7 @@ fn r#as() {
                             symbol: builtin_symbols::FLOAT32
                         }]
                     },
-                    generic_arguments: None
+                    type_arguments: None
                 }]
             })
         })
@@ -911,7 +911,7 @@ fn lambda() {
                                     symbol: builtin_symbols::UINT32
                                 }]
                             },
-                            generic_arguments: None
+                            type_arguments: None
                         }]
                     }))
                 }

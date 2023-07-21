@@ -9,8 +9,8 @@ use ry_interner::{IdentifierInterner, PathID, PathInterner, Symbol};
 use ry_name_resolution::NameResolutionContext;
 use trait_resolution::TraitResolutionContext;
 
-mod diagnostics;
-mod trait_resolution;
+pub mod diagnostics;
+pub mod trait_resolution;
 
 #[derive(Debug)]
 pub struct TypeCheckingContext<'i, 'p, 'hir, 't, 'd> {

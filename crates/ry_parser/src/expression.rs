@@ -10,7 +10,7 @@ use crate::{
     literal::LiteralParser,
     macros::parse_list,
     pattern::PatternParser,
-    r#type::{GenericArgumentsParser, TypeParser},
+    r#type::{TypeArgumentsParser, TypeParser},
     statement::StatementsBlockParser,
     Parse, ParseState,
 };
@@ -261,12 +261,12 @@ impl Parse for GenericArgumentsExpressionParser {
     type Output = Option<Expression>;
 
     fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
-        let generic_arguments = GenericArgumentsParser.parse(state)?;
+        let type_arguments = TypeArgumentsParser.parse(state)?;
 
-        Some(Expression::GenericArguments {
+        Some(Expression::TypeArguments {
             location: state.location_from(self.left.location().start),
             left: Box::new(self.left),
-            generic_arguments,
+            type_arguments,
         })
     }
 }
