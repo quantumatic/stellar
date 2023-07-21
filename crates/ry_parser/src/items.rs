@@ -90,7 +90,7 @@ impl Parse for ImportParser {
         let start = state.next_token.location.start;
 
         if let Some(location) = self.visibility.location_of_pub() {
-            state.save_single_file_diagnostic(UnnecessaryVisibilityQualifierDiagnostic {
+            state.add_diagnostic(UnnecessaryVisibilityQualifierDiagnostic {
                 location,
                 context: UnnecessaryVisibilityQualifierContext::Import,
             });
@@ -181,7 +181,7 @@ impl Parse for StructParser {
             if state.next_token.raw == Token![;] {
                 state.advance();
             } else {
-                state.save_single_file_diagnostic(UnexpectedTokenDiagnostic::new(
+                state.add_diagnostic(UnexpectedTokenDiagnostic::new(
                     state.current_token,
                     expected!(Token![;]),
                     "struct item",
@@ -197,7 +197,7 @@ impl Parse for StructParser {
                 docstring: self.docstring,
             })
         } else {
-            state.save_single_file_diagnostic(UnexpectedTokenDiagnostic::new(
+            state.add_diagnostic(UnexpectedTokenDiagnostic::new(
                 state.current_token,
                 expected!(Token![;], Token!['(']),
                 "item",
@@ -302,7 +302,7 @@ impl Parse for FunctionParser {
                 _ => {
                     state.advance();
 
-                    state.save_single_file_diagnostic(UnexpectedTokenDiagnostic::new(
+                    state.add_diagnostic(UnexpectedTokenDiagnostic::new(
                         state.current_token,
                         expected!(Token![;], Token!['(']),
                         "function",
@@ -326,7 +326,7 @@ impl Parse for TraitItemsParser {
 
             if let Some(location) = VisibilityParser.parse(state).location_of_pub() {
                 if !self.type_implementation {
-                    state.save_single_file_diagnostic(UnnecessaryVisibilityQualifierDiagnostic {
+                    state.add_diagnostic(UnnecessaryVisibilityQualifierDiagnostic {
                         location,
                         context: UnnecessaryVisibilityQualifierContext::TraitItem {
                             name_location: self.name_location,
@@ -351,7 +351,7 @@ impl Parse for TraitItemsParser {
                     .parse(state)?,
                 )),
                 _ => {
-                    state.save_single_file_diagnostic(UnexpectedTokenDiagnostic::new(
+                    state.add_diagnostic(UnexpectedTokenDiagnostic::new(
                         state.next_token,
                         expected!(Token![fun], Token![type]),
                         "trait item",
@@ -447,7 +447,7 @@ impl Parse for ImplParser {
         let location = state.current_token.location;
 
         if let Some(location) = self.visibility.location_of_pub() {
-            state.save_single_file_diagnostic(UnnecessaryVisibilityQualifierDiagnostic {
+            state.add_diagnostic(UnnecessaryVisibilityQualifierDiagnostic {
                 location,
                 context: UnnecessaryVisibilityQualifierContext::Impl,
             });
@@ -695,7 +695,7 @@ impl Parse for ItemParser {
                 .parse(state)
             )),
             _ => {
-                state.save_single_file_diagnostic(UnexpectedTokenDiagnostic::new(
+                state.add_diagnostic(UnexpectedTokenDiagnostic::new(
                     state.next_token,
                     expected!(
                         Token![import],

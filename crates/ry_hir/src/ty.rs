@@ -31,9 +31,7 @@ impl Type {
     #[must_use]
     pub fn check_single_identifier_type_constructor(&self, symbol: Symbol) -> bool {
         match self {
-            Self::Constructor { path } => {
-                path.check_single_identifier_type_constructor(symbol)
-            },
+            Self::Constructor { path } => path.check_single_identifier_type_constructor(symbol),
             _ => unreachable!(),
         }
     }
@@ -122,7 +120,7 @@ impl TypePath {
     #[inline]
     #[must_use]
     pub fn check_single_identifier_type_constructor(&self, symbol: Symbol) -> bool {
-        if let [TypePathSegment { left, right } ] = &self.segments[..] {
+        if let [TypePathSegment { left, right }] = &self.segments[..] {
             if let [matching_symbol] = left.symbols[..] {
                 return right.is_empty() && matching_symbol == symbol;
             }

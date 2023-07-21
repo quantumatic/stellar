@@ -58,6 +58,12 @@ impl<'t, 'd> LoweringContext<'t, 'd> {
         }
     }
 
+    #[inline]
+    pub fn add_diagnostic(&mut self, diagnostic: impl BuildDiagnostic) {
+        self.diagnostics
+            .add_single_file_diagnostic(self.file_path_id, diagnostic.build());
+    }
+
     #[must_use]
     pub fn lower(&mut self, ast: ry_ast::Module) -> ry_hir::Module {
         let mut lowered = ry_hir::Module {
@@ -209,10 +215,7 @@ impl<'t, 'd> LoweringContext<'t, 'd> {
             ry_ast::Pattern::Grouped { location, inner } => {
                 // todo: emit diagnostics
 
-                self.diagnostics.add_file_diagnostic(
-                    [self.file_path_id],
-                    UnnecessaryParenthesesInPatternDiagnostic { location }.build(),
-                );
+                self.add_diagnostic(UnnecessaryParenthesesInPatternDiagnostic { location });
 
                 self.lower_pattern(*inner)
             }
@@ -369,10 +372,7 @@ impl<'t, 'd> LoweringContext<'t, 'd> {
                 block,
             } => {
                 if let ry_ast::Expression::Parenthesized { location, .. } = *expression {
-                    self.diagnostics.add_file_diagnostic(
-                        [self.file_path_id],
-                        UnnecessaryParenthesizedExpression { location }.build(),
-                    );
+                    self.add_diagnostic(UnnecessaryParenthesizedExpression { location });
                 }
 
                 ry_hir::Expression::Match {
@@ -404,10 +404,7 @@ impl<'t, 'd> LoweringContext<'t, 'd> {
                 statements_block: body,
             } => {
                 if let ry_ast::Expression::Parenthesized { location, .. } = *condition {
-                    self.diagnostics.add_file_diagnostic(
-                        [self.file_path_id],
-                        UnnecessaryParenthesizedExpression { location }.build(),
-                    );
+                    self.add_diagnostic(UnnecessaryParenthesizedExpression { location });
                 }
 
                 ry_hir::Expression::While {
@@ -449,10 +446,7 @@ impl<'t, 'd> LoweringContext<'t, 'd> {
             },
             ry_ast::Expression::Parenthesized { inner, .. } => {
                 if let ry_ast::Expression::Parenthesized { location, .. } = *inner {
-                    self.diagnostics.add_file_diagnostic(
-                        [self.file_path_id],
-                        UnnecessaryParenthesizedExpression { location }.build(),
-                    );
+                    self.add_diagnostic(UnnecessaryParenthesizedExpression { location });
                 }
 
                 self.lower_expression(*inner)
@@ -535,10 +529,7 @@ impl<'t, 'd> LoweringContext<'t, 'd> {
         ast: ry_ast::MatchExpressionItem,
     ) -> ry_hir::MatchExpressionItem {
         if let ry_ast::Expression::Parenthesized { location, .. } = ast.right {
-            self.diagnostics.add_file_diagnostic(
-                [self.file_path_id],
-                UnnecessaryParenthesizedExpression { location }.build(),
-            );
+            self.add_diagnostic(UnnecessaryParenthesizedExpression { location });
         }
 
         ry_hir::MatchExpressionItem {
@@ -584,10 +575,7 @@ impl<'t, 'd> LoweringContext<'t, 'd> {
         if_block: (ry_ast::Expression, ry_ast::StatementsBlock),
     ) -> (ry_hir::Expression, ry_hir::StatementsBlock) {
         if let ry_ast::Expression::Parenthesized { location, .. } = if_block.0 {
-            self.diagnostics.add_file_diagnostic(
-                [self.file_path_id],
-                UnnecessaryParenthesizedExpression { location }.build(),
-            );
+            self.add_diagnostic(UnnecessaryParenthesizedExpression { location });
         }
 
         (
@@ -809,10 +797,7 @@ impl<'t, 'd> LoweringContext<'t, 'd> {
         .collect()
     }
 
-    fn lower_generic_parameter(
-        &mut self,
-        ast: ry_ast::TypeParameter,
-    ) -> ry_hir::TypeParameter {
+    fn lower_generic_parameter(&mut self, ast: ry_ast::TypeParameter) -> ry_hir::TypeParameter {
         ry_hir::TypeParameter {
             name: ast.name,
             bounds: ast.bounds,
@@ -870,10 +855,7 @@ impl<'t, 'd> LoweringContext<'t, 'd> {
             ry_ast::Type::Path(path) => ry_hir::TypeExpression::Path(path),
             ry_ast::Type::Parenthesized { inner, .. } => {
                 if let ry_ast::Type::Parenthesized { location, .. } = *inner {
-                    self.diagnostics.add_file_diagnostic(
-                        [self.file_path_id],
-                        UnnecessaryParenthesizedExpression { location }.build(),
-                    );
+                    self.add_diagnostic(UnnecessaryParenthesizedExpression { location });
                 }
 
                 self.lower_type_expression(*inner)

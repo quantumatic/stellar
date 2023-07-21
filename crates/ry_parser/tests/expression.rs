@@ -1,8 +1,8 @@
 use ry_ast::{
-    BinaryOperator, Expression, TypeArgument, IdentifierAST, LambdaFunctionParameter, Literal,
+    BinaryOperator, Expression, IdentifierAST, LambdaFunctionParameter, Literal,
     MatchExpressionItem, Path, Pattern, PostfixOperator, PrefixOperator, RawBinaryOperator,
-    RawPostfixOperator, RawPrefixOperator, Statement, StructExpressionItem, Type, TypePath,
-    TypePathSegment,
+    RawPostfixOperator, RawPrefixOperator, Statement, StructExpressionItem, Type, TypeArgument,
+    TypePath, TypePathSegment,
 };
 use ry_diagnostics::GlobalDiagnostics;
 use ry_filesystem::location::Location;

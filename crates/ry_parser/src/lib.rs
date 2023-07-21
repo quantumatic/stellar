@@ -350,7 +350,7 @@ impl<'s, 'd, 'i> ParseState<'s, 'd, 'i> {
     #[inline]
     fn check_next_token(&mut self) {
         if let RawToken::Error(error) = self.next_token.raw {
-            self.save_single_file_diagnostic(LexErrorDiagnostic(LexError {
+            self.add_diagnostic(LexErrorDiagnostic(LexError {
                 location: self.next_token.location,
                 raw: error,
             }));
@@ -397,7 +397,7 @@ impl<'s, 'd, 'i> ParseState<'s, 'd, 'i> {
         if self.next_token.raw == expected {
             Some(())
         } else {
-            self.save_single_file_diagnostic(UnexpectedTokenDiagnostic::new(
+            self.add_diagnostic(UnexpectedTokenDiagnostic::new(
                 self.next_token,
                 expected!(expected),
                 node,
@@ -447,7 +447,7 @@ impl<'s, 'd, 'i> ParseState<'s, 'd, 'i> {
                 symbol: self.lexer.scanned_identifier,
             }
         } else {
-            self.save_single_file_diagnostic(UnexpectedTokenDiagnostic::new(
+            self.add_diagnostic(UnexpectedTokenDiagnostic::new(
                 self.next_token,
                 expected!("identifier"),
                 node,
@@ -501,9 +501,9 @@ impl<'s, 'd, 'i> ParseState<'s, 'd, 'i> {
     /// Saves a single file diagnostic.
     #[inline]
     #[allow(clippy::needless_pass_by_value)]
-    pub(crate) fn save_single_file_diagnostic(&mut self, diagnostic: impl BuildDiagnostic) {
+    pub(crate) fn add_diagnostic(&mut self, diagnostic: impl BuildDiagnostic) {
         self.diagnostics
-            .add_file_diagnostic([self.lexer.file_path_id], diagnostic.build());
+            .add_single_file_diagnostic(self.lexer.file_path_id, diagnostic.build());
     }
 }
 

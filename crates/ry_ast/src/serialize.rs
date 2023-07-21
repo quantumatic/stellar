@@ -4,21 +4,21 @@ use ry_interner::IdentifierInterner;
 
 use crate::{
     visit::{
-        walk_enum_items, walk_expression, walk_function, walk_type_argument,
-        walk_type_arguments, walk_type_parameter, walk_type_parameters, walk_if_block,
-        walk_if_blocks, walk_lambda_function_parameter, walk_lambda_function_parameters,
+        walk_enum_items, walk_expression, walk_function, walk_if_block, walk_if_blocks,
+        walk_lambda_function_parameter, walk_lambda_function_parameters,
         walk_match_expression_item, walk_match_expression_items, walk_module, walk_module_item,
         walk_path, walk_statement, walk_statements_block, walk_struct_expression_item,
         walk_struct_expression_items, walk_struct_field, walk_struct_field_pattern,
         walk_struct_field_patterns, walk_struct_fields, walk_there_predicate, walk_trait_bounds,
         walk_trait_item, walk_trait_items, walk_tuple_field, walk_tuple_fields, walk_type,
-        walk_type_alias, walk_type_implementation, walk_type_path, walk_type_path_segment,
+        walk_type_alias, walk_type_argument, walk_type_arguments, walk_type_implementation,
+        walk_type_parameter, walk_type_parameters, walk_type_path, walk_type_path_segment,
         walk_where_predicates, Visitor,
     },
-    BinaryOperator, EnumItem, Expression, Function, TypeArgument, TypeParameter,
-    IdentifierAST, Impl, ImportPath, LambdaFunctionParameter, Literal, MatchExpressionItem, Module,
-    ModuleItem, Path, Pattern, PostfixOperator, PrefixOperator, Statement, StatementsBlock,
-    StructExpressionItem, StructField, StructFieldPattern, TraitItem, TupleField, Type, TypeAlias,
+    BinaryOperator, EnumItem, Expression, Function, IdentifierAST, Impl, ImportPath,
+    LambdaFunctionParameter, Literal, MatchExpressionItem, Module, ModuleItem, Path, Pattern,
+    PostfixOperator, PrefixOperator, Statement, StatementsBlock, StructExpressionItem, StructField,
+    StructFieldPattern, TraitItem, TupleField, Type, TypeAlias, TypeArgument, TypeParameter,
     TypePath, TypePathSegment, Visibility, WherePredicate,
 };
 

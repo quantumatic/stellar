@@ -15,7 +15,7 @@ macro_rules! parse_list {
                         if $state.next_token.raw != Token![,] {
                             use crate::diagnostics::UnexpectedTokenDiagnostic;
 
-                            $state.save_single_file_diagnostic(
+                            $state.add_diagnostic(
                                 UnexpectedTokenDiagnostic::new(
                                     $state.next_token,
                                     $crate::expected!($closing_token, Token![,]),
@@ -60,7 +60,7 @@ macro_rules! parse_list {
                         if $state.next_token.raw != Token![,] {
                             use crate::diagnostics::UnexpectedTokenDiagnostic;
 
-                            $state.save_single_file_diagnostic(
+                            $state.add_diagnostic(
                                 UnexpectedTokenDiagnostic::new(
                                     $state.next_token,
                                     $crate::expected!($closing_token1, $closing_token2, Token![,]),

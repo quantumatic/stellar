@@ -55,7 +55,7 @@ impl Parse for TypeParser {
             Token![dyn] => TraitObjectTypeParser.parse(state),
             Token!['['] => TypeWithQualifiedPathParser.parse(state),
             _ => {
-                state.save_single_file_diagnostic(UnexpectedTokenDiagnostic::new(
+                state.add_diagnostic(UnexpectedTokenDiagnostic::new(
                     state.next_token,
                     expected!("identifier", Token!['['], Token![#], Token!['(']),
                     "type",
@@ -331,7 +331,7 @@ impl OptionalParser for WherePredicatesParser {
                         Some(WherePredicate::Eq { left, right: TypeParser.parse(state)? })
                     },
                     _ => {
-                        state.save_single_file_diagnostic(
+                        state.add_diagnostic(
                             UnexpectedTokenDiagnostic::new(
                                 state.next_token,
                                 expected!(Token![=], Token![:]),

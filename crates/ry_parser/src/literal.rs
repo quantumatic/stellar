@@ -20,7 +20,7 @@ impl Parse for LiteralParser {
                         location: state.current_token.location,
                     })
                 } else {
-                    state.save_single_file_diagnostic(IntegerOverflowDiagnostic {
+                    state.add_diagnostic(IntegerOverflowDiagnostic {
                         location: state.current_token.location,
                     });
                     None
@@ -34,7 +34,7 @@ impl Parse for LiteralParser {
                         location: state.current_token.location,
                     })
                 } else {
-                    state.save_single_file_diagnostic(FloatOverflowDiagnostic {
+                    state.add_diagnostic(FloatOverflowDiagnostic {
                         location: state.current_token.location,
                     });
                     None

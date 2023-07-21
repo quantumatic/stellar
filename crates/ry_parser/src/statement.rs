@@ -53,7 +53,7 @@ impl Parse for StatementParser {
                         }
                     }
                     _ => {
-                        state.save_single_file_diagnostic(UnexpectedTokenDiagnostic::new(
+                        state.add_diagnostic(UnexpectedTokenDiagnostic::new(
                             state.next_token,
                             expected!(";"),
                             "expression statement",
@@ -96,7 +96,7 @@ impl Parse for StatementsBlockParser {
             match state.next_token.raw {
                 Token!['}'] => break,
                 RawToken::EndOfFile => {
-                    state.save_single_file_diagnostic(UnexpectedTokenDiagnostic::new(
+                    state.add_diagnostic(UnexpectedTokenDiagnostic::new(
                         state.next_token,
                         expected!("}"),
                         "statements block",

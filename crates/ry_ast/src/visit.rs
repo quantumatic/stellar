@@ -5,10 +5,10 @@
 
 use crate::{
     BinaryOperator, EnumItem, Expression, Function, FunctionParameter, FunctionSignature,
-    TypeArgument, TypeParameter, IdentifierAST, Impl, ImportPath, LambdaFunctionParameter,
-    Literal, MatchExpressionItem, Module, ModuleItem, NotSelfFunctionParameter, Path, Pattern,
-    PostfixOperator, PrefixOperator, SelfFunctionParameter, Statement, StatementsBlock,
-    StructExpressionItem, StructField, StructFieldPattern, TraitItem, TupleField, Type, TypeAlias,
+    IdentifierAST, Impl, ImportPath, LambdaFunctionParameter, Literal, MatchExpressionItem, Module,
+    ModuleItem, NotSelfFunctionParameter, Path, Pattern, PostfixOperator, PrefixOperator,
+    SelfFunctionParameter, Statement, StatementsBlock, StructExpressionItem, StructField,
+    StructFieldPattern, TraitItem, TupleField, Type, TypeAlias, TypeArgument, TypeParameter,
     TypePath, TypePathSegment, Visibility, WherePredicate,
 };
 
@@ -484,10 +484,8 @@ where
     visitor.visit_type(&field.ty);
 }
 
-pub fn walk_type_parameters<'ast, V>(
-    visitor: &mut V,
-    parameters: Option<&'ast [TypeParameter]>,
-) where
+pub fn walk_type_parameters<'ast, V>(visitor: &mut V, parameters: Option<&'ast [TypeParameter]>)
+where
     V: Visitor<'ast>,
 {
     if let Some(parameters) = parameters {

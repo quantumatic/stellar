@@ -128,6 +128,28 @@ impl GlobalDiagnostics {
         }
     }
 
+    /// Adds a diagnostic associated with a single file.
+    #[inline]
+    pub fn add_single_file_diagnostic(
+        &mut self,
+        file_path_id: PathID,
+        diagnostic: Diagnostic<PathID>,
+    ) {
+        self.files_involved.insert(file_path_id);
+        self.file_diagnostics.push(diagnostic);
+    }
+
+    /// Adds diagnostics associated with a single file.
+    #[inline]
+    pub fn add_single_file_diagnostics(
+        &mut self,
+        file_path_id: PathID,
+        diagnostic: impl IntoIterator<Item = Diagnostic<PathID>>,
+    ) {
+        self.files_involved.insert(file_path_id);
+        self.file_diagnostics.extend(diagnostic);
+    }
+
     /// Adds a diagnostic associated with some files.
     #[inline]
     pub fn add_file_diagnostic(

@@ -232,7 +232,7 @@ impl Parse for PrimaryExpressionParser {
                     }
                     .parse(state);
                 }
-                state.save_single_file_diagnostic(UnexpectedTokenDiagnostic::new(
+                state.add_diagnostic(UnexpectedTokenDiagnostic::new(
                     state.next_token,
                     expected!(
                         "integer literal",
