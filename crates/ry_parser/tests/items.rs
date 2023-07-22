@@ -1,8 +1,8 @@
 use ry_ast::{
     EnumItem, Expression, Function, FunctionParameter, FunctionParameterType, FunctionSignature,
-    IdentifierAST, Impl, ImportPath, ModuleItem, NotSelfFunctionParameter, Path,
+    GenericParameter, IdentifierAST, Impl, ImportPath, ModuleItem, NotSelfFunctionParameter, Path,
     SelfFunctionParameter, Statement, StructField, TraitItem, TupleField, Type, TypeAlias,
-    TypeArgument, GenericParameter, TypePath, TypePathSegment, Visibility, WherePredicate,
+    TypeArgument, TypePath, TypePathSegment, Visibility, WherePredicate,
 };
 use ry_diagnostics::GlobalDiagnostics;
 use ry_filesystem::location::Location;

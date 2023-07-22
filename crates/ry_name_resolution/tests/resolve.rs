@@ -1,9 +1,9 @@
 use ry_ast::{IdentifierAST, ImportPath};
 use ry_filesystem::location::DUMMY_LOCATION;
 use ry_fx_hash::FxHashMap;
-use ry_thir::ty::Path;
 use ry_interner::{Interner, DUMMY_PATH_ID};
 use ry_name_resolution::{ModuleContext, NameBindingData, NameResolutionContext, PackageContext};
+use ry_thir::ty::Path;
 
 /// ```txt
 /// a
