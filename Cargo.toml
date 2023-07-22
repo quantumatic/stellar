@@ -13,5 +13,6 @@ members = [
     "crates/ry_name_resolution",
     "crates/ry_parser",
     "crates/ry_stable_likely",
+    "crates/ry_thir",
     "crates/ry_typecheck",
 ]

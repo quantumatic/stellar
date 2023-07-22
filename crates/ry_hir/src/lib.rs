@@ -1,27 +1,8 @@
-//! # Token
+//! # HIR
 //!
-//! Token is a grammatical unit of the Ry programming language. It is defined
-//! in the [`token`] module. See [`Token`] and [`RawToken`] for more information.
-//!
-//! # Abstract Syntax Tree
-//!
-//! AST (or Abstract Syntax Tree) is a representation of the code that stores
-//! information about relations between tokens. It can be emitted by
-//! the parser defined in [`ry_parser`] crate.
-//!
-//! For more details see the module items and start with [`Module`] node.
-//!
-//! # Serialization
-//!
-//! AST can be serialized into a string using [`serialize_ast()`]. This is used in the
-//! language CLI `parse` command, when serialized AST is written into a txt file.
-//!
-//! See [`Serializer`] for more details.
-//!
-//! [`Serializer`]: crate::serialize::Serializer
-//! [`serialize_ast()`]: crate::serialize::serialize_ast
-//! [`Token`]: crate::token::Token
-//! [`ry_parser`]: ../ry_parser/index.html
+//! In Ry, we have 2 abstract structures that represents relations between tokens - AST and HIR.
+//! AST in this case is more abstract than HIR, because HIR is a more desugared version of AST,
+//! e.g. `loop` expression doesn't exist for the HIR and is reduced into `while true {}` expression.
 
 #![doc(
     html_logo_url = "https://raw.githubusercontent.com/abs0luty/Ry/main/additional/icon/ry.png",
@@ -81,35 +62,11 @@
     clippy::unnested_or_patterns
 )]
 
-pub mod ty;
-
 use std::fmt::Display;
 
-use ry_ast::{IdentifierAST, ImportPath, Path, TypeBounds, Visibility};
+use ry_ast::{Bounds, IdentifierAST, ImportPath, Literal, Path, TypePath, Visibility};
 use ry_filesystem::location::Location;
 use ry_interner::Symbol;
-use ty::{Type, Typed};
-
-#[derive(Debug, PartialEq, Clone)]
-pub struct Literal {
-    pub literal: ry_ast::Literal,
-    pub ty: Type,
-}
-
-impl Literal {
-    #[inline]
-    #[must_use]
-    pub const fn location(&self) -> Location {
-        self.literal.location()
-    }
-}
-
-impl Typed for Literal {
-    #[inline]
-    fn ty(&self) -> Type {
-        self.ty.clone()
-    }
-}
 
 /// A pattern, e.g. `Some(x)`, `None`, `a @ [3, ..]`, `[1, .., 3]`, `(1, \"hello\")`, `3.2`.
 #[derive(Debug, PartialEq, Clone)]
@@ -122,7 +79,6 @@ pub enum Pattern {
         location: Location,
         identifier: IdentifierAST,
         pattern: Option<Box<Self>>,
-        ty: Type,
     },
 
     /// A struct pattern, e.g. `Person { name, age, .. }`.
@@ -130,7 +86,6 @@ pub enum Pattern {
         location: Location,
         path: Path,
         fields: Vec<StructFieldPattern>,
-        ty: Type,
     },
 
     /// A tuple-like pattern - used to match a tuple-like structs and enum tuple-like items,
@@ -139,24 +94,21 @@ pub enum Pattern {
         location: Location,
         path: Path,
         inner_patterns: Vec<Self>,
-        ty: Type,
     },
 
     /// A tuple pattern, e.g. `(a, "hello", ..)`.
     Tuple {
         location: Location,
         elements: Vec<Self>,
-        ty: Type,
     },
 
     /// A path pattern.
-    Path { path: Path, ty: Type },
+    Path { path: Path },
 
     /// A list pattern, e.g. `[1, .., 10]`.
     List {
         location: Location,
         inner_patterns: Vec<Self>,
-        ty: Type,
     },
 
     /// An or pattern, e.g. `Some(..) | None`.
@@ -164,11 +116,10 @@ pub enum Pattern {
         location: Location,
         left: Box<Self>,
         right: Box<Self>,
-        ty: Type,
     },
 
     /// A rest pattern - `..`.
-    Rest { location: Location, ty: Type },
+    Rest { location: Location },
 }
 
 impl Pattern {
@@ -203,15 +154,15 @@ pub enum StructFieldPattern {
         location: Location,
         field_name: IdentifierAST,
         value_pattern: Option<Pattern>,
-        ty: Type,
     },
+
     /// A rest pattern, e.g. `..`.
-    Rest { location: Location, ty: Type },
+    Rest { location: Location },
 }
 
 /// A type, e.g. `int32`, `[S, dyn Iterator[Item = uint32]]`, `(char, char)`.
 #[derive(Debug, PartialEq, Clone)]
-pub enum TypeExpression {
+pub enum Type {
     /// A type path, e.g. `Iterator[Item = uint32].Item`, `R.Output`, `char`.
     Path(ry_ast::TypePath),
 
@@ -231,7 +182,7 @@ pub enum TypeExpression {
     /// A trait object type, e.g. `dyn Iterator[Item = uint32]`, `dyn Debug + Clone`.
     TraitObject {
         location: Location,
-        bounds: ry_ast::TypeBounds,
+        bounds: ry_ast::Bounds,
     },
 
     /// A type with a qualified path, e.g. `[A as Iterator].Item`.
@@ -243,7 +194,7 @@ pub enum TypeExpression {
     },
 }
 
-impl TypeExpression {
+impl Type {
     /// Returns the location of the type.
     #[inline]
     #[must_use]
@@ -258,13 +209,12 @@ impl TypeExpression {
     }
 }
 
-/// A type parameter, e.g. `T` in `fun into[T](a: T);`.
+/// A generic parameter, e.g. `T` in `fun into[T](a: T);`.
 #[derive(Debug, PartialEq, Clone)]
-pub struct TypeParameter {
+pub struct GenericParameter {
     pub name: IdentifierAST,
-    pub bounds: Option<ry_ast::TypeBounds>,
-    pub default_value_type_expression: Option<TypeExpression>,
-    pub ty: Type,
+    pub bounds: Option<ry_ast::Bounds>,
+    pub default_value: Option<Type>,
 }
 
 /// A type alias, e.g. `type MyResult = Result[String, MyError]`.
@@ -272,10 +222,9 @@ pub struct TypeParameter {
 pub struct TypeAlias {
     pub visibility: Visibility,
     pub name: IdentifierAST,
-    pub type_parameters: Vec<TypeParameter>,
-    pub bounds: Option<ry_ast::TypeBounds>,
-    pub value_type_expression: Option<TypeExpression>,
-    pub value: Type,
+    pub generic_parameters: Vec<GenericParameter>,
+    pub bounds: Option<ry_ast::Bounds>,
+    pub value: Option<Type>,
     pub docstring: Option<String>,
 }
 
@@ -283,17 +232,8 @@ pub struct TypeAlias {
 /// `where T: Into<String>, [T as Iterator].Item = char`.
 #[derive(Debug, PartialEq, Clone)]
 pub enum WherePredicate {
-    Eq {
-        left_type_expression: TypeExpression,
-        left_type: Type,
-        right_type_expression: TypeExpression,
-        right_type: Type,
-    },
-    Satisfies {
-        type_expression: TypeExpression,
-        ty: Type,
-        bounds: ry_ast::TypeBounds,
-    },
+    Eq { left_type: Type, right_type: Type },
+    Satisfies { ty: Type, bounds: ry_ast::Bounds },
 }
 
 /// An expression.
@@ -303,15 +243,13 @@ pub enum Expression {
     List {
         location: Location,
         elements: Vec<Self>,
-        ty: Type,
     },
 
     /// As expression, e.g. `a as float32`.
     As {
         location: Location,
         left: Box<Self>,
-        right: TypeExpression,
-        ty: Type,
+        right: Type,
     },
 
     /// Binary expression, e.g. `1 + 2`.
@@ -320,14 +258,12 @@ pub enum Expression {
         left: Box<Self>,
         operator: ry_ast::BinaryOperator,
         right: Box<Self>,
-        ty: Type,
     },
 
     /// Block expression, e.g. `{ let b = 1; b }`.
     StatementsBlock {
         location: Location,
         block: Vec<Statement>,
-        ty: Type,
     },
 
     /// Literal expression, e.g. `true`, `\"hello\"`, `1.2`.
@@ -336,19 +272,11 @@ pub enum Expression {
     /// Identifier expression, e.g. `foo`.
     Identifier(IdentifierAST),
 
-    /// Parenthesized expression, e.g. `(1 + 2)`.
-    Parenthesized {
-        location: Location,
-        inner: Box<Self>,
-        ty: Type,
-    },
-
     /// If expression, e.g. `if x { ... } else { ... }`.
     If {
         location: Location,
         if_blocks: Vec<(Self, Vec<Statement>)>,
         r#else: Option<Vec<Statement>>,
-        ty: Type,
     },
 
     /// Field access expression, e.g. `x.y`.
@@ -356,7 +284,6 @@ pub enum Expression {
         location: Location,
         left: Box<Self>,
         right: IdentifierAST,
-        ty: Type,
     },
 
     /// Prefix expression, e.g. `!false`, `++a`.
@@ -364,7 +291,6 @@ pub enum Expression {
         location: Location,
         inner: Box<Self>,
         operator: ry_ast::PrefixOperator,
-        ty: Type,
     },
 
     /// Postfix expression, e.g. `safe_div(1, 0)?`, `a++`.
@@ -372,7 +298,6 @@ pub enum Expression {
         location: Location,
         inner: Box<Self>,
         operator: ry_ast::PostfixOperator,
-        ty: Type,
     },
 
     /// While expression, e.g. `while x != 0 {}`.
@@ -380,7 +305,6 @@ pub enum Expression {
         location: Location,
         condition: Box<Self>,
         statements_block: Vec<Statement>,
-        ty: Type,
     },
 
     /// Call expression, e.g. `s.to_string()`.
@@ -388,28 +312,24 @@ pub enum Expression {
         location: Location,
         callee: Box<Self>,
         arguments: Vec<Self>,
-        ty: Type,
     },
 
     TypeArguments {
         location: Location,
         left: Box<Self>,
         type_arguments: Vec<TypeArgument>,
-        ty: Type,
     },
 
     TypeFieldAccess {
         location: Location,
         left: Type,
         right: IdentifierAST,
-        ty: Type,
     },
 
     /// Tuple expression, e.g. `(a, 32, \"hello\")`.
     Tuple {
         location: Location,
         elements: Vec<Self>,
-        ty: Type,
     },
 
     /// Struct expression, e.g. `Person { name: \"John\", age: 25 }`.
@@ -417,7 +337,6 @@ pub enum Expression {
         location: Location,
         left: Box<Self>,
         fields: Vec<StructExpressionItem>,
-        ty: Type,
     },
 
     /// Match expression (`match fs.read_file(...) { ... }`).
@@ -425,16 +344,14 @@ pub enum Expression {
         location: Location,
         expression: Box<Self>,
         block: Vec<MatchExpressionItem>,
-        ty: Type,
     },
 
     /// Lambda expression (`|x| { x + 1 }`).
     Lambda {
         location: Location,
         parameters: Vec<LambdaFunctionParameter>,
-        return_type_expression: Option<TypeExpression>,
+        return_type: Option<Type>,
         block: Vec<Statement>,
-        ty: Type,
     },
 }
 
@@ -442,24 +359,16 @@ pub enum Expression {
 #[derive(Debug, Clone, PartialEq)]
 pub struct LambdaFunctionParameter {
     pub name: IdentifierAST,
-    pub type_expression: Option<TypeExpression>,
-    pub ty: Type,
+    pub ty: Option<Type>,
 }
 
 /// A type argument, e.g. `Item = uint32` in `Iterator[Item = uint32]`, `usize` in `sizeof[usize]()`.
 #[derive(Debug, PartialEq, Clone)]
 pub enum TypeArgument {
     /// Just a type, e.g. `usize` in `sizeof[usize]()`.
-    Type {
-        type_expression: TypeExpression,
-        ty: Type,
-    },
+    Type { ty: Type },
     /// Type with a name, e.g. `Item = uint32` in `Iterator[Item = uint32]`.
-    AssociatedType {
-        name: IdentifierAST,
-        value_type_expression: TypeExpression,
-        value: Type,
-    },
+    AssociatedType { name: IdentifierAST, value: Type },
 }
 
 impl Expression {
@@ -473,7 +382,6 @@ impl Expression {
             | Self::Binary { location, .. }
             | Self::StatementsBlock { location, .. }
             | Self::Identifier(IdentifierAST { location, .. })
-            | Self::Parenthesized { location, .. }
             | Self::If { location, .. }
             | Self::FieldAccess { location, .. }
             | Self::Prefix { location, .. }
@@ -504,7 +412,6 @@ pub struct MatchExpressionItem {
 pub struct StructExpressionItem {
     pub name: IdentifierAST,
     pub value: Option<Expression>,
-    pub ty: Type,
 }
 
 impl Expression {
@@ -546,8 +453,7 @@ pub enum Statement {
     Let {
         pattern: Pattern,
         value: Expression,
-        type_expression: Option<TypeExpression>,
-        ty: Type,
+        ty: Option<Type>,
     },
 }
 
@@ -557,11 +463,10 @@ pub type StatementsBlock = Vec<Statement>;
 /// A type implementation.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Impl {
-    /// Location of the `impl` keyword.
     pub location: Location,
-    pub type_parameters: Vec<TypeParameter>,
-    pub ty: TypeExpression,
-    pub r#trait: Option<ry_ast::TypePath>,
+    pub generic_parameters: Vec<GenericParameter>,
+    pub ty: Type,
+    pub r#trait: Option<TypePath>,
     pub where_predicates: Vec<WherePredicate>,
     pub items: Vec<TraitItem>,
     pub docstring: Option<String>,
@@ -579,10 +484,9 @@ pub struct Function {
 pub struct FunctionSignature {
     pub visibility: Visibility,
     pub name: IdentifierAST,
-    pub type_parameters: Vec<TypeParameter>,
+    pub generic_parameters: Vec<GenericParameter>,
     pub parameters: Vec<FunctionParameter>,
-    pub return_type_expression: Option<TypeExpression>,
-    pub return_type: Type,
+    pub return_type: Option<Type>,
     pub where_predicates: Vec<WherePredicate>,
     pub docstring: Option<String>,
 }
@@ -594,7 +498,7 @@ pub enum ModuleItem {
     Enum {
         visibility: Visibility,
         name: IdentifierAST,
-        type_parameters: Vec<TypeParameter>,
+        generic_parameters: Vec<GenericParameter>,
         where_predicates: Vec<WherePredicate>,
         items: Vec<EnumItem>,
         docstring: Option<String>,
@@ -616,7 +520,7 @@ pub enum ModuleItem {
     Trait {
         visibility: Visibility,
         name: IdentifierAST,
-        type_parameters: Vec<TypeParameter>,
+        generic_parameters: Vec<GenericParameter>,
         where_predicates: Vec<WherePredicate>,
         items: Vec<TraitItem>,
         docstring: Option<String>,
@@ -629,7 +533,7 @@ pub enum ModuleItem {
     Struct {
         visibility: Visibility,
         name: IdentifierAST,
-        type_parameters: Vec<TypeParameter>,
+        generic_parameters: Vec<GenericParameter>,
         where_predicates: Vec<WherePredicate>,
         fields: Vec<StructField>,
         docstring: Option<String>,
@@ -639,7 +543,7 @@ pub enum ModuleItem {
     TupleLikeStruct {
         visibility: Visibility,
         name: IdentifierAST,
-        type_parameters: Vec<TypeParameter>,
+        generic_parameters: Vec<GenericParameter>,
         where_predicates: Vec<WherePredicate>,
         fields: Vec<TupleField>,
         docstring: Option<String>,
@@ -842,7 +746,6 @@ pub enum EnumItem {
 #[derive(Debug, PartialEq, Clone)]
 pub struct TupleField {
     pub visibility: Visibility,
-    pub type_expression: TypeExpression,
     pub ty: Type,
 }
 
@@ -851,7 +754,6 @@ pub struct TupleField {
 pub struct StructField {
     pub visibility: Visibility,
     pub name: IdentifierAST,
-    pub type_expression: TypeExpression,
     pub ty: Type,
     pub docstring: Option<String>,
 }
@@ -880,8 +782,7 @@ pub enum FunctionParameter {
 #[derive(Debug, PartialEq, Clone)]
 pub struct SelfFunctionParameter {
     pub self_location: Location,
-    pub type_expression: Option<TypeExpression>,
-    pub ty: Type,
+    pub ty: Option<Type>,
 }
 
 /// A function parameter that is not `self`, e.g. `a: uint32`.
@@ -893,11 +794,8 @@ pub struct NotSelfFunctionParameter {
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum FunctionParameterType {
-    Impl(TypeBounds),
-    Type {
-        type_expression: TypeExpression,
-        ty: Type,
-    },
+    Impl(Bounds),
+    Type { ty: Type },
 }
 
 /// A Ry module.

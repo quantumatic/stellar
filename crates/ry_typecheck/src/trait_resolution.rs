@@ -1,8 +1,8 @@
 use std::iter::zip;
 
-use ry_ast::{IdentifierAST, TypeBounds};
+use ry_ast::{Bounds, IdentifierAST};
 use ry_fx_hash::{FxHashMap, FxHashSet};
-use ry_hir::ty::{Path, Type};
+use ry_thir::ty::{Path, Type};
 
 #[derive(Debug, Default)]
 pub struct TraitResolutionContext {
@@ -283,7 +283,7 @@ pub struct ImplementationData {
 
 #[derive(Debug, Clone, Hash)]
 pub enum ConstraintData {
-    Satisfies { left: Type, right: TypeBounds },
+    Satisfies { left: Type, right: Bounds },
     Eq { left: Type, right: Type },
 }
 

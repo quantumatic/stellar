@@ -275,7 +275,7 @@ pub enum StructFieldPattern {
 }
 
 /// A list of trait bounds being type pathes, e.g. `Debug + Into[T]`.
-pub type TypeBounds = Vec<TypePathSegment>;
+pub type Bounds = Vec<TypePathSegment>;
 
 /// A type, e.g. `int32`, `[S, dyn Iterator[Item = uint32]]`, `(char, char)`.
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
@@ -306,10 +306,7 @@ pub enum Type {
     },
 
     /// A trait object type, e.g. `dyn Iterator[Item = uint32]`, `dyn Debug + Clone`.
-    TraitObject {
-        location: Location,
-        bounds: TypeBounds,
-    },
+    TraitObject { location: Location, bounds: Bounds },
 
     /// A type with a qualified path, e.g. `[A as Iterator].Item`.
     WithQualifiedPath {
@@ -338,9 +335,9 @@ impl Type {
 
 /// A type parameter, e.g. `T` in `fun into[T](a: T);`.
 #[derive(Debug, PartialEq, Eq, Clone)]
-pub struct TypeParameter {
+pub struct GenericParameter {
     pub name: IdentifierAST,
-    pub bounds: Option<TypeBounds>,
+    pub bounds: Option<Bounds>,
     pub default_value: Option<Type>,
 }
 
@@ -349,8 +346,8 @@ pub struct TypeParameter {
 pub struct TypeAlias {
     pub visibility: Visibility,
     pub name: IdentifierAST,
-    pub type_parameters: Option<Vec<TypeParameter>>,
-    pub bounds: Option<TypeBounds>,
+    pub generic_parameters: Option<Vec<GenericParameter>>,
+    pub bounds: Option<Bounds>,
     pub value: Option<Type>,
     pub docstring: Option<String>,
 }
@@ -360,7 +357,7 @@ pub struct TypeAlias {
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub enum WherePredicate {
     Eq { left: Type, right: Type },
-    Satisfies { ty: Type, bounds: TypeBounds },
+    Satisfies { ty: Type, bounds: Bounds },
 }
 
 /// An expression.
@@ -901,7 +898,7 @@ pub type StatementsBlock = Vec<Statement>;
 pub struct Impl {
     /// Location of the `impl` keyword.
     pub location: Location,
-    pub type_parameters: Option<Vec<TypeParameter>>,
+    pub generic_parameters: Option<Vec<GenericParameter>>,
     pub ty: Type,
     pub r#trait: Option<Type>,
     pub where_predicates: Option<Vec<WherePredicate>>,
@@ -916,7 +913,7 @@ pub enum ModuleItem {
     Enum {
         visibility: Visibility,
         name: IdentifierAST,
-        type_parameters: Option<Vec<TypeParameter>>,
+        generic_parameters: Option<Vec<GenericParameter>>,
         where_predicates: Option<Vec<WherePredicate>>,
         items: Vec<EnumItem>,
         docstring: Option<String>,
@@ -938,7 +935,7 @@ pub enum ModuleItem {
     Trait {
         visibility: Visibility,
         name: IdentifierAST,
-        type_parameters: Option<Vec<TypeParameter>>,
+        generic_parameters: Option<Vec<GenericParameter>>,
         where_predicates: Option<Vec<WherePredicate>>,
         items: Vec<TraitItem>,
         docstring: Option<String>,
@@ -951,7 +948,7 @@ pub enum ModuleItem {
     Struct {
         visibility: Visibility,
         name: IdentifierAST,
-        type_parameters: Option<Vec<TypeParameter>>,
+        generic_parameters: Option<Vec<GenericParameter>>,
         where_predicates: Option<Vec<WherePredicate>>,
         fields: Vec<StructField>,
         docstring: Option<String>,
@@ -961,7 +958,7 @@ pub enum ModuleItem {
     TupleLikeStruct {
         visibility: Visibility,
         name: IdentifierAST,
-        type_parameters: Option<Vec<TypeParameter>>,
+        generic_parameters: Option<Vec<GenericParameter>>,
         where_predicates: Option<Vec<WherePredicate>>,
         fields: Vec<TupleField>,
         docstring: Option<String>,
@@ -1198,7 +1195,7 @@ pub struct Function {
 pub struct FunctionSignature {
     pub visibility: Visibility,
     pub name: IdentifierAST,
-    pub type_parameters: Option<Vec<TypeParameter>>,
+    pub generic_parameters: Option<Vec<GenericParameter>>,
     pub parameters: Vec<FunctionParameter>,
     pub return_type: Option<Type>,
     pub where_predicates: Option<Vec<WherePredicate>>,
@@ -1232,7 +1229,7 @@ pub struct NotSelfFunctionParameter {
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub enum FunctionParameterType {
     Type(Type),
-    Impl(TypeBounds),
+    Impl(Bounds),
 }
 
 /// A Ry module.

@@ -1,18 +1,14 @@
 [package]
-name = "ry_name_resolution"
+name = "ry_thir"
 version = "0.1.0"
 edition = "2021"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/ry-lang/ry"
 authors = ["Adi Salimgereyev <adisalimgereev@gmail.com>"]
 readme = "../../README.md"
-description = "Implements name resolution compilation stage for the Ry programming language."
+description = "Defines THIR for the Ry programming language."
 
 [dependencies]
-codespan-reporting = "0.11.1"
 ry_ast = { path = "../ry_ast" }
-ry_diagnostics = { path = "../ry_diagnostics" }
 ry_filesystem = { path = "../ry_filesystem" }
-ry_fx_hash = { path = "../ry_fx_hash" }
 ry_interner = { path = "../ry_interner" }
-ry_thir = { path = "../ry_thir" }

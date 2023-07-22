@@ -5,11 +5,11 @@
 
 use crate::{
     BinaryOperator, EnumItem, Expression, Function, FunctionParameter, FunctionSignature,
-    IdentifierAST, Impl, ImportPath, LambdaFunctionParameter, Literal, MatchExpressionItem, Module,
-    ModuleItem, NotSelfFunctionParameter, Path, Pattern, PostfixOperator, PrefixOperator,
-    SelfFunctionParameter, Statement, StatementsBlock, StructExpressionItem, StructField,
-    StructFieldPattern, TraitItem, TupleField, Type, TypeAlias, TypeArgument, TypeParameter,
-    TypePath, TypePathSegment, Visibility, WherePredicate,
+    GenericParameter, IdentifierAST, Impl, ImportPath, LambdaFunctionParameter, Literal,
+    MatchExpressionItem, Module, ModuleItem, NotSelfFunctionParameter, Path, Pattern,
+    PostfixOperator, PrefixOperator, SelfFunctionParameter, Statement, StatementsBlock,
+    StructExpressionItem, StructField, StructFieldPattern, TraitItem, TupleField, Type, TypeAlias,
+    TypeArgument, TypePath, TypePathSegment, Visibility, WherePredicate,
 };
 
 pub trait Visitor<'ast>: Sized {
@@ -71,12 +71,12 @@ pub trait Visitor<'ast>: Sized {
         walk_struct_field(self, field);
     }
 
-    fn visit_type_parameters(&mut self, parameters: Option<&'ast [TypeParameter]>) {
-        walk_type_parameters(self, parameters);
+    fn visit_generic_parameters(&mut self, parameters: Option<&'ast [GenericParameter]>) {
+        walk_generic_parameters(self, parameters);
     }
 
-    fn visit_type_parameter(&mut self, parameter: &'ast TypeParameter) {
-        walk_type_parameter(self, parameter);
+    fn visit_generic_parameter(&mut self, parameter: &'ast GenericParameter) {
+        walk_generic_parameter(self, parameter);
     }
 
     fn visit_trait_items(&mut self, items: &'ast [TraitItem]) {
@@ -242,7 +242,7 @@ where
         ModuleItem::Enum {
             visibility,
             name,
-            type_parameters,
+            generic_parameters,
             where_predicates,
             items,
             docstring,
@@ -250,7 +250,7 @@ where
             visitor.visit_local_docstring(docstring.as_deref());
             visitor.visit_visibility(*visibility);
             visitor.visit_identifier(*name);
-            visitor.visit_type_parameters(type_parameters.as_deref());
+            visitor.visit_generic_parameters(generic_parameters.as_deref());
             visitor.visit_where_predicates(where_predicates.as_deref());
             visitor.visit_enum_items(items);
         }
@@ -263,7 +263,7 @@ where
         ModuleItem::Trait {
             visibility,
             name,
-            type_parameters,
+            generic_parameters,
             where_predicates,
             items,
             docstring,
@@ -271,14 +271,14 @@ where
             visitor.visit_local_docstring(docstring.as_deref());
             visitor.visit_visibility(*visibility);
             visitor.visit_identifier(*name);
-            visitor.visit_type_parameters(type_parameters.as_deref());
+            visitor.visit_generic_parameters(generic_parameters.as_deref());
             visitor.visit_where_predicates(where_predicates.as_deref());
             visitor.visit_trait_items(items);
         }
         ModuleItem::TupleLikeStruct {
             visibility,
             name,
-            type_parameters,
+            generic_parameters,
             where_predicates,
             fields,
             docstring,
@@ -286,7 +286,7 @@ where
             visitor.visit_local_docstring(docstring.as_deref());
             visitor.visit_visibility(*visibility);
             visitor.visit_identifier(*name);
-            visitor.visit_type_parameters(type_parameters.as_deref());
+            visitor.visit_generic_parameters(generic_parameters.as_deref());
             visitor.visit_where_predicates(where_predicates.as_deref());
             visitor.visit_tuple_fields(fields);
         }
@@ -294,14 +294,14 @@ where
         ModuleItem::Struct {
             visibility,
             name,
-            type_parameters,
+            generic_parameters,
             where_predicates,
             fields,
             docstring,
         } => {
             visitor.visit_visibility(*visibility);
             visitor.visit_identifier(*name);
-            visitor.visit_type_parameters(type_parameters.as_deref());
+            visitor.visit_generic_parameters(generic_parameters.as_deref());
             visitor.visit_where_predicates(where_predicates.as_deref());
             visitor.visit_struct_fields(fields);
             visitor.visit_local_docstring(docstring.as_deref());
@@ -343,7 +343,7 @@ where
 {
     visitor.visit_visibility(signature.visibility);
     visitor.visit_identifier(signature.name);
-    visitor.visit_type_parameters(signature.type_parameters.as_deref());
+    visitor.visit_generic_parameters(signature.generic_parameters.as_deref());
     visitor.visit_function_parameters(&signature.parameters);
 }
 
@@ -456,7 +456,7 @@ where
 {
     visitor.visit_visibility(alias.visibility);
     visitor.visit_identifier(alias.name);
-    visitor.visit_type_parameters(alias.type_parameters.as_deref());
+    visitor.visit_generic_parameters(alias.generic_parameters.as_deref());
 
     if let Some(bounds) = &alias.bounds {
         visitor.visit_trait_bounds(bounds);
@@ -484,16 +484,18 @@ where
     visitor.visit_type(&field.ty);
 }
 
-pub fn walk_type_parameters<'ast, V>(visitor: &mut V, parameters: Option<&'ast [TypeParameter]>)
-where
+pub fn walk_generic_parameters<'ast, V>(
+    visitor: &mut V,
+    parameters: Option<&'ast [GenericParameter]>,
+) where
     V: Visitor<'ast>,
 {
     if let Some(parameters) = parameters {
-        walk_list!(visitor, visit_type_parameter, parameters);
+        walk_list!(visitor, visit_generic_parameter, parameters);
     }
 }
 
-pub fn walk_type_parameter<'ast, V>(visitor: &mut V, parameter: &'ast TypeParameter)
+pub fn walk_generic_parameter<'ast, V>(visitor: &mut V, parameter: &'ast GenericParameter)
 where
     V: Visitor<'ast>,
 {

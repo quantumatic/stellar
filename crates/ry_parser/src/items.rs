@@ -14,7 +14,7 @@ use crate::{
     expected,
     macros::parse_list,
     path::ImportPathParser,
-    r#type::{TypeBoundsParser, TypeParametersParser, TypeParser, WherePredicatesParser},
+    r#type::{BoundsParser, GenericParametersParser, TypeParser, WherePredicatesParser},
     statement::StatementsBlockParser,
     OptionalParser, Parse, ParseState, VisibilityParser,
 };
@@ -158,7 +158,7 @@ impl Parse for StructParser {
 
         let name = state.consume_identifier("struct name")?;
 
-        let type_parameters = TypeParametersParser.optionally_parse(state)?;
+        let generic_parameters = GenericParametersParser.optionally_parse(state)?;
 
         let where_predicates = WherePredicatesParser.optionally_parse(state)?;
 
@@ -167,7 +167,7 @@ impl Parse for StructParser {
             Some(ModuleItem::Struct {
                 visibility: self.visibility,
                 name,
-                type_parameters,
+                generic_parameters,
                 where_predicates,
                 fields,
                 docstring: self.docstring,
@@ -191,7 +191,7 @@ impl Parse for StructParser {
             Some(ModuleItem::TupleLikeStruct {
                 visibility: self.visibility,
                 name,
-                type_parameters,
+                generic_parameters,
                 where_predicates,
                 fields,
                 docstring: self.docstring,
@@ -215,7 +215,7 @@ impl Parse for FunctionParameterTypeParser {
         if state.next_token.raw == Token![impl] {
             state.advance();
 
-            let bounds = TypeBoundsParser.parse(state)?;
+            let bounds = BoundsParser.parse(state)?;
 
             Some(FunctionParameterType::Impl(bounds))
         } else {
@@ -246,7 +246,7 @@ impl Parse for FunctionParser {
 
         let name = state.consume_identifier("function name")?;
 
-        let type_parameters = TypeParametersParser.optionally_parse(state)?;
+        let generic_parameters = GenericParametersParser.optionally_parse(state)?;
 
         state.consume(Token!['('], "function")?;
 
@@ -286,7 +286,7 @@ impl Parse for FunctionParser {
             signature: FunctionSignature {
                 visibility: self.visibility,
                 name,
-                type_parameters,
+                generic_parameters,
                 parameters,
                 return_type,
                 where_predicates,
@@ -372,12 +372,12 @@ impl Parse for TypeAliasParser {
         state.advance();
 
         let name = state.consume_identifier("type alias")?;
-        let type_parameters = TypeParametersParser.optionally_parse(state)?;
+        let generic_parameters = GenericParametersParser.optionally_parse(state)?;
 
         let bounds = if state.next_token.raw == Token![:] {
             state.advance();
 
-            Some(TypeBoundsParser.parse(state)?)
+            Some(BoundsParser.parse(state)?)
         } else {
             None
         };
@@ -395,7 +395,7 @@ impl Parse for TypeAliasParser {
         Some(TypeAlias {
             visibility: self.visibility,
             name,
-            type_parameters,
+            generic_parameters,
             bounds,
             value,
             docstring: self.docstring,
@@ -411,7 +411,7 @@ impl Parse for TraitParser {
 
         let name = state.consume_identifier("trait name in trait declaration")?;
 
-        let type_parameters = TypeParametersParser.optionally_parse(state)?;
+        let generic_parameters = GenericParametersParser.optionally_parse(state)?;
 
         let where_predicates = WherePredicatesParser.optionally_parse(state)?;
 
@@ -430,7 +430,7 @@ impl Parse for TraitParser {
         Some(ModuleItem::Trait {
             visibility: self.visibility,
             name,
-            type_parameters,
+            generic_parameters,
             where_predicates,
             items: items.0,
             docstring: self.docstring,
@@ -453,7 +453,7 @@ impl Parse for ImplParser {
             });
         }
 
-        let type_parameters = TypeParametersParser.optionally_parse(state)?;
+        let generic_parameters = GenericParametersParser.optionally_parse(state)?;
 
         let mut ty = TypeParser.parse(state)?;
         let mut r#trait = None;
@@ -481,7 +481,7 @@ impl Parse for ImplParser {
 
         Some(ModuleItem::Impl(Impl {
             location,
-            type_parameters,
+            generic_parameters,
             ty,
             r#trait,
             where_predicates,
@@ -499,7 +499,7 @@ impl Parse for EnumParser {
 
         let name = state.consume_identifier("enum name")?;
 
-        let type_parameters = TypeParametersParser.optionally_parse(state)?;
+        let generic_parameters = GenericParametersParser.optionally_parse(state)?;
 
         state.consume(Token!['{'], "enum")?;
 
@@ -514,7 +514,7 @@ impl Parse for EnumParser {
         Some(ModuleItem::Enum {
             visibility: self.visibility,
             name,
-            type_parameters,
+            generic_parameters,
             where_predicates,
             items,
             docstring: self.docstring,

@@ -67,8 +67,8 @@
 use ry_ast::{DefinitionID, IdentifierAST, ImportPath};
 use ry_filesystem::location::Location;
 use ry_fx_hash::FxHashMap;
-use ry_hir::ty::{Path, Type};
 use ry_interner::{PathID, Symbol};
+use ry_thir::ty::{Path, Type};
 
 pub mod diagnostics;
 

@@ -1,5 +1,5 @@
 use ry_ast::{
-    token::RawToken, Path, Token, Type, TypeArgument, TypeBounds, TypeParameter, TypePath,
+    token::RawToken, Bounds, GenericParameter, Path, Token, Type, TypeArgument, TypePath,
     TypePathSegment, WherePredicate,
 };
 
@@ -8,7 +8,7 @@ use crate::{
     OptionalParser, Parse, ParseState,
 };
 
-pub(crate) struct TypeBoundsParser;
+pub(crate) struct BoundsParser;
 
 pub(crate) struct TypeParser;
 
@@ -22,14 +22,14 @@ struct TypePathParser;
 
 struct TypePathSegmentParser;
 
-pub(crate) struct TypeParametersParser;
+pub(crate) struct GenericParametersParser;
 
 pub(crate) struct TypeArgumentsParser;
 
 pub(crate) struct WherePredicatesParser;
 
-impl Parse for TypeBoundsParser {
-    type Output = Option<TypeBounds>;
+impl Parse for BoundsParser {
+    type Output = Option<Bounds>;
 
     fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
         let mut bounds = vec![];
@@ -108,7 +108,7 @@ impl Parse for TraitObjectTypeParser {
         state.advance(); // `dyn`
 
         Some(Type::TraitObject {
-            bounds: TypeBoundsParser.parse(state)?,
+            bounds: BoundsParser.parse(state)?,
             location: state.location_from(start),
         })
     }
@@ -181,8 +181,8 @@ impl Parse for ParenthesizedTupleOrFunctionTypeParser {
     }
 }
 
-impl OptionalParser for TypeParametersParser {
-    type Output = Option<Option<Vec<TypeParameter>>>;
+impl OptionalParser for GenericParametersParser {
+    type Output = Option<Option<Vec<GenericParameter>>>;
 
     fn optionally_parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
         if state.next_token.raw != Token!['['] {
@@ -192,12 +192,12 @@ impl OptionalParser for TypeParametersParser {
         state.advance();
 
         let result = parse_list!(state, "generic parameters", Token![']'], {
-            Some(TypeParameter {
+            Some(GenericParameter {
                 name: state.consume_identifier("generic parameter name")?,
                 bounds: if state.next_token.raw == Token![:] {
                     state.advance();
 
-                    Some(TypeBoundsParser.parse(state)?)
+                    Some(BoundsParser.parse(state)?)
                 } else {
                     None
                 },
@@ -323,7 +323,7 @@ impl OptionalParser for WherePredicatesParser {
                     Token![:] => {
                         state.advance();
 
-                        Some(WherePredicate::Satisfies { ty: left, bounds: TypeBoundsParser.parse(state)? })
+                        Some(WherePredicate::Satisfies { ty: left, bounds: BoundsParser.parse(state)? })
                     },
                     Token![=] => {
                         state.advance();

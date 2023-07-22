@@ -19,3 +19,4 @@ ry_hir = { path = "../ry_hir" }
 ry_interner = { path = "../ry_interner" }
 ry_name_resolution = { path = "../ry_name_resolution" }
 ry_parser = { path = "../ry_parser" }
+ry_thir = { path = "../ry_thir" }

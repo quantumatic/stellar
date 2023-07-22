@@ -1,59 +1,20 @@
 use diagnostics::{UnnecessaryParenthesesInPatternDiagnostic, UnnecessaryParenthesizedExpression};
 use ry_diagnostics::{BuildDiagnostic, GlobalDiagnostics};
-use ry_hir::ty::{self, Type, TypeVariableID};
 use ry_interner::PathID;
 
 mod diagnostics;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
-pub struct TypeVariableGenerator {
-    state: TypeVariableID,
-}
-
-impl TypeVariableGenerator {
-    #[inline]
-    #[must_use]
-    pub const fn new() -> Self {
-        Self { state: 0 }
-    }
-
-    #[inline]
-    #[must_use]
-    pub fn generate_type_variable(&mut self) -> TypeVariableID {
-        self.state += 1;
-        self.state
-    }
-
-    #[inline]
-    #[must_use]
-    pub fn generate_type(&mut self) -> ty::Type {
-        ty::Type::Variable(self.generate_type_variable())
-    }
-
-    #[inline]
-    #[must_use]
-    pub const fn current(&self) -> TypeVariableID {
-        self.state
-    }
-}
-
-pub struct LoweringContext<'t, 'd> {
+pub struct LoweringContext<'d> {
     file_path_id: PathID,
-    type_variable_generator: &'t mut TypeVariableGenerator,
     diagnostics: &'d mut GlobalDiagnostics,
 }
 
-impl<'t, 'd> LoweringContext<'t, 'd> {
+impl<'d> LoweringContext<'d> {
     #[inline]
     #[must_use]
-    pub fn new(
-        file_path_id: PathID,
-        type_variable_generator: &'t mut TypeVariableGenerator,
-        diagnostics: &'d mut GlobalDiagnostics,
-    ) -> Self {
+    pub fn new(file_path_id: PathID, diagnostics: &'d mut GlobalDiagnostics) -> Self {
         Self {
             file_path_id,
-            type_variable_generator,
             diagnostics,
         }
     }
@@ -83,14 +44,14 @@ impl<'t, 'd> LoweringContext<'t, 'd> {
             ry_ast::ModuleItem::Enum {
                 visibility,
                 name,
-                type_parameters,
+                generic_parameters,
                 where_predicates,
                 items,
                 docstring,
             } => ry_hir::ModuleItem::Enum {
                 visibility,
                 name,
-                type_parameters: self.lower_type_parameters(type_parameters),
+                generic_parameters: self.lower_generic_parameters(generic_parameters),
                 where_predicates: self.lower_where_predicates(where_predicates),
                 items: items
                     .into_iter()
@@ -101,14 +62,14 @@ impl<'t, 'd> LoweringContext<'t, 'd> {
             ry_ast::ModuleItem::Struct {
                 visibility,
                 name,
-                type_parameters,
+                generic_parameters,
                 where_predicates,
                 fields,
                 docstring,
             } => ry_hir::ModuleItem::Struct {
                 visibility,
                 name,
-                type_parameters: self.lower_type_parameters(type_parameters),
+                generic_parameters: self.lower_generic_parameters(generic_parameters),
                 where_predicates: self.lower_where_predicates(where_predicates),
                 fields: fields
                     .into_iter()
@@ -131,14 +92,14 @@ impl<'t, 'd> LoweringContext<'t, 'd> {
             ry_ast::ModuleItem::TupleLikeStruct {
                 visibility,
                 name,
-                type_parameters,
+                generic_parameters,
                 where_predicates,
                 fields,
                 docstring,
             } => ry_hir::ModuleItem::TupleLikeStruct {
                 visibility,
                 name,
-                type_parameters: self.lower_type_parameters(type_parameters),
+                generic_parameters: self.lower_generic_parameters(generic_parameters),
                 where_predicates: self.lower_where_predicates(where_predicates),
                 fields: fields
                     .into_iter()
@@ -149,14 +110,14 @@ impl<'t, 'd> LoweringContext<'t, 'd> {
             ry_ast::ModuleItem::Trait {
                 visibility,
                 name,
-                type_parameters,
+                generic_parameters,
                 where_predicates,
                 items,
                 docstring,
             } => ry_hir::ModuleItem::Trait {
                 visibility,
                 name,
-                type_parameters: self.lower_type_parameters(type_parameters),
+                generic_parameters: self.lower_generic_parameters(generic_parameters),
                 where_predicates: self.lower_where_predicates(where_predicates),
                 items: items
                     .into_iter()
@@ -197,8 +158,7 @@ impl<'t, 'd> LoweringContext<'t, 'd> {
             ry_ast::Statement::Let { pattern, value, ty } => ry_hir::Statement::Let {
                 pattern: self.lower_pattern(pattern),
                 value: self.lower_expression(value),
-                type_expression: ty.map(|ty| self.lower_type_expression(ty)),
-                ty: self.type_variable_generator.generate_type(),
+                ty: ty.map(|ty| self.lower_type(ty)),
             },
             ry_ast::Statement::Expression {
                 expression,
@@ -227,7 +187,6 @@ impl<'t, 'd> LoweringContext<'t, 'd> {
                 location,
                 identifier,
                 pattern: pattern.map(|pattern| Box::new(self.lower_pattern(*pattern))),
-                ty: self.type_variable_generator.generate_type(),
             },
             ry_ast::Pattern::List {
                 location,
@@ -238,11 +197,8 @@ impl<'t, 'd> LoweringContext<'t, 'd> {
                     .into_iter()
                     .map(|pattern| self.lower_pattern(pattern))
                     .collect(),
-                ty: self.type_variable_generator.generate_type(),
             },
-            ry_ast::Pattern::Literal(literal) => {
-                ry_hir::Pattern::Literal(self.lower_literal(literal))
-            }
+            ry_ast::Pattern::Literal(literal) => ry_hir::Pattern::Literal(literal),
             ry_ast::Pattern::Or {
                 location,
                 left,
@@ -251,16 +207,9 @@ impl<'t, 'd> LoweringContext<'t, 'd> {
                 location,
                 left: Box::new(self.lower_pattern(*left)),
                 right: Box::new(self.lower_pattern(*right)),
-                ty: self.type_variable_generator.generate_type(),
             },
-            ry_ast::Pattern::Path { path } => ry_hir::Pattern::Path {
-                path,
-                ty: self.type_variable_generator.generate_type(),
-            },
-            ry_ast::Pattern::Rest { location } => ry_hir::Pattern::Rest {
-                location,
-                ty: self.type_variable_generator.generate_type(),
-            },
+            ry_ast::Pattern::Path { path } => ry_hir::Pattern::Path { path },
+            ry_ast::Pattern::Rest { location } => ry_hir::Pattern::Rest { location },
             ry_ast::Pattern::Struct {
                 location,
                 path,
@@ -272,7 +221,6 @@ impl<'t, 'd> LoweringContext<'t, 'd> {
                     .into_iter()
                     .map(|field| self.lower_struct_field_pattern(field))
                     .collect(),
-                ty: self.type_variable_generator.generate_type(),
             },
             ry_ast::Pattern::Tuple { location, elements } => ry_hir::Pattern::Tuple {
                 location,
@@ -280,7 +228,6 @@ impl<'t, 'd> LoweringContext<'t, 'd> {
                     .into_iter()
                     .map(|element| self.lower_pattern(element))
                     .collect(),
-                ty: self.type_variable_generator.generate_type(),
             },
             ry_ast::Pattern::TupleLike {
                 location,
@@ -293,7 +240,6 @@ impl<'t, 'd> LoweringContext<'t, 'd> {
                     .into_iter()
                     .map(|pattern| self.lower_pattern(pattern))
                     .collect(),
-                ty: self.type_variable_generator.generate_type(),
             },
         }
     }
@@ -311,20 +257,16 @@ impl<'t, 'd> LoweringContext<'t, 'd> {
                 location,
                 field_name,
                 value_pattern: value_pattern.map(|pattern| self.lower_pattern(pattern)),
-                ty: self.type_variable_generator.generate_type(),
             },
-            ry_ast::StructFieldPattern::Rest { location } => ry_hir::StructFieldPattern::Rest {
-                location,
-                ty: self.type_variable_generator.generate_type(),
-            },
+            ry_ast::StructFieldPattern::Rest { location } => {
+                ry_hir::StructFieldPattern::Rest { location }
+            }
         }
     }
 
     fn lower_expression(&mut self, ast: ry_ast::Expression) -> ry_hir::Expression {
         match ast {
-            ry_ast::Expression::Literal(literal) => {
-                ry_hir::Expression::Literal(self.lower_literal(literal))
-            }
+            ry_ast::Expression::Literal(literal) => ry_hir::Expression::Literal(literal),
             ry_ast::Expression::Identifier(identifier) => {
                 ry_hir::Expression::Identifier(identifier)
             }
@@ -333,15 +275,11 @@ impl<'t, 'd> LoweringContext<'t, 'd> {
                 statements_block,
             } => ry_hir::Expression::While {
                 location,
-                condition: Box::new(ry_hir::Expression::Literal(ry_hir::Literal {
-                    literal: ry_ast::Literal::Boolean {
-                        value: true,
-                        location,
-                    },
-                    ty: self.type_variable_generator.generate_type(),
+                condition: Box::new(ry_hir::Expression::Literal(ry_ast::Literal::Boolean {
+                    value: true,
+                    location,
                 })),
                 statements_block: self.lower_statements_block(statements_block),
-                ty: Type::Unit,
             },
             ry_ast::Expression::Tuple { location, elements } => ry_hir::Expression::Tuple {
                 location,
@@ -349,7 +287,6 @@ impl<'t, 'd> LoweringContext<'t, 'd> {
                     .into_iter()
                     .map(|element| self.lower_expression(element))
                     .collect(),
-                ty: self.type_variable_generator.generate_type(),
             },
             ry_ast::Expression::Lambda {
                 location,
@@ -362,9 +299,8 @@ impl<'t, 'd> LoweringContext<'t, 'd> {
                     .into_iter()
                     .map(|parameter| self.lower_lambda_function_parameter(parameter))
                     .collect(),
-                return_type_expression: return_type.map(|ty| self.lower_type_expression(ty)),
+                return_type: return_type.map(|ty| self.lower_type(ty)),
                 block: self.lower_statements_block(block),
-                ty: self.type_variable_generator.generate_type(),
             },
             ry_ast::Expression::Match {
                 location,
@@ -382,7 +318,6 @@ impl<'t, 'd> LoweringContext<'t, 'd> {
                         .into_iter()
                         .map(|item| self.lower_match_expression_item(item))
                         .collect(),
-                    ty: self.type_variable_generator.generate_type(),
                 }
             }
             ry_ast::Expression::Struct {
@@ -396,7 +331,6 @@ impl<'t, 'd> LoweringContext<'t, 'd> {
                     .into_iter()
                     .map(|field| self.lower_struct_expression_item(field))
                     .collect(),
-                ty: self.type_variable_generator.generate_type(),
             },
             ry_ast::Expression::While {
                 location,
@@ -411,7 +345,6 @@ impl<'t, 'd> LoweringContext<'t, 'd> {
                     location,
                     condition: Box::new(self.lower_expression(*condition)),
                     statements_block: self.lower_statements_block(body),
-                    ty: self.type_variable_generator.generate_type(),
                 }
             }
             ry_ast::Expression::Prefix {
@@ -422,7 +355,6 @@ impl<'t, 'd> LoweringContext<'t, 'd> {
                 location,
                 inner: Box::new(self.lower_expression(*inner)),
                 operator,
-                ty: self.type_variable_generator.generate_type(),
             },
             ry_ast::Expression::Postfix {
                 location,
@@ -432,7 +364,6 @@ impl<'t, 'd> LoweringContext<'t, 'd> {
                 location,
                 inner: Box::new(self.lower_expression(*inner)),
                 operator,
-                ty: self.type_variable_generator.generate_type(),
             },
             ry_ast::Expression::If {
                 location,
@@ -442,7 +373,6 @@ impl<'t, 'd> LoweringContext<'t, 'd> {
                 location,
                 if_blocks: self.lower_if_blocks(if_blocks),
                 r#else: r#else.map(|else_block| self.lower_statements_block(else_block)),
-                ty: self.type_variable_generator.generate_type(),
             },
             ry_ast::Expression::Parenthesized { inner, .. } => {
                 if let ry_ast::Expression::Parenthesized { location, .. } = *inner {
@@ -461,7 +391,6 @@ impl<'t, 'd> LoweringContext<'t, 'd> {
                 left: Box::new(self.lower_expression(*left)),
                 right: Box::new(self.lower_expression(*right)),
                 operator,
-                ty: self.type_variable_generator.generate_type(),
             },
             ry_ast::Expression::Call {
                 location,
@@ -474,7 +403,6 @@ impl<'t, 'd> LoweringContext<'t, 'd> {
                     .into_iter()
                     .map(|argument| self.lower_expression(argument))
                     .collect(),
-                ty: self.type_variable_generator.generate_type(),
             },
             ry_ast::Expression::As {
                 location,
@@ -483,8 +411,7 @@ impl<'t, 'd> LoweringContext<'t, 'd> {
             } => ry_hir::Expression::As {
                 location,
                 left: Box::new(self.lower_expression(*left)),
-                right: self.lower_type_expression(right),
-                ty: self.type_variable_generator.generate_type(),
+                right: self.lower_type(right),
             },
             ry_ast::Expression::List { location, elements } => ry_hir::Expression::List {
                 location,
@@ -492,7 +419,6 @@ impl<'t, 'd> LoweringContext<'t, 'd> {
                     .into_iter()
                     .map(|element| self.lower_expression(element))
                     .collect(),
-                ty: self.type_variable_generator.generate_type(),
             },
             ry_ast::Expression::FieldAccess {
                 location,
@@ -502,7 +428,6 @@ impl<'t, 'd> LoweringContext<'t, 'd> {
                 location,
                 left: Box::new(self.lower_expression(*left)),
                 right,
-                ty: self.type_variable_generator.generate_type(),
             },
             ry_ast::Expression::TypeArguments {
                 location,
@@ -512,13 +437,11 @@ impl<'t, 'd> LoweringContext<'t, 'd> {
                 location,
                 left: Box::new(self.lower_expression(*left)),
                 type_arguments: self.lower_type_arguments(type_arguments),
-                ty: self.type_variable_generator.generate_type(),
             },
             ry_ast::Expression::StatementsBlock { location, block } => {
                 ry_hir::Expression::StatementsBlock {
                     location,
                     block: self.lower_statements_block(block),
-                    ty: self.type_variable_generator.generate_type(),
                 }
             }
         }
@@ -545,7 +468,6 @@ impl<'t, 'd> LoweringContext<'t, 'd> {
         ry_hir::StructExpressionItem {
             name: ast.name,
             value: ast.value.map(|value| self.lower_expression(value)),
-            ty: self.type_variable_generator.generate_type(),
         }
     }
 
@@ -555,8 +477,7 @@ impl<'t, 'd> LoweringContext<'t, 'd> {
     ) -> ry_hir::LambdaFunctionParameter {
         ry_hir::LambdaFunctionParameter {
             name: ast.name,
-            type_expression: ast.ty.map(|ty| self.lower_type_expression(ty)),
-            ty: self.type_variable_generator.generate_type(),
+            ty: ast.ty.map(|ty| self.lower_type(ty)),
         }
     }
 
@@ -584,13 +505,6 @@ impl<'t, 'd> LoweringContext<'t, 'd> {
         )
     }
 
-    fn lower_literal(&mut self, ast: ry_ast::Literal) -> ry_hir::Literal {
-        ry_hir::Literal {
-            literal: ast,
-            ty: self.type_variable_generator.generate_type(),
-        }
-    }
-
     fn lower_type_arguments(
         &mut self,
         ast: Vec<ry_ast::TypeArgument>,
@@ -603,14 +517,12 @@ impl<'t, 'd> LoweringContext<'t, 'd> {
     fn lower_type_argument(&mut self, ast: ry_ast::TypeArgument) -> ry_hir::TypeArgument {
         match ast {
             ry_ast::TypeArgument::Type(ty) => ry_hir::TypeArgument::Type {
-                type_expression: self.lower_type_expression(ty),
-                ty: self.type_variable_generator.generate_type(),
+                ty: self.lower_type(ty),
             },
             ry_ast::TypeArgument::AssociatedType { name, value } => {
                 ry_hir::TypeArgument::AssociatedType {
                     name,
-                    value_type_expression: self.lower_type_expression(value),
-                    value: self.type_variable_generator.generate_type(),
+                    value: self.lower_type(value),
                 }
             }
         }
@@ -623,18 +535,13 @@ impl<'t, 'd> LoweringContext<'t, 'd> {
         ry_hir::FunctionSignature {
             visibility: ast.visibility,
             name: ast.name,
-            type_parameters: self.lower_type_parameters(ast.type_parameters),
+            generic_parameters: self.lower_generic_parameters(ast.generic_parameters),
             parameters: ast
                 .parameters
                 .into_iter()
                 .map(|parameter| self.lower_function_parameter(parameter))
                 .collect(),
-            return_type: if ast.return_type.is_none() {
-                Type::Unit
-            } else {
-                self.type_variable_generator.generate_type()
-            },
-            return_type_expression: ast.return_type.map(|ty| self.lower_type_expression(ty)),
+            return_type: ast.return_type.map(|ty| self.lower_type(ty)),
             where_predicates: self.lower_where_predicates(ast.where_predicates),
             docstring: ast.docstring,
         }
@@ -674,8 +581,7 @@ impl<'t, 'd> LoweringContext<'t, 'd> {
     ) -> ry_hir::FunctionParameterType {
         match ast {
             ry_ast::FunctionParameterType::Type(ty) => ry_hir::FunctionParameterType::Type {
-                ty: self.type_variable_generator.generate_type(),
-                type_expression: self.lower_type_expression(ty),
+                ty: self.lower_type(ty),
             },
             ry_ast::FunctionParameterType::Impl(bounds) => {
                 ry_hir::FunctionParameterType::Impl(bounds)
@@ -689,16 +595,15 @@ impl<'t, 'd> LoweringContext<'t, 'd> {
     ) -> ry_hir::SelfFunctionParameter {
         ry_hir::SelfFunctionParameter {
             self_location: ast.self_location,
-            type_expression: ast.ty.map(|ty| self.lower_type_expression(ty)),
-            ty: self.type_variable_generator.generate_type(),
+            ty: ast.ty.map(|ty| self.lower_type(ty)),
         }
     }
 
     fn lower_implementation(&mut self, ast: ry_ast::Impl) -> ry_hir::Impl {
         ry_hir::Impl {
             location: ast.location,
-            type_parameters: self.lower_type_parameters(ast.type_parameters),
-            ty: self.lower_type_expression(ast.ty),
+            generic_parameters: self.lower_generic_parameters(ast.generic_parameters),
+            ty: self.lower_type(ast.ty),
             r#trait: None,
             where_predicates: self.lower_where_predicates(ast.where_predicates),
             items: ast
@@ -725,10 +630,9 @@ impl<'t, 'd> LoweringContext<'t, 'd> {
         ry_hir::TypeAlias {
             visibility: ast.visibility,
             name: ast.name,
-            type_parameters: self.lower_type_parameters(ast.type_parameters),
+            generic_parameters: self.lower_generic_parameters(ast.generic_parameters),
             bounds: ast.bounds,
-            value_type_expression: ast.value.map(|ty| self.lower_type_expression(ty)),
-            value: self.type_variable_generator.generate_type(),
+            value: ast.value.map(|ty| self.lower_type(ty)),
             docstring: ast.docstring,
         }
     }
@@ -769,8 +673,7 @@ impl<'t, 'd> LoweringContext<'t, 'd> {
         ry_hir::StructField {
             visibility: ast.visibility,
             name: ast.name,
-            type_expression: self.lower_type_expression(ast.ty),
-            ty: self.type_variable_generator.generate_type(),
+            ty: self.lower_type(ast.ty),
             docstring: ast.docstring,
         }
     }
@@ -778,15 +681,14 @@ impl<'t, 'd> LoweringContext<'t, 'd> {
     fn lower_tuple_field(&mut self, ast: ry_ast::TupleField) -> ry_hir::TupleField {
         ry_hir::TupleField {
             visibility: ast.visibility,
-            type_expression: self.lower_type_expression(ast.ty),
-            ty: self.type_variable_generator.generate_type(),
+            ty: self.lower_type(ast.ty),
         }
     }
 
-    fn lower_type_parameters(
+    fn lower_generic_parameters(
         &mut self,
-        ast: Option<Vec<ry_ast::TypeParameter>>,
-    ) -> Vec<ry_hir::TypeParameter> {
+        ast: Option<Vec<ry_ast::GenericParameter>>,
+    ) -> Vec<ry_hir::GenericParameter> {
         ast.unwrap_or_else(|| {
             // todo: emit some diagnostics here
 
@@ -797,14 +699,14 @@ impl<'t, 'd> LoweringContext<'t, 'd> {
         .collect()
     }
 
-    fn lower_generic_parameter(&mut self, ast: ry_ast::TypeParameter) -> ry_hir::TypeParameter {
-        ry_hir::TypeParameter {
+    fn lower_generic_parameter(
+        &mut self,
+        ast: ry_ast::GenericParameter,
+    ) -> ry_hir::GenericParameter {
+        ry_hir::GenericParameter {
             name: ast.name,
             bounds: ast.bounds,
-            default_value_type_expression: ast
-                .default_value
-                .map(|ty| self.lower_type_expression(ty)),
-            ty: self.type_variable_generator.generate_type(),
+            default_value: ast.default_value.map(|ty| self.lower_type(ty)),
         }
     }
 
@@ -825,52 +727,49 @@ impl<'t, 'd> LoweringContext<'t, 'd> {
     fn lower_where_predicate(&mut self, ast: ry_ast::WherePredicate) -> ry_hir::WherePredicate {
         match ast {
             ry_ast::WherePredicate::Eq { left, right } => ry_hir::WherePredicate::Eq {
-                left_type_expression: self.lower_type_expression(left),
-                left_type: self.type_variable_generator.generate_type(),
-                right_type_expression: self.lower_type_expression(right),
-                right_type: self.type_variable_generator.generate_type(),
+                left_type: self.lower_type(left),
+                right_type: self.lower_type(right),
             },
             ry_ast::WherePredicate::Satisfies { ty, bounds } => ry_hir::WherePredicate::Satisfies {
-                ty: self.type_variable_generator.generate_type(),
-                type_expression: self.lower_type_expression(ty),
+                ty: self.lower_type(ty),
                 bounds,
             },
         }
     }
 
-    fn lower_type_expression(&mut self, ast: ry_ast::Type) -> ry_hir::TypeExpression {
+    fn lower_type(&mut self, ast: ry_ast::Type) -> ry_hir::Type {
         match ast {
             ry_ast::Type::Function {
                 location,
                 parameter_types,
                 return_type,
-            } => ry_hir::TypeExpression::Function {
+            } => ry_hir::Type::Function {
                 location,
                 parameter_types: parameter_types
                     .into_iter()
-                    .map(|ty| self.lower_type_expression(ty))
+                    .map(|ty| self.lower_type(ty))
                     .collect(),
-                return_type: Box::new(self.lower_type_expression(*return_type)),
+                return_type: Box::new(self.lower_type(*return_type)),
             },
-            ry_ast::Type::Path(path) => ry_hir::TypeExpression::Path(path),
+            ry_ast::Type::Path(path) => ry_hir::Type::Path(path),
             ry_ast::Type::Parenthesized { inner, .. } => {
                 if let ry_ast::Type::Parenthesized { location, .. } = *inner {
                     self.add_diagnostic(UnnecessaryParenthesizedExpression { location });
                 }
 
-                self.lower_type_expression(*inner)
+                self.lower_type(*inner)
             }
             ry_ast::Type::TraitObject { location, bounds } => {
-                ry_hir::TypeExpression::TraitObject { location, bounds }
+                ry_hir::Type::TraitObject { location, bounds }
             }
             ry_ast::Type::Tuple {
                 location,
                 element_types,
-            } => ry_hir::TypeExpression::Tuple {
+            } => ry_hir::Type::Tuple {
                 location,
                 element_types: element_types
                     .into_iter()
-                    .map(|ty| self.lower_type_expression(ty))
+                    .map(|ty| self.lower_type(ty))
                     .collect(),
             },
             ry_ast::Type::WithQualifiedPath {
@@ -878,9 +777,9 @@ impl<'t, 'd> LoweringContext<'t, 'd> {
                 left,
                 right,
                 segments,
-            } => ry_hir::TypeExpression::WithQualifiedPath {
+            } => ry_hir::Type::WithQualifiedPath {
                 location,
-                left: Box::new(self.lower_type_expression(*left)),
+                left: Box::new(self.lower_type(*left)),
                 right,
                 segments,
             },
