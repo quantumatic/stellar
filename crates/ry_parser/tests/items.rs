@@ -2,7 +2,7 @@ use ry_ast::{
     EnumItem, Expression, Function, FunctionParameter, FunctionParameterType, FunctionSignature,
     IdentifierAST, Impl, ImportPath, ModuleItem, NotSelfFunctionParameter, Path,
     SelfFunctionParameter, Statement, StructField, TraitItem, TupleField, Type, TypeAlias,
-    TypeArgument, TypeParameter, TypePath, TypePathSegment, Visibility, WherePredicate,
+    TypeArgument, GenericParameter, TypePath, TypePathSegment, Visibility, WherePredicate,
 };
 use ry_diagnostics::GlobalDiagnostics;
 use ry_filesystem::location::Location;
@@ -32,8 +32,8 @@ fn function() {
                     },
                     symbol: identifier_interner.get_or_intern("foo")
                 },
-                type_parameters: Some(vec![
-                    TypeParameter {
+                generic_parameters: Some(vec![
+                    GenericParameter {
                         name: IdentifierAST {
                             location: Location {
                                 file_path_id: DUMMY_PATH_ID,
@@ -45,7 +45,7 @@ fn function() {
                         bounds: None,
                         default_value: None
                     },
-                    TypeParameter {
+                    GenericParameter {
                         name: IdentifierAST {
                             location: Location {
                                 file_path_id: DUMMY_PATH_ID,
@@ -249,8 +249,8 @@ fn r#impl() {
                 start: 0,
                 end: 4
             },
-            type_parameters: Some(vec![
-                TypeParameter {
+            generic_parameters: Some(vec![
+                GenericParameter {
                     name: IdentifierAST {
                         location: Location {
                             file_path_id: DUMMY_PATH_ID,
@@ -262,7 +262,7 @@ fn r#impl() {
                     bounds: None,
                     default_value: None
                 },
-                TypeParameter {
+                GenericParameter {
                     name: IdentifierAST {
                         location: Location {
                             file_path_id: DUMMY_PATH_ID,
@@ -557,7 +557,7 @@ fn r#struct() {
                 },
                 symbol: identifier_interner.get_or_intern("Lexer")
             },
-            type_parameters: Some(vec![TypeParameter {
+            generic_parameters: Some(vec![GenericParameter {
                 name: IdentifierAST {
                     location: Location {
                         file_path_id: DUMMY_PATH_ID,
@@ -722,7 +722,7 @@ fn into() {
                 },
                 symbol: identifier_interner.get_or_intern("Into")
             },
-            type_parameters: Some(vec![TypeParameter {
+            generic_parameters: Some(vec![GenericParameter {
                 name: IdentifierAST {
                     location: Location {
                         file_path_id: DUMMY_PATH_ID,
@@ -746,7 +746,7 @@ fn into() {
                         },
                         symbol: identifier_interner.get_or_intern("into")
                     },
-                    type_parameters: None,
+                    generic_parameters: None,
                     parameters: vec![FunctionParameter::SelfParameter(SelfFunctionParameter {
                         self_location: Location {
                             file_path_id: DUMMY_PATH_ID,
@@ -817,8 +817,8 @@ fn alias() {
                 },
                 symbol: identifier_interner.get_or_intern("KeyValuePair")
             },
-            type_parameters: Some(vec![
-                TypeParameter {
+            generic_parameters: Some(vec![
+                GenericParameter {
                     name: IdentifierAST {
                         location: Location {
                             file_path_id: DUMMY_PATH_ID,
@@ -830,7 +830,7 @@ fn alias() {
                     bounds: None,
                     default_value: None
                 },
-                TypeParameter {
+                GenericParameter {
                     name: IdentifierAST {
                         location: Location {
                             file_path_id: DUMMY_PATH_ID,
@@ -1022,8 +1022,8 @@ fn r#enum() {
                 },
                 symbol: identifier_interner.get_or_intern("Result")
             },
-            type_parameters: Some(vec![
-                TypeParameter {
+            generic_parameters: Some(vec![
+                GenericParameter {
                     name: IdentifierAST {
                         location: Location {
                             file_path_id: DUMMY_PATH_ID,
@@ -1035,7 +1035,7 @@ fn r#enum() {
                     bounds: None,
                     default_value: None
                 },
-                TypeParameter {
+                GenericParameter {
                     name: IdentifierAST {
                         location: Location {
                             file_path_id: DUMMY_PATH_ID,
