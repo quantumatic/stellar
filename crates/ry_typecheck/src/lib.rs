@@ -14,17 +14,17 @@ pub mod generics_scope;
 pub mod trait_resolution;
 
 #[derive(Debug)]
-pub struct TypeCheckingContext<'i, 'p, 'd> {
+pub struct TypeCheckingContext<'i, 'p, 'ctx, 'd> {
     identifier_interner: &'i mut IdentifierInterner,
     path_interner: &'p PathInterner,
-    name_resolution_context: NameResolutionContext,
+    name_resolution_context: NameResolutionContext<'ctx>,
     trait_resolution_context: TraitResolutionContext,
     items: FxHashMap<DefinitionID, ModuleItem>,
     substitutions: FxHashMap<Symbol, Arc<Type>>,
     diagnostics: &'d mut GlobalDiagnostics,
 }
 
-impl<'i, 'p, 'd> TypeCheckingContext<'i, 'p, 'd> {
+impl<'i, 'p, 'ctx, 'd> TypeCheckingContext<'i, 'p, 'ctx, 'd> {
     pub fn new(
         identifier_interner: &'i mut IdentifierInterner,
         path_interner: &'p PathInterner,

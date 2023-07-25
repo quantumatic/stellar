@@ -1223,13 +1223,7 @@ pub struct SelfFunctionParameter {
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct NotSelfFunctionParameter {
     pub name: IdentifierAST,
-    pub ty: FunctionParameterType,
-}
-
-#[derive(Debug, PartialEq, Eq, Clone)]
-pub enum FunctionParameterType {
-    Type(Type),
-    Impl(Bounds),
+    pub ty: Type,
 }
 
 /// A Ry module.

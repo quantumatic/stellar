@@ -64,7 +64,7 @@
 
 use std::fmt::Display;
 
-use ry_ast::{Bounds, IdentifierAST, ImportPath, Literal, Path, TypePath, Visibility};
+use ry_ast::{IdentifierAST, ImportPath, Literal, Path, TypePath, Visibility};
 use ry_filesystem::location::Location;
 use ry_interner::Symbol;
 
@@ -789,13 +789,7 @@ pub struct SelfFunctionParameter {
 #[derive(Debug, PartialEq, Clone)]
 pub struct NotSelfFunctionParameter {
     pub name: IdentifierAST,
-    pub ty: FunctionParameterType,
-}
-
-#[derive(Debug, PartialEq, Clone)]
-pub enum FunctionParameterType {
-    Impl(Bounds),
-    Type { ty: Type },
+    pub ty: Type,
 }
 
 /// A Ry module.

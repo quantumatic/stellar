@@ -1,7 +1,7 @@
 use ry_ast::{
-    token::RawToken, EnumItem, Function, FunctionParameter, FunctionParameterType,
-    FunctionSignature, IdentifierAST, Impl, ModuleItem, ModuleItemKind, NotSelfFunctionParameter,
-    SelfFunctionParameter, StructField, Token, TraitItem, TupleField, TypeAlias, Visibility,
+    token::RawToken, EnumItem, Function, FunctionParameter, FunctionSignature, IdentifierAST, Impl,
+    ModuleItem, ModuleItemKind, NotSelfFunctionParameter, SelfFunctionParameter, StructField,
+    Token, TraitItem, TupleField, TypeAlias, Visibility,
 };
 use ry_filesystem::location::Location;
 use ry_interner::builtin_symbols;
@@ -38,8 +38,6 @@ struct FunctionParser {
     pub(crate) visibility: Visibility,
     pub(crate) docstring: Option<String>,
 }
-
-pub(crate) struct FunctionParameterTypeParser;
 
 pub(crate) struct NotSelfFunctionParameterParser;
 
@@ -208,22 +206,6 @@ impl Parse for StructParser {
     }
 }
 
-impl Parse for FunctionParameterTypeParser {
-    type Output = Option<FunctionParameterType>;
-
-    fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
-        if state.next_token.raw == Token![impl] {
-            state.advance();
-
-            let bounds = BoundsParser.parse(state)?;
-
-            Some(FunctionParameterType::Impl(bounds))
-        } else {
-            TypeParser.parse(state).map(FunctionParameterType::Type)
-        }
-    }
-}
-
 impl Parse for NotSelfFunctionParameterParser {
     type Output = Option<NotSelfFunctionParameter>;
 
@@ -232,7 +214,7 @@ impl Parse for NotSelfFunctionParameterParser {
 
         state.consume(Token![:], "function parameter name")?;
 
-        let ty = FunctionParameterTypeParser.parse(state)?;
+        let ty = TypeParser.parse(state)?;
 
         Some(NotSelfFunctionParameter { name, ty })
     }

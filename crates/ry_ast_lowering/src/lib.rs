@@ -571,21 +571,7 @@ impl<'d> LoweringContext<'d> {
     ) -> ry_hir::NotSelfFunctionParameter {
         ry_hir::NotSelfFunctionParameter {
             name: ast.name,
-            ty: self.lower_function_parameter_type(ast.ty),
-        }
-    }
-
-    fn lower_function_parameter_type(
-        &mut self,
-        ast: ry_ast::FunctionParameterType,
-    ) -> ry_hir::FunctionParameterType {
-        match ast {
-            ry_ast::FunctionParameterType::Type(ty) => ry_hir::FunctionParameterType::Type {
-                ty: self.lower_type(ty),
-            },
-            ry_ast::FunctionParameterType::Impl(bounds) => {
-                ry_hir::FunctionParameterType::Impl(bounds)
-            }
+            ty: self.lower_type(ast.ty),
         }
     }
 
