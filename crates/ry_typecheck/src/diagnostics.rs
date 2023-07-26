@@ -25,7 +25,7 @@ impl BuildDiagnostic for DuplicateTraitBoundDiagnostic {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct UnnecessaryEqualityPredicateDiagnostic {
     pub generic_parameter_location: Location,
     pub type_location: Location,
@@ -43,6 +43,23 @@ impl BuildDiagnostic for UnnecessaryEqualityPredicateDiagnostic {
                 self.type_location
                     .to_secondary_label()
                     .with_message("the type is not considered default for the generic!"),
+            ])
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ExpectedNominalTypeInInherentImplDiagnostic {
+    pub location: Location,
+}
+
+impl BuildDiagnostic for ExpectedNominalTypeInInherentImplDiagnostic {
+    fn build(&self) -> Diagnostic<PathID> {
+        Diagnostic::error()
+            .with_code("E009")
+            .with_message("expected nominal type in inherent implementation")
+            .with_labels(vec![self.location.to_primary_label()])
+            .with_notes(vec![
+                "either implement a trait or create a new wrapper type".to_owned(),
             ])
     }
 }

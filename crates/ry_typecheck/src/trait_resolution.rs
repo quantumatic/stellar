@@ -1,8 +1,12 @@
 use std::iter::zip;
 
 use ry_ast::{Bounds, DefinitionID, IdentifierAST};
+use ry_diagnostics::{BuildDiagnostic, GlobalDiagnostics};
+use ry_filesystem::location::Location;
 use ry_fx_hash::{FxHashMap, FxHashSet};
-use ry_thir::ty::{Path, Type};
+use ry_thir::ty::{Path, Type, TypePath};
+
+use crate::diagnostics::ExpectedNominalTypeInInherentImplDiagnostic;
 
 #[derive(Debug, Default)]
 pub struct TraitResolutionContext {
@@ -56,12 +60,38 @@ impl TraitResolutionContext {
         todo!()
     }
 
-    /// If nominal type was expected, returns [`None`].
     pub fn add_raw_type_implementation(
         &mut self,
         implementation: &ImplementationData,
-    ) -> Option<()> {
-        todo!()
+        diagnostics: &mut GlobalDiagnostics,
+    ) {
+        let nominal_type = match &implementation.ty {
+            Type::WithQualifiedPath { .. } => false,
+            Type::Path {
+                path: TypePath { segments },
+            } => {
+                if let [segment] = segments.as_slice() {
+                    if let Path { symbols: _ } = &segment.left {
+                        true
+                    } else {
+                        false
+                    }
+                } else {
+                    false
+                }
+            }
+            _ => false,
+        };
+
+        if nominal_type {
+            diagnostics.add_single_file_diagnostic(
+                implementation.definition_id.file_path_id,
+                ExpectedNominalTypeInInherentImplDiagnostic {
+                    location: implementation.implemented_type_location,
+                }
+                .build(),
+            );
+        }
     }
 
     pub fn check_overlap(&self, trait_path: &Path, implementation_data: &ImplementationData) {
@@ -184,6 +214,7 @@ impl TraitResolutionContext {
     ) -> bool {
         match (left_implemented_type, right_implemented_type) {
             (Type::Unit, Type::Unit) => true,
+
             // (_, _) overlaps with (int32, (String, _))
             (
                 Type::Tuple {
@@ -287,6 +318,7 @@ pub struct ImplementationData {
     pub generic_parameters: Vec<GenericParameterData>,
     pub constraints: Vec<ConstraintData>,
     pub ty: Type,
+    pub implemented_type_location: Location,
 }
 
 #[derive(Debug, Clone, Hash)]

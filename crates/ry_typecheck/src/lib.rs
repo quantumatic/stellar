@@ -10,7 +10,7 @@ use ry_thir::ty::Type;
 use trait_resolution::TraitResolutionContext;
 
 pub mod diagnostics;
-pub mod generics_scope;
+pub mod generic_parameter_scope;
 pub mod trait_resolution;
 
 #[derive(Debug)]
