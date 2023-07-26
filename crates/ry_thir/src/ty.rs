@@ -5,7 +5,7 @@ use ry_interner::{builtin_symbols, Symbol};
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
 pub enum Type {
     Unit,
-    Constructor {
+    Path {
         path: TypePath,
     },
     Tuple {
@@ -31,7 +31,7 @@ impl Type {
     #[must_use]
     pub fn check_single_identifier_type_constructor(&self, symbol: Symbol) -> bool {
         match self {
-            Self::Constructor { path } => path.check_single_identifier_type_constructor(symbol),
+            Self::Path { path } => path.check_single_identifier_type_constructor(symbol),
             _ => unreachable!(),
         }
     }
@@ -53,7 +53,7 @@ impl Type {
     #[must_use]
     pub const fn kind(&self) -> TypeKind {
         match self {
-            Self::Constructor { .. } => TypeKind::Constructor,
+            Self::Path { .. } => TypeKind::Constructor,
             Self::Tuple { .. } => TypeKind::Tuple,
             Self::Function { .. } => TypeKind::Function,
             Self::Variable(..) => TypeKind::Variable,
@@ -75,7 +75,7 @@ pub trait Typed {
 #[inline]
 #[must_use]
 fn primitive_constructor(symbol: Symbol) -> Type {
-    Type::Constructor {
+    Type::Path {
         path: TypePath {
             segments: vec![TypePathSegment {
                 left: Path {
@@ -146,7 +146,7 @@ pub struct Path {
 #[inline]
 #[must_use]
 pub fn list_of(element_type: Type) -> Type {
-    Type::Constructor {
+    Type::Path {
         path: TypePath {
             segments: vec![TypePathSegment {
                 left: Path {

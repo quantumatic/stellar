@@ -2,7 +2,9 @@ use ry_ast::{IdentifierAST, ImportPath};
 use ry_filesystem::location::DUMMY_LOCATION;
 use ry_fx_hash::FxHashMap;
 use ry_interner::{Interner, DUMMY_PATH_ID};
-use ry_name_resolution::{ModuleContext, NameBindingData, NameResolutionContext, PackageContext};
+use ry_name_resolution::{
+    GlobalResolutionContext, ModuleResolutionContext, NameBindingData, PackageResolutionContext,
+};
 use ry_thir::ty::Path;
 
 /// ```txt
@@ -17,46 +19,46 @@ fn resolve_module() {
     let a = interner.get_or_intern("a");
     let b = interner.get_or_intern("b");
 
-    let mut tree = NameResolutionContext::new();
+    let mut global_context = GlobalResolutionContext::new();
 
-    let child_module_data = ModuleContext {
+    let child_module_context = ModuleResolutionContext {
         path_id: DUMMY_PATH_ID,
-        docstring: None,
         bindings: FxHashMap::default(),
         submodules: FxHashMap::default(),
         imports: vec![],
     };
 
-    let mut package_root_module = ModuleContext {
+    let mut package_root_module_context = ModuleResolutionContext {
         path_id: DUMMY_PATH_ID,
-        docstring: None,
         bindings: FxHashMap::default(),
         submodules: FxHashMap::default(),
         imports: vec![],
     };
-    package_root_module.submodules.insert(a, child_module_data);
+    package_root_module_context
+        .submodules
+        .insert(a, child_module_context);
 
-    let package = PackageContext {
+    let package = PackageResolutionContext {
         path_id: DUMMY_PATH_ID,
-        root: package_root_module,
+        root: package_root_module_context,
         dependencies: vec![],
     };
 
-    tree.packages.insert(a, package);
+    global_context.packages.insert(a, package);
 
     assert!(matches!(
-        tree.resolve_module_item_by_absolute_path(&Path {
+        global_context.resolve_module_item_by_absolute_path(&Path {
             symbols: vec![a, a]
         }),
         Some(NameBindingData::Module(..))
     ));
 
     assert_eq!(
-        tree.resolve_module_item_by_absolute_path(&Path { symbols: vec![a] }),
+        global_context.resolve_module_item_by_absolute_path(&Path { symbols: vec![a] }),
         None
     );
     assert_eq!(
-        tree.resolve_module_item_by_absolute_path(&Path { symbols: vec![b] }),
+        global_context.resolve_module_item_by_absolute_path(&Path { symbols: vec![b] }),
         None
     );
 }
@@ -77,11 +79,10 @@ fn import() {
     let b = interner.get_or_intern("b");
     let c = interner.get_or_intern("c");
 
-    let mut tree = NameResolutionContext::new();
+    let mut global_context = GlobalResolutionContext::new();
 
-    let child_module_data = ModuleContext {
+    let child_module_data = ModuleResolutionContext {
         path_id: DUMMY_PATH_ID,
-        docstring: None,
         bindings: FxHashMap::default(),
         submodules: FxHashMap::default(),
         imports: vec![],
@@ -90,9 +91,8 @@ fn import() {
     let mut submodules = FxHashMap::default();
     submodules.insert(b, child_module_data);
 
-    let package_root_module = ModuleContext {
+    let package_root_module = ModuleResolutionContext {
         path_id: DUMMY_PATH_ID,
-        docstring: None,
         bindings: FxHashMap::default(),
         submodules,
         imports: vec![
@@ -139,41 +139,30 @@ fn import() {
             ),
         ],
     };
-    let package = PackageContext {
+    let package = PackageResolutionContext {
         path_id: DUMMY_PATH_ID,
         root: package_root_module,
         dependencies: vec![],
     };
 
-    tree.packages.insert(a, package);
+    global_context.packages.insert(a, package);
 
     assert!(matches!(
-        tree.packages
+        global_context
+            .packages
             .get(&a)
             .unwrap()
             .root
-            .resolve_module_item_path(&Path { symbols: vec![b] }, &tree),
+            .resolve_symbol(&global_context, b),
         Some(..)
     ));
     assert!(matches!(
-        tree.packages
+        global_context
+            .packages
             .get(&a)
             .unwrap()
             .root
-            .resolve_module_item_path(&Path { symbols: vec![c] }, &tree),
+            .resolve_symbol(&global_context, c),
         Some(..)
     ));
-    assert_eq!(
-        tree.packages
-            .get(&a)
-            .unwrap()
-            .root
-            .resolve_module_item_path(
-                &Path {
-                    symbols: vec![b, b]
-                },
-                &tree
-            ),
-        None
-    );
 }

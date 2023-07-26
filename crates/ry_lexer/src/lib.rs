@@ -150,6 +150,7 @@ pub struct Lexer<'s, 'i> {
 
 impl<'s, 'i> Lexer<'s, 'i> {
     /// Creates a new [`Lexer`] instance.
+    #[inline]
     #[must_use]
     pub fn new(
         file_path_id: PathID,
@@ -191,7 +192,6 @@ impl<'s, 'i> Lexer<'s, 'i> {
     }
 
     /// Returns `true` if current character is EOF (`\0`).
-    #[inline]
     const fn eof(&self) -> bool {
         self.current == '\0'
     }
@@ -215,7 +215,6 @@ impl<'s, 'i> Lexer<'s, 'i> {
 
     /// Advances the lexer state to the next 2 characters
     /// (calls [`Lexer::advance()`] twice).
-    #[inline]
     fn advance_twice(&mut self) {
         self.advance();
         self.advance();
@@ -235,7 +234,6 @@ impl<'s, 'i> Lexer<'s, 'i> {
 
     /// Returns a location with given start and end byte offsets
     /// and with the lexer's currently processed file path id.
-    #[inline]
     const fn make_location(&self, start: usize, end: usize) -> Location {
         Location {
             file_path_id: self.file_path_id,
@@ -245,13 +243,11 @@ impl<'s, 'i> Lexer<'s, 'i> {
     }
 
     /// Returns a location of the current character.
-    #[inline]
     const fn current_char_location(&self) -> Location {
         self.make_location(self.offset, self.offset + 1)
     }
 
     /// Returns a location ending with the current character's location.
-    #[inline]
     const fn location_from(&self, start_offset: usize) -> Location {
         self.make_location(start_offset, self.offset)
     }
@@ -284,8 +280,8 @@ impl<'s, 'i> Lexer<'s, 'i> {
         &self.source[start_offset..self.offset]
     }
 
-    /// Parses an escape sequence.
-    fn eat_escape(&mut self) -> Result<char, LexError> {
+    /// Processes an escape sequence.
+    fn process_escape_sequence(&mut self) -> Result<char, LexError> {
         self.advance(); // `\`
 
         let r = match self.current {
@@ -435,8 +431,8 @@ impl<'s, 'i> Lexer<'s, 'i> {
         r
     }
 
-    /// Parses a char literal.
-    fn eat_char(&mut self) -> Token {
+    /// Tokenize a char literal.
+    fn tokenize_char_literal(&mut self) -> Token {
         let start_offset = self.offset;
 
         self.advance();
@@ -452,7 +448,7 @@ impl<'s, 'i> Lexer<'s, 'i> {
             }
 
             if self.current == '\\' {
-                let e = self.eat_escape();
+                let e = self.process_escape_sequence();
 
                 match e {
                     Ok(c) => {
@@ -497,8 +493,8 @@ impl<'s, 'i> Lexer<'s, 'i> {
         }
     }
 
-    /// Parses a string literal.
-    fn eat_string(&mut self) -> Token {
+    /// Tokenizes a string literal.
+    fn tokenize_string_literal(&mut self) -> Token {
         self.scanned_string.clear();
         let start_offset = self.offset;
 
@@ -512,7 +508,7 @@ impl<'s, 'i> Lexer<'s, 'i> {
             }
 
             if c == '\\' {
-                let e = self.eat_escape();
+                let e = self.process_escape_sequence();
 
                 match e {
                     Ok(c) => {
@@ -546,8 +542,8 @@ impl<'s, 'i> Lexer<'s, 'i> {
         }
     }
 
-    /// Parses a wrapped identifier.
-    fn eat_wrapped_id(&mut self) -> Token {
+    /// Tokenizes a wrapped identifier.
+    fn tokenize_wrapped_identifier(&mut self) -> Token {
         let start_location = self.offset;
 
         self.advance();
@@ -580,8 +576,8 @@ impl<'s, 'i> Lexer<'s, 'i> {
         }
     }
 
-    /// Parses a usual comment (prefix is `//`).
-    fn eat_comment(&mut self) -> Token {
+    /// Tokenizes a usual comment (prefix is `//`).
+    fn tokenize_comment(&mut self) -> Token {
         // first `/` character is already advanced
         let start_location = self.offset - 1;
         self.advance();
@@ -594,13 +590,13 @@ impl<'s, 'i> Lexer<'s, 'i> {
         }
     }
 
-    /// Parses a doc comment.
+    /// Tokenizes a doc comment.
     ///
     /// When [`global`] is true,  doc comment is describing
     /// the whole module (3-rd character is `!`) and
     /// when not doc comment is corresponding to trait method, enum variant, etc.
     /// (everything else and the character is `/`).
-    fn eat_doc_comment(&mut self, global: bool) -> Token {
+    fn tokenize_doc_comment(&mut self, global: bool) -> Token {
         // first `/` character is already consumed
         let start_location = self.offset - 1;
         self.advance_twice(); // `/` and (`!` or `/`)
@@ -617,8 +613,8 @@ impl<'s, 'i> Lexer<'s, 'i> {
         }
     }
 
-    /// Parses weather an identifier or a keyword.
-    fn eat_name(&mut self) -> Token {
+    /// Tokenizes either an identifier or a keyword.
+    fn tokenize_identifier_or_keyword(&mut self) -> Token {
         let start_location = self.offset;
         let name = self.advance_while(start_location, |current, _| is_id_continue(current));
 
@@ -650,7 +646,7 @@ impl<'s, 'i> Lexer<'s, 'i> {
     pub fn next_token(&mut self) -> Token {
         self.eat_whitespaces();
 
-        if unlikely(self.current == '\0') {
+        if unlikely(self.eof()) {
             return Token {
                 raw: RawToken::EndOfFile,
                 location: self.current_char_location(),
@@ -661,9 +657,9 @@ impl<'s, 'i> Lexer<'s, 'i> {
             (':', _) => self.advance_with(Token![:]),
             ('@', _) => self.advance_with(Token![@]),
 
-            ('"', _) => self.eat_string(),
-            ('\'', _) => self.eat_char(),
-            ('`', _) => self.eat_wrapped_id(),
+            ('"', _) => self.tokenize_string_literal(),
+            ('\'', _) => self.tokenize_char_literal(),
+            ('`', _) => self.tokenize_wrapped_identifier(),
 
             ('+', '+') => self.advance_twice_with(Token![++]),
             ('+', '=') => self.advance_twice_with(Token![+=]),
@@ -681,9 +677,9 @@ impl<'s, 'i> Lexer<'s, 'i> {
                 self.advance();
 
                 match self.next {
-                    '!' => self.eat_doc_comment(true),
-                    '/' => self.eat_doc_comment(false),
-                    _ => self.eat_comment(),
+                    '!' => self.tokenize_doc_comment(true),
+                    '/' => self.tokenize_doc_comment(false),
+                    _ => self.tokenize_comment(),
                 }
             }
 
@@ -726,7 +722,7 @@ impl<'s, 'i> Lexer<'s, 'i> {
                 if number::decimal(c) || (c == '.' && number::decimal(n)) {
                     return self.eat_number();
                 } else if is_id_start(c) {
-                    return self.eat_name();
+                    return self.tokenize_identifier_or_keyword();
                 } else if c == '.' {
                     return self.advance_with(Token![.]);
                 }
@@ -738,7 +734,6 @@ impl<'s, 'i> Lexer<'s, 'i> {
 }
 
 /// True if `c` is a whitespace.
-#[inline]
 const fn is_whitespace(c: char) -> bool {
     // Note that it is ok to hard-code the values, because
     // the set is stable and doesn't change with different

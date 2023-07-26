@@ -5,7 +5,7 @@ use ry_diagnostics::GlobalDiagnostics;
 use ry_fx_hash::FxHashMap;
 use ry_hir::{Module, ModuleItem};
 use ry_interner::{IdentifierInterner, PathID, PathInterner, Symbol};
-use ry_name_resolution::NameResolutionContext;
+use ry_name_resolution::GlobalResolutionContext;
 use ry_thir::ty::Type;
 use trait_resolution::TraitResolutionContext;
 
@@ -14,17 +14,17 @@ pub mod generics_scope;
 pub mod trait_resolution;
 
 #[derive(Debug)]
-pub struct TypeCheckingContext<'i, 'p, 'ctx, 'd> {
+pub struct TypeCheckingContext<'i, 'p, 'd> {
     identifier_interner: &'i mut IdentifierInterner,
     path_interner: &'p PathInterner,
-    name_resolution_context: NameResolutionContext<'ctx>,
+    name_resolution_context: GlobalResolutionContext,
     trait_resolution_context: TraitResolutionContext,
     items: FxHashMap<DefinitionID, ModuleItem>,
     substitutions: FxHashMap<Symbol, Arc<Type>>,
     diagnostics: &'d mut GlobalDiagnostics,
 }
 
-impl<'i, 'p, 'ctx, 'd> TypeCheckingContext<'i, 'p, 'ctx, 'd> {
+impl<'i, 'p, 'd> TypeCheckingContext<'i, 'p, 'd> {
     pub fn new(
         identifier_interner: &'i mut IdentifierInterner,
         path_interner: &'p PathInterner,
@@ -33,7 +33,7 @@ impl<'i, 'p, 'ctx, 'd> TypeCheckingContext<'i, 'p, 'ctx, 'd> {
         Self {
             identifier_interner,
             path_interner,
-            name_resolution_context: NameResolutionContext::new(),
+            name_resolution_context: GlobalResolutionContext::new(),
             trait_resolution_context: TraitResolutionContext::new(),
             substitutions: FxHashMap::default(),
             items: FxHashMap::default(),

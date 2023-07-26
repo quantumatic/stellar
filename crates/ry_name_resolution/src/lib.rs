@@ -76,12 +76,12 @@ pub mod diagnostics;
 /// definition is used somewhere else. This approach allows to resolve forward
 /// references.
 #[derive(Debug, PartialEq, Clone)]
-pub struct NameResolutionContext<'ctx> {
+pub struct GlobalResolutionContext {
     /// Packages, that are going to be resolved.
-    pub packages: FxHashMap<Symbol, PackageContext<'ctx>>,
+    pub packages: FxHashMap<Symbol, PackageResolutionContext>,
 }
 
-impl Default for NameResolutionContext<'_> {
+impl Default for GlobalResolutionContext {
     #[inline]
     #[must_use]
     fn default() -> Self {
@@ -89,7 +89,7 @@ impl Default for NameResolutionContext<'_> {
     }
 }
 
-impl NameResolutionContext<'_> {
+impl GlobalResolutionContext {
     /// Creates new name empty resolution tree.
     #[inline]
     #[must_use]
@@ -138,12 +138,12 @@ impl NameResolutionContext<'_> {
 
 /// Data that Ry compiler has about a package.
 #[derive(Debug, PartialEq, Clone)]
-pub struct PackageContext<'ctx> {
+pub struct PackageResolutionContext {
     /// Path to the package.
     pub path_id: PathID,
 
     /// The root module of the package (the module that is located in the `package.ry`).
-    pub root: ModuleContext<'ctx>,
+    pub root: ModuleResolutionContext,
 
     /// Package dependencies be included in the resolution tree).
     pub dependencies: Vec<Symbol>,
@@ -151,10 +151,7 @@ pub struct PackageContext<'ctx> {
 
 /// Data that Ry compiler has about a module.
 #[derive(Debug, PartialEq, Clone)]
-pub struct ModuleContext<'ctx> {
-    /// Package in which the module is located.
-    pub global_context: &'ctx NameResolutionContext<'ctx>,
-
+pub struct ModuleResolutionContext {
     /// ID of the path of the module file/folder.
     pub path_id: PathID,
 
@@ -164,20 +161,20 @@ pub struct ModuleContext<'ctx> {
     pub bindings: FxHashMap<Symbol, DefinitionID>,
 
     /// The submodules of the module.
-    pub submodules: FxHashMap<Symbol, ModuleContext<'ctx>>,
+    pub submodules: FxHashMap<Symbol, ModuleResolutionContext>,
 
     /// The imports used in the module ([`Span`] stores a location of an entire import item).
     pub imports: Vec<(Location, ImportPath)>,
 }
 
-impl<'ctx> ModuleContext<'ctx> {
+impl ModuleResolutionContext {
     /// Resolves a single symbol and returns binding data.
     #[must_use]
-    pub fn resolve_symbol(
-        &self,
+    pub fn resolve_symbol<'ctx>(
+        &'ctx self,
+        global_context: &'ctx GlobalResolutionContext,
         symbol: Symbol,
-        tree: &'ctx NameResolutionContext<'ctx>,
-    ) -> Option<NameBindingData<'ctx>> {
+    ) -> Option<NameBindingData<'_>> {
         // If symbol is related to an item defined in the module, return it.
         //
         // ```
@@ -211,7 +208,8 @@ impl<'ctx> ModuleContext<'ctx> {
                     continue;
                 }
 
-                return tree.resolve_module_item_by_absolute_path(&import.path.clone().into());
+                return global_context
+                    .resolve_module_item_by_absolute_path(&import.path.clone().into());
             }
 
             // ```
@@ -224,7 +222,8 @@ impl<'ctx> ModuleContext<'ctx> {
                 continue;
             }
 
-            return tree.resolve_module_item_by_absolute_path(&import.path.clone().into());
+            return global_context
+                .resolve_module_item_by_absolute_path(&import.path.clone().into());
         }
 
         None
@@ -236,10 +235,10 @@ impl<'ctx> ModuleContext<'ctx> {
 #[derive(Debug, PartialEq, Clone)]
 pub enum NameBindingData<'ctx> {
     /// A package.
-    Package(&'ctx PackageContext<'ctx>),
+    Package(&'ctx PackageResolutionContext),
 
     /// A module.
-    Module(&'ctx ModuleContext<'ctx>),
+    Module(&'ctx ModuleResolutionContext),
 
     /// A module item.
     Item(DefinitionID),
@@ -259,7 +258,7 @@ pub struct ValueConstructor {
 #[derive(Debug)]
 pub struct Scope<'ctx> {
     /// Module that the scope belongs to.
-    pub module_context: &'ctx ModuleContext<'ctx>,
+    pub module_context: &'ctx ModuleResolutionContext,
 
     /// Symbols in the scope (not the ones contained in the parent scopes).
     entities: FxHashMap<Symbol, ValueConstructor>,
@@ -274,7 +273,7 @@ impl<'ctx> Scope<'ctx> {
     #[must_use]
     pub fn new(
         parent: Option<&'ctx Scope<'ctx>>,
-        module_context: &'ctx ModuleContext<'ctx>,
+        module_context: &'ctx ModuleResolutionContext,
     ) -> Self {
         Self {
             entities: FxHashMap::default(),

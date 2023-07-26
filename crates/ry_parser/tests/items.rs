@@ -1,5 +1,5 @@
 use ry_ast::{
-    EnumItem, Expression, Function, FunctionParameter, FunctionParameterType, FunctionSignature,
+    EnumItem, Expression, Function, FunctionParameter, FunctionSignature,
     GenericParameter, IdentifierAST, Impl, ImportPath, ModuleItem, NotSelfFunctionParameter, Path,
     SelfFunctionParameter, Statement, StructField, TraitItem, TupleField, Type, TypeAlias,
     TypeArgument, TypePath, TypePathSegment, Visibility, WherePredicate,
@@ -128,7 +128,7 @@ fn function() {
                             },
                             symbol: identifier_interner.get_or_intern("a")
                         },
-                        ty: FunctionParameterType::Type(Type::Path(TypePath {
+                        ty: Type::Path(TypePath {
                             location: Location {
                                 file_path_id: DUMMY_PATH_ID,
                                 start: 29,
@@ -157,7 +157,7 @@ fn function() {
                                 },
                                 type_arguments: None
                             }]
-                        }))
+                        })
                     }
                 )],
                 return_type: Some(Type::Path(TypePath {

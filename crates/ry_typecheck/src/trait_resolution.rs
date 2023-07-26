@@ -1,6 +1,6 @@
 use std::iter::zip;
 
-use ry_ast::{Bounds, IdentifierAST};
+use ry_ast::{Bounds, DefinitionID, IdentifierAST};
 use ry_fx_hash::{FxHashMap, FxHashSet};
 use ry_thir::ty::{Path, Type};
 
@@ -56,7 +56,13 @@ impl TraitResolutionContext {
         todo!()
     }
 
-    pub fn add_raw_type_implementation(&mut self, implementation: &ImplementationData) {}
+    /// If nominal type was expected, returns [`None`].
+    pub fn add_raw_type_implementation(
+        &mut self,
+        implementation: &ImplementationData,
+    ) -> Option<()> {
+        todo!()
+    }
 
     pub fn check_overlap(&self, trait_path: &Path, implementation_data: &ImplementationData) {
         let Some(candidates) = self.traits.get(trait_path).map(|r#trait| &r#trait.implementations) else {
@@ -117,7 +123,7 @@ impl TraitResolutionContext {
 
                 result
             }
-            Type::Constructor { path } => {
+            Type::Path { path } => {
                 if let [first_segment] = path.segments.as_slice() {
                     let mut result = FxHashSet::default();
 
@@ -194,7 +200,8 @@ impl TraitResolutionContext {
                     right,
                 )
             }),
-            // (_, int32): _ overlaps with (_, _): int32
+            // `(_, int32): _` overlaps with `(_, _): int32`
+            // E.g. `(int32, int32): int32` can appear in both implementations
             (
                 Type::Function {
                     parameter_types: left_parameter_types,
@@ -230,11 +237,11 @@ impl TraitResolutionContext {
             ) => left_bounds.iter().any(|b| right_bounds.contains(b)),
             (Type::Variable(left_var), Type::Variable(right_var)) => left_var == right_var,
 
-            // _ overlaps with a
-            // a overlaps with _
-            // _ overlaps with _
-            // a overlaps with a
-            (Type::Constructor { path: left_path }, Type::Constructor { path: right_path }) => {
+            // `_` overlaps with `a`
+            // `a` overlaps with `_`
+            // `_` overlaps with `_`
+            // `a` overlaps with `a`
+            (Type::Path { path: left_path }, Type::Path { path: right_path }) => {
                 return left_path == right_path
                     || left_type_parameters.iter().any(|parameter| {
                         left_path.check_single_identifier_type_constructor(parameter.symbol)
@@ -245,10 +252,10 @@ impl TraitResolutionContext {
             }
 
             // _ overlaps with any type
-            (Type::Constructor { path }, _) => left_type_parameters
+            (Type::Path { path }, _) => left_type_parameters
                 .iter()
                 .any(|parameter| path.check_single_identifier_type_constructor(parameter.symbol)),
-            (_, Type::Constructor { path }) => right_type_parameters
+            (_, Type::Path { path }) => right_type_parameters
                 .iter()
                 .any(|parameter| path.check_single_identifier_type_constructor(parameter.symbol)),
 
@@ -266,8 +273,9 @@ impl TraitResolutionContext {
     }
 }
 
-#[derive(Debug, Clone, Default, Hash)]
+#[derive(Debug, Clone, Hash)]
 pub struct TraitData {
+    pub definition_id: DefinitionID,
     pub generic_parameters: Vec<GenericParameterData>,
     pub constraints: Vec<ConstraintData>,
     pub implementations: Vec<ImplementationData>,
@@ -275,10 +283,10 @@ pub struct TraitData {
 
 #[derive(Debug, Clone, Hash)]
 pub struct ImplementationData {
+    pub definition_id: DefinitionID,
     pub generic_parameters: Vec<GenericParameterData>,
     pub constraints: Vec<ConstraintData>,
     pub ty: Type,
-    // pub aliases: Vec<TypeAliasData>,
 }
 
 #[derive(Debug, Clone, Hash)]
