@@ -1,7 +1,4 @@
-<p align="center">
-<img src="./additional/icon/banner.png">
-    <i>The most damaging phrase in the language is.. it's always been done this way</i>
-</p>
+# Ry programming language
 
 <p align="center">
 <details>
