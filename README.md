@@ -1,7 +1,4 @@
-<p align="center">
-<img src="./additional/icon/banner.png">
-    <i>The most damaging phrase in the language is.. it's always been done this way</i>
-</p>
+# Ry programming language
 
 <p align="center">
 <details>
@@ -95,9 +92,16 @@ fun do_stuff_with(a: uint32, b: uint32, fn: (uint32, uint32): ()) {
 The language also has an analog of sum types: _enums_:
 
 ```
-enum Result[T, E] {
-    Ok(T),
-    Err(E),
+enum Result[T, E] implements ToString {
+    Ok(T)
+    Err(E)
+
+    fun to_string(self): String where T: ToString, E: ToString {
+        match self {
+            Self.Ok(t) => t.to_string(),
+            Self.Err(e) => e.to_string(),
+        }
+    }
 }
 ```
 
