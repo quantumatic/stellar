@@ -133,7 +133,7 @@ where
 /// in the syntax definition of every item in the Ry programming language.
 /// To avoid copying the behaviour described below, this trait must
 /// be implemented.
-pub trait OptionalParser
+pub trait OptionallyParse
 where
     Self: Sized,
 {

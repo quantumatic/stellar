@@ -119,11 +119,9 @@ pub enum Keyword {
     For,
     Fun,
     If,
-    Impl,
     Pub,
     Return,
     Struct,
-    Trait,
     Type,
     Let,
     Where,
@@ -134,6 +132,8 @@ pub enum Keyword {
     Continue,
     Dyn,
     Loop,
+    Interface,
+    Implements,
 }
 
 impl AsRef<str> for Keyword {
@@ -142,11 +142,9 @@ impl AsRef<str> for Keyword {
             Self::Pub => "`pub`",
             Self::Fun => "`fun`",
             Self::Struct => "`struct`",
-            Self::Trait => "`trait`",
             Self::Type => "`type`",
             Self::Return => "`return`",
             Self::Defer => "`defer`",
-            Self::Impl => "`impl`",
             Self::Enum => "`enum`",
             Self::If => "`if`",
             Self::Else => "`else`",
@@ -161,6 +159,8 @@ impl AsRef<str> for Keyword {
             Self::Continue => "`continue`",
             Self::Dyn => "`dyn`",
             Self::Loop => "`loop`",
+            Self::Interface => "`interface`",
+            Self::Implements => "`implements`",
         }
     }
 }
@@ -545,10 +545,9 @@ macro_rules! Token {
     [pub] =>                {$crate::token::RawToken::Keyword($crate::token::Keyword::Pub)};
     [fun] =>                {$crate::token::RawToken::Keyword($crate::token::Keyword::Fun)};
     [struct] =>             {$crate::token::RawToken::Keyword($crate::token::Keyword::Struct)};
-    [trait] =>              {$crate::token::RawToken::Keyword($crate::token::Keyword::Trait)};
+    [interface] =>          {$crate::token::RawToken::Keyword($crate::token::Keyword::Interface)};
     [return] =>             {$crate::token::RawToken::Keyword($crate::token::Keyword::Return)};
     [defer] =>              {$crate::token::RawToken::Keyword($crate::token::Keyword::Defer)};
-    [impl] =>               {$crate::token::RawToken::Keyword($crate::token::Keyword::Impl)};
     [enum] =>               {$crate::token::RawToken::Keyword($crate::token::Keyword::Enum)};
     [if] =>                 {$crate::token::RawToken::Keyword($crate::token::Keyword::If)};
     [else] =>               {$crate::token::RawToken::Keyword($crate::token::Keyword::Else)};
@@ -563,6 +562,7 @@ macro_rules! Token {
     [continue] =>           {$crate::token::RawToken::Keyword($crate::token::Keyword::Continue)};
     [dyn] =>                {$crate::token::RawToken::Keyword($crate::token::Keyword::Dyn)};
     [loop] =>               {$crate::token::RawToken::Keyword($crate::token::Keyword::Loop)};
+    [implements] =>         {$crate::token::RawToken::Keyword($crate::token::Keyword::Implements)};
 }
 
 /// List of reserved Ry names: keywords, boolean literals & etc..
@@ -573,10 +573,9 @@ pub static RESERVED: phf::Map<&'static str, RawToken> = phf_map! {
     "pub" => Token![pub],
     "fun" => Token![fun],
     "struct" => Token![struct],
-    "trait" => Token![trait],
+    "interface" => Token![interface],
     "return" => Token![return],
     "defer" => Token![defer],
-    "impl" => Token![impl],
     "enum" => Token![enum],
     "if" => Token![if],
     "else" => Token![else],
@@ -591,6 +590,7 @@ pub static RESERVED: phf::Map<&'static str, RawToken> = phf_map! {
     "continue" => Token![continue],
     "dyn" => Token![dyn],
     "loop" => Token![loop],
+    "implements" => Token![implements],
 };
 
 impl Punctuator {

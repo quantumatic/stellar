@@ -469,9 +469,9 @@ impl IdentifierInterner {
     /// let mut identifier_interner = IdentifierInterner::new();
     /// let hello_symbol = identifier_interner.get_or_intern("hello");
     ///
-    /// assert_eq!(identifier_interner.get("hello"), Some(hello_symbol));
-    /// assert_eq!(identifier_interner.get("uint8"), Some(UINT8)); // interned by default
-    /// assert_eq!(identifier_interner.get("!"), None);
+    /// assert_eq!(identifier_interner.resolve(hello_symbol), Some("hello"));
+    /// assert_eq!(identifier_interner.resolve(UINT8), Some("uint8")); // interned by default
+    /// assert_eq!(identifier_interner.resolve(3123123123), None);
     /// ```
     #[inline]
     #[must_use]

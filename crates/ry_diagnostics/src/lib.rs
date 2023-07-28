@@ -176,6 +176,13 @@ impl GlobalDiagnostics {
     #[inline]
     #[must_use]
     pub fn is_fatal(&self) -> bool {
+        !self.is_ok()
+    }
+
+    /// Returns `true` if diagnostics are ok.
+    #[inline]
+    #[must_use]
+    pub fn is_ok(&self) -> bool {
         self.context_free_diagnostics
             .iter()
             .all(|d| !is_fatal_sevirity(d.severity))
@@ -183,13 +190,6 @@ impl GlobalDiagnostics {
                 .file_diagnostics
                 .iter()
                 .all(|d| !is_fatal_sevirity(d.severity))
-    }
-
-    /// Returns `true` if diagnostics are ok.
-    #[inline]
-    #[must_use]
-    pub fn is_ok(&self) -> bool {
-        !self.is_fatal()
     }
 }
 

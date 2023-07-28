@@ -31,14 +31,12 @@ pub fn command(path_str: &str) {
             );
         }
         Ok(ast) => {
-            log_with_left_padded_prefix("Parsed", path_str);
             let parsing_time = now.elapsed().as_secs_f64();
+            log_with_left_padded_prefix("Parsed", format!("in {}s", parsing_time));
 
             diagnostics_emitter.emit_global_diagnostics(&diagnostics);
 
             if diagnostics.is_ok() {
-                log_with_left_padded_prefix("Parsed", format!("in {}s", parsing_time));
-
                 let now = Instant::now();
                 let ast_string = serialize_ast(&ast, &identifier_interner);
 

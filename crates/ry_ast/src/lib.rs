@@ -95,6 +95,7 @@ pub mod visit;
 
 pub type DefinitionIndex = usize;
 
+/// An ID for every definition (module item) in a workspace.
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
 pub struct DefinitionID {
     pub index: DefinitionIndex,
@@ -135,6 +136,11 @@ impl Literal {
 }
 
 /// A symbol with a specified location, e.g. `foo`, `std`.
+///
+/// The reason why it's called [`IdentifierAST`] is because the name
+/// [`Identifier`] already exists in the [`token`] module.
+///
+/// [`Identifier`]: ry_ast::token::Identifier
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
 pub struct IdentifierAST {
     pub location: Location,
@@ -155,20 +161,12 @@ pub struct ImportPath {
     pub r#as: Option<IdentifierAST>,
 }
 
-/// A type path, e.g. `Iterator[Item = uint32].Item`, `F.Output`.
+/// A type constructor, e.g. `Option[T]`.
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
-pub struct TypePath {
-    pub location: Location,
-    pub segments: Vec<TypePathSegment>,
-}
-
-/// A segment of a type path, e.g. `Iterator[Item = uint32]` and `Item` in
-/// `Iterator[Item = uint32].Item`.
-#[derive(Debug, PartialEq, Eq, Clone, Hash)]
-pub struct TypePathSegment {
+pub struct TypeConstructor {
     pub location: Location,
     pub path: Path,
-    pub type_arguments: Option<Vec<TypeArgument>>,
+    pub type_arguments: Option<Vec<Type>>,
 }
 
 /// A pattern, e.g. `Some(x)`, `None`, `a @ [3, ..]`, `[1, .., 3]`, `(1, \"hello\")`, `3.2`.
@@ -274,14 +272,14 @@ pub enum StructFieldPattern {
     Rest { location: Location },
 }
 
-/// A list of trait bounds being type pathes, e.g. `Debug + Into[T]`.
-pub type Bounds = Vec<TypePathSegment>;
+/// A list of bounds (which are basically type constructors), e.g. `Debug + Into[T]`.
+pub type Bounds = Vec<TypeConstructor>;
 
-/// A type, e.g. `int32`, `[S, dyn Iterator[Item = uint32]]`, `(char, char)`.
+/// A type, e.g. `int32`, `(char): bool`, `(char, char)`.
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
 pub enum Type {
-    /// A type path, e.g. `Iterator[Item = uint32].Item`, `R.Output`, `char`.
-    Path(TypePath),
+    /// A type path, e.g. `char`, `Option[T]`.
+    Constructor(TypeConstructor),
 
     /// A tuple type, e.g. `(int32, String, char)`.
     Tuple {
@@ -305,16 +303,8 @@ pub enum Type {
         inner: Box<Self>,
     },
 
-    /// A trait object type, e.g. `dyn Iterator[Item = uint32]`, `dyn Debug + Clone`.
-    TraitObject { location: Location, bounds: Bounds },
-
-    /// A type with a qualified path, e.g. `[A as Iterator].Item`.
-    WithQualifiedPath {
-        location: Location,
-        left: Box<Self>,
-        right: TypePath,
-        segments: Vec<TypePathSegment>,
-    },
+    /// An interface object type, e.g. `dyn Iterator[Item = uint32]`, `dyn Debug + Clone`.
+    InterfaceObject { location: Location, bounds: Bounds },
 }
 
 impl Type {
@@ -325,10 +315,9 @@ impl Type {
         match self {
             Self::Function { location, .. }
             | Self::Parenthesized { location, .. }
-            | Self::Path(TypePath { location, .. })
-            | Self::TraitObject { location, .. }
-            | Self::Tuple { location, .. }
-            | Self::WithQualifiedPath { location, .. } => *location,
+            | Self::Constructor(TypeConstructor { location, .. })
+            | Self::InterfaceObject { location, .. }
+            | Self::Tuple { location, .. } => *location,
         }
     }
 }
@@ -341,7 +330,7 @@ pub struct GenericParameter {
     pub default_value: Option<Type>,
 }
 
-/// A type alias, e.g. `type MyResult = Result[String, MyError]`.
+/// A type alias, e.g. `type MyResult = Result[String, MyError];`.
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct TypeAlias {
     pub visibility: Visibility,
@@ -352,12 +341,11 @@ pub struct TypeAlias {
     pub docstring: Option<String>,
 }
 
-/// A where clause item, e.g. `T: Into<String>` and `[T as Iterator].Item = char` in
-/// `where T: Into<String>, [T as Iterator].Item = char`.
+/// A where clause predicate, e.g. `T: ToString`.
 #[derive(Debug, PartialEq, Eq, Clone)]
-pub enum WherePredicate {
-    Eq { left: Type, right: Type },
-    Satisfies { ty: Type, bounds: Bounds },
+pub struct WherePredicate {
+    pub ty: Type,
+    pub bounds: Bounds,
 }
 
 /// An expression.
@@ -454,7 +442,7 @@ pub enum Expression {
     TypeArguments {
         location: Location,
         left: Box<Self>,
-        type_arguments: Vec<TypeArgument>,
+        type_arguments: Vec<Type>,
     },
 
     /// Tuple expression, e.g. `(a, 32, \"hello\")`.
@@ -491,15 +479,6 @@ pub enum Expression {
 pub struct LambdaFunctionParameter {
     pub name: IdentifierAST,
     pub ty: Option<Type>,
-}
-
-/// A type argument, e.g. `Item = uint32` in `Iterator[Item = uint32]`, `usize` in `sizeof[usize]()`.
-#[derive(Debug, PartialEq, Eq, Clone, Hash)]
-pub enum TypeArgument {
-    /// Just a type, e.g. `usize` in `sizeof[usize]()`.
-    Type(Type),
-    /// Type with a name, e.g. `Item = uint32` in `Iterator[Item = uint32]`.
-    AssociatedType { name: IdentifierAST, value: Type },
 }
 
 impl Expression {
@@ -893,19 +872,6 @@ pub enum Statement {
 /// A block of statements - `{ <stmt>* }`.
 pub type StatementsBlock = Vec<Statement>;
 
-/// A type implementation.
-#[derive(Debug, Clone, PartialEq)]
-pub struct Impl {
-    /// Location of the `impl` keyword.
-    pub location: Location,
-    pub generic_parameters: Option<Vec<GenericParameter>>,
-    pub ty: Type,
-    pub r#trait: Option<Type>,
-    pub where_predicates: Option<Vec<WherePredicate>>,
-    pub items: Vec<TraitItem>,
-    pub docstring: Option<String>,
-}
-
 /// A module item.
 #[derive(Debug, PartialEq, Clone)]
 pub enum ModuleItem {
@@ -916,6 +882,7 @@ pub enum ModuleItem {
         generic_parameters: Option<Vec<GenericParameter>>,
         where_predicates: Option<Vec<WherePredicate>>,
         items: Vec<EnumItem>,
+        implements: Option<Bounds>,
         docstring: Option<String>,
     },
 
@@ -931,18 +898,16 @@ pub enum ModuleItem {
         path: ImportPath,
     },
 
-    /// Trait item.
-    Trait {
+    /// Interface item.
+    Interface {
         visibility: Visibility,
         name: IdentifierAST,
         generic_parameters: Option<Vec<GenericParameter>>,
         where_predicates: Option<Vec<WherePredicate>>,
-        items: Vec<TraitItem>,
+        methods: Vec<Function>,
+        implements: Option<Bounds>,
         docstring: Option<String>,
     },
-
-    /// Impl item.
-    Impl(Impl),
 
     /// Struct item.
     Struct {
@@ -950,7 +915,8 @@ pub enum ModuleItem {
         name: IdentifierAST,
         generic_parameters: Option<Vec<GenericParameter>>,
         where_predicates: Option<Vec<WherePredicate>>,
-        fields: Vec<StructField>,
+        items: Vec<StructItem>,
+        implements: Option<Bounds>,
         docstring: Option<String>,
     },
 
@@ -961,6 +927,8 @@ pub enum ModuleItem {
         generic_parameters: Option<Vec<GenericParameter>>,
         where_predicates: Option<Vec<WherePredicate>>,
         fields: Vec<TupleField>,
+        methods: Vec<Function>,
+        implements: Option<Bounds>,
         docstring: Option<String>,
     },
 
@@ -986,13 +954,12 @@ impl ModuleItem {
                     },
                 ..
             })
-            | Self::Impl(Impl { location, .. })
             | Self::Import { location, .. }
             | Self::Struct {
                 name: IdentifierAST { location, .. },
                 ..
             }
-            | Self::Trait {
+            | Self::Interface {
                 name: IdentifierAST { location, .. },
                 ..
             }
@@ -1032,7 +999,7 @@ impl ModuleItem {
                 name: IdentifierAST { symbol, .. },
                 ..
             }
-            | Self::Trait {
+            | Self::Interface {
                 name: IdentifierAST { symbol, .. },
                 ..
             }
@@ -1040,7 +1007,7 @@ impl ModuleItem {
                 name: IdentifierAST { symbol, .. },
                 ..
             }) => Some(*symbol),
-            Self::Import { .. } | Self::Impl(..) => None,
+            Self::Import { .. } => None,
         }
     }
 
@@ -1063,8 +1030,7 @@ impl ModuleItem {
             Self::Enum { .. } => ModuleItemKind::Enum,
             Self::Function(..) => ModuleItemKind::Function,
             Self::Import { .. } => ModuleItemKind::Import,
-            Self::Trait { .. } => ModuleItemKind::Trait,
-            Self::Impl(..) => ModuleItemKind::Impl,
+            Self::Interface { .. } => ModuleItemKind::Interface,
             Self::Struct { .. } => ModuleItemKind::Struct,
             Self::TupleLikeStruct { .. } => ModuleItemKind::TupleLikeStruct,
             Self::TypeAlias(..) => ModuleItemKind::TypeAlias,
@@ -1079,13 +1045,13 @@ impl ModuleItem {
             Self::Enum { visibility, .. }
             | Self::Struct { visibility, .. }
             | Self::TupleLikeStruct { visibility, .. }
-            | Self::Trait { visibility, .. }
+            | Self::Interface { visibility, .. }
             | Self::TypeAlias(TypeAlias { visibility, .. })
             | Self::Function(Function {
                 signature: FunctionSignature { visibility, .. },
                 ..
             }) => Some(*visibility),
-            _ => None,
+            Self::Import { .. } => None,
         }
     }
 
@@ -1107,8 +1073,7 @@ pub enum ModuleItemKind {
     Enum,
     Function,
     Import,
-    Trait,
-    Impl,
+    Interface,
     Struct,
     TupleLikeStruct,
     TypeAlias,
@@ -1120,8 +1085,7 @@ impl AsRef<str> for ModuleItemKind {
             Self::Enum => "enum",
             Self::Function => "function",
             Self::Import => "import",
-            Self::Trait => "trait",
-            Self::Impl => "type implementation",
+            Self::Interface => "interface",
             Self::Struct => "struct",
             Self::TupleLikeStruct => "tuple-like struct",
             Self::TypeAlias => "type alias",
@@ -1136,7 +1100,7 @@ impl Display for ModuleItemKind {
 }
 
 /// An enum item, e.g. `None`, `Ok(T)`, `A { b: T }`.
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum EnumItem {
     /// Just an identifier, e.g. `None` in `enum Option[T] { Some(T), None }`.
     Just {
@@ -1155,6 +1119,7 @@ pub enum EnumItem {
         fields: Vec<StructField>,
         docstring: Option<String>,
     },
+    Method(Function),
 }
 
 /// A tuple field, e.g. `pub String` in `pub struct Wrapper(pub String);`.
@@ -1173,14 +1138,11 @@ pub struct StructField {
     pub docstring: Option<String>,
 }
 
-/// A trait item - type alias or a function.
+/// A struct item: method or a field.
 #[derive(Debug, PartialEq, Clone)]
-pub enum TraitItem {
-    /// Type alias item.
-    TypeAlias(TypeAlias),
-
-    /// Function item.
-    AssociatedFunction(Function),
+pub enum StructItem {
+    Field(StructField),
+    Method(Function),
 }
 
 /// A function.

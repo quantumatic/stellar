@@ -35,22 +35,13 @@ macro_rules! expected {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum UnnecessaryVisibilityQualifierContext {
     /// ```ry
-    /// pub impl A for B {}
-    /// ^^^
-    /// ```
-    Impl,
-
-    /// ```ry
-    /// pub trait F {
+    /// pub interface F {
     ///     pub fun t() {}
-    ///     ^^^
-    ///
-    ///     pub type A;
     ///     ^^^
     /// }
     /// ```
-    TraitItem {
-        /// Location of a trait name.
+    InterfaceMethod {
+        /// Location of a method name.
         name_location: Location,
     },
 
@@ -176,7 +167,9 @@ impl BuildDiagnostic for UnnecessaryVisibilityQualifierDiagnostic {
             .to_primary_label()
             .with_message("consider removing this `pub`")];
 
-        if let UnnecessaryVisibilityQualifierContext::TraitItem { name_location } = self.context {
+        if let UnnecessaryVisibilityQualifierContext::InterfaceMethod { name_location } =
+            self.context
+        {
             labels.push(
                 name_location
                     .to_secondary_label()
@@ -189,15 +182,11 @@ impl BuildDiagnostic for UnnecessaryVisibilityQualifierDiagnostic {
             .with_code("E004")
             .with_labels(labels)
             .with_notes(match self.context {
-                UnnecessaryVisibilityQualifierContext::Impl => {
+                UnnecessaryVisibilityQualifierContext::InterfaceMethod { .. } => {
                     vec![
-                        "note: using `pub` will not make the type implementation public".to_owned(),
-                    ]
-                }
-                UnnecessaryVisibilityQualifierContext::TraitItem { .. } => {
-                    vec![
-                        "note: using `pub` for trait item will not make the item public".to_owned(),
-                        "note: all trait items are public by default".to_owned(),
+                        "note: using `pub` for interface method will not make the method public"
+                            .to_owned(),
+                        "note: all interface methods are public by default".to_owned(),
                     ]
                 }
                 UnnecessaryVisibilityQualifierContext::Import => {

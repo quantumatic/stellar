@@ -9,17 +9,15 @@ use crate::{
         walk_lambda_function_parameters, walk_match_expression_item, walk_match_expression_items,
         walk_module, walk_module_item, walk_path, walk_statement, walk_statements_block,
         walk_struct_expression_item, walk_struct_expression_items, walk_struct_field,
-        walk_struct_field_pattern, walk_struct_field_patterns, walk_struct_fields,
-        walk_there_predicate, walk_trait_bounds, walk_trait_item, walk_trait_items,
-        walk_tuple_field, walk_tuple_fields, walk_type, walk_type_alias, walk_type_argument,
-        walk_type_arguments, walk_type_implementation, walk_type_path, walk_type_path_segment,
-        walk_where_predicates, Visitor,
+        walk_struct_field_pattern, walk_struct_field_patterns, walk_struct_items,
+        walk_there_predicate, walk_tuple_field, walk_tuple_fields, walk_type, walk_type_alias,
+        walk_type_constructor, walk_where_predicates, Visitor,
     },
-    BinaryOperator, EnumItem, Expression, Function, GenericParameter, IdentifierAST, Impl,
+    BinaryOperator, Bounds, EnumItem, Expression, Function, GenericParameter, IdentifierAST,
     ImportPath, LambdaFunctionParameter, Literal, MatchExpressionItem, Module, ModuleItem, Path,
     Pattern, PostfixOperator, PrefixOperator, Statement, StatementsBlock, StructExpressionItem,
-    StructField, StructFieldPattern, TraitItem, TupleField, Type, TypeAlias, TypeArgument,
-    TypePath, TypePathSegment, Visibility, WherePredicate,
+    StructField, StructFieldPattern, StructItem, TupleField, Type, TypeAlias, TypeConstructor,
+    Visibility, WherePredicate,
 };
 
 /// A struct that allows to serialize a Ry module into a string, for debug purposes.
@@ -162,28 +160,6 @@ impl Visitor<'_> for Serializer<'_> {
         self.decrement_indentation();
     }
 
-    fn visit_type_argument(&mut self, argument: &'_ TypeArgument) {
-        self.increment_indentation();
-        self.write_identation();
-
-        self.write("TYPE_ARGUMENT");
-        self.write_newline();
-        walk_type_argument(self, argument);
-
-        self.decrement_indentation();
-    }
-
-    fn visit_type_arguments(&mut self, arguments: &'_ [TypeArgument]) {
-        self.increment_indentation();
-        self.write_identation();
-
-        self.write("TYPE_ARGUMENTS");
-        self.write_newline();
-        walk_type_arguments(self, arguments);
-
-        self.decrement_indentation();
-    }
-
     fn visit_generic_parameter(&mut self, parameter: &'_ GenericParameter) {
         self.increment_indentation();
         self.write_identation();
@@ -271,10 +247,9 @@ impl Visitor<'_> for Serializer<'_> {
         match item {
             ModuleItem::Enum { .. } => self.write("ENUM_GLOBAL_ITEM"),
             ModuleItem::Function(..) => self.write("FUNCTION_GLOBAL_ITEM"),
-            ModuleItem::Impl(..) => self.write("IMPL_GLOBAL_ITEM"),
+            ModuleItem::Interface { .. } => self.write("INTERFACE_GLOBAL_ITEM"),
             ModuleItem::Import { .. } => self.write("IMPORT"),
             ModuleItem::Struct { .. } => self.write("STRUCT_GLOBAL_ITEM"),
-            ModuleItem::Trait { .. } => self.write("TRAIT_GLOBAL_ITEM"),
             ModuleItem::TupleLikeStruct { .. } => self.write("TUPLE_LIKE_STRUCT_GLOBAL_ITEM"),
             ModuleItem::TypeAlias(..) => self.write("TYPE_ALIAS_GLOBAL_ITEM"),
         }
@@ -502,50 +477,24 @@ impl Visitor<'_> for Serializer<'_> {
         self.decrement_indentation();
     }
 
-    fn visit_struct_fields(&mut self, fields: &'_ [StructField]) {
+    fn visit_struct_items(&mut self, items: &'_ [StructItem]) {
         self.increment_indentation();
         self.write_identation();
 
         self.write("STRUCT_FIELDS");
         self.write_newline();
 
-        walk_struct_fields(self, fields);
+        walk_struct_items(self, items);
 
         self.decrement_indentation();
     }
 
-    fn visit_trait_bounds(&mut self, bounds: &'_ [TypePathSegment]) {
+    fn visit_bounds(&mut self, _: &'_ Bounds) {
         self.increment_indentation();
         self.write_identation();
 
-        self.write("TRAIT_BOUNDS");
+        self.write("BOUNDS");
         self.write_newline();
-
-        walk_trait_bounds(self, bounds);
-
-        self.decrement_indentation();
-    }
-
-    fn visit_trait_item(&mut self, item: &'_ TraitItem) {
-        self.increment_indentation();
-        self.write_identation();
-
-        self.write("TRAIT_ITEM");
-        self.write_newline();
-
-        walk_trait_item(self, item);
-
-        self.decrement_indentation();
-    }
-
-    fn visit_trait_items(&mut self, items: &'_ [TraitItem]) {
-        self.increment_indentation();
-        self.write_identation();
-
-        self.write("TRAIT_ITEMS");
-        self.write_newline();
-
-        walk_trait_items(self, items);
 
         self.decrement_indentation();
     }
@@ -581,10 +530,9 @@ impl Visitor<'_> for Serializer<'_> {
         match ty {
             Type::Function { .. } => self.write("FUNCTION_TYPE"),
             Type::Tuple { .. } => self.write("TUPLE_TYPE"),
-            Type::Path { .. } => self.write("PATH_TYPE"),
-            Type::TraitObject { .. } => self.write("TRAIT_OBJECT_TYPE"),
+            Type::Constructor { .. } => self.write("CONSTRUCTOR_TYPE"),
+            Type::InterfaceObject { .. } => self.write("INTERFACE_OBJECT_TYPE"),
             Type::Parenthesized { .. } => self.write("PARENTHESIZED_TYPE"),
-            Type::WithQualifiedPath { .. } => self.write("WITH_QUALIFIED_PATH_TYPE"),
         }
         self.write(format!(" <{}>", ty.location()));
         self.write_newline();
@@ -606,38 +554,14 @@ impl Visitor<'_> for Serializer<'_> {
         self.decrement_indentation();
     }
 
-    fn visit_type_implementation(&mut self, implementation: &'_ Impl) {
-        self.increment_indentation();
-        self.write_identation();
-
-        self.write("TYPE_IMPLEMENTATION");
-        self.write_newline();
-
-        walk_type_implementation(self, implementation);
-
-        self.decrement_indentation();
-    }
-
-    fn visit_type_path(&mut self, path: &'_ TypePath) {
+    fn visit_type_constructor(&mut self, path: &'_ TypeConstructor) {
         self.increment_indentation();
         self.write_identation();
 
         self.write(format!("TYPE_PATH <{}>", path.location));
         self.write_newline();
 
-        walk_type_path(self, path);
-
-        self.decrement_indentation();
-    }
-
-    fn visit_type_path_segment(&mut self, segment: &'_ TypePathSegment) {
-        self.increment_indentation();
-        self.write_identation();
-
-        self.write(format!("TYPE_PATH_SEGMENT <{}>", segment.location));
-        self.write_newline();
-
-        walk_type_path_segment(self, segment);
+        walk_type_constructor(self, path);
 
         self.decrement_indentation();
     }

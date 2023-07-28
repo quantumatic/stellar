@@ -1,26 +1,21 @@
 use ry_ast::{
-    token::RawToken, Bounds, GenericParameter, Path, Token, Type, TypeArgument, TypePath,
-    TypePathSegment, WherePredicate,
+    token::RawToken, Bounds, GenericParameter, Token, Type, TypeConstructor, WherePredicate,
 };
 
 use crate::{
     diagnostics::UnexpectedTokenDiagnostic, expected, macros::parse_list, path::PathParser,
-    OptionalParser, Parse, ParseState,
+    OptionallyParse, Parse, ParseState,
 };
 
 pub(crate) struct BoundsParser;
 
 pub(crate) struct TypeParser;
 
-struct TypeWithQualifiedPathParser;
-
-struct TraitObjectTypeParser;
+struct InterfaceObjectTypeParser;
 
 struct ParenthesizedTupleOrFunctionTypeParser;
 
-struct TypePathParser;
-
-struct TypePathSegmentParser;
+struct TypeConstructorParser;
 
 pub(crate) struct GenericParametersParser;
 
@@ -33,12 +28,12 @@ impl Parse for BoundsParser {
 
     fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
         let mut bounds = vec![];
-        bounds.push(TypePathSegmentParser.parse(state)?);
+        bounds.push(TypeConstructorParser.parse(state)?);
 
         while state.next_token.raw == Token![+] {
             state.advance();
 
-            bounds.push(TypePathSegmentParser.parse(state)?);
+            bounds.push(TypeConstructorParser.parse(state)?);
         }
 
         Some(bounds)
@@ -51,9 +46,8 @@ impl Parse for TypeParser {
     fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
         match state.next_token.raw {
             Token!['('] => ParenthesizedTupleOrFunctionTypeParser.parse(state),
-            RawToken::Identifier => TypePathParser.parse(state).map(Type::Path),
-            Token![dyn] => TraitObjectTypeParser.parse(state),
-            Token!['['] => TypeWithQualifiedPathParser.parse(state),
+            RawToken::Identifier => TypeConstructorParser.parse(state).map(Type::Constructor),
+            Token![dyn] => InterfaceObjectTypeParser.parse(state),
             _ => {
                 state.add_diagnostic(UnexpectedTokenDiagnostic::new(
                     state.next_token,
@@ -67,39 +61,7 @@ impl Parse for TypeParser {
     }
 }
 
-impl Parse for TypeWithQualifiedPathParser {
-    type Output = Option<Type>;
-
-    fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
-        let start = state.next_token.location.start;
-        state.advance(); // `[`
-
-        let left = Box::new(TypeParser.parse(state)?);
-        state.consume(Token![as], "type with qualified path")?;
-
-        let right = TypePathParser.parse(state)?;
-
-        state.consume(Token![']'], "type with qualified path")?;
-        state.consume(Token![.], "type with qualified path")?;
-
-        let mut segments = vec![TypePathSegmentParser.parse(state)?];
-
-        while state.next_token.raw == Token![.] {
-            state.advance();
-
-            segments.push(TypePathSegmentParser.parse(state)?);
-        }
-
-        Some(Type::WithQualifiedPath {
-            location: state.location_from(start),
-            left,
-            right,
-            segments,
-        })
-    }
-}
-
-impl Parse for TraitObjectTypeParser {
+impl Parse for InterfaceObjectTypeParser {
     type Output = Option<Type>;
 
     fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
@@ -107,7 +69,7 @@ impl Parse for TraitObjectTypeParser {
 
         state.advance(); // `dyn`
 
-        Some(Type::TraitObject {
+        Some(Type::InterfaceObject {
             bounds: BoundsParser.parse(state)?,
             location: state.location_from(start),
         })
@@ -181,7 +143,7 @@ impl Parse for ParenthesizedTupleOrFunctionTypeParser {
     }
 }
 
-impl OptionalParser for GenericParametersParser {
+impl OptionallyParse for GenericParametersParser {
     type Output = Option<Option<Vec<GenericParameter>>>;
 
     fn optionally_parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
@@ -217,36 +179,14 @@ impl OptionalParser for GenericParametersParser {
     }
 }
 
-impl Parse for TypePathParser {
-    type Output = Option<TypePath>;
-
-    fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
-        let start = state.next_token.location.start;
-
-        let mut segments = vec![];
-        segments.push(TypePathSegmentParser.parse(state)?);
-
-        while state.next_token.raw == Token![.] {
-            state.advance();
-
-            segments.push(TypePathSegmentParser.parse(state)?);
-        }
-
-        Some(TypePath {
-            location: state.location_from(start),
-            segments,
-        })
-    }
-}
-
-impl Parse for TypePathSegmentParser {
-    type Output = Option<TypePathSegment>;
+impl Parse for TypeConstructorParser {
+    type Output = Option<TypeConstructor>;
 
     fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
         let path = PathParser.parse(state)?;
         let type_arguments = TypeArgumentsParser.optionally_parse(state)?;
 
-        Some(TypePathSegment {
+        Some(TypeConstructor {
             location: state.location_from(path.location.start),
             path,
             type_arguments,
@@ -254,8 +194,8 @@ impl Parse for TypePathSegmentParser {
     }
 }
 
-impl OptionalParser for TypeArgumentsParser {
-    type Output = Option<Option<Vec<TypeArgument>>>;
+impl OptionallyParse for TypeArgumentsParser {
+    type Output = Option<Option<Vec<Type>>>;
 
     fn optionally_parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
         if state.next_token.raw != Token!['['] {
@@ -266,34 +206,13 @@ impl OptionalParser for TypeArgumentsParser {
     }
 }
 impl Parse for TypeArgumentsParser {
-    type Output = Option<Vec<TypeArgument>>;
+    type Output = Option<Vec<Type>>;
 
     fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
         state.advance();
 
-        let result = parse_list!(state, "generic arguments", Token![']'], {
-            let ty = TypeParser.parse(state)?;
-
-            match (state.next_token.raw, &ty) {
-                (Token![=], Type::Path(TypePath { segments, .. })) => match segments.as_slice() {
-                    [TypePathSegment {
-                        path: Path { identifiers, .. },
-                        type_arguments: None,
-                        ..
-                    }] if identifiers.len() == 1 => {
-                        state.advance();
-                        let value = TypeParser.parse(state)?;
-                        Some(TypeArgument::AssociatedType {
-                            name: *identifiers
-                                .first()
-                                .expect("Cannot get first identifier of type path"),
-                            value,
-                        })
-                    }
-                    _ => None,
-                },
-                _ => Some(TypeArgument::Type(ty)),
-            }
+        let result = parse_list!(state, "type arguments", Token![']'], {
+            TypeParser.parse(state)
         });
 
         state.advance();
@@ -302,7 +221,7 @@ impl Parse for TypeArgumentsParser {
     }
 }
 
-impl OptionalParser for WherePredicatesParser {
+impl OptionallyParse for WherePredicatesParser {
     type Output = Option<Option<Vec<WherePredicate>>>;
 
     fn optionally_parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
@@ -319,28 +238,9 @@ impl OptionalParser for WherePredicatesParser {
             {
                 let left = TypeParser.parse(state)?;
 
-                match state.next_token.raw {
-                    Token![:] => {
-                        state.advance();
+                state.consume(Token![:], "where predicate")?;
 
-                        Some(WherePredicate::Satisfies { ty: left, bounds: BoundsParser.parse(state)? })
-                    },
-                    Token![=] => {
-                        state.advance();
-
-                        Some(WherePredicate::Eq { left, right: TypeParser.parse(state)? })
-                    },
-                    _ => {
-                        state.add_diagnostic(
-                            UnexpectedTokenDiagnostic::new(
-                                state.next_token,
-                                expected!(Token![=], Token![:]),
-                                "where clause",
-                        ));
-
-                        None
-                    }
-                }
+                Some(WherePredicate { ty: left, bounds: BoundsParser.parse(state)? })
             }
         )))
     }

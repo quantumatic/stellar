@@ -9,6 +9,7 @@ impl Parse for PathParser {
 
     fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
         let mut identifiers = vec![];
+
         let first_identifier = state.consume_identifier("path")?;
         identifiers.push(first_identifier);
 

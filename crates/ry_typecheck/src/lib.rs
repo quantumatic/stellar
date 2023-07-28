@@ -1,3 +1,5 @@
+#![allow(warnings)]
+
 use std::sync::Arc;
 
 use ry_ast::DefinitionID;
@@ -5,8 +7,8 @@ use ry_diagnostics::GlobalDiagnostics;
 use ry_fx_hash::FxHashMap;
 use ry_hir::{Module, ModuleItem};
 use ry_interner::{IdentifierInterner, PathID, PathInterner, Symbol};
-use ry_name_resolution::GlobalResolutionContext;
-use ry_thir::ty::Type;
+use ry_name_resolution::{GlobalResolutionContext, ModuleResolutionContext, NameBindingData};
+use ry_thir::ty::{self, Type};
 use trait_resolution::TraitResolutionContext;
 
 pub mod diagnostics;
@@ -51,5 +53,32 @@ impl<'i, 'p, 'd> TypeCheckingContext<'i, 'p, 'd> {
                 item,
             );
         }
+    }
+
+    pub fn resolve_trait_name(
+        &self,
+        module_context: &ModuleResolutionContext,
+        path: ry_hir::Path,
+    ) -> ty::Path {
+        let mut name_binding = NameBindingData::Module(module_context);
+
+        for identifier in path.identifiers {
+            name_binding = match name_binding {
+                NameBindingData::Package(package) => package
+                    .root
+                    .resolve_symbol(&self.name_resolution_context, identifier.symbol)
+                    .unwrap(),
+                NameBindingData::Module(module) => module
+                    .resolve_symbol(&self.name_resolution_context, identifier.symbol)
+                    .unwrap(),
+                item @ NameBindingData::Item(..) => {
+                    break;
+
+                    item
+                }
+            }
+        }
+
+        todo!()
     }
 }

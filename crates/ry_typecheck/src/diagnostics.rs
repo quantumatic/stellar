@@ -63,3 +63,18 @@ impl BuildDiagnostic for ExpectedNominalTypeInInherentImplDiagnostic {
             ])
     }
 }
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct PrimitiveTypeInInherentImplDiagnostic {
+    pub location: Location,
+}
+
+impl BuildDiagnostic for PrimitiveTypeInInherentImplDiagnostic {
+    fn build(&self) -> Diagnostic<PathID> {
+        Diagnostic::error()
+            .with_code("E010")
+            .with_message("cannot define inherent impl for primitive types")
+            .with_labels(vec![self.location.to_primary_label()])
+            .with_notes(vec!["consider using an extension trait instead".to_owned()])
+    }
+}

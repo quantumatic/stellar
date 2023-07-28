@@ -12,7 +12,7 @@ impl BuildDiagnostic for UnnecessaryParenthesesInPatternDiagnostic {
     fn build(&self) -> Diagnostic<PathID> {
         Diagnostic::warning()
             .with_code("W000")
-            .with_message("unnecessary parentheses in pattern")
+            .with_message("unnecessary parentheses in the pattern")
             .with_labels(vec![
                 self.location.start_byte_location().to_primary_label(),
                 self.location

@@ -4,14 +4,17 @@ use ry_ast::{Bounds, DefinitionID, IdentifierAST};
 use ry_diagnostics::{BuildDiagnostic, GlobalDiagnostics};
 use ry_filesystem::location::Location;
 use ry_fx_hash::{FxHashMap, FxHashSet};
+use ry_interner::Symbol;
 use ry_thir::ty::{Path, Type, TypePath};
 
-use crate::diagnostics::ExpectedNominalTypeInInherentImplDiagnostic;
+use crate::diagnostics::{
+    ExpectedNominalTypeInInherentImplDiagnostic, PrimitiveTypeInInherentImplDiagnostic,
+};
 
 #[derive(Debug, Default)]
 pub struct TraitResolutionContext {
     traits: FxHashMap<Path, TraitData>,
-    raw_type_implementations: FxHashMap<Path, ImplementationData>,
+    inherent_implementations: FxHashMap<Path, ImplementationData>,
 }
 
 impl TraitResolutionContext {
@@ -39,7 +42,7 @@ impl TraitResolutionContext {
         &self,
         type_absolute_path: impl AsRef<Path>,
     ) -> Option<&ImplementationData> {
-        self.raw_type_implementations
+        self.inherent_implementations
             .get(type_absolute_path.as_ref())
     }
 
@@ -48,7 +51,7 @@ impl TraitResolutionContext {
         &mut self,
         type_absolute_path: impl AsRef<Path>,
     ) -> Option<&mut ImplementationData> {
-        self.raw_type_implementations
+        self.inherent_implementations
             .get_mut(type_absolute_path.as_ref())
     }
 
@@ -60,30 +63,51 @@ impl TraitResolutionContext {
         todo!()
     }
 
-    pub fn add_raw_type_implementation(
+    pub fn add_inherent_implementation(
         &mut self,
-        implementation: &ImplementationData,
+        implementation: ImplementationData,
         diagnostics: &mut GlobalDiagnostics,
     ) {
-        let nominal_type = match &implementation.ty {
-            Type::WithQualifiedPath { .. } => false,
+        let (nominal_type, path) = match &implementation.ty {
+            // [T as Foo].Bar is not considered nominal type in inherent implementation
+            Type::WithQualifiedPath { .. } => (false, None),
             Type::Path {
                 path: TypePath { segments },
             } => {
                 if let [segment] = segments.as_slice() {
-                    if let Path { symbols: _ } = &segment.left {
-                        true
-                    } else {
-                        false
-                    }
+                    // If type path contains type parameter, the type is not nominal:
+                    //
+                    // impl[T] T {}
+                    // impl[T] T.Item where T: Iterator[Item = uint32] {}
+                    (
+                        !implementation
+                            .generic_parameters
+                            .contains_key(segment.left.symbols.first().unwrap()),
+                        Some(Path {
+                            symbols: segment.left.symbols.clone(),
+                        }),
+                    )
                 } else {
-                    false
+                    // List[i32].Item is not considered nominal type
+                    (false, None)
                 }
             }
-            _ => false,
+            _ => {
+                // impl[T] (T,) {}
+                //         ^^^^ trying to implement tuple which is a primitive type
+                diagnostics.add_single_file_diagnostic(
+                    implementation.definition_id.file_path_id,
+                    PrimitiveTypeInInherentImplDiagnostic {
+                        location: implementation.implemented_type_location,
+                    }
+                    .build(),
+                );
+
+                (true, None)
+            }
         };
 
-        if nominal_type {
+        if !nominal_type {
             diagnostics.add_single_file_diagnostic(
                 implementation.definition_id.file_path_id,
                 ExpectedNominalTypeInInherentImplDiagnostic {
@@ -91,6 +115,10 @@ impl TraitResolutionContext {
                 }
                 .build(),
             );
+        }
+
+        if let Some(path) = path {
+            self.inherent_implementations.insert(path, implementation);
         }
     }
 
@@ -304,7 +332,7 @@ impl TraitResolutionContext {
     }
 }
 
-#[derive(Debug, Clone, Hash)]
+#[derive(Debug, Clone)]
 pub struct TraitData {
     pub definition_id: DefinitionID,
     pub generic_parameters: Vec<GenericParameterData>,
@@ -312,10 +340,10 @@ pub struct TraitData {
     pub implementations: Vec<ImplementationData>,
 }
 
-#[derive(Debug, Clone, Hash)]
+#[derive(Debug, Clone)]
 pub struct ImplementationData {
     pub definition_id: DefinitionID,
-    pub generic_parameters: Vec<GenericParameterData>,
+    pub generic_parameters: FxHashMap<Symbol, GenericParameterData>,
     pub constraints: Vec<ConstraintData>,
     pub ty: Type,
     pub implemented_type_location: Location,
@@ -329,6 +357,6 @@ pub enum ConstraintData {
 
 #[derive(Debug, Clone, Hash)]
 pub struct GenericParameterData {
-    pub identifier: IdentifierAST,
+    pub location: Location, // location of a type parameter name
     pub default_value: Type,
 }

@@ -47,38 +47,95 @@ impl<'d> LoweringContext<'d> {
                 generic_parameters,
                 where_predicates,
                 items,
+                implements,
                 docstring,
-            } => ry_hir::ModuleItem::Enum {
-                visibility,
-                name,
-                generic_parameters: self.lower_generic_parameters(generic_parameters),
-                where_predicates: self.lower_where_predicates(where_predicates),
-                items: items
-                    .into_iter()
-                    .map(|item| self.lower_enum_item(item))
-                    .collect(),
-                docstring,
-            },
+            } => {
+                let mut enum_items = vec![];
+                let mut enum_methods = vec![];
+
+                for item in items {
+                    match item {
+                        ry_ast::EnumItem::Just { name, docstring } => {
+                            enum_items.push(ry_hir::EnumItem::Just { name, docstring });
+                        }
+                        ry_ast::EnumItem::TupleLike {
+                            fields,
+                            name,
+                            docstring,
+                        } => {
+                            enum_items.push(ry_hir::EnumItem::TupleLike {
+                                fields: fields
+                                    .into_iter()
+                                    .map(|field| self.lower_tuple_field(field))
+                                    .collect(),
+                                name,
+                                docstring,
+                            });
+                        }
+                        ry_ast::EnumItem::Struct {
+                            fields,
+                            name,
+                            docstring,
+                        } => {
+                            enum_items.push(ry_hir::EnumItem::Struct {
+                                fields: fields
+                                    .into_iter()
+                                    .map(|field| self.lower_struct_field(field))
+                                    .collect(),
+                                name,
+                                docstring,
+                            });
+                        }
+                        ry_ast::EnumItem::Method(method) => {
+                            enum_methods.push(self.lower_function(method));
+                        }
+                    }
+                }
+
+                ry_hir::ModuleItem::Enum {
+                    visibility,
+                    name,
+                    generic_parameters: self.lower_generic_parameters(generic_parameters),
+                    where_predicates: self.lower_where_predicates(where_predicates),
+                    items: enum_items,
+                    methods: enum_methods,
+                    implements,
+                    docstring,
+                }
+            }
             ry_ast::ModuleItem::Struct {
                 visibility,
                 name,
                 generic_parameters,
                 where_predicates,
-                fields,
+                items,
+                implements,
                 docstring,
-            } => ry_hir::ModuleItem::Struct {
-                visibility,
-                name,
-                generic_parameters: self.lower_generic_parameters(generic_parameters),
-                where_predicates: self.lower_where_predicates(where_predicates),
-                fields: fields
-                    .into_iter()
-                    .map(|field| self.lower_struct_field(field))
-                    .collect(),
-                docstring,
-            },
-            ry_ast::ModuleItem::Impl(implementation) => {
-                ry_hir::ModuleItem::Impl(self.lower_implementation(implementation))
+            } => {
+                let mut struct_fields = vec![];
+                let mut struct_methods = vec![];
+
+                for item in items {
+                    match item {
+                        ry_ast::StructItem::Field(field) => {
+                            struct_fields.push(self.lower_struct_field(field));
+                        }
+                        ry_ast::StructItem::Method(method) => {
+                            struct_methods.push(self.lower_function(method));
+                        }
+                    }
+                }
+
+                ry_hir::ModuleItem::Struct {
+                    visibility,
+                    name,
+                    generic_parameters: self.lower_generic_parameters(generic_parameters),
+                    where_predicates: self.lower_where_predicates(where_predicates),
+                    fields: struct_fields,
+                    methods: struct_methods,
+                    implements,
+                    docstring,
+                }
             }
             ry_ast::ModuleItem::Function(function) => {
                 ry_hir::ModuleItem::Function(self.lower_function(function))
@@ -95,6 +152,8 @@ impl<'d> LoweringContext<'d> {
                 generic_parameters,
                 where_predicates,
                 fields,
+                methods,
+                implements,
                 docstring,
             } => ry_hir::ModuleItem::TupleLikeStruct {
                 visibility,
@@ -105,24 +164,31 @@ impl<'d> LoweringContext<'d> {
                     .into_iter()
                     .map(|field| self.lower_tuple_field(field))
                     .collect(),
+                methods: methods
+                    .into_iter()
+                    .map(|method| self.lower_function(method))
+                    .collect(),
+                implements,
                 docstring,
             },
-            ry_ast::ModuleItem::Trait {
+            ry_ast::ModuleItem::Interface {
                 visibility,
                 name,
                 generic_parameters,
                 where_predicates,
-                items,
+                methods,
+                implements,
                 docstring,
-            } => ry_hir::ModuleItem::Trait {
+            } => ry_hir::ModuleItem::Interface {
                 visibility,
                 name,
                 generic_parameters: self.lower_generic_parameters(generic_parameters),
                 where_predicates: self.lower_where_predicates(where_predicates),
-                items: items
+                methods: methods
                     .into_iter()
-                    .map(|item| self.lower_trait_item(item))
+                    .map(|method| self.lower_function(method))
                     .collect(),
+                implements,
                 docstring,
             },
         }
@@ -148,8 +214,6 @@ impl<'d> LoweringContext<'d> {
             ry_ast::Statement::Defer { call } => {
                 let call = self.lower_expression(call);
 
-                // todo: emit diagnostics if call is not call expression
-
                 ry_hir::Statement::Defer { call }
             }
             ry_ast::Statement::Return { expression } => ry_hir::Statement::Return {
@@ -173,8 +237,6 @@ impl<'d> LoweringContext<'d> {
     fn lower_pattern(&mut self, ast: ry_ast::Pattern) -> ry_hir::Pattern {
         match ast {
             ry_ast::Pattern::Grouped { location, inner } => {
-                // todo: emit diagnostics
-
                 self.add_diagnostic(UnnecessaryParenthesesInPatternDiagnostic { location });
 
                 self.lower_pattern(*inner)
@@ -505,27 +567,10 @@ impl<'d> LoweringContext<'d> {
         )
     }
 
-    fn lower_type_arguments(
-        &mut self,
-        ast: Vec<ry_ast::TypeArgument>,
-    ) -> Vec<ry_hir::TypeArgument> {
+    fn lower_type_arguments(&mut self, ast: Vec<ry_ast::Type>) -> Vec<ry_hir::Type> {
         ast.into_iter()
-            .map(|type_argument| self.lower_type_argument(type_argument))
+            .map(|type_argument| self.lower_type(type_argument))
             .collect()
-    }
-
-    fn lower_type_argument(&mut self, ast: ry_ast::TypeArgument) -> ry_hir::TypeArgument {
-        match ast {
-            ry_ast::TypeArgument::Type(ty) => ry_hir::TypeArgument::Type {
-                ty: self.lower_type(ty),
-            },
-            ry_ast::TypeArgument::AssociatedType { name, value } => {
-                ry_hir::TypeArgument::AssociatedType {
-                    name,
-                    value: self.lower_type(value),
-                }
-            }
-        }
     }
 
     fn lower_function_signature(
@@ -585,33 +630,6 @@ impl<'d> LoweringContext<'d> {
         }
     }
 
-    fn lower_implementation(&mut self, ast: ry_ast::Impl) -> ry_hir::Impl {
-        ry_hir::Impl {
-            location: ast.location,
-            generic_parameters: self.lower_generic_parameters(ast.generic_parameters),
-            ty: self.lower_type(ast.ty),
-            r#trait: None,
-            where_predicates: self.lower_where_predicates(ast.where_predicates),
-            items: ast
-                .items
-                .into_iter()
-                .map(|item| self.lower_trait_item(item))
-                .collect(),
-            docstring: None,
-        }
-    }
-
-    fn lower_trait_item(&mut self, ast: ry_ast::TraitItem) -> ry_hir::TraitItem {
-        match ast {
-            ry_ast::TraitItem::TypeAlias(alias) => {
-                ry_hir::TraitItem::TypeAlias(self.lower_type_alias(alias))
-            }
-            ry_ast::TraitItem::AssociatedFunction(function) => {
-                ry_hir::TraitItem::AssociatedFunction(self.lower_function(function))
-            }
-        }
-    }
-
     fn lower_type_alias(&mut self, ast: ry_ast::TypeAlias) -> ry_hir::TypeAlias {
         ry_hir::TypeAlias {
             visibility: ast.visibility,
@@ -620,38 +638,6 @@ impl<'d> LoweringContext<'d> {
             bounds: ast.bounds,
             value: ast.value.map(|ty| self.lower_type(ty)),
             docstring: ast.docstring,
-        }
-    }
-
-    fn lower_enum_item(&mut self, ast: ry_ast::EnumItem) -> ry_hir::EnumItem {
-        match ast {
-            ry_ast::EnumItem::Just { name, docstring } => {
-                ry_hir::EnumItem::Just { name, docstring }
-            }
-            ry_ast::EnumItem::Struct {
-                name,
-                fields,
-                docstring,
-            } => ry_hir::EnumItem::Struct {
-                name,
-                fields: fields
-                    .into_iter()
-                    .map(|field| self.lower_struct_field(field))
-                    .collect(),
-                docstring,
-            },
-            ry_ast::EnumItem::TupleLike {
-                name,
-                fields,
-                docstring,
-            } => ry_hir::EnumItem::TupleLike {
-                name,
-                fields: fields
-                    .into_iter()
-                    .map(|field| self.lower_tuple_field(field))
-                    .collect(),
-                docstring,
-            },
         }
     }
 
@@ -711,15 +697,9 @@ impl<'d> LoweringContext<'d> {
     }
 
     fn lower_where_predicate(&mut self, ast: ry_ast::WherePredicate) -> ry_hir::WherePredicate {
-        match ast {
-            ry_ast::WherePredicate::Eq { left, right } => ry_hir::WherePredicate::Eq {
-                left_type: self.lower_type(left),
-                right_type: self.lower_type(right),
-            },
-            ry_ast::WherePredicate::Satisfies { ty, bounds } => ry_hir::WherePredicate::Satisfies {
-                ty: self.lower_type(ty),
-                bounds,
-            },
+        ry_hir::WherePredicate {
+            ty: self.lower_type(ast.ty),
+            bounds: ast.bounds,
         }
     }
 
@@ -737,7 +717,7 @@ impl<'d> LoweringContext<'d> {
                     .collect(),
                 return_type: Box::new(self.lower_type(*return_type)),
             },
-            ry_ast::Type::Path(path) => ry_hir::Type::Path(path),
+            ry_ast::Type::Constructor(constructor) => ry_hir::Type::Constructor(constructor),
             ry_ast::Type::Parenthesized { inner, .. } => {
                 if let ry_ast::Type::Parenthesized { location, .. } = *inner {
                     self.add_diagnostic(UnnecessaryParenthesizedExpression { location });
@@ -745,8 +725,8 @@ impl<'d> LoweringContext<'d> {
 
                 self.lower_type(*inner)
             }
-            ry_ast::Type::TraitObject { location, bounds } => {
-                ry_hir::Type::TraitObject { location, bounds }
+            ry_ast::Type::InterfaceObject { location, bounds } => {
+                ry_hir::Type::InterfaceObject { location, bounds }
             }
             ry_ast::Type::Tuple {
                 location,
@@ -757,17 +737,6 @@ impl<'d> LoweringContext<'d> {
                     .into_iter()
                     .map(|ty| self.lower_type(ty))
                     .collect(),
-            },
-            ry_ast::Type::WithQualifiedPath {
-                location,
-                left,
-                right,
-                segments,
-            } => ry_hir::Type::WithQualifiedPath {
-                location,
-                left: Box::new(self.lower_type(*left)),
-                right,
-                segments,
             },
         }
     }

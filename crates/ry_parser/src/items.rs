@@ -1,9 +1,8 @@
 use ry_ast::{
-    token::RawToken, EnumItem, Function, FunctionParameter, FunctionSignature, IdentifierAST, Impl,
+    token::RawToken, EnumItem, Function, FunctionParameter, FunctionSignature, IdentifierAST,
     ModuleItem, ModuleItemKind, NotSelfFunctionParameter, SelfFunctionParameter, StructField,
-    Token, TraitItem, TupleField, TypeAlias, Visibility,
+    StructItem, Token, TupleField, TypeAlias, Visibility,
 };
-use ry_filesystem::location::Location;
 use ry_interner::builtin_symbols;
 
 use crate::{
@@ -16,7 +15,7 @@ use crate::{
     path::ImportPathParser,
     r#type::{BoundsParser, GenericParametersParser, TypeParser, WherePredicatesParser},
     statement::StatementsBlockParser,
-    OptionalParser, Parse, ParseState, VisibilityParser,
+    OptionallyParse, Parse, ParseState, VisibilityParser,
 };
 
 struct ImportParser {
@@ -30,7 +29,10 @@ struct StructParser {
 
 struct StructFieldsParser;
 
+struct StructItemsParser;
+
 struct StructFieldParser {
+    pub(crate) visibility: Visibility,
     pub(crate) docstring: Option<String>,
 }
 
@@ -46,17 +48,7 @@ struct TypeAliasParser {
     pub(crate) docstring: Option<String>,
 }
 
-struct TraitParser {
-    pub(crate) visibility: Visibility,
-    pub(crate) docstring: Option<String>,
-}
-
-struct TraitItemsParser {
-    pub(crate) name_location: Location,
-    pub(crate) type_implementation: bool,
-}
-
-struct ImplParser {
+struct InterfaceParser {
     pub(crate) visibility: Visibility,
     pub(crate) docstring: Option<String>,
 }
@@ -110,8 +102,6 @@ impl Parse for StructFieldParser {
     type Output = Option<StructField>;
 
     fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
-        let visibility = VisibilityParser.parse(state);
-
         let name = state.consume_identifier("struct field")?;
 
         state.consume(Token![:], "struct field")?;
@@ -119,11 +109,44 @@ impl Parse for StructFieldParser {
         let ty = TypeParser.parse(state)?;
 
         Some(StructField {
-            visibility,
+            visibility: self.visibility,
             name,
             ty,
             docstring: self.docstring,
         })
+    }
+}
+
+impl Parse for StructItemsParser {
+    type Output = Option<Vec<StructItem>>;
+
+    fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
+        state.consume(Token!['{'], "struct items")?;
+
+        let fields = parse_list!(state, "struct items", Token!['}'], {
+            let docstring = state.consume_local_docstring();
+            let visibility = VisibilityParser.parse(state);
+
+            if state.next_token.raw == Token![fun] {
+                FunctionParser {
+                    visibility,
+                    docstring,
+                }
+                .parse(state)
+                .map(StructItem::Method)
+            } else {
+                StructFieldParser {
+                    visibility,
+                    docstring,
+                }
+                .parse(state)
+                .map(StructItem::Field)
+            }
+        });
+
+        state.advance(); // `}`
+
+        Some(fields)
     }
 }
 
@@ -137,6 +160,7 @@ impl Parse for StructFieldsParser {
             Some(
                 StructFieldParser {
                     docstring: state.consume_local_docstring(),
+                    visibility: VisibilityParser.parse(state),
                 }
                 .parse(state)?,
             )
@@ -158,16 +182,26 @@ impl Parse for StructParser {
 
         let generic_parameters = GenericParametersParser.optionally_parse(state)?;
 
+        let implements = if state.next_token.raw == Token![implements] {
+            state.advance();
+
+            Some(BoundsParser.parse(state)?)
+        } else {
+            None
+        };
+
         let where_predicates = WherePredicatesParser.optionally_parse(state)?;
 
         if state.next_token.raw == Token!['{'] {
-            let fields = StructFieldsParser.parse(state)?;
+            let items = StructItemsParser.parse(state)?;
+
             Some(ModuleItem::Struct {
                 visibility: self.visibility,
                 name,
                 generic_parameters,
                 where_predicates,
-                fields,
+                items,
+                implements,
                 docstring: self.docstring,
             })
         } else if state.next_token.raw == Token!['('] {
@@ -176,15 +210,25 @@ impl Parse for StructParser {
             }
             .parse(state)?;
 
-            if state.next_token.raw == Token![;] {
+            let mut methods = vec![];
+
+            if state.next_token.raw != Token![;] {
+                state.consume(Token!['{'], "struct")?;
+
+                while state.next_token.raw == Token!['}'] {
+                    methods.push(
+                        FunctionParser {
+                            visibility: VisibilityParser.parse(state),
+                            docstring: state.consume_local_docstring(),
+                        }
+                        .parse(state)?,
+                    );
+                }
+
                 state.advance();
-            } else {
-                state.add_diagnostic(UnexpectedTokenDiagnostic::new(
-                    state.current_token,
-                    expected!(Token![;]),
-                    "struct item",
-                ));
             }
+
+            state.advance();
 
             Some(ModuleItem::TupleLikeStruct {
                 visibility: self.visibility,
@@ -192,6 +236,8 @@ impl Parse for StructParser {
                 generic_parameters,
                 where_predicates,
                 fields,
+                methods,
+                implements,
                 docstring: self.docstring,
             })
         } else {
@@ -297,56 +343,6 @@ impl Parse for FunctionParser {
     }
 }
 
-impl Parse for TraitItemsParser {
-    type Output = Option<(Vec<TraitItem>, bool)>;
-
-    fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
-        let mut items = vec![];
-
-        while state.next_token.raw != Token!['}'] {
-            let docstring = state.consume_local_docstring();
-
-            if let Some(location) = VisibilityParser.parse(state).location_of_pub() {
-                if !self.type_implementation {
-                    state.add_diagnostic(UnnecessaryVisibilityQualifierDiagnostic {
-                        location,
-                        context: UnnecessaryVisibilityQualifierContext::TraitItem {
-                            name_location: self.name_location,
-                        },
-                    });
-                }
-            }
-
-            items.push(match state.next_token.raw {
-                Token![fun] => Some(TraitItem::AssociatedFunction(
-                    FunctionParser {
-                        visibility: Visibility::private(),
-                        docstring,
-                    }
-                    .parse(state)?,
-                )),
-                Token![type] => Some(TraitItem::TypeAlias(
-                    TypeAliasParser {
-                        visibility: Visibility::private(),
-                        docstring,
-                    }
-                    .parse(state)?,
-                )),
-                _ => {
-                    state.add_diagnostic(UnexpectedTokenDiagnostic::new(
-                        state.next_token,
-                        expected!(Token![fun], Token![type]),
-                        "trait item",
-                    ));
-                    None
-                }
-            }?);
-        }
-
-        Some((items, false))
-    }
-}
-
 impl Parse for TypeAliasParser {
     type Output = Option<TypeAlias>;
 
@@ -385,91 +381,47 @@ impl Parse for TypeAliasParser {
     }
 }
 
-impl Parse for TraitParser {
+impl Parse for InterfaceParser {
     type Output = Option<ModuleItem>;
 
     fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
         state.advance();
 
-        let name = state.consume_identifier("trait name in trait declaration")?;
+        let name = state.consume_identifier("interface name in interface declaration")?;
 
         let generic_parameters = GenericParametersParser.optionally_parse(state)?;
 
+        let implements = if state.next_token.raw == Token![implements] {
+            state.advance();
+
+            Some(BoundsParser.parse(state)?)
+        } else {
+            None
+        };
+
         let where_predicates = WherePredicatesParser.optionally_parse(state)?;
 
-        state.consume(Token!['{'], "trait declaration")?;
+        state.consume(Token!['{'], "interface declaration")?;
 
-        let items = TraitItemsParser {
-            name_location: name.location,
-            type_implementation: false,
-        }
-        .parse(state)?;
+        let methods = parse_list!(state, "interface methods", Token!['}'], {
+            FunctionParser {
+                docstring: state.consume_local_docstring(),
+                visibility: VisibilityParser.parse(state),
+            }
+            .parse(state)
+        });
 
-        if !items.1 {
-            state.consume(Token!['}'], "trait declaration")?;
-        }
+        state.advance();
 
-        Some(ModuleItem::Trait {
+        Some(ModuleItem::Interface {
             visibility: self.visibility,
             name,
             generic_parameters,
             where_predicates,
-            items: items.0,
+            methods,
+            implements,
             docstring: self.docstring,
         })
-    }
-}
-
-impl Parse for ImplParser {
-    type Output = Option<ModuleItem>;
-
-    fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
-        state.advance();
-
-        let location = state.current_token.location;
-
-        if let Some(location) = self.visibility.location_of_pub() {
-            state.add_diagnostic(UnnecessaryVisibilityQualifierDiagnostic {
-                location,
-                context: UnnecessaryVisibilityQualifierContext::Impl,
-            });
-        }
-
-        let generic_parameters = GenericParametersParser.optionally_parse(state)?;
-
-        let mut ty = TypeParser.parse(state)?;
-        let mut r#trait = None;
-
-        if state.next_token.raw == Token![for] {
-            state.advance();
-
-            r#trait = Some(ty);
-            ty = TypeParser.parse(state)?;
-        }
-
-        let where_predicates = WherePredicatesParser.optionally_parse(state)?;
-
-        state.consume(Token!['{'], "type implementation")?;
-
-        let items = TraitItemsParser {
-            name_location: location,
-            type_implementation: true,
-        }
-        .parse(state)?;
-
-        if !items.1 {
-            state.consume(Token!['}'], "type implementation")?;
-        }
-
-        Some(ModuleItem::Impl(Impl {
-            location,
-            generic_parameters,
-            ty,
-            r#trait,
-            where_predicates,
-            items: items.0,
-            docstring: self.docstring,
-        }))
     }
 }
 
@@ -483,15 +435,25 @@ impl Parse for EnumParser {
 
         let generic_parameters = GenericParametersParser.optionally_parse(state)?;
 
-        state.consume(Token!['{'], "enum")?;
+        let implements = if state.next_token.raw == Token![implements] {
+            state.advance();
 
-        let items = parse_list!(state, "enum items", Token!['}'], {
-            Some(EnumItemParser.parse(state)?)
-        });
-
-        state.advance(); // `}`
+            Some(BoundsParser.parse(state)?)
+        } else {
+            None
+        };
 
         let where_predicates = WherePredicatesParser.optionally_parse(state)?;
+
+        state.consume(Token!['{'], "enum")?;
+
+        let mut items = vec![];
+
+        while state.next_token.raw != Token!['}'] {
+            items.push(EnumItemParser.parse(state)?);
+        }
+
+        state.advance(); // `}`
 
         Some(ModuleItem::Enum {
             visibility: self.visibility,
@@ -499,6 +461,7 @@ impl Parse for EnumParser {
             generic_parameters,
             where_predicates,
             items,
+            implements,
             docstring: self.docstring,
         })
     }
@@ -508,7 +471,18 @@ impl Parse for EnumItemParser {
     type Output = Option<EnumItem>;
 
     fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
+        let visibility = VisibilityParser.parse(state);
         let docstring = state.consume_local_docstring();
+
+        if state.next_token.raw == Token![fun] {
+            return FunctionParser {
+                visibility,
+                docstring,
+            }
+            .parse(state)
+            .map(EnumItem::Method);
+        }
+
         let name = state.consume_identifier("enum item")?;
 
         match state.next_token.raw {
@@ -581,16 +555,15 @@ impl Parse for ItemsParser {
 }
 
 impl ItemParser {
-    fn go_to_next_item(state: &mut ParseState<'_, '_, '_>) {
+    fn goto_next_valid_item(state: &mut ParseState<'_, '_, '_>) {
         loop {
             match state.next_token.raw {
                 Token![enum]
                 | Token![import]
                 | Token![struct]
-                | Token![trait]
                 | Token![fun]
                 | Token![type]
-                | Token![impl]
+                | Token![interface]
                 | RawToken::EndOfFile => break,
                 _ => state.advance(),
             }
@@ -598,12 +571,12 @@ impl ItemParser {
     }
 }
 
-macro_rules! go_to_next_valid_item {
-    ($iter:ident, $item:expr) => {
+macro_rules! possibly_recover {
+    ($state:ident, $item:expr) => {
         if let Some(item) = $item {
             item
         } else {
-            Self::go_to_next_item($iter);
+            Self::goto_next_valid_item($state);
             return None;
         }
     };
@@ -618,7 +591,7 @@ impl Parse for ItemParser {
 
         Some(match state.next_token.raw {
             Token![enum] => {
-                go_to_next_valid_item!(
+                possibly_recover!(
                     state,
                     EnumParser {
                         visibility,
@@ -628,10 +601,10 @@ impl Parse for ItemParser {
                 )
             }
             Token![import] => {
-                go_to_next_valid_item!(state, ImportParser { visibility }.parse(state))
+                possibly_recover!(state, ImportParser { visibility }.parse(state))
             }
             Token![struct] => {
-                go_to_next_valid_item!(
+                possibly_recover!(
                     state,
                     StructParser {
                         visibility,
@@ -640,17 +613,17 @@ impl Parse for ItemParser {
                     .parse(state)
                 )
             }
-            Token![trait] => {
-                go_to_next_valid_item!(
+            Token![interface] => {
+                possibly_recover!(
                     state,
-                    TraitParser {
+                    InterfaceParser {
                         visibility,
                         docstring
                     }
                     .parse(state)
                 )
             }
-            Token![fun] => ModuleItem::Function(go_to_next_valid_item!(
+            Token![fun] => ModuleItem::Function(possibly_recover!(
                 state,
                 FunctionParser {
                     visibility,
@@ -658,17 +631,7 @@ impl Parse for ItemParser {
                 }
                 .parse(state)
             )),
-            Token![impl] => {
-                go_to_next_valid_item!(
-                    state,
-                    ImplParser {
-                        visibility,
-                        docstring
-                    }
-                    .parse(state)
-                )
-            }
-            Token![type] => ModuleItem::TypeAlias(go_to_next_valid_item!(
+            Token![type] => ModuleItem::TypeAlias(possibly_recover!(
                 state,
                 TypeAliasParser {
                     visibility,
@@ -682,29 +645,15 @@ impl Parse for ItemParser {
                     expected!(
                         Token![import],
                         Token![fun],
-                        Token![trait],
+                        Token![interface],
                         Token![enum],
                         Token![struct],
-                        Token![impl],
-                        Token![type],
-                        RawToken::EndOfFile
+                        Token![type]
                     ),
                     "item",
                 ));
 
-                loop {
-                    match state.next_token.raw {
-                        Token![enum]
-                        | Token![import]
-                        | Token![struct]
-                        | Token![trait]
-                        | Token![fun]
-                        | Token![type]
-                        | Token![impl]
-                        | RawToken::EndOfFile => break,
-                        _ => state.advance(),
-                    }
-                }
+                Self::goto_next_valid_item(state);
                 return None;
             }
         })
