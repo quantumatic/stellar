@@ -15,6 +15,45 @@ struct ReturnStatementParser;
 
 struct LetStatementParser;
 
+// Pattern of a token, that can appear as a beginning of some statement
+// and which we can effectively jump to for error recovering.
+macro_rules! possibly_first_statement_token_pattern {
+    () => {
+        Token![continue]
+            | Token![return]
+            | Token![defer]
+            | Token![let]
+            | possibly_first_expression_token_pattern!()
+    };
+}
+
+// Pattern of a token, that can appear as a beginning of some expression
+// and which we can effectively jump to for error recovering.
+macro_rules! possibly_first_expression_token_pattern {
+    () => {
+        Token![if] | Token![match] | Token![while] | Token![loop]
+    };
+}
+
+// If parsing some statement fails, to recover the error and avoid unnecessary diagnostics,
+// we go to the next statement.
+macro_rules! possibly_recover {
+    ($state:ident, $statement:expr) => {
+        if let Some(statement) = $statement {
+            statement
+        } else {
+            loop {
+                match $state.next_token.raw {
+                    possibly_first_statement_token_pattern!() | RawToken::EndOfFile => break,
+                    _ => $state.advance(),
+                }
+            }
+
+            return None;
+        }
+    };
+}
+
 impl Parse for StatementParser {
     type Output = Option<(Statement, bool)>;
 
@@ -23,9 +62,9 @@ impl Parse for StatementParser {
         let mut must_have_semicolon_at_the_end = true;
 
         let statement = match state.next_token.raw {
-            Token![return] => ReturnStatementParser.parse(state)?,
-            Token![defer] => DeferStatementParser.parse(state)?,
-            Token![let] => LetStatementParser.parse(state)?,
+            Token![return] => possibly_recover!(state, ReturnStatementParser.parse(state)),
+            Token![defer] => possibly_recover!(state, DeferStatementParser.parse(state)),
+            Token![let] => possibly_recover!(state, LetStatementParser.parse(state)),
             Token![continue] => {
                 state.advance();
 
@@ -41,7 +80,7 @@ impl Parse for StatementParser {
                 }
             }
             _ => {
-                let expression = ExpressionParser::default().parse(state)?;
+                let expression = possibly_recover!(state, ExpressionParser::default().parse(state));
 
                 must_have_semicolon_at_the_end = !expression.with_block();
 

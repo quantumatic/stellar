@@ -169,4 +169,3 @@ impl From<ry_ast::Path> for Path {
         }
     }
 }
-
