@@ -84,60 +84,6 @@ fun factorial(n: uint32): uint32 {
 }
 ```
 
-# Type system
-
-Ry also supports Rust trait system:
-
-```
-trait Foo {
-    fun foo();
-}
-
-impl Foo for Bar {
-    fun foo() {
-        println("foo");
-    }
-}
-```
-
-With generics, associated types and type aliases:
-
-```
-trait Iterator {
-    type Item;
-
-    fun next(self): Option[Self.Item];
-}
-
-trait Add[RHS = Self] {
-    type Output;
-
-    fun add(self, rhs: RHS): Self.Output;
-}
-
-type HashMapItem[K, V] = [HashMap[K, V] as IntoIterator].Item;
-```
-
-Ry also supports super traits:
-
-```
-trait MyNumeric: Numeric {}
-
-impl MyNumeric for Complex { ... }
-```
-
-and negative trait bounds:
-
-```
-fun not_default[T](n: T) where T: Not[Default] {
-    ...
-}
-
-fun main() {
-    not_default(3); // error (numbers implement Default trait)
-}
-```
-
 Ry supports function types:
 
 ```
@@ -174,39 +120,11 @@ fun main() {
 }
 ```
 
-If type implements 2 traits having functions with the same names, you can use type qualification:
-
-```
-struct S {}
-
-impl S {
-    fun f() { println("S"); }
-}
-
-trait T1 {
-    fun f() { println("T1 f"); }
-}
-
-impl T1 for S {}
-
-trait T2 {
-    fun f() { println("T2 f"); }
-}
-
-impl T2 for S {}
-
-fun main() {
-    S.f(); // S
-    [S as T1].f(); // T1 f
-    [S as T2].f(); // T2 f
-}
-```
-
 If you want to have to deal with dynamic dispatch, you can use `dyn` type:
 
 ```
 fun main() {
-    let iter = [1, 2, 3].into_iter() as dyn Iterator[Item = uint32];
+    let iter = [1, 2, 3].into_iter() as dyn Iterator[uint32];
 
     assert(iter.next() == Some(1));
 }
@@ -225,16 +143,3 @@ let MyStringWrapper(str) = wrapper;
 println(str);
 ```
 
-# Active patterns
-
-You can define active patterns like in F#:
-
-```
-pattern (Even | Odd) (n: uint32) {
-  if n % 2 == 0 {
-    Even
-  } else {
-    Odd
-  }
-}
-```
