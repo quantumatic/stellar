@@ -93,7 +93,7 @@ The language also has an analog of sum types: _enums_:
 
 ```
 enum Result[T, E] implements ToString {
-    Ok(T)
+    Ok(T),
     Err(E)
 
     fun to_string(self): String where T: ToString, E: ToString {
