@@ -8,7 +8,7 @@ use crate::{
     GenericParameter, IdentifierAST, ImportPath, LambdaFunctionParameter, Literal,
     MatchExpressionItem, Module, ModuleItem, NotSelfFunctionParameter, Path, Pattern,
     PostfixOperator, PrefixOperator, SelfFunctionParameter, Statement, StatementsBlock,
-    StructExpressionItem, StructField, StructFieldPattern, StructItem, TupleField, Type, TypeAlias,
+    StructExpressionItem, StructField, StructFieldPattern, TupleField, Type, TypeAlias,
     TypeConstructor, Visibility, WherePredicate,
 };
 
@@ -57,10 +57,6 @@ pub trait Visitor<'ast>: Sized {
 
     fn visit_enum_item(&mut self, item: &'ast EnumItem) {
         walk_enum_item(self, item);
-    }
-
-    fn visit_struct_items(&mut self, fields: &'ast [StructItem]) {
-        walk_struct_items(self, fields);
     }
 
     fn visit_struct_fields(&mut self, field: &'ast [StructField]) {
@@ -229,6 +225,7 @@ where
             generic_parameters,
             where_predicates,
             items,
+            methods: _,
             implements,
             docstring,
         } => {
@@ -285,7 +282,8 @@ where
             name,
             generic_parameters,
             where_predicates,
-            items,
+            fields,
+            methods: _,
             implements,
             docstring,
         } => {
@@ -293,7 +291,7 @@ where
             visitor.visit_identifier(*name);
             visitor.visit_generic_parameters(generic_parameters.as_deref());
             visitor.visit_where_predicates(where_predicates.as_deref());
-            visitor.visit_struct_items(items);
+            visitor.visit_struct_fields(fields);
             visitor.visit_implements(implements.as_ref());
             visitor.visit_local_docstring(docstring.as_deref());
         }
@@ -375,21 +373,6 @@ where
             visitor.visit_local_docstring(docstring.as_deref());
             visitor.visit_identifier(*name);
             visitor.visit_tuple_fields(fields);
-        }
-        EnumItem::Method(method) => {
-            visitor.visit_function(method);
-        }
-    }
-}
-
-pub fn walk_struct_items<'ast, V>(visitor: &mut V, items: &'ast [StructItem])
-where
-    V: Visitor<'ast>,
-{
-    for item in items {
-        match item {
-            StructItem::Field(field) => visitor.visit_struct_field(field),
-            StructItem::Method(method) => visitor.visit_function(method),
         }
     }
 }

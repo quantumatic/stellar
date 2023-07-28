@@ -1,7 +1,7 @@
 use ry_ast::{
     token::RawToken, EnumItem, Function, FunctionParameter, FunctionSignature, IdentifierAST,
     ModuleItem, ModuleItemKind, NotSelfFunctionParameter, SelfFunctionParameter, StructField,
-    StructItem, Token, TupleField, TypeAlias, Visibility,
+    Token, TupleField, TypeAlias, Visibility,
 };
 use ry_interner::builtin_symbols;
 
@@ -28,8 +28,6 @@ struct StructParser {
 }
 
 struct StructFieldsParser;
-
-struct StructItemsParser;
 
 struct StructFieldParser {
     pub(crate) visibility: Visibility,
@@ -117,39 +115,6 @@ impl Parse for StructFieldParser {
     }
 }
 
-impl Parse for StructItemsParser {
-    type Output = Option<Vec<StructItem>>;
-
-    fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
-        state.consume(Token!['{'], "struct items")?;
-
-        let fields = parse_list!(state, "struct items", Token!['}'], {
-            let docstring = state.consume_local_docstring();
-            let visibility = VisibilityParser.parse(state);
-
-            if state.next_token.raw == Token![fun] {
-                FunctionParser {
-                    visibility,
-                    docstring,
-                }
-                .parse(state)
-                .map(StructItem::Method)
-            } else {
-                StructFieldParser {
-                    visibility,
-                    docstring,
-                }
-                .parse(state)
-                .map(StructItem::Field)
-            }
-        });
-
-        state.advance(); // `}`
-
-        Some(fields)
-    }
-}
-
 impl Parse for StructFieldsParser {
     type Output = Option<Vec<StructField>>;
 
@@ -182,40 +147,32 @@ impl Parse for StructParser {
 
         let generic_parameters = GenericParametersParser.optionally_parse(state)?;
 
-        let implements = if state.next_token.raw == Token![implements] {
-            state.advance();
-
-            Some(BoundsParser.parse(state)?)
-        } else {
-            None
-        };
-
-        let where_predicates = WherePredicatesParser.optionally_parse(state)?;
-
-        if state.next_token.raw == Token!['{'] {
-            let items = StructItemsParser.parse(state)?;
-
-            Some(ModuleItem::Struct {
-                visibility: self.visibility,
-                name,
-                generic_parameters,
-                where_predicates,
-                items,
-                implements,
-                docstring: self.docstring,
-            })
-        } else if state.next_token.raw == Token!['('] {
+        if state.next_token.raw == Token!['('] {
             let fields = TupleFieldsParser {
                 context: ModuleItemKind::Struct,
             }
             .parse(state)?;
+
+            let implements = if state.next_token.raw == Token![implements] {
+                state.advance();
+
+                Some(BoundsParser.parse(state)?)
+            } else {
+                None
+            };
+
+            let where_predicates = WherePredicatesParser.optionally_parse(state)?;
 
             let mut methods = vec![];
 
             if state.next_token.raw != Token![;] {
                 state.consume(Token!['{'], "struct")?;
 
-                while state.next_token.raw == Token!['}'] {
+                loop {
+                    if state.next_token.raw == Token!['}'] {
+                        break;
+                    }
+
                     methods.push(
                         FunctionParser {
                             visibility: VisibilityParser.parse(state),
@@ -231,6 +188,59 @@ impl Parse for StructParser {
             state.advance();
 
             Some(ModuleItem::TupleLikeStruct {
+                visibility: self.visibility,
+                name,
+                generic_parameters,
+                where_predicates,
+                fields,
+                methods,
+                implements,
+                docstring: self.docstring,
+            })
+        } else if state.next_token.raw == Token!['{'] {
+            let implements = if state.next_token.raw == Token![implements] {
+                state.advance();
+
+                Some(BoundsParser.parse(state)?)
+            } else {
+                None
+            };
+
+            let where_predicates = WherePredicatesParser.optionally_parse(state)?;
+
+            let fields = parse_list!(state, "struct fields", (Token!['}']) or (Token![fun]), {
+                let docstring = state.consume_local_docstring();
+                let visibility = VisibilityParser.parse(state);
+
+                StructFieldParser {
+                    visibility,
+                    docstring,
+                }
+                .parse(state)
+            });
+
+            let mut methods = vec![];
+
+            if state.next_token.raw == Token![fun] {
+                loop {
+                    if state.next_token.raw == Token!['}'] {
+                        break;
+                    }
+
+                    let docstring = state.consume_local_docstring();
+                    let visibility = VisibilityParser.parse(state);
+
+                    methods.push(
+                        FunctionParser {
+                            visibility,
+                            docstring,
+                        }
+                        .parse(state)?,
+                    );
+                }
+            }
+
+            Some(ModuleItem::Struct {
                 visibility: self.visibility,
                 name,
                 generic_parameters,
@@ -270,7 +280,7 @@ impl Parse for FunctionParser {
     type Output = Option<Function>;
 
     fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
-        state.advance();
+        state.consume(Token![fun], "function")?;
 
         let name = state.consume_identifier("function name")?;
 
@@ -447,10 +457,27 @@ impl Parse for EnumParser {
 
         state.consume(Token!['{'], "enum")?;
 
-        let mut items = vec![];
+        let items = parse_list!(state, "enum items", (Token!['}']) or (Token![fun]), {
+            EnumItemParser.parse(state)
+        });
 
-        while state.next_token.raw != Token!['}'] {
-            items.push(EnumItemParser.parse(state)?);
+        let mut methods = vec![];
+
+        loop {
+            if state.next_token.raw == Token!['}'] {
+                break;
+            }
+
+            let docstring = state.consume_local_docstring();
+            let visibility = VisibilityParser.parse(state);
+
+            methods.push(
+                FunctionParser {
+                    visibility,
+                    docstring,
+                }
+                .parse(state)?,
+            );
         }
 
         state.advance(); // `}`
@@ -461,6 +488,7 @@ impl Parse for EnumParser {
             generic_parameters,
             where_predicates,
             items,
+            methods,
             implements,
             docstring: self.docstring,
         })
@@ -471,17 +499,7 @@ impl Parse for EnumItemParser {
     type Output = Option<EnumItem>;
 
     fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
-        let visibility = VisibilityParser.parse(state);
         let docstring = state.consume_local_docstring();
-
-        if state.next_token.raw == Token![fun] {
-            return FunctionParser {
-                visibility,
-                docstring,
-            }
-            .parse(state)
-            .map(EnumItem::Method);
-        }
 
         let name = state.consume_identifier("enum item")?;
 

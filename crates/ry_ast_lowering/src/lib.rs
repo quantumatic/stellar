@@ -47,96 +47,50 @@ impl<'d> LoweringContext<'d> {
                 generic_parameters,
                 where_predicates,
                 items,
+                methods,
                 implements,
                 docstring,
-            } => {
-                let mut enum_items = vec![];
-                let mut enum_methods = vec![];
-
-                for item in items {
-                    match item {
-                        ry_ast::EnumItem::Just { name, docstring } => {
-                            enum_items.push(ry_hir::EnumItem::Just { name, docstring });
-                        }
-                        ry_ast::EnumItem::TupleLike {
-                            fields,
-                            name,
-                            docstring,
-                        } => {
-                            enum_items.push(ry_hir::EnumItem::TupleLike {
-                                fields: fields
-                                    .into_iter()
-                                    .map(|field| self.lower_tuple_field(field))
-                                    .collect(),
-                                name,
-                                docstring,
-                            });
-                        }
-                        ry_ast::EnumItem::Struct {
-                            fields,
-                            name,
-                            docstring,
-                        } => {
-                            enum_items.push(ry_hir::EnumItem::Struct {
-                                fields: fields
-                                    .into_iter()
-                                    .map(|field| self.lower_struct_field(field))
-                                    .collect(),
-                                name,
-                                docstring,
-                            });
-                        }
-                        ry_ast::EnumItem::Method(method) => {
-                            enum_methods.push(self.lower_function(method));
-                        }
-                    }
-                }
-
-                ry_hir::ModuleItem::Enum {
-                    visibility,
-                    name,
-                    generic_parameters: self.lower_generic_parameters(generic_parameters),
-                    where_predicates: self.lower_where_predicates(where_predicates),
-                    items: enum_items,
-                    methods: enum_methods,
-                    implements,
-                    docstring,
-                }
-            }
+            } => ry_hir::ModuleItem::Enum {
+                visibility,
+                name,
+                generic_parameters: self.lower_generic_parameters(generic_parameters),
+                where_predicates: self.lower_where_predicates(where_predicates),
+                items: items
+                    .into_iter()
+                    .map(|item| self.lower_enum_item(item))
+                    .collect(),
+                methods: methods
+                    .into_iter()
+                    .map(|method| self.lower_function(method))
+                    .collect(),
+                implements,
+                docstring,
+            },
             ry_ast::ModuleItem::Struct {
                 visibility,
                 name,
                 generic_parameters,
                 where_predicates,
-                items,
+                fields,
+                methods,
                 implements,
                 docstring,
-            } => {
-                let mut struct_fields = vec![];
-                let mut struct_methods = vec![];
-
-                for item in items {
-                    match item {
-                        ry_ast::StructItem::Field(field) => {
-                            struct_fields.push(self.lower_struct_field(field));
-                        }
-                        ry_ast::StructItem::Method(method) => {
-                            struct_methods.push(self.lower_function(method));
-                        }
-                    }
-                }
-
-                ry_hir::ModuleItem::Struct {
-                    visibility,
-                    name,
-                    generic_parameters: self.lower_generic_parameters(generic_parameters),
-                    where_predicates: self.lower_where_predicates(where_predicates),
-                    fields: struct_fields,
-                    methods: struct_methods,
-                    implements,
-                    docstring,
-                }
-            }
+            } => ry_hir::ModuleItem::Struct {
+                visibility,
+                name,
+                generic_parameters: self.lower_generic_parameters(generic_parameters),
+                where_predicates: self.lower_where_predicates(where_predicates),
+                fields: fields
+                    .into_iter()
+                    .map(|field| self.lower_struct_field(field))
+                    .collect(),
+                methods: methods
+                    .into_iter()
+                    .map(|method| self.lower_function(method))
+                    .collect(),
+                implements,
+                docstring,
+            },
             ry_ast::ModuleItem::Function(function) => {
                 ry_hir::ModuleItem::Function(self.lower_function(function))
             }
@@ -201,6 +155,37 @@ impl<'d> LoweringContext<'d> {
         }
     }
 
+    fn lower_enum_item(&mut self, ast: ry_ast::EnumItem) -> ry_hir::EnumItem {
+        match ast {
+            ry_ast::EnumItem::Just { name, docstring } => {
+                ry_hir::EnumItem::Just { name, docstring }
+            }
+            ry_ast::EnumItem::Struct {
+                name,
+                fields,
+                docstring,
+            } => ry_hir::EnumItem::Struct {
+                name,
+                fields: fields
+                    .into_iter()
+                    .map(|field| self.lower_struct_field(field))
+                    .collect(),
+                docstring,
+            },
+            ry_ast::EnumItem::TupleLike {
+                name,
+                fields,
+                docstring,
+            } => ry_hir::EnumItem::TupleLike {
+                name,
+                fields: fields
+                    .into_iter()
+                    .map(|field| self.lower_tuple_field(field))
+                    .collect(),
+                docstring,
+            },
+        }
+    }
     fn lower_statements_block(&mut self, ast: ry_ast::StatementsBlock) -> ry_hir::StatementsBlock {
         ast.into_iter()
             .map(|statement| self.lower_statement(statement))

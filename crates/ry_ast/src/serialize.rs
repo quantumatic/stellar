@@ -9,15 +9,15 @@ use crate::{
         walk_lambda_function_parameters, walk_match_expression_item, walk_match_expression_items,
         walk_module, walk_module_item, walk_path, walk_statement, walk_statements_block,
         walk_struct_expression_item, walk_struct_expression_items, walk_struct_field,
-        walk_struct_field_pattern, walk_struct_field_patterns, walk_struct_items,
+        walk_struct_field_pattern, walk_struct_field_patterns, walk_struct_fields,
         walk_there_predicate, walk_tuple_field, walk_tuple_fields, walk_type, walk_type_alias,
         walk_type_constructor, walk_where_predicates, Visitor,
     },
     BinaryOperator, Bounds, EnumItem, Expression, Function, GenericParameter, IdentifierAST,
     ImportPath, LambdaFunctionParameter, Literal, MatchExpressionItem, Module, ModuleItem, Path,
     Pattern, PostfixOperator, PrefixOperator, Statement, StatementsBlock, StructExpressionItem,
-    StructField, StructFieldPattern, StructItem, TupleField, Type, TypeAlias, TypeConstructor,
-    Visibility, WherePredicate,
+    StructField, StructFieldPattern, TupleField, Type, TypeAlias, TypeConstructor, Visibility,
+    WherePredicate,
 };
 
 /// A struct that allows to serialize a Ry module into a string, for debug purposes.
@@ -477,14 +477,14 @@ impl Visitor<'_> for Serializer<'_> {
         self.decrement_indentation();
     }
 
-    fn visit_struct_items(&mut self, items: &'_ [StructItem]) {
+    fn visit_struct_fields(&mut self, items: &'_ [StructField]) {
         self.increment_indentation();
         self.write_identation();
 
         self.write("STRUCT_FIELDS");
         self.write_newline();
 
-        walk_struct_items(self, items);
+        walk_struct_fields(self, items);
 
         self.decrement_indentation();
     }

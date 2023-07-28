@@ -882,6 +882,7 @@ pub enum ModuleItem {
         generic_parameters: Option<Vec<GenericParameter>>,
         where_predicates: Option<Vec<WherePredicate>>,
         items: Vec<EnumItem>,
+        methods: Vec<Function>,
         implements: Option<Bounds>,
         docstring: Option<String>,
     },
@@ -915,7 +916,8 @@ pub enum ModuleItem {
         name: IdentifierAST,
         generic_parameters: Option<Vec<GenericParameter>>,
         where_predicates: Option<Vec<WherePredicate>>,
-        items: Vec<StructItem>,
+        fields: Vec<StructField>,
+        methods: Vec<Function>,
         implements: Option<Bounds>,
         docstring: Option<String>,
     },
@@ -1119,7 +1121,6 @@ pub enum EnumItem {
         fields: Vec<StructField>,
         docstring: Option<String>,
     },
-    Method(Function),
 }
 
 /// A tuple field, e.g. `pub String` in `pub struct Wrapper(pub String);`.
@@ -1136,13 +1137,6 @@ pub struct StructField {
     pub name: IdentifierAST,
     pub ty: Type,
     pub docstring: Option<String>,
-}
-
-/// A struct item: method or a field.
-#[derive(Debug, PartialEq, Clone)]
-pub enum StructItem {
-    Field(StructField),
-    Method(Function),
 }
 
 /// A function.

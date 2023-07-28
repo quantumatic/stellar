@@ -1,5 +1,5 @@
-pub trait F {
+pub import std;
+
+pub interface F {
     pub fun test();
 }
-
-pub impl A for B {}
