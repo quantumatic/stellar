@@ -98,8 +98,8 @@ enum Result[T, E] implements ToString {
 
     fun to_string(self): String where T: ToString, E: ToString {
         match self {
-            Self::Ok(t) => t.to_string(),
-            Self::Err(e) => e.to_string(),
+            Self.Ok(t) => t.to_string(),
+            Self.Err(e) => e.to_string(),
         }
     }
 }
