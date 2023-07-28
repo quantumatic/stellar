@@ -71,7 +71,7 @@ impl<'i, 'p, 'd> TypeCheckingContext<'i, 'p, 'd> {
                     .collect(),
                 return_type: Box::new(self.lower_type(*return_type)),
             },
-            _ => todo!()
+            _ => todo!(),
         }
     }
 

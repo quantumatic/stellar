@@ -1102,7 +1102,7 @@ impl Display for ModuleItemKind {
 }
 
 /// An enum item, e.g. `None`, `Ok(T)`, `A { b: T }`.
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub enum EnumItem {
     /// Just an identifier, e.g. `None` in `enum Option[T] { Some(T), None }`.
     Just {
