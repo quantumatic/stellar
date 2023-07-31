@@ -76,8 +76,8 @@ pub mod diagnostics;
 /// are going through the name resolution process.
 #[derive(Debug, PartialEq, Eq, Clone, Default)]
 pub struct ResolutionEnvironment {
-    /// Packages (their root modules), that are analyzed in the workspace.
-    pub packages: FxHashMap<Symbol, ModuleScope>,
+    /// Packages' root modules that are analyzed in the workspace.
+    pub packages_root_modules: FxHashMap<Symbol, PathID>,
 
     /// Modules, that are analyzed in the workspace.
     pub modules: FxHashMap<PathID, ModuleScope>,
@@ -98,20 +98,37 @@ impl ResolutionEnvironment {
     #[allow(clippy::missing_panics_doc)]
     pub fn resolve_path(
         &self,
-        path: &ry_ast::Path,
+        path: ry_ast::Path,
         identifier_interner: &IdentifierInterner,
         diagnostics: &mut GlobalDiagnostics,
     ) -> Option<NameBinding> {
-        let mut binding = None;
+        let mut identifiers = path.identifiers.into_iter();
+        let first_identifier = identifiers.next().unwrap();
+
         let mut previous_identifier = None;
 
-        for identifier in &path.identifiers {
+        if !self
+            .packages_root_modules
+            .contains_key(&first_identifier.symbol)
+        {
+            return None;
+        }
+
+        let mut binding = Some(NameBinding::Package(first_identifier.symbol));
+
+        for identifier in identifiers {
             binding = binding.map(|binding| match binding {
-                NameBinding::Package(package_symbol) => {
-                    self.packages.get(&package_symbol).and_then(|root_module| {
-                        root_module.resolve(*identifier, identifier_interner, diagnostics, self)
-                    })
-                }
+                NameBinding::Package(package_symbol) => self
+                    .packages_root_modules
+                    .get(&package_symbol)
+                    .and_then(|root_module_id| {
+                        self.modules.get(root_module_id).unwrap().resolve(
+                            identifier,
+                            identifier_interner,
+                            diagnostics,
+                            self,
+                        )
+                    }),
                 NameBinding::EnumItem(_) => {
                     let previous_identifier: IdentifierAST = previous_identifier.unwrap();
 
@@ -167,14 +184,14 @@ impl ResolutionEnvironment {
                         None
                     }
                 }
-                NameBinding::Submodule(submodule_id) => {
+                NameBinding::Module(submodule_id) => {
                     self.modules.get(&submodule_id).and_then(|module| {
-                        module.resolve(*identifier, identifier_interner, diagnostics, self)
+                        module.resolve(identifier, identifier_interner, diagnostics, self)
                     })
                 }
             })?;
 
-            previous_identifier = Some(*identifier);
+            previous_identifier = Some(identifier);
         }
 
         binding
@@ -188,7 +205,7 @@ pub enum NameBinding {
     Package(Symbol),
 
     /// A submodule.
-    Submodule(PathID),
+    Module(PathID),
 
     /// An item defined in a particular module.
     ModuleItem(DefinitionID),
@@ -256,7 +273,7 @@ impl ModuleScope {
         environment: &ResolutionEnvironment,
     ) -> Option<NameBinding> {
         environment.resolve_path(
-            self.imports.get(&identifier.symbol)?,
+            self.imports.get(&identifier.symbol)?.clone(),
             identifier_interner,
             diagnostics,
         )
