@@ -34,6 +34,7 @@ impl<'p> GenericParameterScope<'p> {
         }
     }
 
+    #[must_use]
     pub fn exists(&self, parameter_name: Symbol) -> bool {
         let exists_in_parent_scope = if let Some(parent_scope) = self.parent_scope {
             parent_scope.exists(parameter_name)
@@ -47,6 +48,5 @@ impl<'p> GenericParameterScope<'p> {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct GenericData {
-    pub bounds: Bounds,
-    pub default_value: Type,
+    pub default_value: Option<Type>,
 }

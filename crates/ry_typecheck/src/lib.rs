@@ -5,10 +5,13 @@ use std::sync::Arc;
 use ry_ast::{DefinitionID, TypeConstructor};
 use ry_diagnostics::GlobalDiagnostics;
 use ry_fx_hash::FxHashMap;
-use ry_hir::{Module, ModuleItem};
+use ry_hir::Module;
 use ry_interner::{IdentifierInterner, PathID, PathInterner, Symbol};
-use ry_name_resolution::{GlobalResolutionContext, ModuleResolutionContext, NameBindingData};
-use ry_thir::ty::{self, Type};
+use ry_name_resolution::{ModuleScope, Path, ResolutionEnvironment};
+use ry_thir::{
+    ty::{self, Type},
+    InterfaceSignature, ModuleItemSignature,
+};
 
 pub mod diagnostics;
 pub mod generic_parameter_scope;
@@ -17,10 +20,16 @@ pub mod generic_parameter_scope;
 pub struct TypeCheckingContext<'i, 'p, 'd> {
     identifier_interner: &'i mut IdentifierInterner,
     path_interner: &'p PathInterner,
-    name_resolution_context: GlobalResolutionContext,
+    resolution_environment: ResolutionEnvironment,
     items: FxHashMap<DefinitionID, ModuleItem>,
-    substitutions: FxHashMap<Symbol, Arc<Type>>,
+    signatures: FxHashMap<DefinitionID, ModuleItemSignature>,
+    substitutions: FxHashMap<Symbol, Type>,
     diagnostics: &'d mut GlobalDiagnostics,
+}
+
+#[derive(Debug)]
+pub enum ModuleItem {
+    HIR(ry_hir::ModuleItem),
 }
 
 impl<'i, 'p, 'd> TypeCheckingContext<'i, 'p, 'd> {
@@ -32,21 +41,22 @@ impl<'i, 'p, 'd> TypeCheckingContext<'i, 'p, 'd> {
         Self {
             identifier_interner,
             path_interner,
-            name_resolution_context: GlobalResolutionContext::new(),
+            resolution_environment: ResolutionEnvironment::new(),
             substitutions: FxHashMap::default(),
             items: FxHashMap::default(),
+            signatures: FxHashMap::default(),
             diagnostics,
         }
     }
 
-    pub fn add_module(&mut self, file_path_id: PathID, hir: Module) {
+    pub fn add_module(&mut self, file_path_id: PathID, path: Path, hir: Module) {
         for (idx, item) in hir.items.into_iter().enumerate() {
             self.items.insert(
                 DefinitionID {
                     index: idx,
-                    file_path_id,
+                    module_path_id: file_path_id,
                 },
-                item,
+                ModuleItem::HIR(item),
             );
         }
     }
@@ -74,6 +84,9 @@ impl<'i, 'p, 'd> TypeCheckingContext<'i, 'p, 'd> {
             _ => todo!(),
         }
     }
+    /// A symbol data, in which types in a definition are processed, once the the
+    /// definition is used somewhere else. This approach allows to resolve forward
+    /// references.
 
     fn lower_type_constructor(&self, ty: ry_ast::TypeConstructor) -> Type {
         todo!()

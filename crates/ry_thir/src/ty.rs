@@ -1,13 +1,12 @@
 //! Defines [`Type`] for working with types and THIR nodes.
 
 use ry_interner::{builtin_symbols, Symbol};
+use ry_name_resolution::Path;
 
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
 pub enum Type {
     Unit,
-    Path {
-        path: TypePath,
-    },
+    Constructor(TypeConstructor),
     Tuple {
         element_types: Vec<Self>,
     },
@@ -17,24 +16,13 @@ pub enum Type {
     },
     Variable(TypeVariableID),
     TraitObject {
-        bounds: Vec<TypePathSegment>,
+        bounds: Vec<TypeConstructor>,
     },
     WithQualifiedPath {
         left: Box<Self>,
-        right: TypePathSegment,
-        segments: Vec<TypePathSegment>,
+        right: TypeConstructor,
+        segments: Vec<TypeConstructor>,
     },
-}
-
-impl Type {
-    #[inline]
-    #[must_use]
-    pub fn check_single_identifier_type_constructor(&self, symbol: Symbol) -> bool {
-        match self {
-            Self::Path { path } => path.check_single_identifier_type_constructor(symbol),
-            _ => unreachable!(),
-        }
-    }
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
@@ -53,7 +41,7 @@ impl Type {
     #[must_use]
     pub const fn kind(&self) -> TypeKind {
         match self {
-            Self::Path { .. } => TypeKind::Constructor,
+            Self::Constructor(..) => TypeKind::Constructor,
             Self::Tuple { .. } => TypeKind::Tuple,
             Self::Function { .. } => TypeKind::Function,
             Self::Variable(..) => TypeKind::Variable,
@@ -75,16 +63,12 @@ pub trait Typed {
 #[inline]
 #[must_use]
 fn primitive_constructor(symbol: Symbol) -> Type {
-    Type::Path {
-        path: TypePath {
-            segments: vec![TypePathSegment {
-                left: Path {
-                    symbols: vec![symbol],
-                },
-                right: vec![],
-            }],
+    Type::Constructor(TypeConstructor {
+        left: Path {
+            symbols: vec![symbol],
         },
-    }
+        right: vec![],
+    })
 }
 
 macro_rules! t {
@@ -112,60 +96,19 @@ t!(char, CHAR);
 t!(string, STRING);
 
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
-pub struct TypePath {
-    pub segments: Vec<TypePathSegment>,
-}
-
-impl TypePath {
-    #[inline]
-    #[must_use]
-    pub fn check_single_identifier_type_constructor(&self, symbol: Symbol) -> bool {
-        if let [TypePathSegment { left, right }] = &self.segments[..] {
-            if let [matching_symbol] = left.symbols[..] {
-                return right.is_empty() && matching_symbol == symbol;
-            }
-        }
-
-        false
-    }
-}
-
-#[derive(Debug, PartialEq, Eq, Clone, Hash)]
-pub struct TypePathSegment {
+pub struct TypeConstructor {
     pub left: Path,
     pub right: Vec<Type>,
-}
-
-#[derive(Debug, PartialEq, Eq, Clone, Hash)]
-
-pub struct Path {
-    pub symbols: Vec<Symbol>,
 }
 
 /// Returns a list type with the given element type.
 #[inline]
 #[must_use]
 pub fn list_of(element_type: Type) -> Type {
-    Type::Path {
-        path: TypePath {
-            segments: vec![TypePathSegment {
-                left: Path {
-                    symbols: vec![builtin_symbols::LIST],
-                },
-                right: vec![element_type],
-            }],
+    Type::Constructor(TypeConstructor {
+        left: Path {
+            symbols: vec![builtin_symbols::LIST],
         },
-    }
-}
-
-impl From<ry_ast::Path> for Path {
-    fn from(value: ry_ast::Path) -> Self {
-        Self {
-            symbols: value
-                .identifiers
-                .into_iter()
-                .map(|identifier| identifier.symbol)
-                .collect(),
-        }
-    }
+        right: vec![element_type],
+    })
 }

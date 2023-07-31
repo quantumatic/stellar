@@ -64,243 +64,221 @@
     clippy::cast_possible_truncation
 )]
 
-use ry_ast::{DefinitionID, IdentifierAST, ImportPath};
-use ry_filesystem::location::Location;
+use diagnostics::ModuleItemsExceptEnumsDoNotServeAsNamespacesDiagnostic;
+use ry_ast::{DefinitionID, IdentifierAST};
+use ry_diagnostics::{BuildDiagnostic, GlobalDiagnostics};
 use ry_fx_hash::FxHashMap;
-use ry_interner::{PathID, Symbol};
-use ry_thir::ty::{Path, Type};
+use ry_interner::{IdentifierInterner, PathID, Symbol};
 
 pub mod diagnostics;
 
-/// A symbol data, in which types in a definition are processed, once the the
-/// definition is used somewhere else. This approach allows to resolve forward
-/// references.
-#[derive(Debug, PartialEq, Clone)]
-pub struct GlobalResolutionContext {
-    /// Packages, that are going to be resolved.
-    pub packages: FxHashMap<Symbol, PackageResolutionContext>,
+/// A data structure used to store information about modules and packages that
+/// are going through the name resolution process.
+#[derive(Debug, PartialEq, Eq, Clone, Default)]
+pub struct ResolutionEnvironment {
+    /// Packages (their root modules), that are analyzed in the workspace.
+    pub packages: FxHashMap<Symbol, ModuleScope>,
+
+    /// Modules, that are analyzed in the workspace.
+    pub modules: FxHashMap<PathID, ModuleScope>,
+
+    /// Storage of absolute paths of modules in the environment, e.g. `std.io`.
+    pub module_paths: FxHashMap<PathID, Path>,
 }
 
-impl Default for GlobalResolutionContext {
-    #[inline]
-    #[must_use]
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl GlobalResolutionContext {
-    /// Creates new name empty resolution tree.
+impl ResolutionEnvironment {
+    /// Creates a new empty resolution environment
     #[inline]
     #[must_use]
     pub fn new() -> Self {
-        Self {
-            packages: FxHashMap::default(),
-        }
+        Self::default()
     }
 
-    /// Resolves absolute path.
-    ///
-    /// * Path must start with a package name (not `serialize`, but `json.serialization.serialize`).
-    /// * Imports are not resolved here, because the context is global.
-    #[must_use]
-    pub fn resolve_module_item_by_absolute_path(&self, path: &Path) -> Option<NameBindingData<'_>> {
-        fn split_first_and_last<T>(a: &[T]) -> Option<(&T, &[T], &T)> {
-            let (first, rest) = a.split_first()?;
-            let (last, middle) = rest.split_last()?;
+    /// Resolve a path in the environment.
+    #[allow(clippy::missing_panics_doc)]
+    pub fn resolve_path(
+        &self,
+        path: &ry_ast::Path,
+        identifier_interner: &IdentifierInterner,
+        diagnostics: &mut GlobalDiagnostics,
+    ) -> Option<NameBinding> {
+        let mut binding = None;
+        let mut previous_identifier = None;
 
-            Some((first, middle, last))
+        for identifier in &path.identifiers {
+            binding = binding.map(|binding| match binding {
+                NameBinding::Package(package_symbol) => {
+                    self.packages.get(&package_symbol).and_then(|root_module| {
+                        root_module.resolve(*identifier, identifier_interner, diagnostics, self)
+                    })
+                }
+                NameBinding::EnumItem(_) => {
+                    let previous_identifier: IdentifierAST = previous_identifier.unwrap();
+
+                    diagnostics.add_single_file_diagnostic(
+                        identifier.location.file_path_id,
+                        ModuleItemsExceptEnumsDoNotServeAsNamespacesDiagnostic {
+                            name: identifier_interner
+                                .resolve(identifier.symbol)
+                                .unwrap()
+                                .to_owned(),
+                            name_location: identifier.location,
+                            module_item_name: identifier_interner
+                                .resolve(previous_identifier.symbol)
+                                .unwrap()
+                                .to_owned(),
+                            module_item_name_location: previous_identifier.location,
+                        }
+                        .build(),
+                    );
+
+                    None
+                }
+                NameBinding::ModuleItem(definition_id) => {
+                    if let Some(enum_scope) = self
+                        .modules
+                        .get(&definition_id.module_path_id)?
+                        .enums
+                        .get(&definition_id)
+                    {
+                        enum_scope
+                            .items
+                            .get(&identifier.symbol)
+                            .map(|enum_item_id| NameBinding::EnumItem(*enum_item_id))
+                    } else {
+                        let previous_identifier: IdentifierAST = previous_identifier.unwrap();
+
+                        diagnostics.add_single_file_diagnostic(
+                            identifier.location.file_path_id,
+                            ModuleItemsExceptEnumsDoNotServeAsNamespacesDiagnostic {
+                                name: identifier_interner
+                                    .resolve(identifier.symbol)
+                                    .unwrap()
+                                    .to_owned(),
+                                name_location: identifier.location,
+                                module_item_name: identifier_interner
+                                    .resolve(previous_identifier.symbol)
+                                    .unwrap()
+                                    .to_owned(),
+                                module_item_name_location: previous_identifier.location,
+                            }
+                            .build(),
+                        );
+                        None
+                    }
+                }
+                NameBinding::Submodule(submodule_id) => {
+                    self.modules.get(&submodule_id).and_then(|module| {
+                        module.resolve(*identifier, identifier_interner, diagnostics, self)
+                    })
+                }
+            })?;
+
+            previous_identifier = Some(*identifier);
         }
 
-        let (first, middle, last) = split_first_and_last(&path.symbols)?;
-
-        // json.serialization.serialize
-        // ^^^^ module before
-        let mut module = &self.packages.get(first)?.root;
-
-        // json.serialization.serialize
-        //      ^^^^^^^^^^^^^ module after
-        for symbol in middle {
-            module = module.submodules.get(symbol)?;
-        }
-
-        // json.serialization.serialize
-        //                    ^^^^^^^^^ binding or submodule
-        if let Some(binding) = module.bindings.get(last) {
-            return Some(NameBindingData::Item(*binding));
-        } else if let Some(submodule) = module.submodules.get(last) {
-            return Some(NameBindingData::Module(submodule));
-        }
-
-        None
+        binding
     }
 }
 
-/// Data that Ry compiler has about a package.
-#[derive(Debug, PartialEq, Clone)]
-pub struct PackageResolutionContext {
-    /// Path to the package.
-    pub path_id: PathID,
+/// A name binding.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum NameBinding {
+    /// A package.
+    Package(Symbol),
 
-    /// The root module of the package (the module that is located in the `package.ry`).
-    pub root: ModuleResolutionContext,
+    /// A submodule.
+    Submodule(PathID),
 
-    /// Package dependencies be included in the resolution tree).
-    pub dependencies: Vec<Symbol>,
+    /// An item defined in a particular module.
+    ModuleItem(DefinitionID),
+
+    /// An enum item.
+    EnumItem(EnumItemID),
+}
+
+/// Path - a list of identifiers separated by commas. The main difference
+/// between this struct and [`ry_ast::Path`] is that the former doesn't store
+/// locations of identifiers.
+#[derive(Debug, PartialEq, Eq, Clone, Hash)]
+pub struct Path {
+    /// List of semantic symbols.
+    pub symbols: Vec<Symbol>,
 }
 
 /// Data that Ry compiler has about a module.
-#[derive(Debug, PartialEq, Clone)]
-pub struct ModuleResolutionContext {
-    /// ID of the path of the module file/folder.
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub struct ModuleScope {
+    /// The interned name of the module.
+    pub name: Symbol,
+
+    /// The id of the path to the module source file.
     pub path_id: PathID,
 
     /// The module items name bindings.
-    ///
-    /// See [`ModuleItemNameBindingData`] for more details.
-    pub bindings: FxHashMap<Symbol, DefinitionID>,
+    pub bindings: FxHashMap<Symbol, NameBinding>,
 
-    /// The submodules of the module.
-    pub submodules: FxHashMap<Symbol, ModuleResolutionContext>,
+    /// Enums.
+    pub enums: FxHashMap<DefinitionID, EnumData>,
 
-    /// The imports used in the module ([`Span`] stores a location of an entire import item).
-    pub imports: Vec<(Location, ImportPath)>,
+    /// The imports used in the module.
+    pub imports: FxHashMap<Symbol, ry_ast::Path>,
 }
 
-impl ModuleResolutionContext {
-    /// Resolves a single symbol and returns binding data.
-    #[must_use]
-    pub fn resolve_symbol<'ctx>(
-        &'ctx self,
-        global_context: &'ctx GlobalResolutionContext,
-        symbol: Symbol,
-    ) -> Option<NameBindingData<'_>> {
-        // If symbol is related to an item defined in the module, return it.
-        //
-        // ```
-        // fun foo() {}
-        // fun main() { foo(); }
-        //              ^^^ function item
-        // ```
-        if let Some(binding) = self
-            .bindings
-            .get(&symbol)
-            .map(|binding| NameBindingData::Item(*binding))
-        {
-            return Some(binding);
-        }
-
-        // If not found, try to find it in the imports.
-        //
-        // ```
-        // fun main() { foo(); }
-        // ```
-        for (_, import) in &self.imports {
-            if let Some(IdentifierAST {
-                symbol: id_symbol, ..
-            }) = import.r#as
-            {
-                // ```
-                // import a.b as foo;
-                //               ^^^ function item
-                // ```
-                if id_symbol != symbol {
-                    continue;
-                }
-
-                return global_context
-                    .resolve_module_item_by_absolute_path(&import.path.clone().into());
-            }
-
-            // ```
-            // import a.foo;
-            //          ^^^ function item
-            // ```
-            let import_last_symbol = import.path.identifiers.last()?.symbol;
-
-            if import_last_symbol != symbol {
-                continue;
-            }
-
-            return global_context
-                .resolve_module_item_by_absolute_path(&import.path.clone().into());
-        }
-
-        None
-    }
-}
-
-/// Data that Ry compiler has about a name binding or the result of the
-/// [`ModuleData::resolve_path()`] and [`NameResolutionTree::resolve_absolute_path()`].
-#[derive(Debug, PartialEq, Clone)]
-pub enum NameBindingData<'ctx> {
-    /// A package.
-    Package(&'ctx PackageResolutionContext),
-
-    /// A module.
-    Module(&'ctx ModuleResolutionContext),
-
-    /// A module item.
-    Item(DefinitionID),
-}
-
-/// Data that Ry compiler has about a particular symbol.
+/// Data the Ry compiler has about a particular enum.
 #[derive(Debug, PartialEq, Eq, Clone)]
-pub struct ValueConstructor {
-    /// Span where the symbol was defined.
-    pub origin: Location,
-
-    /// Type of the symbol.
-    pub ty: Type,
+pub struct EnumData {
+    /// Enum items.
+    pub items: FxHashMap<Symbol, EnumItemID>,
 }
 
-/// A local scope (a scope within a particular statements block).
-#[derive(Debug)]
-pub struct Scope<'ctx> {
-    /// Module that the scope belongs to.
-    pub module_context: &'ctx ModuleResolutionContext,
+impl ModuleScope {
+    /// Resolves an identifier in a module scope. If resolution fails, returns [`None`]
+    /// and adds a new diagnostics.
+    pub fn resolve(
+        &self,
+        identifier: IdentifierAST,
+        identifier_interner: &IdentifierInterner,
+        diagnostics: &mut GlobalDiagnostics,
+        environment: &ResolutionEnvironment,
+    ) -> Option<NameBinding> {
+        self.bindings.get(&identifier.symbol).copied().or_else(|| {
+            self.resolve_from_imports(identifier, identifier_interner, diagnostics, environment)
+        })
+    }
 
-    /// Symbols in the scope (not the ones contained in the parent scopes).
-    entities: FxHashMap<Symbol, ValueConstructor>,
-
-    /// Parent scope.
-    pub parent: Option<&'ctx Scope<'ctx>>,
-}
-
-impl<'ctx> Scope<'ctx> {
-    /// Creates a new [`Scope`] instance.
     #[inline]
-    #[must_use]
-    pub fn new(
-        parent: Option<&'ctx Scope<'ctx>>,
-        module_context: &'ctx ModuleResolutionContext,
-    ) -> Self {
-        Self {
-            entities: FxHashMap::default(),
-            parent,
-            module_context,
-        }
+    fn resolve_from_imports(
+        &self,
+        identifier: IdentifierAST,
+        identifier_interner: &IdentifierInterner,
+        diagnostics: &mut GlobalDiagnostics,
+        environment: &ResolutionEnvironment,
+    ) -> Option<NameBinding> {
+        environment.resolve_path(
+            self.imports.get(&identifier.symbol)?,
+            identifier_interner,
+            diagnostics,
+        )
     }
+}
 
-    /// Adds a symbol to this scope.
-    pub fn add_symbol(&mut self, symbol: Symbol, data: ValueConstructor) {
-        // shadowing
-        if self.entities.contains_key(&symbol) {
-            self.entities.remove(&symbol);
-        }
+/// Data that Ry compiler has about a name binding in a module.
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
+pub enum ModuleNameBinding {
+    /// Submodule.
+    Submodule(PathID),
 
-        self.entities.insert(symbol, data);
-    }
+    /// Item defined in the module.
+    ModuleItem(DefinitionID),
 
-    /// Returns the symbol data for the given symbol. If the symbol is not in this scope, `None` is returned.
-    #[must_use]
-    pub fn lookup(&self, symbol: Symbol) -> Option<&ValueConstructor> {
-        if let data @ Some(..) = self.entities.get(&symbol) {
-            data
-        } else if let Some(parent) = self.parent {
-            parent.lookup(symbol)
-        } else {
-            None
-        }
-    }
+    /// Enum item.
+    EnumItem(EnumItemID),
+}
+
+/// Unique ID of the enum item
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
+pub struct EnumItemID {
+    enum_definition_id: DefinitionID,
+    item_name: Symbol,
 }

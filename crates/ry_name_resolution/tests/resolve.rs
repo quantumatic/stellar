@@ -2,9 +2,7 @@ use ry_ast::{IdentifierAST, ImportPath};
 use ry_filesystem::location::DUMMY_LOCATION;
 use ry_fx_hash::FxHashMap;
 use ry_interner::{Interner, DUMMY_PATH_ID};
-use ry_name_resolution::{
-    GlobalResolutionContext, ModuleResolutionContext, NameBindingData, PackageResolutionContext,
-};
+use ry_name_resolution::{Environment, ModuleScope, NameBindingData, PackageScope};
 use ry_thir::ty::Path;
 
 /// ```txt
@@ -19,16 +17,20 @@ fn resolve_module() {
     let a = interner.get_or_intern("a");
     let b = interner.get_or_intern("b");
 
-    let mut global_context = GlobalResolutionContext::new();
+    let mut environment = Environment::new();
 
-    let child_module_context = ModuleResolutionContext {
+    let mut package_root_module_context = ModuleScope {
+        parent: None,
+        name: a,
         path_id: DUMMY_PATH_ID,
         bindings: FxHashMap::default(),
         submodules: FxHashMap::default(),
         imports: vec![],
     };
 
-    let mut package_root_module_context = ModuleResolutionContext {
+    let child_module_context = ModuleScope {
+        parent: Some(&package_root_module_context),
+        name: a,
         path_id: DUMMY_PATH_ID,
         bindings: FxHashMap::default(),
         submodules: FxHashMap::default(),
@@ -38,27 +40,26 @@ fn resolve_module() {
         .submodules
         .insert(a, child_module_context);
 
-    let package = PackageResolutionContext {
+    let package = PackageScope {
         path_id: DUMMY_PATH_ID,
         root: package_root_module_context,
-        dependencies: vec![],
     };
 
-    global_context.packages.insert(a, package);
+    environment.packages.insert(a, package);
 
     assert!(matches!(
-        global_context.resolve_module_item_by_absolute_path(&Path {
+        environment.resolve_module_item_by_absolute_path(&Path {
             symbols: vec![a, a]
         }),
         Some(NameBindingData::Module(..))
     ));
 
     assert_eq!(
-        global_context.resolve_module_item_by_absolute_path(&Path { symbols: vec![a] }),
+        environment.resolve_module_item_by_absolute_path(&Path { symbols: vec![a] }),
         None
     );
     assert_eq!(
-        global_context.resolve_module_item_by_absolute_path(&Path { symbols: vec![b] }),
+        environment.resolve_module_item_by_absolute_path(&Path { symbols: vec![b] }),
         None
     );
 }
@@ -79,22 +80,14 @@ fn import() {
     let b = interner.get_or_intern("b");
     let c = interner.get_or_intern("c");
 
-    let mut global_context = GlobalResolutionContext::new();
+    let mut environment = Environment::new();
 
-    let child_module_data = ModuleResolutionContext {
+    let mut package_root_module = ModuleScope {
+        parent: None,
+        name: a,
         path_id: DUMMY_PATH_ID,
         bindings: FxHashMap::default(),
         submodules: FxHashMap::default(),
-        imports: vec![],
-    };
-
-    let mut submodules = FxHashMap::default();
-    submodules.insert(b, child_module_data);
-
-    let package_root_module = ModuleResolutionContext {
-        path_id: DUMMY_PATH_ID,
-        bindings: FxHashMap::default(),
-        submodules,
         imports: vec![
             (
                 DUMMY_LOCATION,
@@ -139,30 +132,41 @@ fn import() {
             ),
         ],
     };
-    let package = PackageResolutionContext {
+
+    let child_module_data = ModuleScope {
+        parent: Some(&package_root_module),
+        name: b,
         path_id: DUMMY_PATH_ID,
-        root: package_root_module,
-        dependencies: vec![],
+        bindings: FxHashMap::default(),
+        submodules: FxHashMap::default(),
+        imports: vec![],
     };
 
-    global_context.packages.insert(a, package);
+    package_root_module.submodules.insert(b, child_module_data);
+
+    let package = PackageScope {
+        path_id: DUMMY_PATH_ID,
+        root: package_root_module,
+    };
+
+    environment.packages.insert(a, package);
 
     assert!(matches!(
-        global_context
+        environment
             .packages
             .get(&a)
             .unwrap()
             .root
-            .resolve_symbol(&global_context, b),
+            .resolve_symbol(&environment, b),
         Some(..)
     ));
     assert!(matches!(
-        global_context
+        environment
             .packages
             .get(&a)
             .unwrap()
             .root
-            .resolve_symbol(&global_context, c),
+            .resolve_symbol(&environment, c),
         Some(..)
     ));
 }

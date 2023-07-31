@@ -93,13 +93,14 @@ pub mod serialize;
 pub mod token;
 pub mod visit;
 
+/// An index of a definition in a module.
 pub type DefinitionIndex = usize;
 
 /// An ID for every definition (module item) in a workspace.
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
 pub struct DefinitionID {
     pub index: DefinitionIndex,
-    pub file_path_id: PathID,
+    pub module_path_id: PathID,
 }
 
 /// A literal, e.g. `true`, `3`, `\"hello\"`.
@@ -155,7 +156,7 @@ pub struct Path {
 }
 
 /// An import path, e.g. `std.io`, `std.io as myio`.
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone, Hash)]
 pub struct ImportPath {
     pub path: Path,
     pub r#as: Option<IdentifierAST>,

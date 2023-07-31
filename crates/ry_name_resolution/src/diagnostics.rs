@@ -123,3 +123,83 @@ impl BuildDiagnostic for ImportingPackageDiagnostic {
             )
     }
 }
+
+/// Diagnostic, that appears when you try to access a name in a namespace of
+/// a module item except an enum, for example:
+///
+/// ```txt
+/// pub fn foo() -> A.B {} // A is a struct
+///                   ^ wrong
+/// ```
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ModuleItemsExceptEnumsDoNotServeAsNamespacesDiagnostic {
+    /// Name that was tried to be resolved.
+    pub name: String,
+    /// Location of the name.
+    pub name_location: Location,
+    /// Module item name.
+    pub module_item_name: String,
+    /// Location of the module item name.
+    pub module_item_name_location: Location,
+}
+
+impl BuildDiagnostic for ModuleItemsExceptEnumsDoNotServeAsNamespacesDiagnostic {
+    #[inline]
+    fn build(&self) -> Diagnostic<PathID> {
+        Diagnostic::error()
+            .with_code("E007")
+            .with_message(format!("failed to resolve the name `{}`", self.name))
+            .with_labels(vec![self.name_location.to_primary_label().with_message(
+                format!(
+                    "cannot find the name `{}` in the namespace `{}`",
+                    self.name, self.module_item_name
+                ),
+            ), self.module_item_name_location.to_secondary_label().with_message(
+                format!(
+                    "`{}` is not a module or a package, so it cannot directly contain individual names",
+                    self.module_item_name,
+                ),
+            )])
+            .with_notes(vec!["module items except enums don't serve as namespaces".to_owned()])
+    }
+}
+
+/// Diagnostic, that appears when you try to access a name in a namespace of
+/// a enum item, for example:
+///
+/// ```txt
+/// pub fn foo() -> Option.None.A {} // Option.None is an enum item
+///                             ^ wrong
+/// ```
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct EnumItemsDoNotServeAsNamespacesDiagnostic {
+    /// Name that was tried to be resolved.
+    pub name: String,
+    /// Location of the name.
+    pub name_location: Location,
+    /// Enum item name.
+    pub enum_item_name: String,
+    /// Location of the enum item name.
+    pub enum_item_name_location: Location,
+}
+
+impl BuildDiagnostic for EnumItemsDoNotServeAsNamespacesDiagnostic {
+    #[inline]
+    fn build(&self) -> Diagnostic<PathID> {
+        Diagnostic::error()
+            .with_code("E007")
+            .with_message(format!("failed to resolve the name `{}`", self.name))
+            .with_labels(vec![self.name_location.to_primary_label().with_message(
+                format!(
+                    "cannot find the name `{}` in the namespace `{}`",
+                    self.name, self.enum_item_name
+                ),
+            ), self.enum_item_name_location.to_secondary_label().with_message(
+                format!(
+                    "`{}` is not a module or a package, so it cannot directly contain individual names",
+                    self.enum_item_name,
+                ),
+            )])
+            .with_notes(vec!["module items except enums don't serve as namespaces".to_owned()])
+    }
+}

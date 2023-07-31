@@ -60,7 +60,7 @@
     clippy::unnested_or_patterns
 )]
 
-use ry_ast::{IdentifierAST, Literal, Path};
+use ry_ast::{IdentifierAST, Literal, Path, WherePredicate};
 use ry_filesystem::location::Location;
 use ty::Type;
 
@@ -243,19 +243,17 @@ pub enum Expression {
     Call {
         location: Location,
         callee: Box<Self>,
+        type_arguments: Vec<Type>,
         arguments: Vec<Self>,
     },
 
-    TypeArguments {
-        location: Location,
-        left: Box<Self>,
-        type_arguments: Vec<TypeArgument>,
-    },
-
-    TypeFieldAccess {
+    /// Static method call, e.g. `String.new()`.
+    StaticMethodCall {
         location: Location,
         left: Type,
         right: IdentifierAST,
+        type_arguments: Vec<Type>,
+        arguments: Vec<Self>,
     },
 
     /// Tuple expression, e.g. `(a, 32, \"hello\")`.
@@ -327,8 +325,7 @@ impl Expression {
             | Self::Struct { location, .. }
             | Self::Match { location, .. }
             | Self::Lambda { location, .. }
-            | Self::TypeArguments { location, .. }
-            | Self::TypeFieldAccess { location, .. } => *location,
+            | Self::StaticMethodCall { location, .. } => *location,
             Self::Literal { literal, .. } => literal.location(),
         }
     }
@@ -395,3 +392,62 @@ pub enum Statement {
 
 /// A block of statements - `{ <stmt>* }`.
 pub type StatementsBlock = Vec<Statement>;
+
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub struct TypeSignature {
+    pub name: IdentifierAST,
+    pub type_parameters: Vec<IdentifierAST>,
+    pub predicates: Vec<WherePredicate>,
+}
+
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub struct TypeAliasSignature {
+    pub name: IdentifierAST,
+    pub type_parameters: Vec<IdentifierAST>,
+    pub value: Type,
+}
+
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub struct InterfaceSignature {
+    pub name: IdentifierAST,
+    pub type_parameters: Vec<IdentifierAST>,
+    pub predicates: Vec<WherePredicate>,
+    pub methods: Vec<FunctionSignature>,
+}
+
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub struct FunctionSignature {
+    pub name: IdentifierAST,
+    pub type_parameters: Vec<IdentifierAST>,
+    pub parameters: Vec<FunctionParameter>,
+    pub return_type: Type,
+    pub predicates: Vec<WherePredicate>,
+}
+
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub struct FunctionParameter {
+    pub name: IdentifierAST,
+    pub ty: Type,
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub struct Function {
+    pub signature: FunctionSignature,
+    pub body: Vec<Statement>,
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub struct Interface {
+    pub name: IdentifierAST,
+    pub type_parameters: Vec<IdentifierAST>,
+    pub predicates: Vec<WherePredicate>,
+    pub methods: Vec<Function>,
+}
+
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub enum ModuleItemSignature {
+    Type(TypeSignature),
+    TypeAlias(TypeAliasSignature),
+    Interface(InterfaceSignature),
+    Function(FunctionSignature),
+}
