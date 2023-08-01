@@ -283,6 +283,7 @@ pub struct EnumData {
 impl ModuleScope {
     /// Resolves an identifier in a module scope. If resolution fails, returns [`None`]
     /// and adds a new diagnostics.
+    #[allow(clippy::missing_panics_doc)]
     pub fn resolve(
         &self,
         identifier: IdentifierAST,
