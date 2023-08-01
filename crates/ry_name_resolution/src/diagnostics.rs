@@ -225,10 +225,10 @@ impl BuildDiagnostic for FailedToResolvePackageDiagnostic {
                 .location
                 .to_primary_label()
                 .with_message("cannot find the package in this scope")])
-            .with_notes(vec![
-                "consider adding `{}` into your package's manifest file `[dependencies]` section"
-                    .to_owned(),
-            ])
+            .with_notes(vec![format!(
+                "consider adding `{}` into your package's manifest file `[dependencies]` section",
+                self.package_name
+            )])
     }
 }
 
@@ -295,5 +295,23 @@ impl BuildDiagnostic for FailedToResolveModuleItemDiagnostic {
                         self.module_name, self.item_name
                     )),
             ])
+    }
+}
+
+/// Diagnostic, that occurs when the compiler tries to resolve a name in a module scope.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct FailedToResolveNameDiagnostic {
+    /// Name.
+    pub name: String,
+    /// Location of the name.
+    pub location: Location,
+}
+
+impl BuildDiagnostic for FailedToResolveNameDiagnostic {
+    fn build(&self) -> Diagnostic<PathID> {
+        Diagnostic::error()
+            .with_code("E007")
+            .with_message(format!("failed to resolve `{}`", self.name))
+            .with_labels(vec![self.location.to_primary_label()])
     }
 }

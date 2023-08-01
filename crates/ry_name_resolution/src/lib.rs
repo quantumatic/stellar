@@ -66,7 +66,8 @@
 
 use diagnostics::{
     FailedToResolveModuleDiagnostic, FailedToResolveModuleItemDiagnostic,
-    FailedToResolvePackageDiagnostic, ModuleItemsExceptEnumsDoNotServeAsNamespacesDiagnostic,
+    FailedToResolveNameDiagnostic, FailedToResolvePackageDiagnostic,
+    ModuleItemsExceptEnumsDoNotServeAsNamespacesDiagnostic,
 };
 use ry_ast::{DefinitionID, IdentifierAST};
 use ry_diagnostics::{BuildDiagnostic, GlobalDiagnostics};
@@ -289,26 +290,37 @@ impl ModuleScope {
         diagnostics: &mut GlobalDiagnostics,
         environment: &ResolutionEnvironment,
     ) -> Option<NameBinding> {
-        self.bindings
-            .get(&identifier.symbol)
-            .copied()
-            .or_else(|| {
-                if environment
-                    .packages_root_modules
-                    .contains_key(&identifier.symbol)
-                {
-                    Some(NameBinding::Package(identifier.symbol))
-                } else {
-                    None
-                }
-            })
-            .or_else(|| {
-                environment.resolve_path(
-                    self.imports.get(&identifier.symbol)?.clone(),
-                    identifier_interner,
-                    diagnostics,
-                )
-            })
+        if let Some(inner_binding) = self.bindings.get(&identifier.symbol).copied().or_else(|| {
+            if environment
+                .packages_root_modules
+                .contains_key(&identifier.symbol)
+            {
+                Some(NameBinding::Package(identifier.symbol))
+            } else {
+                None
+            }
+        }) {
+            Some(inner_binding)
+        } else {
+            // check for possible name binding that can come from imports
+            if let Some(import_path) = self.imports.get(&identifier.symbol) {
+                environment.resolve_path(import_path.clone(), identifier_interner, diagnostics)
+            } else {
+                diagnostics.add_single_file_diagnostic(
+                    identifier.location.file_path_id,
+                    FailedToResolveNameDiagnostic {
+                        name: identifier_interner
+                            .resolve(identifier.symbol)
+                            .unwrap()
+                            .to_owned(),
+                        location: identifier.location,
+                    }
+                    .build(),
+                );
+
+                None
+            }
+        }
     }
 }
 

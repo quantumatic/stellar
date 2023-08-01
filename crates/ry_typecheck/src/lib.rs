@@ -49,6 +49,12 @@ impl<'i, 'p, 'd> TypeCheckingContext<'i, 'p, 'd> {
         }
     }
 
+    pub fn add_package(&mut self, name: Symbol, package_root_module_path_id: PathID) {
+        self.resolution_environment
+            .packages_root_modules
+            .insert(name, package_root_module_path_id);
+    }
+
     pub fn add_module(&mut self, file_path_id: PathID, path: Path, hir: Module) {
         for (idx, item) in hir.items.into_iter().enumerate() {
             self.items.insert(
@@ -59,6 +65,13 @@ impl<'i, 'p, 'd> TypeCheckingContext<'i, 'p, 'd> {
                 ModuleItem::HIR(item),
             );
         }
+
+        //self.resolution_environment
+        //    .modules
+        //    .insert(file_path_id, ModuleScope);
+        self.resolution_environment
+            .module_paths
+            .insert(file_path_id, path);
     }
 
     pub fn lower_type(&self, ty: ry_hir::Type) -> Type {
@@ -84,10 +97,10 @@ impl<'i, 'p, 'd> TypeCheckingContext<'i, 'p, 'd> {
             _ => todo!(),
         }
     }
+
     /// A symbol data, in which types in a definition are processed, once the the
     /// definition is used somewhere else. This approach allows to resolve forward
     /// references.
-
     fn lower_type_constructor(&self, ty: ry_ast::TypeConstructor) -> Type {
         todo!()
     }
