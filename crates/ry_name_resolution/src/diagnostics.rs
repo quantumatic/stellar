@@ -175,7 +175,7 @@ impl BuildDiagnostic for ModuleItemsExceptEnumsDoNotServeAsNamespacesDiagnostic 
 pub struct EnumItemsDoNotServeAsNamespacesDiagnostic {
     /// Name that was tried to be resolved.
     pub name: String,
-    /// Location of the name.
+    /// Location of the name that was tried to be resolved.
     pub name_location: Location,
     /// Enum item name.
     pub enum_item_name: String,
@@ -201,5 +201,99 @@ impl BuildDiagnostic for EnumItemsDoNotServeAsNamespacesDiagnostic {
                 ),
             )])
             .with_notes(vec!["module items except enums don't serve as namespaces".to_owned()])
+    }
+}
+
+/// Diagnostic, that occurs when the compiler tries to resolve a package that doesn't exist.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct FailedToResolvePackageDiagnostic {
+    /// Name of the package that can't be resolved.
+    pub package_name: String,
+    /// Location of the name of the package that can't be resolved.
+    pub location: Location,
+}
+
+impl BuildDiagnostic for FailedToResolvePackageDiagnostic {
+    fn build(&self) -> Diagnostic<PathID> {
+        Diagnostic::error()
+            .with_code("E007")
+            .with_message(format!(
+                "failed to resolve the package `{}`",
+                self.package_name
+            ))
+            .with_labels(vec![self
+                .location
+                .to_primary_label()
+                .with_message("cannot find the package in this scope")])
+            .with_notes(vec![
+                "consider adding `{}` into your package's manifest file `[dependencies]` section"
+                    .to_owned(),
+            ])
+    }
+}
+
+/// Diagnostic, that occurs when the compiler tries to resolve a submodule of a particular package that doesn't exist.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct FailedToResolveModuleDiagnostic {
+    /// Name of the module that doesn't exist in the current scope.
+    pub module_name: String,
+    /// Location of the name of the module that doesn't exist in the current scope.
+    pub module_name_location: Location,
+    /// Name of the module's parent package.
+    pub package_name: String,
+    /// Location of the name of the module's parent package.
+    pub package_name_location: Location,
+}
+
+impl BuildDiagnostic for FailedToResolveModuleDiagnostic {
+    fn build(&self) -> Diagnostic<PathID> {
+        Diagnostic::error()
+            .with_code("E007")
+            .with_message(format!(
+                "failed to resolve the module `{}`",
+                self.module_name
+            ))
+            .with_labels(vec![
+                self.module_name_location.to_primary_label(),
+                self.package_name_location
+                    .to_secondary_label()
+                    .with_message(format!(
+                        "package `{}` doesn't contain the submodule `{}`",
+                        self.package_name, self.module_name
+                    )),
+            ])
+    }
+}
+
+/// Diagnostic, that occurs when the compiler tries to resolve a submodule of a particular package/module that doesn't exist.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct FailedToResolveModuleItemDiagnostic {
+    /// Name of the module that doesn't exist in the current scope.
+    pub module_name: String,
+    /// Location of the name of the module that doesn't exist in the current scope.
+    pub module_name_location: Location,
+    /// Item name.
+    pub item_name: String,
+    /// Location of the item name.
+    pub item_name_location: Location,
+}
+
+impl BuildDiagnostic for FailedToResolveModuleItemDiagnostic {
+    fn build(&self) -> Diagnostic<PathID> {
+        Diagnostic::error()
+            .with_code("E007")
+            .with_message(format!(
+                "failed to resolve the module item `{}`",
+                self.item_name
+            ))
+            .with_labels(vec![
+                self.item_name_location.to_primary_label(),
+                self.module_name_location
+                    .to_secondary_label()
+                    .with_message(format!(
+                        "module `{}` doesn't contain the item `{}`",
+                        self.module_name, self.item_name
+                    )),
+            ])
     }
 }

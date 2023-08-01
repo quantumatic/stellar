@@ -64,7 +64,10 @@
     clippy::cast_possible_truncation
 )]
 
-use diagnostics::ModuleItemsExceptEnumsDoNotServeAsNamespacesDiagnostic;
+use diagnostics::{
+    FailedToResolveModuleDiagnostic, FailedToResolveModuleItemDiagnostic,
+    FailedToResolvePackageDiagnostic, ModuleItemsExceptEnumsDoNotServeAsNamespacesDiagnostic,
+};
 use ry_ast::{DefinitionID, IdentifierAST};
 use ry_diagnostics::{BuildDiagnostic, GlobalDiagnostics};
 use ry_fx_hash::FxHashMap;
@@ -105,12 +108,23 @@ impl ResolutionEnvironment {
         let mut identifiers = path.identifiers.into_iter();
         let first_identifier = identifiers.next().unwrap();
 
-        let mut previous_identifier = None;
+        let mut previous_identifier = first_identifier;
 
         if !self
             .packages_root_modules
             .contains_key(&first_identifier.symbol)
         {
+            diagnostics.add_single_file_diagnostic(
+                first_identifier.location.file_path_id,
+                FailedToResolvePackageDiagnostic {
+                    package_name: identifier_interner
+                        .resolve(first_identifier.symbol)
+                        .unwrap()
+                        .to_owned(),
+                    location: first_identifier.location,
+                }
+                .build(),
+            );
             return None;
         }
 
@@ -118,20 +132,27 @@ impl ResolutionEnvironment {
 
         for identifier in identifiers {
             binding = binding.map(|binding| match binding {
-                NameBinding::Package(package_symbol) => self
-                    .packages_root_modules
-                    .get(&package_symbol)
-                    .and_then(|root_module_id| {
-                        self.modules.get(root_module_id).unwrap().resolve(
-                            identifier,
-                            identifier_interner,
-                            diagnostics,
-                            self,
-                        )
-                    }),
-                NameBinding::EnumItem(_) => {
-                    let previous_identifier: IdentifierAST = previous_identifier.unwrap();
+                NameBinding::Package(package_symbol) => {
+                    let Some(module) = self
+                    .modules
+                    .get(self.packages_root_modules.get(&package_symbol).unwrap())
+                    // Module must exist at this point, or something went wrong when
+                    // building the name resolution environment.
+                    .unwrap()
+                    .resolve(identifier, identifier_interner, diagnostics, self) else {
+                        diagnostics.add_single_file_diagnostic(identifier.location.file_path_id, FailedToResolveModuleDiagnostic {
+                            module_name: identifier_interner.resolve(identifier.symbol).unwrap().to_owned(),
+                            module_name_location: identifier.location,
+                            package_name: identifier_interner.resolve(previous_identifier.symbol).unwrap().to_owned(),
+                            package_name_location: previous_identifier.location,
+                        }.build());
 
+                        return None;
+                    };
+
+                    Some(module)
+                },
+                NameBinding::EnumItem(_) => {
                     diagnostics.add_single_file_diagnostic(
                         identifier.location.file_path_id,
                         ModuleItemsExceptEnumsDoNotServeAsNamespacesDiagnostic {
@@ -161,10 +182,9 @@ impl ResolutionEnvironment {
                         enum_scope
                             .items
                             .get(&identifier.symbol)
-                            .map(|enum_item_id| NameBinding::EnumItem(*enum_item_id))
+                            .copied()
+                            .map(NameBinding::EnumItem)
                     } else {
-                        let previous_identifier: IdentifierAST = previous_identifier.unwrap();
-
                         diagnostics.add_single_file_diagnostic(
                             identifier.location.file_path_id,
                             ModuleItemsExceptEnumsDoNotServeAsNamespacesDiagnostic {
@@ -181,17 +201,27 @@ impl ResolutionEnvironment {
                             }
                             .build(),
                         );
+
                         None
                     }
                 }
                 NameBinding::Module(submodule_id) => {
-                    self.modules.get(&submodule_id).and_then(|module| {
-                        module.resolve(identifier, identifier_interner, diagnostics, self)
-                    })
+                    let Some(binding) = self.modules.get(&submodule_id).unwrap().bindings.get(&identifier.symbol) else {
+                        diagnostics.add_single_file_diagnostic(identifier.location.file_path_id, FailedToResolveModuleItemDiagnostic {
+                            item_name: identifier_interner.resolve(identifier.symbol).unwrap().to_owned(),
+                            item_name_location: identifier.location,
+                            module_name: identifier_interner.resolve(previous_identifier.symbol).unwrap().to_owned(),
+                            module_name_location: previous_identifier.location,
+                        }.build());
+
+                        return None;
+                    };
+
+                    Some(*binding)
                 }
             })?;
 
-            previous_identifier = Some(identifier);
+            previous_identifier = identifier;
         }
 
         binding
@@ -259,24 +289,26 @@ impl ModuleScope {
         diagnostics: &mut GlobalDiagnostics,
         environment: &ResolutionEnvironment,
     ) -> Option<NameBinding> {
-        self.bindings.get(&identifier.symbol).copied().or_else(|| {
-            self.resolve_from_imports(identifier, identifier_interner, diagnostics, environment)
-        })
-    }
-
-    #[inline]
-    fn resolve_from_imports(
-        &self,
-        identifier: IdentifierAST,
-        identifier_interner: &IdentifierInterner,
-        diagnostics: &mut GlobalDiagnostics,
-        environment: &ResolutionEnvironment,
-    ) -> Option<NameBinding> {
-        environment.resolve_path(
-            self.imports.get(&identifier.symbol)?.clone(),
-            identifier_interner,
-            diagnostics,
-        )
+        self.bindings
+            .get(&identifier.symbol)
+            .copied()
+            .or_else(|| {
+                if environment
+                    .packages_root_modules
+                    .contains_key(&identifier.symbol)
+                {
+                    Some(NameBinding::Package(identifier.symbol))
+                } else {
+                    None
+                }
+            })
+            .or_else(|| {
+                environment.resolve_path(
+                    self.imports.get(&identifier.symbol)?.clone(),
+                    identifier_interner,
+                    diagnostics,
+                )
+            })
     }
 }
 
