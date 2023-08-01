@@ -2,7 +2,7 @@ use ry_ast::{IdentifierAST, Path};
 use ry_diagnostics::GlobalDiagnostics;
 use ry_filesystem::location::DUMMY_LOCATION;
 use ry_fx_hash::FxHashMap;
-use ry_interner::{IdentifierInterner, PathInterner, DUMMY_PATH_ID};
+use ry_interner::{IdentifierInterner, PathInterner};
 use ry_name_resolution::{ModuleScope, NameBinding, ResolutionEnvironment};
 
 macro_rules! dummy_identifier {
@@ -36,7 +36,6 @@ fn resolve_module() {
 
     let mut package_root_module_scope = ModuleScope {
         name: a,
-        path_id: package_root_module_path_id,
         bindings: FxHashMap::default(),
         enums: FxHashMap::default(),
         imports: FxHashMap::default(),
@@ -48,7 +47,6 @@ fn resolve_module() {
 
     let child_module_scope = ModuleScope {
         name: a,
-        path_id: child_module_path_id,
         bindings: FxHashMap::default(),
         enums: FxHashMap::default(),
         imports: FxHashMap::default(),
@@ -114,7 +112,6 @@ fn import() {
 
     let mut package_root_module_scope = ModuleScope {
         name: a,
-        path_id: DUMMY_PATH_ID,
         bindings: FxHashMap::default(),
         imports: FxHashMap::default(),
         enums: FxHashMap::default(),
@@ -139,7 +136,6 @@ fn import() {
 
     let child_module_scope = ModuleScope {
         name: b,
-        path_id: DUMMY_PATH_ID,
         bindings: FxHashMap::default(),
         imports: FxHashMap::default(),
         enums: FxHashMap::default(),

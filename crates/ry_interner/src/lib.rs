@@ -509,6 +509,9 @@ impl PathInterner {
     }
 
     /// Adds a path to the interner.
+    ///
+    /// # Panics
+    /// If the path is not a valid UTF-8 string.
     #[inline]
     #[must_use]
     pub fn get_or_intern(&mut self, path: impl AsRef<Path>) -> PathID {

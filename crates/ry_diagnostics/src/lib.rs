@@ -157,7 +157,7 @@ impl GlobalDiagnostics {
         files_involved: impl IntoIterator<Item = PathID>,
         diagnostic: Diagnostic<PathID>,
     ) {
-        self.files_involved.extend(files_involved.into_iter());
+        self.files_involved.extend(files_involved);
         self.file_diagnostics.push(diagnostic);
     }
 
@@ -168,7 +168,7 @@ impl GlobalDiagnostics {
         files_involved: impl IntoIterator<Item = PathID>,
         diagnostics: impl IntoIterator<Item = Diagnostic<PathID>>,
     ) {
-        self.files_involved.extend(files_involved.into_iter());
+        self.files_involved.extend(files_involved);
         self.file_diagnostics.extend(diagnostics);
     }
 

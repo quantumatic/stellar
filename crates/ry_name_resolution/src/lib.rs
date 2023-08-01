@@ -312,9 +312,6 @@ pub struct ModuleScope {
     /// The interned name of the module.
     pub name: Symbol,
 
-    /// The id of the path to the module source file.
-    pub path_id: PathID,
-
     /// The module items name bindings.
     pub bindings: FxHashMap<Symbol, NameBinding>,
 
