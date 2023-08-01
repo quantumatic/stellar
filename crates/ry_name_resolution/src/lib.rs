@@ -139,24 +139,35 @@ impl ResolutionEnvironment {
             binding = binding.map(|binding| match binding {
                 NameBinding::Package(package_symbol) => {
                     let Some(module) = self
-                    .modules
-                    .get(self.packages_root_modules.get(&package_symbol).unwrap())
-                    // Module must exist at this point, or something went wrong when
-                    // building the name resolution environment.
-                    .unwrap()
-                    .resolve(identifier, identifier_interner, diagnostics, self) else {
-                        diagnostics.add_single_file_diagnostic(identifier.location.file_path_id, FailedToResolveModuleDiagnostic {
-                            module_name: identifier_interner.resolve(identifier.symbol).unwrap().to_owned(),
-                            module_name_location: identifier.location,
-                            package_name: identifier_interner.resolve(previous_identifier.symbol).unwrap().to_owned(),
-                            package_name_location: previous_identifier.location,
-                        }.build());
+                        .modules
+                        .get(self.packages_root_modules.get(&package_symbol).unwrap())
+                        // Module must exist at this point, or something went wrong when
+                        // building the name resolution environment.
+                        .unwrap()
+                        .resolve(identifier, identifier_interner, diagnostics, self)
+                    else {
+                        diagnostics.add_single_file_diagnostic(
+                            identifier.location.file_path_id,
+                            FailedToResolveModuleDiagnostic {
+                                module_name: identifier_interner
+                                    .resolve(identifier.symbol)
+                                    .unwrap()
+                                    .to_owned(),
+                                module_name_location: identifier.location,
+                                package_name: identifier_interner
+                                    .resolve(previous_identifier.symbol)
+                                    .unwrap()
+                                    .to_owned(),
+                                package_name_location: previous_identifier.location,
+                            }
+                            .build(),
+                        );
 
                         return None;
                     };
 
                     Some(module)
-                },
+                }
                 NameBinding::EnumItem(_) => {
                     diagnostics.add_single_file_diagnostic(
                         identifier.location.file_path_id,
@@ -211,30 +222,52 @@ impl ResolutionEnvironment {
                     }
                 }
                 NameBinding::Module(submodule_id) => {
-                    let Some(binding) = self.modules.get(&submodule_id).unwrap().bindings.get(&identifier.symbol) else {
-                        diagnostics.add_single_file_diagnostic(identifier.location.file_path_id, FailedToResolveModuleItemDiagnostic {
-                            item_name: identifier_interner.resolve(identifier.symbol).unwrap().to_owned(),
-                            item_name_location: identifier.location,
-                            module_name: identifier_interner.resolve(previous_identifier.symbol).unwrap().to_owned(),
-                            module_name_location: previous_identifier.location,
-                        }.build());
+                    let Some(binding) = self
+                        .modules
+                        .get(&submodule_id)
+                        .unwrap()
+                        .bindings
+                        .get(&identifier.symbol)
+                    else {
+                        diagnostics.add_single_file_diagnostic(
+                            identifier.location.file_path_id,
+                            FailedToResolveModuleItemDiagnostic {
+                                item_name: identifier_interner
+                                    .resolve(identifier.symbol)
+                                    .unwrap()
+                                    .to_owned(),
+                                item_name_location: identifier.location,
+                                module_name: identifier_interner
+                                    .resolve(previous_identifier.symbol)
+                                    .unwrap()
+                                    .to_owned(),
+                                module_name_location: previous_identifier.location,
+                            }
+                            .build(),
+                        );
 
                         return None;
                     };
 
-                    match binding {
-                        NameBinding::ModuleItem(definition_id) => {
-                            if *self.visibilities.get(&definition_id).unwrap() == Visibility::Private {
-                                diagnostics.add_single_file_diagnostic(
-                                    identifier.location.file_path_id,
-                                    FailedToResolvePrivateModuleItemDiagnostic {
-                                        item_name: identifier_interner.resolve(identifier.symbol).unwrap().to_owned(),
-                                        item_name_location: identifier.location,
-                                        module_name: identifier_interner.resolve(previous_identifier.symbol).unwrap().to_owned(),
-                                        module_name_location: previous_identifier.location}.build()                                 );
-                            }
+                    if let NameBinding::ModuleItem(definition_id) = binding {
+                        if *self.visibilities.get(definition_id).unwrap() == Visibility::Private {
+                            diagnostics.add_single_file_diagnostic(
+                                identifier.location.file_path_id,
+                                FailedToResolvePrivateModuleItemDiagnostic {
+                                    item_name: identifier_interner
+                                        .resolve(identifier.symbol)
+                                        .unwrap()
+                                        .to_owned(),
+                                    item_name_location: identifier.location,
+                                    module_name: identifier_interner
+                                        .resolve(previous_identifier.symbol)
+                                        .unwrap()
+                                        .to_owned(),
+                                    module_name_location: previous_identifier.location,
+                                }
+                                .build(),
+                            );
                         }
-                        _ => {}
                     }
 
                     Some(*binding)
