@@ -93,13 +93,10 @@ pub mod serialize;
 pub mod token;
 pub mod visit;
 
-/// An index of a definition in a module.
-pub type DefinitionIndex = usize;
-
 /// An ID for every definition (module item) in a workspace.
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
 pub struct DefinitionID {
-    pub index: DefinitionIndex,
+    pub symbol: Symbol,
     pub module_path_id: PathID,
 }
 
@@ -141,7 +138,7 @@ impl Literal {
 /// The reason why it's called [`IdentifierAST`] is because the name
 /// [`Identifier`] already exists in the [`token`] module.
 ///
-/// [`Identifier`]: ry_ast::token::Identifier
+/// [`Identifier`]: crate::token::RawToken::Identifier
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
 pub struct IdentifierAST {
     pub location: Location,
@@ -1191,31 +1188,9 @@ pub struct Module {
 }
 
 /// A visibility qualifier - `pub` or nothing (private visibility).
-#[derive(Debug, PartialEq, Eq, Clone, Copy)]
-pub struct Visibility(Option<Location>);
-
-impl Visibility {
-    #[inline]
-    #[must_use]
-    pub const fn private() -> Self {
-        Self(None)
-    }
-
-    #[inline]
-    #[must_use]
-    pub const fn public(location: Location) -> Self {
-        Self(Some(location))
-    }
-
-    #[inline]
-    #[must_use]
-    pub const fn location_of_pub(&self) -> Option<Location> {
-        self.0
-    }
-}
-
-impl Default for Visibility {
-    fn default() -> Self {
-        Self::private()
-    }
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Default)]
+pub enum Visibility {
+    #[default]
+    Private,
+    Public(Location),
 }

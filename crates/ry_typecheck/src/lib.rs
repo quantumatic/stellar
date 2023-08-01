@@ -7,7 +7,7 @@ use ry_diagnostics::GlobalDiagnostics;
 use ry_fx_hash::FxHashMap;
 use ry_hir::Module;
 use ry_interner::{IdentifierInterner, PathID, PathInterner, Symbol};
-use ry_name_resolution::{ModuleScope, Path, ResolutionEnvironment};
+use ry_name_resolution::{EnumData, EnumItemID, ModuleScope, Path, ResolutionEnvironment};
 use ry_thir::{
     ty::{self, Type},
     InterfaceSignature, ModuleItemSignature,
@@ -55,23 +55,55 @@ impl<'i, 'p, 'd> TypeCheckingContext<'i, 'p, 'd> {
             .insert(name, package_root_module_path_id);
     }
 
-    pub fn add_module(&mut self, file_path_id: PathID, path: Path, hir: Module) {
+    pub fn add_module(&mut self, module_path_id: PathID, path: Path, hir: Module) {
+        let mut imports = FxHashMap::default();
+        let mut enums = FxHashMap::default();
+
         for (idx, item) in hir.items.into_iter().enumerate() {
-            self.items.insert(
-                DefinitionID {
-                    index: idx,
-                    module_path_id: file_path_id,
-                },
-                ModuleItem::HIR(item),
-            );
+            match item {
+                ry_hir::ModuleItem::Import { location, path } => {
+                    let name = if let Some(r#as) = path.r#as {
+                        r#as
+                    } else {
+                        *path.path.identifiers.last().unwrap()
+                    };
+
+                    imports.insert(name, path);
+                }
+                ry_hir::ModuleItem::Enum { name, items, .. } => {
+                    let definition_id = DefinitionID {
+                        symbol: name.symbol,
+                        module_path_id,
+                    };
+
+                    let mut items_data = FxHashMap::default();
+
+                    for item in items {
+                        items_data.insert(
+                            item.symbol(),
+                            EnumItemID {
+                                enum_definition_id: definition_id,
+                                item_name: item.symbol(),
+                            },
+                        );
+                    }
+
+                    enums.insert(name, EnumData { items: items_data });
+                }
+                _ => {
+                    let definition_id = DefinitionID {
+                        symbol: item.name().unwrap(),
+                        module_path_id,
+                    };
+
+                    self.items.insert(definition_id, ModuleItem::HIR(item));
+                }
+            }
         }
 
-        //self.resolution_environment
-        //    .modules
-        //    .insert(file_path_id, ModuleScope);
         self.resolution_environment
             .module_paths
-            .insert(file_path_id, path);
+            .insert(module_path_id, path);
     }
 
     pub fn lower_type(&self, ty: ry_hir::Type) -> Type {

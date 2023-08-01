@@ -711,6 +711,24 @@ pub enum EnumItem {
     },
 }
 
+impl EnumItem {
+    #[inline]
+    #[must_use]
+    pub const fn name(&self) -> IdentifierAST {
+        match self {
+            Self::Just { name, .. } | Self::TupleLike { name, .. } | Self::Struct { name, .. } => {
+                *name
+            }
+        }
+    }
+
+    #[inline]
+    #[must_use]
+    pub const fn symbol(&self) -> Symbol {
+        self.name().symbol
+    }
+}
+
 /// A tuple field, e.g. `pub String` in `pub struct Wrapper(pub String);`.
 #[derive(Debug, PartialEq, Clone)]
 pub struct TupleField {

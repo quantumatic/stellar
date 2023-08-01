@@ -571,9 +571,9 @@ impl Visitor<'_> for Serializer<'_> {
         self.write_identation();
 
         self.write("VISIBILITY: ");
-        match visibility.location_of_pub() {
-            Some(location) => self.write(format!("PUBLIC <{location}>")),
-            None => self.write("PRIVATE"),
+        match visibility {
+            Visibility::Public(location) => self.write(format!("PUBLIC <{location}>")),
+            Visibility::Private => self.write("PRIVATE"),
         }
         self.write_newline();
 

@@ -77,7 +77,7 @@ impl Parse for ImportParser {
     fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
         let start = state.next_token.location.start;
 
-        if let Some(location) = self.visibility.location_of_pub() {
+        if let Visibility::Public(location) = self.visibility {
             state.add_diagnostic(UnnecessaryVisibilityQualifierDiagnostic {
                 location,
                 context: UnnecessaryVisibilityQualifierContext::Import,

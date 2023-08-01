@@ -3,7 +3,7 @@
 //! The name resolution allows to resolve names, after parsing all the packages in stages like
 //! type checking and MIR lowering.
 //!
-//! See [`GlobalContext`], [`PackageContext`] and [`ModuleContext`] for more details.
+//! See [`ResolutionEnvironment`], [`ModuleScope`] and [`NameBinding`] for more details.
 
 #![doc(
     html_logo_url = "https://raw.githubusercontent.com/abs0luty/Ry/main/additional/icon/ry.png",
@@ -178,7 +178,7 @@ impl ResolutionEnvironment {
                         .modules
                         .get(&definition_id.module_path_id)?
                         .enums
-                        .get(&definition_id)
+                        .get(&definition_id.symbol)
                     {
                         enum_scope
                             .items
@@ -267,7 +267,7 @@ pub struct ModuleScope {
     pub bindings: FxHashMap<Symbol, NameBinding>,
 
     /// Enums.
-    pub enums: FxHashMap<DefinitionID, EnumData>,
+    pub enums: FxHashMap<Symbol, EnumData>,
 
     /// The imports used in the module.
     pub imports: FxHashMap<Symbol, ry_ast::Path>,
@@ -341,6 +341,8 @@ pub enum ModuleNameBinding {
 /// Unique ID of the enum item
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
 pub struct EnumItemID {
-    enum_definition_id: DefinitionID,
-    item_name: Symbol,
+    /// ID of the enum definition.
+    pub enum_definition_id: DefinitionID,
+    /// Enum item name.
+    pub item_name: Symbol,
 }

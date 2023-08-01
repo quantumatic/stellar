@@ -487,10 +487,10 @@ impl IdentifierInterner {
 #[derive(Debug, Clone)]
 pub struct PathInterner(Interner);
 
-/// ID of a path in the [`FilePathStorage`].
+/// ID of a path in the [`PathInterner`].
 pub type PathID = usize;
 
-/// ID of a path, that will never exist in the [`FilePathStorage`].
+/// ID of a path, that will never exist in the [`PathInterner`].
 pub const DUMMY_PATH_ID: PathID = 0;
 
 impl Default for PathInterner {

@@ -142,7 +142,7 @@ where
 
     /// Optionally parse AST node of type [`Self::Output`].
     ///
-    /// For more information, see [`OptionalParser`].
+    /// For more information, see [`OptionallyParse`].
     fn optionally_parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output;
 }
 
@@ -516,9 +516,9 @@ impl Parse for VisibilityParser {
         if state.next_token.raw == Token![pub] {
             state.advance();
 
-            Visibility::public(state.current_token.location)
+            Visibility::Public(state.current_token.location)
         } else {
-            Visibility::private()
+            Visibility::Private
         }
     }
 }
