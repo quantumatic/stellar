@@ -67,9 +67,10 @@
 use diagnostics::{
     FailedToResolveModuleDiagnostic, FailedToResolveModuleItemDiagnostic,
     FailedToResolveNameDiagnostic, FailedToResolvePackageDiagnostic,
+    FailedToResolvePrivateModuleItemDiagnostic,
     ModuleItemsExceptEnumsDoNotServeAsNamespacesDiagnostic,
 };
-use ry_ast::{DefinitionID, IdentifierAST};
+use ry_ast::{DefinitionID, IdentifierAST, Visibility};
 use ry_diagnostics::{BuildDiagnostic, GlobalDiagnostics};
 use ry_fx_hash::FxHashMap;
 use ry_interner::{IdentifierInterner, PathID, Symbol};
@@ -88,6 +89,9 @@ pub struct ResolutionEnvironment {
 
     /// Storage of absolute paths of modules in the environment, e.g. `std.io`.
     pub module_paths: FxHashMap<PathID, Path>,
+
+    /// Storage of visibilities of module items.
+    pub visibilities: FxHashMap<DefinitionID, Visibility>,
 }
 
 impl ResolutionEnvironment {
@@ -217,6 +221,21 @@ impl ResolutionEnvironment {
 
                         return None;
                     };
+
+                    match binding {
+                        NameBinding::ModuleItem(definition_id) => {
+                            if *self.visibilities.get(&definition_id).unwrap() == Visibility::Private {
+                                diagnostics.add_single_file_diagnostic(
+                                    identifier.location.file_path_id,
+                                    FailedToResolvePrivateModuleItemDiagnostic {
+                                        item_name: identifier_interner.resolve(identifier.symbol).unwrap().to_owned(),
+                                        item_name_location: identifier.location,
+                                        module_name: identifier_interner.resolve(previous_identifier.symbol).unwrap().to_owned(),
+                                        module_name_location: previous_identifier.location}.build()                                 );
+                            }
+                        }
+                        _ => {}
+                    }
 
                     Some(*binding)
                 }

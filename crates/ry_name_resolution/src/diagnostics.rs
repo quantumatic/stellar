@@ -298,6 +298,39 @@ impl BuildDiagnostic for FailedToResolveModuleItemDiagnostic {
     }
 }
 
+/// Diagnostic, that occurs when the compiler tries to resolve a module's item that is defined as private.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct FailedToResolvePrivateModuleItemDiagnostic {
+    /// Name of the module that doesn't exist in the current scope.
+    pub module_name: String,
+    /// Location of the name of the module that doesn't exist in the current scope.
+    pub module_name_location: Location,
+    /// Item name.
+    pub item_name: String,
+    /// Location of the item name.
+    pub item_name_location: Location,
+}
+
+impl BuildDiagnostic for FailedToResolvePrivateModuleItemDiagnostic {
+    fn build(&self) -> Diagnostic<PathID> {
+        Diagnostic::error()
+            .with_code("E007")
+            .with_message(format!(
+                "failed to resolve private module item `{}`",
+                self.item_name
+            ))
+            .with_labels(vec![
+                self.item_name_location.to_primary_label(),
+                self.module_name_location
+                    .to_secondary_label()
+                    .with_message(format!(
+                        "module `{}` contains the item `{}`, but it is defined as private",
+                        self.module_name, self.item_name
+                    )),
+            ])
+    }
+}
+
 /// Diagnostic, that occurs when the compiler tries to resolve a name in a module scope.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FailedToResolveNameDiagnostic {
