@@ -2,7 +2,7 @@
 
 use std::sync::Arc;
 
-use ry_ast::DefinitionID;
+use ry_ast::{DefinitionID, ImportPath};
 use ry_diagnostics::GlobalDiagnostics;
 use ry_fx_hash::FxHashMap;
 use ry_hir::Module;
@@ -67,14 +67,25 @@ impl<'i, 'p, 'd> TypeCheckingContext<'i, 'p, 'd> {
 
         for (idx, item) in hir.items.into_iter().enumerate() {
             match item {
-                ry_hir::ModuleItem::Import { location, path } => {
-                    let name = if let Some(r#as) = path.r#as {
+                ry_hir::ModuleItem::Import {
+                    location,
+                    path: ImportPath { path, r#as },
+                } => {
+                    let name = if let Some(r#as) = r#as {
                         r#as
                     } else {
-                        *path.path.identifiers.last().unwrap()
+                        *path.identifiers.last().unwrap()
                     };
 
-                    imports.insert(name, path);
+                    let Some(binding) = self.resolution_environment.resolve_import_path(
+                        &path,
+                        self.identifier_interner,
+                        self.diagnostics,
+                    ) else {
+                        continue;
+                    };
+
+                    imports.insert(name, binding);
                 }
                 ry_hir::ModuleItem::Enum {
                     visibility,
@@ -123,7 +134,13 @@ impl<'i, 'p, 'd> TypeCheckingContext<'i, 'p, 'd> {
             .insert(module_path_id, path);
     }
 
-    pub fn lower_type(&self, ty: ry_hir::Type, scope: &ModuleScope) -> Type {
+    #[inline]
+    pub fn resolve_imports(&mut self) {
+        self.resolution_environment
+            .resolve_imports(self.identifier_interner, self.diagnostics);
+    }
+
+    pub fn lower_type(&mut self, ty: ry_hir::Type, scope: &ModuleScope) -> Type {
         match ty {
             ry_hir::Type::Constructor(constructor) => {
                 self.resolve_type_constructor(constructor, scope)
@@ -154,7 +171,11 @@ impl<'i, 'p, 'd> TypeCheckingContext<'i, 'p, 'd> {
         }
     }
 
-    fn resolve_type_constructor(&self, ty: ry_ast::TypeConstructor, scope: &ModuleScope) -> Type {
+    fn resolve_type_constructor(
+        &mut self,
+        ty: ry_ast::TypeConstructor,
+        scope: &ModuleScope,
+    ) -> Type {
         let Some(name_binding) = self.resolve_type_path(ty.path, scope) else {
             return self
                 .type_variable_factory
@@ -172,8 +193,6 @@ impl<'i, 'p, 'd> TypeCheckingContext<'i, 'p, 'd> {
     }
 
     fn resolve_type_path(&self, path: ry_ast::Path, scope: &ModuleScope) -> Option<NameBinding> {
-        let mut binding = None;
-
         todo!()
     }
 }

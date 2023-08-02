@@ -92,6 +92,16 @@ pub struct ResolutionEnvironment {
 
     /// Storage of visibilities of module items.
     pub visibilities: FxHashMap<DefinitionID, Visibility>,
+
+    /// Resolved imports in all modules.
+    pub resolved_imports: FxHashMap<PathID, ResolvedImports>,
+}
+
+/// Resolved imports in a particular module.
+#[derive(Debug, PartialEq, Eq, Clone, Default)]
+pub struct ResolvedImports {
+    /// List of resolved imports.
+    pub imports: FxHashMap<Symbol, NameBinding>,
 }
 
 impl ResolutionEnvironment {
@@ -102,15 +112,41 @@ impl ResolutionEnvironment {
         Self::default()
     }
 
+    /// Resolves all imports in modules that have been added to the environment previously.
+    ///
+    /// **Note**: Imports must be resolved before any name resolution process going on!!!
+    pub fn resolve_imports(
+        &mut self,
+        identifier_interner: &IdentifierInterner,
+        diagnostics: &mut GlobalDiagnostics,
+    ) {
+        for (module_path_id, module_scope) in &self.modules {
+            let mut imports = FxHashMap::default();
+
+            for (symbol, import_path) in &module_scope.imports {
+                let Some(resolved_name_binding) =
+                    self.resolve_import_path(import_path, identifier_interner, diagnostics)
+                else {
+                    continue;
+                };
+
+                imports.insert(*symbol, resolved_name_binding);
+            }
+
+            self.resolved_imports
+                .insert(*module_path_id, ResolvedImports { imports });
+        }
+    }
+
     /// Resolve an import path in the environment.
     #[allow(clippy::missing_panics_doc)]
     pub fn resolve_import_path(
         &self,
-        path: ry_ast::Path,
+        path: &ry_ast::Path,
         identifier_interner: &IdentifierInterner,
         diagnostics: &mut GlobalDiagnostics,
     ) -> Option<NameBinding> {
-        let mut identifiers = path.identifiers.into_iter();
+        let mut identifiers = path.identifiers.iter();
         let first_identifier = identifiers.next().unwrap();
 
         let mut previous_identifier = first_identifier;
@@ -144,7 +180,7 @@ impl ResolutionEnvironment {
                         // Module must exist at this point, or something went wrong when
                         // building the name resolution environment.
                         .unwrap()
-                        .resolve(identifier, identifier_interner, diagnostics, self)
+                        .resolve(*identifier, identifier_interner, diagnostics, self)
                     else {
                         diagnostics.add_single_file_diagnostic(
                             identifier.location.file_path_id,
@@ -309,8 +345,11 @@ pub struct Path {
 /// Data that Ry compiler has about a module.
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct ModuleScope {
-    /// The interned name of the module.
+    /// Interned name of the module.
     pub name: Symbol,
+
+    /// ID of the module's source file path.
+    pub path_id: PathID,
 
     /// The module items name bindings.
     pub bindings: FxHashMap<Symbol, NameBinding>,
@@ -318,7 +357,7 @@ pub struct ModuleScope {
     /// Enums.
     pub enums: FxHashMap<Symbol, EnumData>,
 
-    /// The imports used in the module.
+    /// Imports used in the module.
     pub imports: FxHashMap<Symbol, ry_ast::Path>,
 }
 
@@ -340,7 +379,7 @@ impl ModuleScope {
         diagnostics: &mut GlobalDiagnostics,
         environment: &ResolutionEnvironment,
     ) -> Option<NameBinding> {
-        if let Some(inner_binding) = self.bindings.get(&identifier.symbol).copied().or_else(|| {
+        if let binding @ Some(_) = self.bindings.get(&identifier.symbol).copied().or_else(|| {
             if environment
                 .packages_root_modules
                 .contains_key(&identifier.symbol)
@@ -350,15 +389,14 @@ impl ModuleScope {
                 None
             }
         }) {
-            Some(inner_binding)
+            binding
         } else {
             // check for possible name binding that can come from imports
-            if let Some(import_path) = self.imports.get(&identifier.symbol) {
-                environment.resolve_import_path(
-                    import_path.clone(),
-                    identifier_interner,
-                    diagnostics,
-                )
+            if let binding @ Some(_) = environment.resolved_imports[&self.path_id]
+                .imports
+                .get(&identifier.symbol)
+            {
+                binding.copied()
             } else {
                 diagnostics.add_single_file_diagnostic(
                     identifier.location.file_path_id,

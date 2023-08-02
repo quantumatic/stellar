@@ -36,6 +36,7 @@ fn resolve_module() {
 
     let mut package_root_module_scope = ModuleScope {
         name: a,
+        path_id: package_root_module_path_id,
         bindings: FxHashMap::default(),
         enums: FxHashMap::default(),
         imports: FxHashMap::default(),
@@ -47,6 +48,7 @@ fn resolve_module() {
 
     let child_module_scope = ModuleScope {
         name: a,
+        path_id: child_module_path_id,
         bindings: FxHashMap::default(),
         enums: FxHashMap::default(),
         imports: FxHashMap::default(),
@@ -63,8 +65,8 @@ fn resolve_module() {
         .insert(child_module_path_id, child_module_scope);
 
     assert_eq!(
-        environment.resolve_path(
-            Path {
+        environment.resolve_import_path(
+            &Path {
                 location: DUMMY_LOCATION,
                 identifiers: vec![dummy_identifier!(a), dummy_identifier!(a)],
             },
@@ -75,8 +77,8 @@ fn resolve_module() {
     );
 
     assert_eq!(
-        environment.resolve_path(
-            Path {
+        environment.resolve_import_path(
+            &Path {
                 location: DUMMY_LOCATION,
                 identifiers: vec![dummy_identifier!(b)],
             },
@@ -112,10 +114,23 @@ fn import() {
 
     let mut package_root_module_scope = ModuleScope {
         name: a,
+        path_id: package_root_module_path_id,
         bindings: FxHashMap::default(),
         imports: FxHashMap::default(),
         enums: FxHashMap::default(),
     };
+    package_root_module_scope
+        .bindings
+        .insert(b, NameBinding::Module(child_module_path_id));
+
+    let child_module_scope = ModuleScope {
+        name: b,
+        path_id: child_module_path_id,
+        bindings: FxHashMap::default(),
+        imports: FxHashMap::default(),
+        enums: FxHashMap::default(),
+    };
+
     package_root_module_scope.imports.insert(
         b,
         Path {
@@ -130,16 +145,6 @@ fn import() {
             identifiers: vec![dummy_identifier!(a), dummy_identifier!(b)],
         },
     );
-    package_root_module_scope
-        .bindings
-        .insert(b, NameBinding::Module(child_module_path_id));
-
-    let child_module_scope = ModuleScope {
-        name: b,
-        bindings: FxHashMap::default(),
-        imports: FxHashMap::default(),
-        enums: FxHashMap::default(),
-    };
 
     environment
         .packages_root_modules
@@ -150,6 +155,8 @@ fn import() {
     environment
         .modules
         .insert(child_module_path_id, child_module_scope);
+
+    environment.resolve_imports(&identifier_interner, &mut diagnostics);
 
     assert_eq!(
         environment
