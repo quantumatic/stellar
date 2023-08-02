@@ -125,7 +125,7 @@ impl ResolutionEnvironment {
 
             for (symbol, import_path) in &module_scope.imports {
                 let Some(resolved_name_binding) =
-                    self.resolve_import_path(import_path, identifier_interner, diagnostics)
+                    self.resolve_path(import_path, identifier_interner, diagnostics)
                 else {
                     continue;
                 };
@@ -140,16 +140,14 @@ impl ResolutionEnvironment {
 
     /// Resolve an import path in the environment.
     #[allow(clippy::missing_panics_doc)]
-    pub fn resolve_import_path(
+    pub fn resolve_path(
         &self,
         path: &ry_ast::Path,
         identifier_interner: &IdentifierInterner,
         diagnostics: &mut GlobalDiagnostics,
     ) -> Option<NameBinding> {
         let mut identifiers = path.identifiers.iter();
-        let first_identifier = identifiers.next().unwrap();
-
-        let mut previous_identifier = first_identifier;
+        let first_identifier = *identifiers.next().unwrap();
 
         if !self
             .packages_root_modules
@@ -169,18 +167,65 @@ impl ResolutionEnvironment {
             return None;
         }
 
-        let mut binding = Some(NameBinding::Package(first_identifier.symbol));
+        NameBinding::Package(first_identifier.symbol).resolve_rest_of_the_path(
+            first_identifier,
+            identifiers,
+            identifier_interner,
+            diagnostics,
+            self,
+        )
+    }
+}
 
-        for identifier in identifiers {
-            binding = binding.map(|binding| match binding {
-                NameBinding::Package(package_symbol) => {
-                    let Some(module) = self
+/// A name binding.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum NameBinding {
+    /// A package.
+    Package(Symbol),
+
+    /// A submodule.
+    Module(PathID),
+
+    /// An item defined in a particular module.
+    ModuleItem(DefinitionID),
+
+    /// An enum item.
+    EnumItem(EnumItemID),
+}
+
+impl NameBinding {
+    /// Resolve the rest of the path. For instance, for the path `std.io.println`, `io.println` is
+    /// the value of `other_identifiers`, and the `std` is the `first_identifier`.
+    ///
+    /// # Panics
+    /// - If the environment data is invalid.
+    /// - If the path contains symbols, that cannot be resolved by an identifier interner.
+    #[allow(single_use_lifetimes)]
+    pub fn resolve_rest_of_the_path<'i>(
+        mut self,
+        first_identifier: IdentifierAST,
+        other_identifiers: impl IntoIterator<Item = &'i IdentifierAST>,
+        identifier_interner: &IdentifierInterner,
+        diagnostics: &mut GlobalDiagnostics,
+        environment: &ResolutionEnvironment,
+    ) -> Option<Self> {
+        let mut previous_identifier = first_identifier;
+
+        for identifier in other_identifiers {
+            self = match self {
+                Self::Package(package_symbol) => {
+                    let Some(module) = environment
                         .modules
-                        .get(self.packages_root_modules.get(&package_symbol).unwrap())
+                        .get(
+                            environment
+                                .packages_root_modules
+                                .get(&package_symbol)
+                                .unwrap(),
+                        )
                         // Module must exist at this point, or something went wrong when
                         // building the name resolution environment.
                         .unwrap()
-                        .resolve(*identifier, identifier_interner, diagnostics, self)
+                        .resolve(*identifier, identifier_interner, diagnostics, environment)
                     else {
                         diagnostics.add_single_file_diagnostic(
                             identifier.location.file_path_id,
@@ -202,9 +247,9 @@ impl ResolutionEnvironment {
                         return None;
                     };
 
-                    Some(module)
+                    module
                 }
-                NameBinding::EnumItem(_) => {
+                Self::EnumItem(_) => {
                     diagnostics.add_single_file_diagnostic(
                         identifier.location.file_path_id,
                         ModuleItemsExceptEnumsDoNotServeAsNamespacesDiagnostic {
@@ -222,10 +267,10 @@ impl ResolutionEnvironment {
                         .build(),
                     );
 
-                    None
+                    return None;
                 }
-                NameBinding::ModuleItem(definition_id) => {
-                    if let Some(enum_scope) = self
+                Self::ModuleItem(definition_id) => {
+                    if let Some(enum_scope) = environment
                         .modules
                         .get(&definition_id.module_path_id)?
                         .enums
@@ -235,7 +280,7 @@ impl ResolutionEnvironment {
                             .items
                             .get(&identifier.symbol)
                             .copied()
-                            .map(NameBinding::EnumItem)
+                            .map(Self::EnumItem)?
                     } else {
                         diagnostics.add_single_file_diagnostic(
                             identifier.location.file_path_id,
@@ -254,11 +299,11 @@ impl ResolutionEnvironment {
                             .build(),
                         );
 
-                        None
+                        return None;
                     }
                 }
-                NameBinding::Module(submodule_id) => {
-                    let Some(binding) = self
+                Self::Module(submodule_id) => {
+                    let Some(binding) = environment
                         .modules
                         .get(&submodule_id)
                         .unwrap()
@@ -285,8 +330,10 @@ impl ResolutionEnvironment {
                         return None;
                     };
 
-                    if let NameBinding::ModuleItem(definition_id) = binding {
-                        if *self.visibilities.get(definition_id).unwrap() == Visibility::Private {
+                    if let Self::ModuleItem(definition_id) = self {
+                        if *environment.visibilities.get(&definition_id).unwrap()
+                            == Visibility::Private
+                        {
                             diagnostics.add_single_file_diagnostic(
                                 identifier.location.file_path_id,
                                 FailedToResolvePrivateModuleItemDiagnostic {
@@ -303,34 +350,20 @@ impl ResolutionEnvironment {
                                 }
                                 .build(),
                             );
+
+                            return None;
                         }
                     }
 
-                    Some(*binding)
+                    *binding
                 }
-            })?;
+            };
 
-            previous_identifier = identifier;
+            previous_identifier = *identifier;
         }
 
-        binding
+        Some(self)
     }
-}
-
-/// A name binding.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum NameBinding {
-    /// A package.
-    Package(Symbol),
-
-    /// A submodule.
-    Module(PathID),
-
-    /// An item defined in a particular module.
-    ModuleItem(DefinitionID),
-
-    /// An enum item.
-    EnumItem(EnumItemID),
 }
 
 /// Path - a list of identifiers separated by commas. The main difference
@@ -369,9 +402,44 @@ pub struct EnumData {
 }
 
 impl ModuleScope {
+    /// Resolve the path in the module scope.
+    ///
+    /// # Panics
+    ///
+    /// - If the environment data is invalid.
+    /// - If the path is empty.
+    /// - If the path contains symbols, that cannot be resolved by an identifier interner.
+    pub fn resolve_path(
+        &self,
+        path: &ry_ast::Path,
+        identifier_interner: &IdentifierInterner,
+        diagnostics: &mut GlobalDiagnostics,
+        environment: &ResolutionEnvironment,
+    ) -> Option<NameBinding> {
+        let mut identifiers = path.identifiers.iter();
+        let first_identifier = *identifiers.next().unwrap();
+
+        self.resolve(
+            first_identifier,
+            identifier_interner,
+            diagnostics,
+            environment,
+        )?
+        .resolve_rest_of_the_path(
+            first_identifier,
+            identifiers,
+            identifier_interner,
+            diagnostics,
+            environment,
+        )
+    }
+
     /// Resolves an identifier in a module scope. If resolution fails, returns [`None`]
     /// and adds a new diagnostics.
-    #[allow(clippy::missing_panics_doc)]
+    ///
+    /// # Panics
+    /// - If the environment data is wrong.
+    /// - If the path contains symbols, that cannot be resolved by an identifier interner.
     pub fn resolve(
         &self,
         identifier: IdentifierAST,

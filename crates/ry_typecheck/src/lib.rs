@@ -77,7 +77,7 @@ impl<'i, 'p, 'd> TypeCheckingContext<'i, 'p, 'd> {
                         *path.identifiers.last().unwrap()
                     };
 
-                    let Some(binding) = self.resolution_environment.resolve_import_path(
+                    let Some(binding) = self.resolution_environment.resolve_path(
                         &path,
                         self.identifier_interner,
                         self.diagnostics,
@@ -140,15 +140,34 @@ impl<'i, 'p, 'd> TypeCheckingContext<'i, 'p, 'd> {
             .resolve_imports(self.identifier_interner, self.diagnostics);
     }
 
-    pub fn lower_type(&mut self, ty: ry_hir::Type, scope: &ModuleScope) -> Type {
+    pub fn lower_type(
+        &mut self,
+        ty: ry_hir::Type,
+        identifier_interner: &mut IdentifierInterner,
+        diagnostics: &mut GlobalDiagnostics,
+        scope: &ModuleScope,
+        environment: &ResolutionEnvironment,
+    ) -> Type {
         match ty {
-            ry_hir::Type::Constructor(constructor) => {
-                self.resolve_type_constructor(constructor, scope)
-            }
+            ry_hir::Type::Constructor(constructor) => self.resolve_type_constructor(
+                constructor,
+                identifier_interner,
+                diagnostics,
+                scope,
+                environment,
+            ),
             ry_hir::Type::Tuple { element_types, .. } => Type::Tuple {
                 element_types: element_types
                     .into_iter()
-                    .map(|element| self.lower_type(element, scope))
+                    .map(|element| {
+                        self.lower_type(
+                            element,
+                            identifier_interner,
+                            diagnostics,
+                            scope,
+                            environment,
+                        )
+                    })
                     .collect(),
             },
             ry_hir::Type::Function {
@@ -158,9 +177,23 @@ impl<'i, 'p, 'd> TypeCheckingContext<'i, 'p, 'd> {
             } => Type::Function {
                 parameter_types: parameter_types
                     .into_iter()
-                    .map(|parameter| self.lower_type(parameter, scope))
+                    .map(|parameter| {
+                        self.lower_type(
+                            parameter,
+                            identifier_interner,
+                            diagnostics,
+                            scope,
+                            environment,
+                        )
+                    })
                     .collect(),
-                return_type: Box::new(self.lower_type(*return_type, scope)),
+                return_type: Box::new(self.lower_type(
+                    *return_type,
+                    identifier_interner,
+                    diagnostics,
+                    scope,
+                    environment,
+                )),
             },
             ry_hir::Type::InterfaceObject { location, bounds } => Type::InterfaceObject {
                 bounds: bounds
@@ -174,9 +207,14 @@ impl<'i, 'p, 'd> TypeCheckingContext<'i, 'p, 'd> {
     fn resolve_type_constructor(
         &mut self,
         ty: ry_ast::TypeConstructor,
+        identifier_interner: &mut IdentifierInterner,
+        diagnostics: &mut GlobalDiagnostics,
         scope: &ModuleScope,
+        environment: &ResolutionEnvironment,
     ) -> Type {
-        let Some(name_binding) = self.resolve_type_path(ty.path, scope) else {
+        let Some(name_binding) =
+            scope.resolve_path(&ty.path, identifier_interner, diagnostics, environment)
+        else {
             return self
                 .type_variable_factory
                 .make_unknown_type_placeholder(ty.location);
@@ -189,10 +227,6 @@ impl<'i, 'p, 'd> TypeCheckingContext<'i, 'p, 'd> {
         &self,
         interface: ry_ast::TypeConstructor,
     ) -> TypeConstructor {
-        todo!()
-    }
-
-    fn resolve_type_path(&self, path: ry_ast::Path, scope: &ModuleScope) -> Option<NameBinding> {
         todo!()
     }
 }

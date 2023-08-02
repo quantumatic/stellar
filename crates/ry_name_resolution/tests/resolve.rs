@@ -65,7 +65,7 @@ fn resolve_module() {
         .insert(child_module_path_id, child_module_scope);
 
     assert_eq!(
-        environment.resolve_import_path(
+        environment.resolve_path(
             &Path {
                 location: DUMMY_LOCATION,
                 identifiers: vec![dummy_identifier!(a), dummy_identifier!(a)],
@@ -77,7 +77,7 @@ fn resolve_module() {
     );
 
     assert_eq!(
-        environment.resolve_import_path(
+        environment.resolve_path(
             &Path {
                 location: DUMMY_LOCATION,
                 identifiers: vec![dummy_identifier!(b)],
