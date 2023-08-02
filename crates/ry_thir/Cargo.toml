@@ -13,4 +13,5 @@ ry_ast = { path = "../ry_ast" }
 ry_filesystem = { path = "../ry_filesystem" }
 ry_interner = { path = "../ry_interner" }
 ry_name_resolution = { path = "../ry_name_resolution" }
+ry_fx_hash = { path = "../ry_fx_hash" }
 

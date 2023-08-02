@@ -60,8 +60,10 @@
     clippy::unnested_or_patterns
 )]
 
-use ry_ast::{IdentifierAST, Literal, Path, WherePredicate};
+use ry_ast::{IdentifierAST, Literal, Path, Visibility, WherePredicate};
 use ry_filesystem::location::Location;
+use ry_fx_hash::FxHashMap;
+use ry_interner::Symbol;
 use ty::Type;
 
 pub mod ty;
@@ -401,6 +403,50 @@ pub struct TypeSignature {
 }
 
 #[derive(Debug, PartialEq, Eq, Clone)]
+pub struct EnumSignature {
+    pub type_signature: TypeSignature,
+    pub items: FxHashMap<Symbol, EnumItem>,
+}
+
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub enum EnumItem {
+    Just(IdentifierAST),
+    TupleLike {
+        name: IdentifierAST,
+        fields: FxHashMap<Symbol, EnumItemTupleField>,
+    },
+    Struct {
+        name: IdentifierAST,
+        fields: FxHashMap<Symbol, EnumItemStructField>,
+    },
+}
+
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub struct EnumItemStructField {
+    pub location: Location,
+    pub ty: Type,
+}
+
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub struct EnumItemTupleField {
+    pub location: Location,
+    pub ty: Type,
+}
+
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub struct StructSignature {
+    pub type_signature: TypeSignature,
+    pub fields: FxHashMap<Symbol, StructField>,
+}
+
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub struct StructField {
+    pub visibility: Visibility,
+    pub location: Location,
+    pub ty: Type,
+}
+
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct TypeAliasSignature {
     pub name: IdentifierAST,
     pub type_parameters: Vec<IdentifierAST>,
@@ -412,21 +458,21 @@ pub struct InterfaceSignature {
     pub name: IdentifierAST,
     pub type_parameters: Vec<IdentifierAST>,
     pub predicates: Vec<WherePredicate>,
-    pub methods: Vec<FunctionSignature>,
+    pub methods: FxHashMap<Symbol, FunctionSignature>,
 }
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct FunctionSignature {
     pub name: IdentifierAST,
     pub type_parameters: Vec<IdentifierAST>,
-    pub parameters: Vec<FunctionParameter>,
+    pub parameters: FxHashMap<Symbol, FunctionParameter>,
     pub return_type: Type,
     pub predicates: Vec<WherePredicate>,
 }
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct FunctionParameter {
-    pub name: IdentifierAST,
+    pub location: Location,
     pub ty: Type,
 }
 
@@ -446,7 +492,7 @@ pub struct Interface {
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub enum ModuleItemSignature {
-    Type(TypeSignature),
+    Enum(EnumSignature),
     TypeAlias(TypeAliasSignature),
     Interface(InterfaceSignature),
     Function(FunctionSignature),

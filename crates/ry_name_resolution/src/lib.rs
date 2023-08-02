@@ -102,9 +102,9 @@ impl ResolutionEnvironment {
         Self::default()
     }
 
-    /// Resolve a path in the environment.
+    /// Resolve an import path in the environment.
     #[allow(clippy::missing_panics_doc)]
-    pub fn resolve_path(
+    pub fn resolve_import_path(
         &self,
         path: ry_ast::Path,
         identifier_interner: &IdentifierInterner,
@@ -354,7 +354,11 @@ impl ModuleScope {
         } else {
             // check for possible name binding that can come from imports
             if let Some(import_path) = self.imports.get(&identifier.symbol) {
-                environment.resolve_path(import_path.clone(), identifier_interner, diagnostics)
+                environment.resolve_import_path(
+                    import_path.clone(),
+                    identifier_interner,
+                    diagnostics,
+                )
             } else {
                 diagnostics.add_single_file_diagnostic(
                     identifier.location.file_path_id,
@@ -372,19 +376,6 @@ impl ModuleScope {
             }
         }
     }
-}
-
-/// Data that Ry compiler has about a name binding in a module.
-#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
-pub enum ModuleNameBinding {
-    /// Submodule.
-    Submodule(PathID),
-
-    /// Item defined in the module.
-    ModuleItem(DefinitionID),
-
-    /// Enum item.
-    EnumItem(EnumItemID),
 }
 
 /// Unique ID of the enum item

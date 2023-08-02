@@ -1,5 +1,6 @@
 //! Defines [`Type`] for working with types and THIR nodes.
 
+use ry_filesystem::location::Location;
 use ry_interner::{builtin_symbols, Symbol};
 use ry_name_resolution::Path;
 
@@ -14,8 +15,8 @@ pub enum Type {
         parameter_types: Vec<Self>,
         return_type: Box<Self>,
     },
-    Variable(TypeVariableID),
-    TraitObject {
+    Variable(TypeVariable),
+    InterfaceObject {
         bounds: Vec<TypeConstructor>,
     },
     WithQualifiedPath {
@@ -45,9 +46,44 @@ impl Type {
             Self::Tuple { .. } => TypeKind::Tuple,
             Self::Function { .. } => TypeKind::Function,
             Self::Variable(..) => TypeKind::Variable,
-            Self::TraitObject { .. } => TypeKind::TraitObject,
+            Self::InterfaceObject { .. } => TypeKind::TraitObject,
             Self::WithQualifiedPath { .. } => TypeKind::WithQualifiedPath,
             Self::Unit => TypeKind::Unit,
+        }
+    }
+}
+
+#[derive(Debug, PartialEq, Eq, Clone, Hash)]
+pub enum TypeVariable {
+    TypeArgument {
+        /// Interned name of the corresponding generic parameter.
+        symbol: Symbol,
+        /// Location of the type argument itself (if exists), e.g. location `_` in `HashMap[_, int32]`.
+        location: Option<Location>,
+        /// Path to the type that contains the correspoding generic parameter.
+        origin_type_path: Path,
+        /// Location of the corresponding generic parameter name.
+        origin_location: Location,
+        id: TypeVariableID,
+    },
+    InvalidType {
+        location: Location,
+        id: TypeVariableID,
+    },
+    Expression {
+        location: Location,
+        id: TypeVariableID,
+    },
+}
+
+impl TypeVariable {
+    #[inline]
+    #[must_use]
+    pub const fn id(&self) -> TypeVariableID {
+        match self {
+            Self::TypeArgument { id, .. }
+            | Self::InvalidType { id, .. }
+            | Self::Expression { id, .. } => *id,
         }
     }
 }

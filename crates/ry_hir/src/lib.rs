@@ -630,7 +630,7 @@ impl ModuleItem {
     /// Returns the visibility of the item.
     #[inline]
     #[must_use]
-    pub const fn visibility(&self) -> Option<Visibility> {
+    pub const fn visibility(&self) -> Visibility {
         match self {
             Self::Enum { visibility, .. }
             | Self::Struct { visibility, .. }
@@ -640,20 +640,9 @@ impl ModuleItem {
             | Self::Function(Function {
                 signature: FunctionSignature { visibility, .. },
                 ..
-            }) => Some(*visibility),
-            Self::Import { .. } => None,
+            }) => *visibility,
+            Self::Import { .. } => Visibility::Private,
         }
-    }
-
-    /// Returns the visibility of the item.
-    ///
-    /// # Panics
-    ///
-    /// If the item does not have a visibility.
-    #[inline]
-    #[must_use]
-    pub fn visibility_or_panic(&self) -> Visibility {
-        self.visibility().unwrap()
     }
 }
 

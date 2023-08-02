@@ -2,25 +2,30 @@
 
 use std::sync::Arc;
 
-use ry_ast::{DefinitionID, TypeConstructor};
+use ry_ast::DefinitionID;
 use ry_diagnostics::GlobalDiagnostics;
 use ry_fx_hash::FxHashMap;
 use ry_hir::Module;
 use ry_interner::{IdentifierInterner, PathID, PathInterner, Symbol};
-use ry_name_resolution::{EnumData, EnumItemID, ModuleScope, Path, ResolutionEnvironment};
+use ry_name_resolution::{
+    EnumData, EnumItemID, ModuleScope, NameBinding, Path, ResolutionEnvironment,
+};
 use ry_thir::{
-    ty::{self, Type},
+    ty::{self, Type, TypeConstructor},
     InterfaceSignature, ModuleItemSignature,
 };
+use type_variable_factory::TypeVariableFactory;
 
 pub mod diagnostics;
 pub mod generic_parameter_scope;
+pub mod type_variable_factory;
 
 #[derive(Debug)]
 pub struct TypeCheckingContext<'i, 'p, 'd> {
     identifier_interner: &'i mut IdentifierInterner,
     path_interner: &'p PathInterner,
     resolution_environment: ResolutionEnvironment,
+    type_variable_factory: TypeVariableFactory,
     items: FxHashMap<DefinitionID, ModuleItem>,
     signatures: FxHashMap<DefinitionID, ModuleItemSignature>,
     substitutions: FxHashMap<Symbol, Type>,
@@ -42,6 +47,7 @@ impl<'i, 'p, 'd> TypeCheckingContext<'i, 'p, 'd> {
             identifier_interner,
             path_interner,
             resolution_environment: ResolutionEnvironment::new(),
+            type_variable_factory: TypeVariableFactory::new(),
             substitutions: FxHashMap::default(),
             items: FxHashMap::default(),
             signatures: FxHashMap::default(),
@@ -70,7 +76,12 @@ impl<'i, 'p, 'd> TypeCheckingContext<'i, 'p, 'd> {
 
                     imports.insert(name, path);
                 }
-                ry_hir::ModuleItem::Enum { name, items, .. } => {
+                ry_hir::ModuleItem::Enum {
+                    visibility,
+                    name,
+                    items,
+                    ..
+                } => {
                     let definition_id = DefinitionID {
                         symbol: name.symbol,
                         module_path_id,
@@ -88,6 +99,9 @@ impl<'i, 'p, 'd> TypeCheckingContext<'i, 'p, 'd> {
                         );
                     }
 
+                    self.resolution_environment
+                        .visibilities
+                        .insert(definition_id, visibility);
                     enums.insert(name, EnumData { items: items_data });
                 }
                 _ => {
@@ -96,6 +110,9 @@ impl<'i, 'p, 'd> TypeCheckingContext<'i, 'p, 'd> {
                         module_path_id,
                     };
 
+                    self.resolution_environment
+                        .visibilities
+                        .insert(definition_id, item.visibility());
                     self.items.insert(definition_id, ModuleItem::HIR(item));
                 }
             }
@@ -106,13 +123,15 @@ impl<'i, 'p, 'd> TypeCheckingContext<'i, 'p, 'd> {
             .insert(module_path_id, path);
     }
 
-    pub fn lower_type(&self, ty: ry_hir::Type) -> Type {
+    pub fn lower_type(&self, ty: ry_hir::Type, scope: &ModuleScope) -> Type {
         match ty {
-            ry_hir::Type::Constructor(constructor) => self.lower_type_constructor(constructor),
+            ry_hir::Type::Constructor(constructor) => {
+                self.resolve_type_constructor(constructor, scope)
+            }
             ry_hir::Type::Tuple { element_types, .. } => Type::Tuple {
                 element_types: element_types
                     .into_iter()
-                    .map(|element| self.lower_type(element))
+                    .map(|element| self.lower_type(element, scope))
                     .collect(),
             },
             ry_hir::Type::Function {
@@ -122,20 +141,39 @@ impl<'i, 'p, 'd> TypeCheckingContext<'i, 'p, 'd> {
             } => Type::Function {
                 parameter_types: parameter_types
                     .into_iter()
-                    .map(|parameter| self.lower_type(parameter))
+                    .map(|parameter| self.lower_type(parameter, scope))
                     .collect(),
-                return_type: Box::new(self.lower_type(*return_type)),
+                return_type: Box::new(self.lower_type(*return_type, scope)),
             },
-            _ => todo!(),
+            ry_hir::Type::InterfaceObject { location, bounds } => Type::InterfaceObject {
+                bounds: bounds
+                    .into_iter()
+                    .map(|interface| self.resolve_interface_type_constructor(interface))
+                    .collect(),
+            },
         }
     }
 
-    /// A symbol data, in which types in a definition are processed, once the the
-    /// definition is used somewhere else. This approach allows to resolve forward
-    /// references.
-    fn lower_type_constructor(&self, ty: ry_ast::TypeConstructor) -> Type {
+    fn resolve_type_constructor(&self, ty: ry_ast::TypeConstructor, scope: &ModuleScope) -> Type {
+        let Some(name_binding) = self.resolve_type_path(ty.path, scope) else {
+            return self
+                .type_variable_factory
+                .make_unknown_type_placeholder(ty.location);
+        };
+
         todo!()
     }
 
-    fn lower_interface(&self, interface: ry_ast::TypeConstructor) {}
+    fn resolve_interface_type_constructor(
+        &self,
+        interface: ry_ast::TypeConstructor,
+    ) -> TypeConstructor {
+        todo!()
+    }
+
+    fn resolve_type_path(&self, path: ry_ast::Path, scope: &ModuleScope) -> Option<NameBinding> {
+        let mut binding = None;
+
+        todo!()
+    }
 }
