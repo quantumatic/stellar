@@ -115,6 +115,11 @@ impl ResolutionEnvironment {
     /// Resolves all imports in modules that have been added to the environment previously.
     ///
     /// **Note**: Imports must be resolved before any name resolution process going on!!!
+    ///
+    /// # Panics
+    /// - If the environment data is invalid.
+    /// - If one of the import paths is empty.
+    /// - If one of the import paths contains symbols, that cannot be resolved by an identifier interner.
     pub fn resolve_imports(
         &mut self,
         identifier_interner: &IdentifierInterner,
