@@ -139,7 +139,11 @@ impl ResolutionEnvironment {
     }
 
     /// Resolve an import path in the environment.
-    #[allow(clippy::missing_panics_doc)]
+    ///
+    /// # Panics
+    /// - If the environment data is invalid.
+    /// - If the path is empty.
+    /// - If the path contains symbols, that cannot be resolved by an identifier interner.
     pub fn resolve_path(
         &self,
         path: &ry_ast::Path,
