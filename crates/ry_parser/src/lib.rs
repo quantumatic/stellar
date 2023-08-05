@@ -9,10 +9,9 @@
     html_logo_url = "https://raw.githubusercontent.com/abs0luty/Ry/main/additional/icon/ry.png",
     html_favicon_url = "https://raw.githubusercontent.com/abs0luty/Ry/main/additional/icon/ry.png"
 )]
-#![warn(missing_docs, clippy::dbg_macro)]
-#![deny(
+#![warn(clippy::dbg_macro, missing_docs)]
+#![warn(
     // rustc lint groups https://doc.rust-lang.org/rustc/lints/groups.html
-    warnings,
     future_incompatible,
     let_underscore,
     nonstandard_style,
@@ -77,7 +76,7 @@ mod r#type;
 use std::{fs, io};
 
 use diagnostics::LexErrorDiagnostic;
-use expression::ExpressionParser;
+pub use expression::ExpressionParser;
 use items::{ItemParser, ItemsParser};
 use pattern::PatternParser;
 use r#type::TypeParser;

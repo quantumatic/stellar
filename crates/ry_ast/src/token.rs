@@ -1,7 +1,6 @@
 //! Defines [`Token`] which represents grammatical unit of Ry source text.
 
 use derive_more::Display;
-use paste::paste;
 use ry_filesystem::location::Location;
 
 use crate::precedence::Precedence;
@@ -361,13 +360,13 @@ pub enum RawToken {
 
 impl PartialEq<Punctuator> for RawToken {
     fn eq(&self, other: &Punctuator) -> bool {
-        matches!(self, RawToken::Punctuator(punctuator) if punctuator == other)
+        matches!(self, Self::Punctuator(punctuator) if punctuator == other)
     }
 }
 
 impl PartialEq<Keyword> for RawToken {
     fn eq(&self, other: &Keyword) -> bool {
-        matches!(self, RawToken::Keyword(keyword) if keyword == other)
+        matches!(self, Self::Keyword(keyword) if keyword == other)
     }
 }
 

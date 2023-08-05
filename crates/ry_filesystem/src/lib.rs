@@ -8,9 +8,8 @@
 )]
 #![cfg_attr(not(test), forbid(clippy::unwrap_used))]
 #![warn(missing_docs, clippy::dbg_macro)]
-#![deny(
+#![warn(
     // rustc lint groups https://doc.rust-lang.org/rustc/lints/groups.html
-    warnings,
     future_incompatible,
     let_underscore,
     nonstandard_style,

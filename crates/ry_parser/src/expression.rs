@@ -17,70 +17,37 @@ use crate::{
     Parse, ParseState,
 };
 
-#[derive(Default)]
-pub(crate) struct ExpressionParser {
-    pub(crate) precedence: Precedence,
-    pub(crate) ignore_struct: bool,
+/// Parser for Ry expressions.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub struct ExpressionParser {
+    precedence: Precedence,
+    ignore_struct: bool,
 }
 
-struct WhileExpressionParser;
+impl ExpressionParser {
+    /// Creates a parser for expressions with lowest precedence.
+    #[inline]
+    #[must_use]
+    pub fn new() -> Self {
+        Self::default()
+    }
 
-struct MatchExpressionParser;
+    /// Creates a parser for expressions with specified precedence.
+    #[inline]
+    #[must_use]
+    pub const fn with_precedence(mut self, precedence: Precedence) -> Self {
+        self.precedence = precedence;
+        self
+    }
 
-struct MatchExpressionBlockParser;
-
-struct MatchExpressionUnitParser;
-
-struct PrimaryExpressionParser {
-    pub(crate) ignore_struct: bool,
+    /// Creates a parser for expressions, that ignores struct expressions.
+    #[inline]
+    #[must_use]
+    pub const fn ignore_struct(mut self, ignore_struct: bool) -> Self {
+        self.ignore_struct = ignore_struct;
+        self
+    }
 }
-
-struct GenericArgumentsExpressionParser {
-    pub(crate) left: Expression,
-}
-
-struct FieldAccessExpressionParser {
-    pub(crate) left: Expression,
-}
-
-struct PrefixExpressionParser {
-    pub(crate) ignore_struct: bool,
-}
-
-struct PostfixExpressionParser {
-    pub(crate) left: Expression,
-}
-
-struct CastExpressionParser {
-    pub(crate) left: Expression,
-}
-
-struct IfExpressionParser;
-
-struct ParenthesizedOrTupleExpressionParser;
-
-struct CallExpressionParser {
-    pub(crate) left: Expression,
-}
-
-struct BinaryExpressionParser {
-    pub(crate) left: Expression,
-    pub(crate) ignore_struct: bool,
-}
-
-struct ListExpressionParser;
-
-struct StructExpressionParser {
-    pub(crate) left: Expression,
-}
-
-struct StructExpressionUnitParser;
-
-struct LambdaExpressionParser;
-
-struct LoopExpressionParser;
-
-struct StatementsBlockExpressionParser;
 
 impl Parse for ExpressionParser {
     type Output = Option<Expression>;
@@ -130,6 +97,8 @@ impl Parse for ExpressionParser {
     }
 }
 
+struct WhileExpressionParser;
+
 impl Parse for WhileExpressionParser {
     type Output = Option<Expression>;
 
@@ -153,6 +122,8 @@ impl Parse for WhileExpressionParser {
     }
 }
 
+struct MatchExpressionParser;
+
 impl Parse for MatchExpressionParser {
     type Output = Option<Expression>;
 
@@ -160,11 +131,7 @@ impl Parse for MatchExpressionParser {
         let start = state.next_token.location.start;
         state.advance(); // `match`
 
-        let expression = ExpressionParser {
-            precedence: Precedence::Lowest,
-            ignore_struct: true,
-        }
-        .parse(state)?;
+        let expression = ExpressionParser::new().ignore_struct(true).parse(state)?;
 
         let block = MatchExpressionBlockParser.parse(state)?;
 
@@ -175,6 +142,8 @@ impl Parse for MatchExpressionParser {
         })
     }
 }
+
+struct MatchExpressionBlockParser;
 
 impl Parse for MatchExpressionBlockParser {
     type Output = Option<Vec<MatchExpressionItem>>;
@@ -195,6 +164,8 @@ impl Parse for MatchExpressionBlockParser {
     }
 }
 
+struct MatchExpressionUnitParser;
+
 impl Parse for MatchExpressionUnitParser {
     type Output = Option<MatchExpressionItem>;
 
@@ -203,10 +174,14 @@ impl Parse for MatchExpressionUnitParser {
 
         state.consume(Punctuator::Arrow, "match expression unit")?;
 
-        let right = ExpressionParser::default().parse(state)?;
+        let right = ExpressionParser::new().parse(state)?;
 
         Some(MatchExpressionItem { left, right })
     }
+}
+
+struct PrimaryExpressionParser {
+    ignore_struct: bool,
 }
 
 impl Parse for PrimaryExpressionParser {
@@ -273,6 +248,10 @@ impl Parse for PrimaryExpressionParser {
     }
 }
 
+struct GenericArgumentsExpressionParser {
+    left: Expression,
+}
+
 impl Parse for GenericArgumentsExpressionParser {
     type Output = Option<Expression>;
 
@@ -285,6 +264,10 @@ impl Parse for GenericArgumentsExpressionParser {
             type_arguments,
         })
     }
+}
+
+struct FieldAccessExpressionParser {
+    left: Expression,
 }
 
 impl Parse for FieldAccessExpressionParser {
@@ -303,6 +286,9 @@ impl Parse for FieldAccessExpressionParser {
     }
 }
 
+struct PrefixExpressionParser {
+    ignore_struct: bool,
+}
 impl Parse for PrefixExpressionParser {
     type Output = Option<Expression>;
 
@@ -328,6 +314,10 @@ impl Parse for PrefixExpressionParser {
     }
 }
 
+struct PostfixExpressionParser {
+    left: Expression,
+}
+
 impl Parse for PostfixExpressionParser {
     type Output = Option<Expression>;
 
@@ -346,6 +336,8 @@ impl Parse for PostfixExpressionParser {
         })
     }
 }
+
+struct ParenthesizedOrTupleExpressionParser;
 
 impl Parse for ParenthesizedOrTupleExpressionParser {
     type Output = Option<Expression>;
@@ -405,6 +397,8 @@ impl Parse for ParenthesizedOrTupleExpressionParser {
     }
 }
 
+struct IfExpressionParser;
+
 impl Parse for IfExpressionParser {
     type Output = Option<Expression>;
 
@@ -452,6 +446,10 @@ impl Parse for IfExpressionParser {
     }
 }
 
+struct CastExpressionParser {
+    left: Expression,
+}
+
 impl Parse for CastExpressionParser {
     type Output = Option<Expression>;
 
@@ -466,6 +464,10 @@ impl Parse for CastExpressionParser {
             right,
         })
     }
+}
+
+struct CallExpressionParser {
+    left: Expression,
 }
 
 impl Parse for CallExpressionParser {
@@ -489,6 +491,11 @@ impl Parse for CallExpressionParser {
             arguments,
         })
     }
+}
+
+struct BinaryExpressionParser {
+    left: Expression,
+    ignore_struct: bool,
 }
 
 impl Parse for BinaryExpressionParser {
@@ -519,6 +526,8 @@ impl Parse for BinaryExpressionParser {
     }
 }
 
+struct ListExpressionParser;
+
 impl Parse for ListExpressionParser {
     type Output = Option<Expression>;
 
@@ -541,6 +550,10 @@ impl Parse for ListExpressionParser {
             elements,
         })
     }
+}
+
+struct StructExpressionParser {
+    left: Expression,
 }
 
 impl Parse for StructExpressionParser {
@@ -566,6 +579,8 @@ impl Parse for StructExpressionParser {
     }
 }
 
+struct StructExpressionUnitParser;
+
 impl Parse for StructExpressionUnitParser {
     type Output = Option<StructExpressionItem>;
 
@@ -583,6 +598,8 @@ impl Parse for StructExpressionUnitParser {
     }
 }
 
+struct StatementsBlockExpressionParser;
+
 impl Parse for StatementsBlockExpressionParser {
     type Output = Option<Expression>;
 
@@ -596,6 +613,8 @@ impl Parse for StatementsBlockExpressionParser {
         })
     }
 }
+
+struct LambdaExpressionParser;
 
 impl Parse for LambdaExpressionParser {
     type Output = Option<Expression>;
@@ -643,6 +662,8 @@ impl Parse for LambdaExpressionParser {
         })
     }
 }
+
+struct LoopExpressionParser;
 
 impl Parse for LoopExpressionParser {
     type Output = Option<Expression>;

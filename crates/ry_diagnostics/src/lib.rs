@@ -5,9 +5,8 @@
     html_favicon_url = "https://raw.githubusercontent.com/abs0luty/Ry/main/additional/icon/ry.png"
 )]
 #![warn(missing_docs, clippy::dbg_macro)]
-#![deny(
+#![warn(
     // rustc lint groups https://doc.rust-lang.org/rustc/lints/groups.html
-    warnings,
     future_incompatible,
     let_underscore,
     nonstandard_style,

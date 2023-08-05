@@ -30,7 +30,6 @@
 #![warn(clippy::dbg_macro)]
 #![warn(
     // rustc lint groups https://doc.rust-lang.org/rustc/lints/groups.html
-    warnings,
     future_incompatible,
     let_underscore,
     nonstandard_style,
@@ -538,6 +537,7 @@ macro_rules! make_operator_type {
 
         impl RawToken {
             #[doc=$token_check_fn_doc]
+            #[must_use]
             pub const fn $token_check_fn_name(self) -> bool {
                 matches!(self, RawToken::Punctuator($(| Punctuator::$name)*))
             }

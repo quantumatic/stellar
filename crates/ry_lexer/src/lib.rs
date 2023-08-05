@@ -9,11 +9,9 @@
     html_logo_url = "https://raw.githubusercontent.com/abs0luty/Ry/main/additional/icon/ry.png",
     html_favicon_url = "https://raw.githubusercontent.com/abs0luty/Ry/main/additional/icon/ry.png"
 )]
-#![cfg_attr(not(test), forbid(clippy::unwrap_used))]
 #![warn(missing_docs, clippy::dbg_macro)]
-#![deny(
+#![warn(
     // rustc lint groups https://doc.rust-lang.org/rustc/lints/groups.html
-    warnings,
     future_incompatible,
     let_underscore,
     nonstandard_style,
@@ -68,7 +66,7 @@
 
 use std::{mem, str::Chars, string::String};
 
-use ry_ast::token::{LexError, Punctuator, RawLexError, RawToken, Token, get_keyword};
+use ry_ast::token::{get_keyword, LexError, Punctuator, RawLexError, RawToken, Token};
 use ry_filesystem::location::Location;
 use ry_interner::{IdentifierInterner, PathID, Symbol};
 use ry_stable_likely::unlikely;

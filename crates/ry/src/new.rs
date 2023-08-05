@@ -30,14 +30,14 @@ pub fn command(package_name: &str) {
             "note",
             format!(
                 ": character `{}` doesn't correspond to the pattern: {}",
-                package_name.chars().nth(e).unwrap_or_else(|| panic!(
-                    "Cannot get the {}-nth character of package name",
-                    e
-                )),
-                if e != 0 {
-                    "`0` to `9`, `a` to `z`, `A` to `Z` or `_`"
-                } else {
+                package_name
+                    .chars()
+                    .nth(e)
+                    .unwrap_or_else(|| panic!("Cannot get the {e}-nth character of package name",)),
+                if e == 0 {
                     "`a` to `z`, `A` to `Z` or `_`"
+                } else {
+                    "`0` to `9`, `a` to `z`, `A` to `Z` or `_`"
                 }
             ),
         );
@@ -49,16 +49,15 @@ pub fn command(package_name: &str) {
         exit(1);
     });
 
-    fs::create_dir(format!("{}/bin", package_name)).unwrap_or_else(|_| {
+    fs::create_dir(format!("{package_name}/bin")).unwrap_or_else(|_| {
         log_with_prefix("error", ": cannot create `bin` package folder");
         exit(1);
     });
 
-    let mut main_file =
-        File::create(format!("{}/bin/main.ry", package_name)).unwrap_or_else(|_| {
-            log_with_prefix("error", ": cannot create `bin/main.ry`");
-            exit(1);
-        });
+    let mut main_file = File::create(format!("{package_name}/bin/main.ry")).unwrap_or_else(|_| {
+        log_with_prefix("error", ": cannot create `bin/main.ry`");
+        exit(1);
+    });
 
     main_file
         .write_all(b"fun main() {\n  println(\"Hello, world!\");\n}")
@@ -68,7 +67,7 @@ pub fn command(package_name: &str) {
         });
 
     let mut package_file =
-        File::create(format!("{}/package.json", package_name)).unwrap_or_else(|_| {
+        File::create(format!("{package_name}/package.json")).unwrap_or_else(|_| {
             log_with_prefix("error", ": cannot create `package.json`");
             exit(1);
         });
@@ -77,11 +76,10 @@ pub fn command(package_name: &str) {
         .write_all(
             format!(
                 "{{
-\"name\": \"{}\",
+\"name\": \"{package_name}\",
 \"version\": \"0.0.1\",
 \"dependencies\": []
-}}",
-                package_name
+}}"
             )
             .as_bytes(),
         )

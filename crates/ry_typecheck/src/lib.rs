@@ -1,7 +1,5 @@
 #![allow(warnings)]
 
-use std::sync::Arc;
-
 use ry_ast::{DefinitionID, ImportPath};
 use ry_diagnostics::GlobalDiagnostics;
 use ry_fx_hash::FxHashMap;

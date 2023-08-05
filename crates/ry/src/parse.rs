@@ -27,12 +27,12 @@ pub fn command(path_str: &str) {
     ) {
         Err(..) => {
             diagnostics_emitter.emit_context_free_diagnostic(
-                &Diagnostic::error().with_message(format!("cannot read the file {}", path_str)),
+                &Diagnostic::error().with_message(format!("cannot read the file {path_str}")),
             );
         }
         Ok(ast) => {
             let parsing_time = now.elapsed().as_secs_f64();
-            log_with_left_padded_prefix("Parsed", format!("in {}s", parsing_time));
+            log_with_left_padded_prefix("Parsed", format!("in {parsing_time}s"));
 
             diagnostics_emitter.emit_global_diagnostics(&diagnostics);
 
@@ -49,7 +49,7 @@ pub fn command(path_str: &str) {
                 file.write_all(ast_string.as_bytes())
                     .unwrap_or_else(|_| panic!("Cannot write to file {}", filename));
 
-                log_with_left_padded_prefix("Emitted", format!("AST in `{}`", filename));
+                log_with_left_padded_prefix("Emitted", format!("AST in `{filename}`"));
             }
         }
     };

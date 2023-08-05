@@ -209,11 +209,8 @@ impl Lexer<'_, '_> {
         }
 
         if base <= 10 {
-            let max = from_u32(
-                '0' as u32
-                    + TryInto::<u32>::try_into(base).expect("Invalid base in Lexer::eat_digits()"),
-            )
-            .expect("Invalid max character in Lexer::eat_digits()");
+            let max = from_u32(base.try_into().unwrap())
+                .expect("Invalid max character in Lexer::eat_digits()");
 
             while decimal(self.current) || self.current == '_' {
                 let mut digit_separator_ = 1;

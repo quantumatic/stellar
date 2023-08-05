@@ -20,57 +20,8 @@ use crate::{
 };
 
 struct ImportParser {
-    pub(crate) visibility: Visibility,
+    visibility: Visibility,
 }
-
-struct StructParser {
-    pub(crate) visibility: Visibility,
-    pub(crate) docstring: Option<String>,
-}
-
-struct StructFieldsParser;
-
-struct StructFieldParser {
-    pub(crate) visibility: Visibility,
-    pub(crate) docstring: Option<String>,
-}
-
-struct FunctionParser {
-    pub(crate) visibility: Visibility,
-    pub(crate) docstring: Option<String>,
-}
-
-pub(crate) struct NotSelfFunctionParameterParser;
-
-struct TypeAliasParser {
-    pub(crate) visibility: Visibility,
-    pub(crate) docstring: Option<String>,
-}
-
-struct InterfaceParser {
-    pub(crate) visibility: Visibility,
-    pub(crate) docstring: Option<String>,
-}
-
-struct EnumParser {
-    pub(crate) visibility: Visibility,
-    pub(crate) docstring: Option<String>,
-}
-
-struct EnumItemParser;
-
-struct TupleFieldsParser {
-    pub(crate) context: ModuleItemKind,
-}
-
-struct EnumItemStructParser {
-    pub(crate) name: IdentifierAST,
-    pub(crate) docstring: Option<String>,
-}
-
-pub(crate) struct ItemParser;
-
-pub(crate) struct ItemsParser;
 
 impl Parse for ImportParser {
     type Output = Option<ModuleItem>;
@@ -98,6 +49,11 @@ impl Parse for ImportParser {
     }
 }
 
+struct StructFieldParser {
+    pub(crate) visibility: Visibility,
+    pub(crate) docstring: Option<String>,
+}
+
 impl Parse for StructFieldParser {
     type Output = Option<StructField>;
 
@@ -116,6 +72,8 @@ impl Parse for StructFieldParser {
         })
     }
 }
+
+struct StructFieldsParser;
 
 impl Parse for StructFieldsParser {
     type Output = Option<Vec<StructField>>;
@@ -139,6 +97,11 @@ impl Parse for StructFieldsParser {
 
         Some(fields)
     }
+}
+
+struct StructParser {
+    pub(crate) visibility: Visibility,
+    pub(crate) docstring: Option<String>,
 }
 
 impl Parse for StructParser {
@@ -271,6 +234,8 @@ impl Parse for StructParser {
     }
 }
 
+struct NotSelfFunctionParameterParser;
+
 impl Parse for NotSelfFunctionParameterParser {
     type Output = Option<NotSelfFunctionParameter>;
 
@@ -283,6 +248,11 @@ impl Parse for NotSelfFunctionParameterParser {
 
         Some(NotSelfFunctionParameter { name, ty })
     }
+}
+
+struct FunctionParser {
+    visibility: Visibility,
+    docstring: Option<String>,
 }
 
 impl Parse for FunctionParser {
@@ -366,6 +336,11 @@ impl Parse for FunctionParser {
     }
 }
 
+struct TypeAliasParser {
+    visibility: Visibility,
+    docstring: Option<String>,
+}
+
 impl Parse for TypeAliasParser {
     type Output = Option<TypeAlias>;
 
@@ -402,6 +377,11 @@ impl Parse for TypeAliasParser {
             docstring: self.docstring,
         })
     }
+}
+
+struct InterfaceParser {
+    visibility: Visibility,
+    docstring: Option<String>,
 }
 
 impl Parse for InterfaceParser {
@@ -462,6 +442,11 @@ impl Parse for InterfaceParser {
             docstring: self.docstring,
         })
     }
+}
+
+struct EnumParser {
+    visibility: Visibility,
+    docstring: Option<String>,
 }
 
 impl Parse for EnumParser {
@@ -527,6 +512,8 @@ impl Parse for EnumParser {
     }
 }
 
+struct EnumItemParser;
+
 impl Parse for EnumItemParser {
     type Output = Option<EnumItem>;
 
@@ -552,6 +539,11 @@ impl Parse for EnumItemParser {
     }
 }
 
+struct EnumItemStructParser {
+    name: IdentifierAST,
+    docstring: Option<String>,
+}
+
 impl Parse for EnumItemStructParser {
     type Output = Option<EnumItem>;
 
@@ -564,6 +556,10 @@ impl Parse for EnumItemStructParser {
             docstring: self.docstring,
         })
     }
+}
+
+struct TupleFieldsParser {
+    context: ModuleItemKind,
 }
 
 impl Parse for TupleFieldsParser {
@@ -588,6 +584,8 @@ impl Parse for TupleFieldsParser {
         Some(fields)
     }
 }
+
+pub(crate) struct ItemsParser;
 
 impl Parse for ItemsParser {
     type Output = Vec<ModuleItem>;
@@ -634,6 +632,8 @@ macro_rules! possibly_recover {
         }
     };
 }
+
+pub(crate) struct ItemParser;
 
 impl Parse for ItemParser {
     type Output = Option<ModuleItem>;
