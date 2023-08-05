@@ -92,14 +92,14 @@ fun do_stuff_with(a: uint32, b: uint32, fn: (uint32, uint32): ()) {
 The language also has an analog of sum types: _enums_:
 
 ```
-enum Result[T, E] implements ToString {
+enum Result[T, E] {
     Ok(T),
     Err(E)
 
-    fun to_string(self): String where T: ToString, E: ToString {
+    fun ok(self): Option[T] {
         match self {
-            Self.Ok(t) => t.to_string(),
-            Self.Err(e) => e.to_string(),
+            Self.Ok(t) => Option.Some(t),
+            .. => Option.None,
         }
     }
 }
