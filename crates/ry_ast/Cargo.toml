@@ -12,3 +12,5 @@ description = "Defines AST for the Ry programming language."
 phf = { version = "0.11.1", features = ["macros"] }
 ry_filesystem = { path = "../ry_filesystem" }
 ry_interner = { path = "../ry_interner" }
+derive_more = "0.99.17"
+paste = "1.0.14"

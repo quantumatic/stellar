@@ -1,28 +1,18 @@
-use ry_ast::{token::RawToken, Statement, StatementsBlock, Token};
+use ry_ast::{
+    token::{Keyword, Punctuator, RawToken},
+    Statement, StatementsBlock,
+};
 
 use crate::{
     diagnostics::UnexpectedTokenDiagnostic, expected, expression::ExpressionParser,
     pattern::PatternParser, r#type::TypeParser, Parse, ParseState,
 };
 
-pub(crate) struct StatementParser;
-
-pub(crate) struct StatementsBlockParser;
-
-struct DeferStatementParser;
-
-struct ReturnStatementParser;
-
-struct LetStatementParser;
-
 // Pattern of a token, that can appear as a beginning of some statement
 // and which we can effectively jump to for error recovering.
 macro_rules! possibly_first_statement_token_pattern {
     () => {
-        Token![continue]
-            | Token![return]
-            | Token![defer]
-            | Token![let]
+        RawToken::Keyword(Keyword::Continue | Keyword::Return | Keyword::Defer | Keyword::Let)
             | possibly_first_expression_token_pattern!()
     };
 }
@@ -31,7 +21,7 @@ macro_rules! possibly_first_statement_token_pattern {
 // and which we can effectively jump to for error recovering.
 macro_rules! possibly_first_expression_token_pattern {
     () => {
-        Token![if] | Token![match] | Token![while] | Token![loop]
+        RawToken::Keyword(Keyword::If | Keyword::Match | Keyword::While | Keyword::Loop)
     };
 }
 
@@ -54,6 +44,8 @@ macro_rules! possibly_recover {
     };
 }
 
+pub(crate) struct StatementParser;
+
 impl Parse for StatementParser {
     type Output = Option<(Statement, bool)>;
 
@@ -62,17 +54,23 @@ impl Parse for StatementParser {
         let mut must_have_semicolon_at_the_end = true;
 
         let statement = match state.next_token.raw {
-            Token![return] => possibly_recover!(state, ReturnStatementParser.parse(state)),
-            Token![defer] => possibly_recover!(state, DeferStatementParser.parse(state)),
-            Token![let] => possibly_recover!(state, LetStatementParser.parse(state)),
-            Token![continue] => {
+            RawToken::Keyword(Keyword::Return) => {
+                possibly_recover!(state, ReturnStatementParser.parse(state))
+            }
+            RawToken::Keyword(Keyword::Defer) => {
+                possibly_recover!(state, DeferStatementParser.parse(state))
+            }
+            RawToken::Keyword(Keyword::Let) => {
+                possibly_recover!(state, LetStatementParser.parse(state))
+            }
+            RawToken::Keyword(Keyword::Continue) => {
                 state.advance();
 
                 Statement::Continue {
                     location: state.current_token.location,
                 }
             }
-            Token![break] => {
+            RawToken::Keyword(Keyword::Break) => {
                 state.advance();
 
                 Statement::Break {
@@ -85,8 +83,8 @@ impl Parse for StatementParser {
                 must_have_semicolon_at_the_end = !expression.with_block();
 
                 match state.next_token.raw {
-                    Token![;] => {}
-                    Token!['}'] => {
+                    RawToken::Punctuator(Punctuator::Semicolon) => {}
+                    RawToken::Punctuator(Punctuator::CloseBrace) => {
                         if must_have_semicolon_at_the_end {
                             last_statement_in_block = true;
                         }
@@ -116,24 +114,26 @@ impl Parse for StatementParser {
         };
 
         if !last_statement_in_block && must_have_semicolon_at_the_end {
-            state.consume(Token![;], "statement")?;
+            state.consume(Punctuator::Semicolon, "statement")?;
         }
 
         Some((statement, last_statement_in_block))
     }
 }
 
+pub(crate) struct StatementsBlockParser;
+
 impl Parse for StatementsBlockParser {
     type Output = Option<StatementsBlock>;
 
     fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
-        state.consume(Token!['{'], "statements block")?;
+        state.consume(Punctuator::OpenBrace, "statements block")?;
 
         let mut block = vec![];
 
         loop {
             match state.next_token.raw {
-                Token!['}'] => break,
+                RawToken::Punctuator(Punctuator::CloseBrace) => break,
                 RawToken::EndOfFile => {
                     state.add_diagnostic(UnexpectedTokenDiagnostic::new(
                         state.next_token,
@@ -143,7 +143,7 @@ impl Parse for StatementsBlockParser {
 
                     return None;
                 }
-                Token![;] => {
+                RawToken::Punctuator(Punctuator::Semicolon) => {
                     // Skip
                     state.advance();
 
@@ -166,6 +166,8 @@ impl Parse for StatementsBlockParser {
     }
 }
 
+struct DeferStatementParser;
+
 impl Parse for DeferStatementParser {
     type Output = Option<Statement>;
 
@@ -177,6 +179,8 @@ impl Parse for DeferStatementParser {
         })
     }
 }
+
+struct ReturnStatementParser;
 
 impl Parse for ReturnStatementParser {
     type Output = Option<Statement>;
@@ -190,22 +194,25 @@ impl Parse for ReturnStatementParser {
     }
 }
 
+struct LetStatementParser;
+
 impl Parse for LetStatementParser {
     type Output = Option<Statement>;
 
     fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
-        state.advance(); // `let`
+        state.advance();
 
         let pattern = PatternParser.parse(state)?;
 
-        let ty = if state.next_token.raw == Token![:] {
+        let ty = if state.next_token.raw == Punctuator::Colon {
             state.advance();
+
             Some(TypeParser.parse(state)?)
         } else {
             None
         };
 
-        state.consume(Token![=], "let statement")?;
+        state.consume(Punctuator::Eq, "let statement")?;
 
         let value = ExpressionParser::default().parse(state)?;
 

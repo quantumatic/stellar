@@ -1,7 +1,9 @@
 use ry_ast::{
-    precedence::Precedence, token::RawToken, BinaryOperator, Expression, IdentifierAST,
-    LambdaFunctionParameter, MatchExpressionItem, PostfixOperator, PrefixOperator,
-    RawBinaryOperator, RawPostfixOperator, RawPrefixOperator, StructExpressionItem, Token,
+    precedence::Precedence,
+    token::{Keyword, Punctuator, RawToken},
+    BinaryOperator, Expression, IdentifierAST, LambdaFunctionParameter, MatchExpressionItem,
+    PostfixOperator, PrefixOperator, RawBinaryOperator, RawPostfixOperator, RawPrefixOperator,
+    StructExpressionItem,
 };
 
 use crate::{
@@ -37,7 +39,7 @@ struct GenericArgumentsExpressionParser {
     pub(crate) left: Expression,
 }
 
-struct PropertyAccessExpressionParser {
+struct FieldAccessExpressionParser {
     pub(crate) left: Expression,
 }
 
@@ -89,13 +91,19 @@ impl Parse for ExpressionParser {
         }
         .parse(state)?;
 
-        while self.precedence < state.next_token.raw.to_precedence() {
+        while self.precedence < state.next_token.raw.into() {
             left = match state.next_token.raw {
-                Token!['('] => CallExpressionParser { left }.parse(state)?,
-                Token![.] => PropertyAccessExpressionParser { left }.parse(state)?,
-                Token!['['] => GenericArgumentsExpressionParser { left }.parse(state)?,
-                Token![as] => CastExpressionParser { left }.parse(state)?,
-                Token!['{'] => {
+                RawToken::Punctuator(Punctuator::OpenParent) => {
+                    CallExpressionParser { left }.parse(state)?
+                }
+                RawToken::Punctuator(Punctuator::Dot) => {
+                    FieldAccessExpressionParser { left }.parse(state)?
+                }
+                RawToken::Punctuator(Punctuator::OpenBracket) => {
+                    GenericArgumentsExpressionParser { left }.parse(state)?
+                }
+                RawToken::Keyword(Keyword::As) => CastExpressionParser { left }.parse(state)?,
+                RawToken::Punctuator(Punctuator::OpenBrace) => {
                     if self.ignore_struct {
                         return Some(left);
                     }
@@ -103,13 +111,13 @@ impl Parse for ExpressionParser {
                     StructExpressionParser { left }.parse(state)?
                 }
                 _ => {
-                    if state.next_token.raw.binary_operator() {
+                    if state.next_token.raw.is_binary_operator() {
                         BinaryExpressionParser {
                             left,
                             ignore_struct: self.ignore_struct,
                         }
                         .parse(state)?
-                    } else if state.next_token.raw.postfix_operator() {
+                    } else if state.next_token.raw.is_postfix_operator() {
                         PostfixExpressionParser { left }.parse(state)?
                     } else {
                         break;
@@ -172,11 +180,14 @@ impl Parse for MatchExpressionBlockParser {
     type Output = Option<Vec<MatchExpressionItem>>;
 
     fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
-        state.consume(Token!['{'], "match expression block")?;
+        state.consume(Punctuator::OpenBrace, "match expression block")?;
 
-        let units = parse_list!(state, "match expression block", Token!['}'], {
-            MatchExpressionUnitParser.parse(state)
-        });
+        let units = parse_list!(
+            state,
+            node_name: "match expression block",
+            closing_token: Punctuator::CloseBrace,
+            parse_element_expr: MatchExpressionUnitParser.parse(state)
+        );
 
         state.advance(); // `}`
 
@@ -189,7 +200,8 @@ impl Parse for MatchExpressionUnitParser {
 
     fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
         let left = PatternParser.parse(state)?;
-        state.consume(Token![=>], "match expression unit")?;
+
+        state.consume(Punctuator::Arrow, "match expression unit")?;
 
         let right = ExpressionParser::default().parse(state)?;
 
@@ -206,8 +218,8 @@ impl Parse for PrimaryExpressionParser {
             | RawToken::FloatLiteral
             | RawToken::StringLiteral
             | RawToken::CharLiteral
-            | Token![true]
-            | Token![false] => Some(Expression::Literal(LiteralParser.parse(state)?)),
+            | RawToken::TrueBoolLiteral
+            | RawToken::FalseBoolLiteral => Some(Expression::Literal(LiteralParser.parse(state)?)),
             RawToken::Identifier => {
                 let symbol = state.lexer.scanned_identifier;
                 state.advance();
@@ -217,16 +229,20 @@ impl Parse for PrimaryExpressionParser {
                     symbol,
                 }))
             }
-            Token!['('] => ParenthesizedOrTupleExpressionParser.parse(state),
-            Token!['['] => ListExpressionParser.parse(state),
-            Token!['{'] => StatementsBlockExpressionParser.parse(state),
-            Token![|] => LambdaExpressionParser.parse(state),
-            Token![if] => IfExpressionParser.parse(state),
-            Token![match] => MatchExpressionParser.parse(state),
-            Token![while] => WhileExpressionParser.parse(state),
-            Token![loop] => LoopExpressionParser.parse(state),
+            RawToken::Punctuator(Punctuator::OpenParent) => {
+                ParenthesizedOrTupleExpressionParser.parse(state)
+            }
+            RawToken::Punctuator(Punctuator::OpenBracket) => ListExpressionParser.parse(state),
+            RawToken::Punctuator(Punctuator::OpenBrace) => {
+                StatementsBlockExpressionParser.parse(state)
+            }
+            RawToken::Punctuator(Punctuator::Or) => LambdaExpressionParser.parse(state),
+            RawToken::Keyword(Keyword::If) => IfExpressionParser.parse(state),
+            RawToken::Keyword(Keyword::Match) => MatchExpressionParser.parse(state),
+            RawToken::Keyword(Keyword::While) => WhileExpressionParser.parse(state),
+            RawToken::Keyword(Keyword::Loop) => LoopExpressionParser.parse(state),
             _ => {
-                if state.next_token.raw.prefix_operator() {
+                if state.next_token.raw.is_prefix_operator() {
                     return PrefixExpressionParser {
                         ignore_struct: self.ignore_struct,
                     }
@@ -240,14 +256,14 @@ impl Parse for PrimaryExpressionParser {
                         "string literal",
                         "char literal",
                         "boolean literal",
-                        Token![|],
-                        Token!['('],
-                        Token!['{'],
-                        Token!['['],
+                        Punctuator::Or,
+                        Punctuator::OpenParent,
+                        Punctuator::OpenBracket,
+                        Punctuator::OpenBrace,
                         "identifier",
-                        Token![if],
-                        Token![while],
-                        Token![match]
+                        Keyword::If,
+                        Keyword::Match,
+                        Keyword::While
                     ),
                     "expression",
                 ));
@@ -271,7 +287,7 @@ impl Parse for GenericArgumentsExpressionParser {
     }
 }
 
-impl Parse for PropertyAccessExpressionParser {
+impl Parse for FieldAccessExpressionParser {
     type Output = Option<Expression>;
 
     fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
@@ -338,9 +354,12 @@ impl Parse for ParenthesizedOrTupleExpressionParser {
         let start = state.next_token.location.start;
         state.advance();
 
-        let elements = parse_list!(state, "parenthesized or tuple expression", Token![')'], {
-            ExpressionParser::default().parse(state)
-        });
+        let elements = parse_list!(
+            state,
+            node_name: "parenthesized or tuple expression",
+            closing_token: Punctuator::CloseParent,
+            parse_element_expr: ExpressionParser::default().parse(state)
+        );
 
         state.advance(); // `)`
 
@@ -405,10 +424,10 @@ impl Parse for IfExpressionParser {
 
         let mut r#else = None;
 
-        while state.next_token.raw == Token![else] {
+        while state.next_token.raw == Keyword::Else {
             state.advance();
 
-            if state.next_token.raw != Token![if] {
+            if state.next_token.raw != Keyword::If {
                 r#else = Some(StatementsBlockParser.parse(state)?);
                 break;
             }
@@ -455,9 +474,12 @@ impl Parse for CallExpressionParser {
     fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
         state.advance(); // `(`
 
-        let arguments = parse_list!(state, "call arguments list", Token![')'], {
-            ExpressionParser::default().parse(state)
-        });
+        let arguments = parse_list!(
+            state,
+            node_name: "call arguments list",
+            closing_token: Punctuator::CloseParent,
+            parse_element_expr: ExpressionParser::default().parse(state)
+        );
 
         state.advance();
 
@@ -478,7 +500,7 @@ impl Parse for BinaryExpressionParser {
             location: operator_token.location,
             raw: RawBinaryOperator::from(operator_token.raw),
         };
-        let precedence = state.next_token.raw.to_precedence();
+        let precedence = state.next_token.raw.into();
 
         state.advance();
 
@@ -505,9 +527,12 @@ impl Parse for ListExpressionParser {
 
         state.advance();
 
-        let elements = parse_list!(state, "list expression", Token![']'], {
-            ExpressionParser::default().parse(state)
-        });
+        let elements = parse_list!(
+            state,
+            node_name: "list expression",
+            closing_token: Punctuator::CloseBracket,
+            parse_element_expr: ExpressionParser::default().parse(state)
+        );
 
         state.advance();
 
@@ -524,9 +549,12 @@ impl Parse for StructExpressionParser {
     fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
         state.advance(); // `{`
 
-        let fields = parse_list!(state, "struct expression", Token!['}'], {
-            StructExpressionUnitParser.parse(state)
-        });
+        let fields = parse_list!(
+            state,
+            node_name: "struct expression",
+            closing_token: Punctuator::CloseBrace,
+            parse_element_expr: StructExpressionUnitParser.parse(state)
+        );
 
         state.advance(); // `}`
 
@@ -544,7 +572,7 @@ impl Parse for StructExpressionUnitParser {
     fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
         let name = state.consume_identifier("struct field")?;
 
-        let value = if state.next_token.raw == Token![:] {
+        let value = if state.next_token.raw == Punctuator::Colon {
             state.advance();
             Some(ExpressionParser::default().parse(state)?)
         } else {
@@ -576,23 +604,28 @@ impl Parse for LambdaExpressionParser {
         let start = state.next_token.location.start;
         state.advance(); // `|`
 
-        let parameters = parse_list!(state, "function expression parameters", Token![|], {
-            let name = state.consume_identifier("function parameter name")?;
+        let parameters = parse_list!(
+            state,
+            node_name: "function expression parameters",
+            closing_token: Punctuator::Or,
+            parse_element_expr: {
+                let name = state.consume_identifier("function parameter name")?;
 
-            let ty = if state.next_token.raw == Token![:] {
-                state.advance();
+                let ty = if state.next_token.raw == Punctuator::Colon {
+                    state.advance();
 
-                Some(TypeParser.parse(state)?)
-            } else {
-                None
-            };
+                    Some(TypeParser.parse(state)?)
+                } else {
+                    None
+                };
 
-            Some(LambdaFunctionParameter { name, ty })
-        });
+                Some(LambdaFunctionParameter { name, ty })
+            }
+        );
 
         state.advance();
 
-        let return_type = if state.next_token.raw == Token![:] {
+        let return_type = if state.next_token.raw == Punctuator::Colon {
             state.advance();
 
             Some(TypeParser.parse(state)?)

@@ -1,4 +1,7 @@
-use ry_ast::{ImportPath, Path, Token};
+use ry_ast::{
+    token::{Keyword, Punctuator},
+    ImportPath, Path,
+};
 
 use crate::{Parse, ParseState};
 
@@ -15,7 +18,7 @@ impl Parse for PathParser {
 
         let start = first_identifier.location.start;
 
-        while state.next_token.raw == Token![.] {
+        while state.next_token.raw == Punctuator::Dot {
             state.advance();
             identifiers.push(state.consume_identifier("path")?);
         }
@@ -35,7 +38,7 @@ impl Parse for ImportPathParser {
     fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
         let path = PathParser.parse(state)?;
 
-        let r#as = if state.next_token.raw == Token![as] {
+        let r#as = if state.next_token.raw == Keyword::As {
             state.advance();
 
             Some(state.consume_identifier("import path")?)

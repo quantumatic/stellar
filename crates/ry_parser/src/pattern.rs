@@ -1,4 +1,7 @@
-use ry_ast::{token::RawToken, Path, Pattern, StructFieldPattern, Token};
+use ry_ast::{
+    token::{Keyword, Punctuator, RawToken},
+    Path, Pattern, StructFieldPattern,
+};
 
 use crate::{
     diagnostics::UnexpectedTokenDiagnostic, expected, literal::LiteralParser, macros::parse_list,
@@ -7,27 +10,13 @@ use crate::{
 
 pub(crate) struct PatternParser;
 
-struct PatternExceptOrParser;
-
-struct ArrayPatternParser;
-
-struct GroupedOrTuplePatternParser;
-
-struct StructPatternParser {
-    pub(crate) path: Path,
-}
-
-struct TupleLikePatternParser {
-    pub(crate) path: Path,
-}
-
 impl Parse for PatternParser {
     type Output = Option<Pattern>;
 
     fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
         let left = PatternExceptOrParser.parse(state)?;
 
-        if state.next_token.raw == Token![|] {
+        if state.next_token.raw == Punctuator::Or {
             state.advance();
 
             let right = Self.parse(state)?;
@@ -42,6 +31,8 @@ impl Parse for PatternParser {
         }
     }
 }
+
+struct PatternExceptOrParser;
 
 impl Parse for PatternExceptOrParser {
     type Output = Option<Pattern>;
@@ -58,10 +49,10 @@ impl Parse for PatternExceptOrParser {
                 let path = PathParser.parse(state)?;
 
                 match state.next_token.raw {
-                    Token!['{'] => {
+                    RawToken::Punctuator(Punctuator::OpenBrace) => {
                         return StructPatternParser { path }.parse(state);
                     }
-                    Token!['('] => {
+                    RawToken::Punctuator(Punctuator::OpenParent) => {
                         return TupleLikePatternParser { path }.parse(state);
                     }
                     _ => {}
@@ -73,7 +64,7 @@ impl Parse for PatternExceptOrParser {
                         "Cannot get first identifier in path when parsing identifier pattern",
                     );
 
-                    let pattern = if state.next_token.raw == Token![@] {
+                    let pattern = if state.next_token.raw == Punctuator::At {
                         state.advance();
                         Some(Box::new(PatternParser.parse(state)?))
                     } else {
@@ -95,14 +86,17 @@ impl Parse for PatternExceptOrParser {
                     Some(Pattern::Path { path })
                 }
             }
-            Token!['['] => ArrayPatternParser.parse(state),
-            Token![..] => {
+            RawToken::Punctuator(Punctuator::OpenBracket) => ListPatternParser.parse(state),
+            RawToken::Punctuator(Punctuator::DoubleDot) => {
                 state.advance();
+
                 Some(Pattern::Rest {
                     location: state.next_token.location,
                 })
             }
-            Token!['('] => GroupedOrTuplePatternParser.parse(state),
+            RawToken::Punctuator(Punctuator::OpenParent) => {
+                GroupedOrTuplePatternParser.parse(state)
+            }
             _ => {
                 state.add_diagnostic(UnexpectedTokenDiagnostic::new(
                     state.next_token,
@@ -112,10 +106,10 @@ impl Parse for PatternExceptOrParser {
                         "string literal",
                         "char literal",
                         "boolean literal",
-                        Token!['['],
+                        Punctuator::OpenBracket,
                         "identifier",
-                        Token![if],
-                        Token![while]
+                        Keyword::If,
+                        Keyword::While
                     ),
                     "expression",
                 ));
@@ -125,36 +119,46 @@ impl Parse for PatternExceptOrParser {
     }
 }
 
+struct StructPatternParser {
+    pub(crate) path: Path,
+}
+
 impl Parse for StructPatternParser {
     type Output = Option<Pattern>;
 
     fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
         state.advance(); // `{`
 
-        let fields = parse_list!(state, "struct pattern", Token!['}'], {
-            if state.next_token.raw == Token![..] {
-                state.advance();
-
-                Some(StructFieldPattern::Rest {
-                    location: state.current_token.location,
-                })
-            } else {
-                let field_name = state.consume_identifier("struct pattern")?;
-                let value_pattern = if state.next_token.raw == Token![:] {
+        let fields = parse_list!(
+            state,
+            node_name: "struct pattern",
+            closing_token: Punctuator::CloseBrace,
+            parse_element_expr: {
+                if state.next_token.raw == Punctuator::DoubleDot {
                     state.advance();
 
-                    Some(PatternParser.parse(state)?)
+                    Some(StructFieldPattern::Rest {
+                        location: state.current_token.location,
+                    })
                 } else {
-                    None
-                };
+                    let field_name = state.consume_identifier("struct pattern")?;
 
-                Some(StructFieldPattern::NotRest {
-                    location: state.location_from(field_name.location.start),
-                    field_name,
-                    value_pattern,
-                })
+                    let value_pattern = if state.next_token.raw == Punctuator::Colon {
+                        state.advance();
+
+                        Some(PatternParser.parse(state)?)
+                    } else {
+                        None
+                    };
+
+                    Some(StructFieldPattern::NotRest {
+                        location: state.location_from(field_name.location.start),
+                        field_name,
+                        value_pattern,
+                    })
+                }
             }
-        });
+        );
 
         state.advance();
 
@@ -166,18 +170,23 @@ impl Parse for StructPatternParser {
     }
 }
 
-impl Parse for ArrayPatternParser {
+struct ListPatternParser;
+
+impl Parse for ListPatternParser {
     type Output = Option<Pattern>;
 
     fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
         let start = state.next_token.location.start;
-        state.advance(); // `[`
+        state.advance();
 
-        let inner_patterns = parse_list!(state, "array pattern", Token![']'], {
-            PatternParser.parse(state)
-        });
+        let inner_patterns = parse_list!(
+            state,
+            node_name: "list pattern",
+            closing_token: Punctuator::CloseBracket,
+            parse_element_expr: PatternParser.parse(state)
+        );
 
-        state.advance(); // `]`
+        state.advance();
 
         Some(Pattern::List {
             location: state.location_from(start),
@@ -186,15 +195,22 @@ impl Parse for ArrayPatternParser {
     }
 }
 
+struct TupleLikePatternParser {
+    pub(crate) path: Path,
+}
+
 impl Parse for TupleLikePatternParser {
     type Output = Option<Pattern>;
 
     fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
         state.advance(); // `(`
 
-        let inner_patterns = parse_list!(state, "enum item tuple pattern", Token![')'], {
-            PatternParser.parse(state)
-        });
+        let inner_patterns = parse_list!(
+            state,
+            node_name: "enum item tuple pattern",
+            closing_token: Punctuator::CloseParent,
+            parse_element_expr: PatternParser.parse(state)
+        );
 
         state.advance(); // `)`
 
@@ -206,6 +222,8 @@ impl Parse for TupleLikePatternParser {
     }
 }
 
+struct GroupedOrTuplePatternParser;
+
 impl Parse for GroupedOrTuplePatternParser {
     type Output = Option<Pattern>;
 
@@ -213,11 +231,14 @@ impl Parse for GroupedOrTuplePatternParser {
         let start = state.next_token.location.start;
         state.advance();
 
-        let elements = parse_list!(state, "parenthesized or tuple pattern", Token![')'], {
-            PatternParser.parse(state)
-        });
+        let elements = parse_list!(
+            state,
+            node_name: "parenthesized or tuple pattern",
+            closing_token: Punctuator::CloseParent,
+            parse_element_expr: PatternParser.parse(state)
+        );
 
-        state.advance(); // `)`
+        state.advance();
 
         let location = state.location_from(start);
 

@@ -1,7 +1,8 @@
 use ry_ast::{
-    token::RawToken, EnumItem, Function, FunctionParameter, FunctionSignature, IdentifierAST,
-    ModuleItem, ModuleItemKind, NotSelfFunctionParameter, SelfFunctionParameter, StructField,
-    Token, TupleField, TypeAlias, Visibility,
+    token::{Keyword, Punctuator, RawToken},
+    EnumItem, Function, FunctionParameter, FunctionSignature, IdentifierAST, ModuleItem,
+    ModuleItemKind, NotSelfFunctionParameter, SelfFunctionParameter, StructField, TupleField,
+    TypeAlias, Visibility,
 };
 use ry_interner::builtin_symbols;
 
@@ -87,7 +88,8 @@ impl Parse for ImportParser {
         state.advance();
 
         let path = ImportPathParser.parse(state)?;
-        state.consume(Token![;], "import")?;
+
+        state.consume(Punctuator::Semicolon, "import")?;
 
         Some(ModuleItem::Import {
             path,
@@ -102,7 +104,7 @@ impl Parse for StructFieldParser {
     fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
         let name = state.consume_identifier("struct field")?;
 
-        state.consume(Token![:], "struct field")?;
+        state.consume(Punctuator::Colon, "struct field")?;
 
         let ty = TypeParser.parse(state)?;
 
@@ -119,17 +121,19 @@ impl Parse for StructFieldsParser {
     type Output = Option<Vec<StructField>>;
 
     fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
-        state.consume(Token!['{'], "struct fields")?;
+        state.consume(Punctuator::OpenBrace, "struct fields")?;
 
-        let fields = parse_list!(state, "struct fields", Token!['}'], {
-            Some(
+        let fields = parse_list!(
+            state,
+            node_name: "struct fields",
+            closing_token: Punctuator::CloseBrace,
+            parse_element_expr:
                 StructFieldParser {
                     docstring: state.consume_local_docstring(),
                     visibility: VisibilityParser.parse(state),
                 }
-                .parse(state)?,
-            )
-        });
+                .parse(state)
+        );
 
         state.advance(); // `}`
 
@@ -147,13 +151,13 @@ impl Parse for StructParser {
 
         let generic_parameters = GenericParametersParser.optionally_parse(state)?;
 
-        if state.next_token.raw == Token!['('] {
+        if state.next_token.raw == Punctuator::OpenParent {
             let fields = TupleFieldsParser {
                 context: ModuleItemKind::Struct,
             }
             .parse(state)?;
 
-            let implements = if state.next_token.raw == Token![implements] {
+            let implements = if state.next_token.raw == Keyword::Implements {
                 state.advance();
 
                 Some(BoundsParser.parse(state)?)
@@ -165,11 +169,11 @@ impl Parse for StructParser {
 
             let mut methods = vec![];
 
-            if state.next_token.raw != Token![;] {
-                state.consume(Token!['{'], "struct")?;
+            if state.next_token.raw != Punctuator::Semicolon {
+                state.consume(Punctuator::OpenBrace, "struct")?;
 
                 loop {
-                    if state.next_token.raw == Token!['}'] {
+                    if state.next_token.raw == Punctuator::CloseBrace {
                         break;
                     }
 
@@ -197,8 +201,8 @@ impl Parse for StructParser {
                 implements,
                 docstring: self.docstring,
             })
-        } else if state.next_token.raw == Token!['{'] {
-            let implements = if state.next_token.raw == Token![implements] {
+        } else if state.next_token.raw == Punctuator::OpenBrace {
+            let implements = if state.next_token.raw == Keyword::Implements {
                 state.advance();
 
                 Some(BoundsParser.parse(state)?)
@@ -208,22 +212,27 @@ impl Parse for StructParser {
 
             let where_predicates = WherePredicatesParser.optionally_parse(state)?;
 
-            let fields = parse_list!(state, "struct fields", (Token!['}']) or (Token![fun]), {
-                let docstring = state.consume_local_docstring();
-                let visibility = VisibilityParser.parse(state);
+            let fields = parse_list!(
+                state,
+                node_name: "struct fields",
+                closing_token: one_of(Punctuator::CloseBrace, Keyword::Fun),
+                parse_element_expr: {
+                    let docstring = state.consume_local_docstring();
+                    let visibility = VisibilityParser.parse(state);
 
-                StructFieldParser {
-                    visibility,
-                    docstring,
+                    StructFieldParser {
+                        visibility,
+                        docstring,
+                    }
+                    .parse(state)
                 }
-                .parse(state)
-            });
+            );
 
             let mut methods = vec![];
 
-            if state.next_token.raw == Token![fun] {
+            if state.next_token.raw == Keyword::Fun {
                 loop {
-                    if state.next_token.raw == Token!['}'] {
+                    if state.next_token.raw == Punctuator::CloseBrace {
                         break;
                     }
 
@@ -253,7 +262,7 @@ impl Parse for StructParser {
         } else {
             state.add_diagnostic(UnexpectedTokenDiagnostic::new(
                 state.current_token,
-                expected!(Token![;], Token!['(']),
+                expected!(Punctuator::Semicolon, Punctuator::OpenParent),
                 "item",
             ));
 
@@ -268,7 +277,7 @@ impl Parse for NotSelfFunctionParameterParser {
     fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
         let name = state.consume_identifier("function parameter name")?;
 
-        state.consume(Token![:], "function parameter name")?;
+        state.consume(Punctuator::Colon, "function parameter name")?;
 
         let ty = TypeParser.parse(state)?;
 
@@ -280,38 +289,42 @@ impl Parse for FunctionParser {
     type Output = Option<Function>;
 
     fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
-        state.consume(Token![fun], "function")?;
+        state.consume(Keyword::Fun, "function")?;
 
         let name = state.consume_identifier("function name")?;
 
         let generic_parameters = GenericParametersParser.optionally_parse(state)?;
 
-        state.consume(Token!['('], "function")?;
+        state.consume(Punctuator::OpenParent, "function")?;
 
-        let parameters = parse_list!(state, "function parameters", Token![')'], {
-            if state.lexer.scanned_identifier == builtin_symbols::SMALL_SELF {
-                state.advance();
+        let parameters = parse_list!(
+            state,
+            node_name: "function parameters",
+            closing_token: Punctuator::CloseParent,
+            parse_element_expr: {
+                if state.lexer.scanned_identifier == builtin_symbols::SMALL_SELF {
+                    state.advance();
 
-                Some(FunctionParameter::SelfParameter(SelfFunctionParameter {
-                    self_location: state.current_token.location,
-                    ty: if state.next_token.raw == Token![:] {
-                        state.advance();
+                    Some(FunctionParameter::SelfParameter(SelfFunctionParameter {
+                        self_location: state.current_token.location,
+                        ty: if state.next_token.raw == Punctuator::Colon {
+                            state.advance();
 
-                        Some(TypeParser.parse(state)?)
-                    } else {
-                        None
-                    },
-                }))
-            } else {
-                Some(FunctionParameter::NotSelfParameter(
-                    NotSelfFunctionParameterParser.parse(state)?,
-                ))
+                            Some(TypeParser.parse(state)?)
+                        } else {
+                            None
+                        },
+                    }))
+                } else {
+                    NotSelfFunctionParameterParser.parse(state)
+                        .map(FunctionParameter::NotSelfParameter)
+                }
             }
-        });
+        );
 
         state.advance();
 
-        let return_type = if state.next_token.raw == Token![:] {
+        let return_type = if state.next_token.raw == Punctuator::Colon {
             state.advance();
             Some(TypeParser.parse(state)?)
         } else {
@@ -331,22 +344,22 @@ impl Parse for FunctionParser {
                 docstring: self.docstring,
             },
             body: match state.next_token.raw {
-                Token![;] => {
+                RawToken::Punctuator(Punctuator::Semicolon) => {
                     state.advance();
 
                     None
                 }
-                Token!['{'] => Some(StatementsBlockParser.parse(state)?),
+                RawToken::Punctuator(Punctuator::OpenBrace) => StatementsBlockParser.parse(state),
                 _ => {
                     state.advance();
 
                     state.add_diagnostic(UnexpectedTokenDiagnostic::new(
                         state.current_token,
-                        expected!(Token![;], Token!['(']),
+                        expected!(Punctuator::Semicolon, Punctuator::OpenParent),
                         "function",
                     ));
 
-                    None
+                    return None;
                 }
             },
         })
@@ -362,7 +375,7 @@ impl Parse for TypeAliasParser {
         let name = state.consume_identifier("type alias")?;
         let generic_parameters = GenericParametersParser.optionally_parse(state)?;
 
-        let bounds = if state.next_token.raw == Token![:] {
+        let bounds = if state.next_token.raw == Punctuator::Colon {
             state.advance();
 
             Some(BoundsParser.parse(state)?)
@@ -370,7 +383,7 @@ impl Parse for TypeAliasParser {
             None
         };
 
-        let value = if state.next_token.raw == Token![=] {
+        let value = if state.next_token.raw == Punctuator::Eq {
             state.advance();
 
             Some(TypeParser.parse(state)?)
@@ -378,7 +391,7 @@ impl Parse for TypeAliasParser {
             None
         };
 
-        state.consume(Token![;], "type alias")?;
+        state.consume(Punctuator::Semicolon, "type alias")?;
 
         Some(TypeAlias {
             visibility: self.visibility,
@@ -401,7 +414,7 @@ impl Parse for InterfaceParser {
 
         let generic_parameters = GenericParametersParser.optionally_parse(state)?;
 
-        let implements = if state.next_token.raw == Token![implements] {
+        let implements = if state.next_token.raw == Keyword::Implements {
             state.advance();
 
             Some(BoundsParser.parse(state)?)
@@ -411,15 +424,31 @@ impl Parse for InterfaceParser {
 
         let where_predicates = WherePredicatesParser.optionally_parse(state)?;
 
-        state.consume(Token!['{'], "interface declaration")?;
+        state.consume(Punctuator::OpenBrace, "interface declaration")?;
 
-        let methods = parse_list!(state, "interface methods", Token!['}'], {
-            FunctionParser {
-                docstring: state.consume_local_docstring(),
-                visibility: VisibilityParser.parse(state),
+        let methods = parse_list!(
+            state,
+            node_name: "interface methods",
+            closing_token: Punctuator::CloseBrace,
+            parse_element_expr: {
+                let method = FunctionParser {
+                    docstring: state.consume_local_docstring(),
+                    visibility: VisibilityParser.parse(state),
+                }
+                .parse(state)?;
+
+                if let Visibility::Public(location) = method.signature.visibility {
+                    state.add_diagnostic(UnnecessaryVisibilityQualifierDiagnostic {
+                        location,
+                        context: UnnecessaryVisibilityQualifierContext::InterfaceMethod {
+                            name_location: method.signature.name.location
+                        },
+                    });
+                }
+
+                Some(method)
             }
-            .parse(state)
-        });
+        );
 
         state.advance();
 
@@ -445,7 +474,7 @@ impl Parse for EnumParser {
 
         let generic_parameters = GenericParametersParser.optionally_parse(state)?;
 
-        let implements = if state.next_token.raw == Token![implements] {
+        let implements = if state.next_token.raw == Keyword::Implements {
             state.advance();
 
             Some(BoundsParser.parse(state)?)
@@ -455,16 +484,19 @@ impl Parse for EnumParser {
 
         let where_predicates = WherePredicatesParser.optionally_parse(state)?;
 
-        state.consume(Token!['{'], "enum")?;
+        state.consume(Punctuator::OpenBrace, "enum")?;
 
-        let items = parse_list!(state, "enum items", (Token!['}']) or (Token![fun]), {
-            EnumItemParser.parse(state)
-        });
+        let items = parse_list!(
+            state,
+            node_name: "enum items",
+            closing_token: one_of(Punctuator::CloseBrace, Keyword::Fun),
+            parse_element_expr: EnumItemParser.parse(state)
+        );
 
         let mut methods = vec![];
 
         loop {
-            if state.next_token.raw == Token!['}'] {
+            if state.next_token.raw == Punctuator::CloseBrace {
                 break;
             }
 
@@ -504,8 +536,10 @@ impl Parse for EnumItemParser {
         let name = state.consume_identifier("enum item")?;
 
         match state.next_token.raw {
-            Token!['{'] => EnumItemStructParser { name, docstring }.parse(state),
-            Token!['('] => Some(EnumItem::TupleLike {
+            RawToken::Punctuator(Punctuator::OpenBrace) => {
+                EnumItemStructParser { name, docstring }.parse(state)
+            }
+            RawToken::Punctuator(Punctuator::OpenParent) => Some(EnumItem::TupleLike {
                 name,
                 fields: TupleFieldsParser {
                     context: ModuleItemKind::Enum,
@@ -536,18 +570,17 @@ impl Parse for TupleFieldsParser {
     type Output = Option<Vec<TupleField>>;
 
     fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
-        state.advance(); // `(`
+        state.advance();
 
         let fields = parse_list!(
             state,
-            format!("item tuple in {}", self.context.to_string()),
-            Token![')'],
-            {
+            node_name: format!("item tuple in {}", self.context.to_string()),
+            closing_token: Punctuator::CloseParent,
+            parse_element_expr:
                 Some(TupleField {
                     visibility: VisibilityParser.parse(state),
                     ty: TypeParser.parse(state)?,
                 })
-            }
         );
 
         state.advance(); // `)`
@@ -576,12 +609,14 @@ impl ItemParser {
     fn goto_next_valid_item(state: &mut ParseState<'_, '_, '_>) {
         loop {
             match state.next_token.raw {
-                Token![enum]
-                | Token![import]
-                | Token![struct]
-                | Token![fun]
-                | Token![type]
-                | Token![interface]
+                RawToken::Keyword(
+                    Keyword::Enum
+                    | Keyword::Import
+                    | Keyword::Struct
+                    | Keyword::Fun
+                    | Keyword::Type
+                    | Keyword::Interface,
+                )
                 | RawToken::EndOfFile => break,
                 _ => state.advance(),
             }
@@ -608,7 +643,7 @@ impl Parse for ItemParser {
         let visibility = VisibilityParser.parse(state);
 
         Some(match state.next_token.raw {
-            Token![enum] => {
+            RawToken::Keyword(Keyword::Enum) => {
                 possibly_recover!(
                     state,
                     EnumParser {
@@ -618,10 +653,10 @@ impl Parse for ItemParser {
                     .parse(state)
                 )
             }
-            Token![import] => {
+            RawToken::Keyword(Keyword::Import) => {
                 possibly_recover!(state, ImportParser { visibility }.parse(state))
             }
-            Token![struct] => {
+            RawToken::Keyword(Keyword::Struct) => {
                 possibly_recover!(
                     state,
                     StructParser {
@@ -631,7 +666,7 @@ impl Parse for ItemParser {
                     .parse(state)
                 )
             }
-            Token![interface] => {
+            RawToken::Keyword(Keyword::Interface) => {
                 possibly_recover!(
                     state,
                     InterfaceParser {
@@ -641,7 +676,7 @@ impl Parse for ItemParser {
                     .parse(state)
                 )
             }
-            Token![fun] => ModuleItem::Function(possibly_recover!(
+            RawToken::Keyword(Keyword::Fun) => ModuleItem::Function(possibly_recover!(
                 state,
                 FunctionParser {
                     visibility,
@@ -649,7 +684,7 @@ impl Parse for ItemParser {
                 }
                 .parse(state)
             )),
-            Token![type] => ModuleItem::TypeAlias(possibly_recover!(
+            RawToken::Keyword(Keyword::Type) => ModuleItem::TypeAlias(possibly_recover!(
                 state,
                 TypeAliasParser {
                     visibility,
@@ -661,12 +696,12 @@ impl Parse for ItemParser {
                 state.add_diagnostic(UnexpectedTokenDiagnostic::new(
                     state.next_token,
                     expected!(
-                        Token![import],
-                        Token![fun],
-                        Token![interface],
-                        Token![enum],
-                        Token![struct],
-                        Token![type]
+                        Keyword::Enum,
+                        Keyword::Import,
+                        Keyword::Struct,
+                        Keyword::Interface,
+                        Keyword::Fun,
+                        Keyword::Type
                     ),
                     "item",
                 ));

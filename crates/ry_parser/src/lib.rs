@@ -82,8 +82,8 @@ use items::{ItemParser, ItemsParser};
 use pattern::PatternParser;
 use r#type::TypeParser;
 use ry_ast::{
-    token::{LexError, RawToken, Token},
-    Expression, IdentifierAST, Module, ModuleItem, Pattern, Statement, Token, Type, Visibility,
+    token::{Keyword, LexError, RawToken, Token},
+    Expression, IdentifierAST, Module, ModuleItem, Pattern, Statement, Type, Visibility,
 };
 use ry_diagnostics::{BuildDiagnostic, GlobalDiagnostics};
 use ry_filesystem::location::{Location, LocationIndex};
@@ -102,6 +102,7 @@ mod macros;
 pub struct ParseState<'s, 'd, 'i> {
     /// Lexer that is used for parsing.
     lexer: Lexer<'s, 'i>,
+
     /// Current token.
     current_token: Token,
     /// Next token.
@@ -408,8 +409,8 @@ impl<'s, 'd, 'i> ParseState<'s, 'd, 'i> {
     }
 
     /// Checks if the next token is [`expected`] and advances the parse state.
-    fn consume(&mut self, expected: RawToken, node: impl ToString) -> Option<()> {
-        self.expect(expected, node)?;
+    fn consume(&mut self, expected: impl Into<RawToken>, node: impl ToString) -> Option<()> {
+        self.expect(expected.into(), node)?;
         self.advance();
         Some(())
     }
@@ -513,7 +514,7 @@ impl Parse for VisibilityParser {
     type Output = Visibility;
 
     fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
-        if state.next_token.raw == Token![pub] {
+        if state.next_token.raw == Keyword::Pub {
             state.advance();
 
             Visibility::Public(state.current_token.location)

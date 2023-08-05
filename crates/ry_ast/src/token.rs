@@ -1,88 +1,63 @@
 //! Defines [`Token`] which represents grammatical unit of Ry source text.
-use std::fmt::Display;
 
-use phf::phf_map;
+use derive_more::Display;
+use paste::paste;
 use ry_filesystem::location::Location;
 
 use crate::precedence::Precedence;
 
 /// Represents error that scanning process can fail with.
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Display)]
 pub enum RawLexError {
     DigitDoesNotCorrespondToBase,
-    EmptyCharLiteral,
+    #[display(fmt = "empty character literal")]
+    EmptyCharacterLiteral,
+    #[display(fmt = "empty escape sequence")]
     EmptyEscapeSequence,
+    #[display(fmt = "empty wrapped identifier literal")]
     EmptyWrappedIdentifier,
+    #[display(fmt = "expected `}}` in byte escape sequence")]
     ExpectedCloseBracketInByteEscapeSequence,
+    #[display(fmt = "expected `}}` in Unicode escape sequence")]
     ExpectedCloseBracketInUnicodeEscapeSequence,
+    #[display(fmt = "expected digit in byte escape sequence")]
     ExpectedDigitInByteEscapeSequence,
+    #[display(fmt = "expected digit in Unicode escape sequence")]
     ExpectedDigitInUnicodeEscapeSequence,
+    #[display(fmt = "expected `{{` in byte escape sequence")]
     ExpectedOpenBracketInByteEscapeSequence,
+    #[display(fmt = "expected `{{` in Unicode escape sequence")]
     ExpectedOpenBracketInUnicodeEscapeSequence,
+    #[display(fmt = "exponent has no digits")]
     ExponentHasNoDigits,
+    #[display(fmt = "exponent requires decimal mantissa")]
     ExponentRequiresDecimalMantissa,
-    HasNoDigits,
+    #[display(fmt = "number contains no digits")]
+    NumberContainsNoDigits,
+    #[display(fmt = "invalid byte escape sequence")]
     InvalidByteEscapeSequence,
+    #[display(fmt = "invalid digit")]
     InvalidDigit,
+    #[display(fmt = "invalid radix point")]
     InvalidRadixPoint,
+    #[display(fmt = "invalid Unicode escape sequence")]
     InvalidUnicodeEscapeSequence,
+    #[display(fmt = "more than one character in character literal")]
     MoreThanOneCharInCharLiteral,
+    #[display(fmt = "number cannot be parsed")]
     NumberParseError,
+    #[display(fmt = "underscore must separate successive digits")]
     UnderscoreMustSeparateSuccessiveDigits,
+    #[display(fmt = "unexpected character")]
     UnexpectedChar,
+    #[display(fmt = "unknown escape sequence")]
     UnknownEscapeSequence,
+    #[display(fmt = "untermined character literal")]
     UnterminatedCharLiteral,
+    #[display(fmt = "unterminated string literal")]
     UnterminatedStringLiteral,
+    #[display(fmt = "unterminated wrapped identifier")]
     UnterminatedWrappedIdentifier,
-}
-
-impl AsRef<str> for RawLexError {
-    fn as_ref(&self) -> &str {
-        match self {
-            Self::EmptyCharLiteral => "empty character literal",
-            Self::EmptyEscapeSequence => "empty escape sequence",
-            Self::EmptyWrappedIdentifier => "empty wrapped identifier literal",
-            Self::ExpectedCloseBracketInByteEscapeSequence => {
-                "expected `}` in byte escape sequence"
-            }
-            Self::ExpectedCloseBracketInUnicodeEscapeSequence => {
-                "expected `}` in Unicode escape sequence"
-            }
-            Self::ExpectedDigitInByteEscapeSequence => "expected digit in byte escape sequence",
-            Self::ExpectedDigitInUnicodeEscapeSequence => {
-                "expected digit in Unicode escape sequence"
-            }
-            Self::ExpectedOpenBracketInByteEscapeSequence => "expected `{` in byte escape sequence",
-            Self::ExpectedOpenBracketInUnicodeEscapeSequence => {
-                "expected `{` in Unicode escape sequence"
-            }
-            Self::ExponentHasNoDigits => "exponent has no digits",
-            Self::ExponentRequiresDecimalMantissa => "exponent requires decimal mantissa",
-            Self::DigitDoesNotCorrespondToBase => "digit doesn't correspond to the base",
-            Self::HasNoDigits => "has no digits",
-            Self::InvalidByteEscapeSequence => "invalid byte escape sequence",
-            Self::InvalidDigit => "invalid digit",
-            Self::InvalidRadixPoint => "invalid radix point",
-            Self::InvalidUnicodeEscapeSequence => "invalid Unicode escape sequence",
-            Self::MoreThanOneCharInCharLiteral => {
-                "more than one character inside character literal"
-            }
-            Self::UnderscoreMustSeparateSuccessiveDigits => "`_` must separate successive digits",
-            Self::NumberParseError => "number parsing error (overflow is possible)",
-            Self::UnexpectedChar => "unexpected character",
-            Self::UnknownEscapeSequence => "unknown escape sequence",
-            Self::UnterminatedCharLiteral => "unterminated character literal",
-            Self::UnterminatedStringLiteral => "unterminated string literal",
-            Self::UnterminatedWrappedIdentifier => "unterminated wrapper identifier",
-        }
-    }
-}
-
-impl Display for RawLexError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str(self.as_ref())?;
-        Ok(())
-    }
 }
 
 impl From<RawToken> for RawLexError {
@@ -108,346 +83,309 @@ pub enum NumberKind {
     Float,
 }
 
-/// This enum represents a set of keywords used in the Ry programming language.
-/// Each variant of the enum corresponds to a specific keyword.
-#[derive(Debug, PartialEq, Eq, Clone, Copy)]
-pub enum Keyword {
-    As,
-    Defer,
-    Else,
-    Enum,
-    For,
-    Fun,
-    If,
-    Pub,
-    Return,
-    Struct,
-    Type,
-    Let,
-    Where,
-    While,
-    Match,
-    Import,
-    Break,
-    Continue,
-    Dyn,
-    Loop,
-    Interface,
-    Implements,
-}
-
-impl AsRef<str> for Keyword {
-    fn as_ref(&self) -> &str {
-        match self {
-            Self::Pub => "`pub`",
-            Self::Fun => "`fun`",
-            Self::Struct => "`struct`",
-            Self::Type => "`type`",
-            Self::Return => "`return`",
-            Self::Defer => "`defer`",
-            Self::Enum => "`enum`",
-            Self::If => "`if`",
-            Self::Else => "`else`",
-            Self::While => "`while`",
-            Self::As => "`as`",
-            Self::For => "`for`",
-            Self::Where => "`where`",
-            Self::Let => "`let`",
-            Self::Match => "`match`",
-            Self::Import => "`import`",
-            Self::Break => "`break`",
-            Self::Continue => "`continue`",
-            Self::Dyn => "`dyn`",
-            Self::Loop => "`loop`",
-            Self::Interface => "`interface`",
-            Self::Implements => "`implements`",
+macro_rules! define_keywords {
+    {$($value:tt => $keyword:ident),*} => {
+        /// This enum represents a set of keywords used in the Ry programming language.
+        /// Each variant of the enum corresponds to a specific keyword.
+        #[derive(Debug, PartialEq, Eq, Clone, Copy, Display)]
+        pub enum Keyword {
+            $(
+                #[display(fmt = $value)]
+                #[doc = concat!("Keyword `", $value, "`.")]
+                $keyword,
+            )*
         }
-    }
+
+        /// Convert a string into a keyword.
+        pub fn get_keyword(string: impl AsRef<str>) -> Option<Keyword> {
+            match string.as_ref() {
+                $(
+                    $value => Some(Keyword::$keyword),
+                )*
+                _ => None,
+            }
+        }
+    };
 }
 
-impl Display for Keyword {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str(self.as_ref())?;
-        Ok(())
-    }
+define_keywords! {
+    "as" => As, "defer" => Defer, "else" => Else,
+    "enum" => Enum, "for" => For, "fun" => Fun,
+    "if" => If, "pub" => Pub, "return" => Return,
+    "struct" => Struct, "type" => Type, "let" => Let,
+    "where" => Where, "while" => While, "match" => Match,
+    "import" => Import, "break" => Break, "continue" => Continue,
+    "dyn" => Dyn, "loop" => Loop, "interface" => Interface,
+    "implements" => Implements
 }
 
 /// Represents a punctuator.
-#[derive(Debug, Clone, PartialEq, Copy, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Copy, Eq, Hash, Display)]
 pub enum Punctuator {
-    /// Arrow (=>).
+    /// Arrow (`=>`).
+    #[display(fmt = "=>")]
     Arrow,
 
-    /// Ampersand (&).
-    And,
+    /// Ampersand (`&`).
+    #[display(fmt = "&")]
+    Ampersand,
 
-    /// Ampersand Equal (&=).
-    AndEq,
+    /// Ampersand Equal (`&=`).
+    #[display(fmt = "&=")]
+    AmpersandEq,
 
-    /// Logical And (&&).
-    AndAnd,
+    /// Double Ampersand (`&&`).
+    #[display(fmt = "&&")]
+    DoubleAmpersand,
 
-    /// Assignment (=).
-    Assign,
-
-    /// Asterisk (*).
+    /// Asterisk (`*`).
+    #[display(fmt = "*")]
     Asterisk,
 
-    /// Double Asterisk (**).
-    AsteriskAsterisk,
+    /// Double Asterisk (`**`).
+    #[display(fmt = "**")]
+    DoubleAsterisk,
 
-    /// Asterisk Equal (*=).
+    /// Asterisk Equal (`*=`).
+    #[display(fmt = "*=")]
     AsteriskEq,
 
-    /// At Sign (@).
-    AtSign,
+    /// At Sign (`@`).
+    #[display(fmt = "@")]
+    At,
 
-    /// Bang (!).
+    /// Bang (`!`).
+    #[display(fmt = "!")]
     Bang,
 
-    /// Close Brace (}).
+    /// Close Brace (`}`).
+    #[display(fmt = "}}")]
     CloseBrace,
 
-    /// Close Bracket (]).
+    /// Close Bracket (`]`).
+    #[display(fmt = "]")]
     CloseBracket,
 
-    /// Close Parenthesis ()).
+    /// Close Parenthesis (`)`).
+    #[display(fmt = ")")]
     CloseParent,
 
-    /// Colon (:).
+    /// Colon (`:`).
+    #[display(fmt = ":")]
     Colon,
 
-    /// Comma (,).
+    /// Comma (`,`).
+    #[display(fmt = ",")]
     Comma,
 
-    /// Dot (.).
+    /// Dot (`.`).
+    #[display(fmt = ".")]
     Dot,
 
-    /// Dot Dot (..).
-    DotDot,
+    /// Dot Dot (`..`).
+    #[display(fmt = "..")]
+    DoubleDot,
 
-    /// Equal (==).
+    /// Equal (`=`).
+    #[display(fmt = "=")]
     Eq,
 
-    /// Greater Than (>).
-    GreaterThan,
+    /// Double Equal (`==`).
+    #[display(fmt = "==")]
+    DoubleEq,
 
-    /// Greater Than or Equal (>=).
-    GreaterThanOrEq,
+    /// Greater (`>`).
+    #[display(fmt = ">")]
+    Greater,
 
-    /// Left Shift (<<).
+    /// Greater Or Equal (`>=`).
+    #[display(fmt = ">=")]
+    GreaterEq,
+
+    /// Left Shift (`<<`).
+    #[display(fmt = "<<")]
     LeftShift,
 
-    /// Less Than (<).
-    LessThan,
+    /// Less (`<`).
+    #[display(fmt = "<")]
+    Less,
 
-    /// Less Than or Equal (<=).
-    LessThanOrEq,
+    /// Less or Equal (`<=`).
+    #[display(fmt = "<=")]
+    LessEq,
 
-    /// Minus (-).
+    /// Minus (`-`).
+    #[display(fmt = "-")]
     Minus,
 
-    /// Minus Equal (-=).
+    /// Minus Equal (`-=`).
+    #[display(fmt = "-=")]
     MinusEq,
 
-    /// Decrement (--).
-    MinusMinus,
+    /// Double Minus (`--`).
+    #[display(fmt = "--")]
+    DoubleMinus,
 
-    /// Bitwise Not (~).
-    Not,
+    /// Tilde (`~`).
+    #[display(fmt = "~")]
+    Tilde,
 
-    /// Not Equal (!=).
-    NotEq,
+    /// Bang Equal (`!=`).
+    #[display(fmt = "!=")]
+    BangEq,
 
-    /// Open Brace ({).
+    /// Open Brace (`{`).
+    #[display(fmt = "{{")]
     OpenBrace,
 
-    /// Open Bracket ([).
+    /// Open Bracket (`[`).
+    #[display(fmt = "[")]
     OpenBracket,
 
-    /// Open Parenthesis (().
+    /// Open Parenthesis (`(`).
+    #[display(fmt = "(")]
     OpenParent,
 
-    /// Bitwise Or (|).
+    /// Or (`|`).
+    #[display(fmt = "|")]
     Or,
 
-    /// Or Equal (|=).
+    /// Or Equal (`|=`).
+    #[display(fmt = "|=")]
     OrEq,
 
-    /// Logical Or (||).
-    OrOr,
+    /// Logical Or (`||`).
+    #[display(fmt = "||")]
+    DoubleOr,
 
-    /// Percent (%).
+    /// Percent (`%`).
+    #[display(fmt = "%")]
     Percent,
 
-    /// Percent Equal (%=).
+    /// Percent Equal (`%=`).
+    #[display(fmt = "%=")]
     PercentEq,
 
-    /// Plus (+).
+    /// Plus (`+`).
+    #[display(fmt = "+")]
     Plus,
 
-    /// Plus Equal (+=).
+    /// Plus Equal (`+=`).
+    #[display(fmt = "+=")]
     PlusEq,
 
-    /// Increment (++).
-    PlusPlus,
+    /// Double Plus (`++`).
+    #[display(fmt = "++")]
+    DoublePlus,
 
-    /// Question Mark (?).
+    /// Question Mark (`?`).
+    #[display(fmt = "?")]
     QuestionMark,
 
-    /// Right Shift (>>).
+    /// Right Shift (`>>`).
+    #[display(fmt = ">>")]
     RightShift,
 
-    /// Semicolon (;).
+    /// Semicolon (`;`).
+    #[display(fmt = ";")]
     Semicolon,
 
-    /// Slash (/).
+    /// Slash (`/`).
+    #[display(fmt = "/")]
     Slash,
 
-    /// Slash Equal (/=).
+    /// Slash Equal (`/=`).
+    #[display(fmt = "/=")]
     SlashEq,
 
-    /// Exclusive Or (^).
-    Xor,
+    /// Caret (`^`).
+    #[display(fmt = "^")]
+    Caret,
 
-    /// Exclusive Or Equal (^=).
-    XorEq,
+    /// Caret Equal (`^=`).
+    #[display(fmt = "^=")]
+    CaretEq,
 
-    /// Hash Tag (#).
+    /// Hash Tag (`#`).
+    #[display(fmt = "#")]
     HashTag,
 }
 
-impl AsRef<str> for Punctuator {
-    fn as_ref(&self) -> &str {
-        match self {
-            Self::Plus => "`+`",
-            Self::Minus => "`-`",
-            Self::Asterisk => "`*`",
-            Self::Slash => "`/`",
-            Self::Bang => "`!`",
-            Self::QuestionMark => "`?`",
-            Self::GreaterThan => "`>`",
-            Self::GreaterThanOrEq => "`>=`",
-            Self::LessThan => "`<`",
-            Self::LessThanOrEq => "`<=`",
-            Self::Assign => "`=`",
-            Self::Eq => "`==`",
-            Self::Arrow => "`=>`",
-            Self::NotEq => "`!=`",
-            Self::RightShift => "`>>`",
-            Self::LeftShift => "`<<`",
-            Self::Or => "`|`",
-            Self::And => "`&`",
-            Self::AndEq => "`&=`",
-            Self::Xor => "`^`",
-            Self::Not => "`~`",
-            Self::OrOr => "`||`",
-            Self::AndAnd => "`&&`",
-            Self::PlusEq => "`+=`",
-            Self::MinusEq => "`-=`",
-            Self::AsteriskEq => "`*=`",
-            Self::SlashEq => "`/=`",
-            Self::XorEq => "`^=`",
-            Self::OrEq => "`|=`",
-            Self::OpenParent => "`(`",
-            Self::CloseParent => "`)`",
-            Self::OpenBracket => "`[`",
-            Self::CloseBracket => "`]`",
-            Self::OpenBrace => "`{`",
-            Self::CloseBrace => "`}`",
-            Self::Comma => "`,`",
-            Self::Dot => "`.`",
-            Self::DotDot => "`..`",
-            Self::Semicolon => "`;`",
-            Self::Colon => "`:`",
-            Self::PlusPlus => "`++`",
-            Self::MinusMinus => "`--`",
-            Self::AsteriskAsterisk => "`**`",
-            Self::Percent => "`%`",
-            Self::PercentEq => "`%=`",
-            Self::AtSign => "`@`",
-            Self::HashTag => "`#`",
-        }
-    }
-}
-
-impl Display for Punctuator {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str(self.as_ref())?;
-        Ok(())
-    }
-}
-
 /// Represents token without a specific location in source text.
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Default)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Default, Display)]
 pub enum RawToken {
     /// True boolean literal (`true`).
+    #[display(fmt = "`true`")]
     TrueBoolLiteral,
     /// False boolean literal (`false`).
+    #[display(fmt = "`false`")]
     FalseBoolLiteral,
     /// Character literal.
+    #[display(fmt = "character literal")]
     CharLiteral,
     /// Corresponds to any comment that is not a doc comment.
+    #[display(fmt = "comment")]
     Comment,
     /// Module level doc comment.
+    #[display(fmt = "global doc comment")]
     GlobalDocComment,
     /// Item doc comment.
+    #[display(fmt = "local doc comment")]
     LocalDocComment,
     /// End of file (`\0`).
     #[default]
+    #[display(fmt = "end of file")]
     EndOfFile,
     /// Float literal.
+    #[display(fmt = "float literal")]
     FloatLiteral,
     /// Identifier.
+    #[display(fmt = "identifier")]
     Identifier,
     /// Integer literal.
+    #[display(fmt = "integer literal")]
     IntegerLiteral,
     /// Error token.
+    #[display(fmt = "{_0}")]
     Error(RawLexError),
     /// Keyword.
+    #[display(fmt = "{_0}")]
     Keyword(Keyword),
     /// Punctuator.
+    #[display(fmt = "{_0}")]
     Punctuator(Punctuator),
     /// String literal.
+    #[display(fmt = "string literal")]
     StringLiteral,
 }
 
-impl AsRef<Self> for RawToken {
-    fn as_ref(&self) -> &Self {
-        self
+impl PartialEq<Punctuator> for RawToken {
+    fn eq(&self, other: &Punctuator) -> bool {
+        matches!(self, RawToken::Punctuator(punctuator) if punctuator == other)
     }
 }
 
-impl AsRef<str> for RawToken {
-    fn as_ref(&self) -> &str {
-        match self {
-            Self::Identifier => "identifier",
-            Self::StringLiteral => "string literal",
-            Self::IntegerLiteral => "integer literal",
-            Self::FloatLiteral => "float literal",
-            Self::CharLiteral => "character literal",
-            Self::TrueBoolLiteral => "`true`",
-            Self::FalseBoolLiteral => "`false`",
-            Self::Keyword(keyword) => keyword.as_ref(),
-            Self::Punctuator(punctuator) => punctuator.as_ref(),
-            Self::GlobalDocComment | Self::LocalDocComment => "doc comment",
-            Self::Comment => "comment",
-            Self::EndOfFile => "end of file",
-            Self::Error(..) => "error token",
-        }
-    }
-}
-
-impl Display for RawToken {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str(self.as_ref())?;
-        Ok(())
+impl PartialEq<Keyword> for RawToken {
+    fn eq(&self, other: &Keyword) -> bool {
+        matches!(self, RawToken::Keyword(keyword) if keyword == other)
     }
 }
 
 impl From<RawLexError> for RawToken {
     fn from(value: RawLexError) -> Self {
         Self::Error(value)
+    }
+}
+
+impl From<Punctuator> for RawToken {
+    fn from(value: Punctuator) -> Self {
+        Self::Punctuator(value)
+    }
+}
+
+impl From<Keyword> for RawToken {
+    fn from(value: Keyword) -> Self {
+        Self::Keyword(value)
     }
 }
 
@@ -472,223 +410,44 @@ pub struct Token {
     pub raw: RawToken,
 }
 
-/// Macro used to easily initialize tokens.
-///
-/// # Example
-/// ```
-/// use ry_ast::{Token, token::{RawToken, Punctuator, Keyword}};
-///
-/// assert_eq!(Token![:], RawToken::Punctuator(Punctuator::Colon));
-/// assert_eq!(Token![@], RawToken::Punctuator(Punctuator::AtSign));
-///
-/// // Same for keywords
-/// assert_eq!(Token![import], RawToken::Keyword(Keyword::Import));
-///
-/// // For parenthesis and brackets use quotes.
-/// assert_eq!(
-///     Token!['('],
-///     RawToken::Punctuator(Punctuator::OpenParent)
-/// );
-/// ```
-#[macro_export]
-macro_rules! Token {
-    [:] =>                  {$crate::token::RawToken::Punctuator($crate::token::Punctuator::Colon)};
-    [@] =>                  {$crate::token::RawToken::Punctuator($crate::token::Punctuator::AtSign)};
-    [++] =>                 {$crate::token::RawToken::Punctuator($crate::token::Punctuator::PlusPlus)};
-    [+=] =>                 {$crate::token::RawToken::Punctuator($crate::token::Punctuator::PlusEq)};
-    [+] =>                  {$crate::token::RawToken::Punctuator($crate::token::Punctuator::Plus)};
-    [--] =>                 {$crate::token::RawToken::Punctuator($crate::token::Punctuator::MinusMinus)};
-    [-=] =>                 {$crate::token::RawToken::Punctuator($crate::token::Punctuator::MinusEq)};
-    [-] =>                  {$crate::token::RawToken::Punctuator($crate::token::Punctuator::Minus)};
-    [**] =>                 {$crate::token::RawToken::Punctuator($crate::token::Punctuator::AsteriskAsterisk)};
-    [*=] =>                 {$crate::token::RawToken::Punctuator($crate::token::Punctuator::AsteriskEq)};
-    [*] =>                  {$crate::token::RawToken::Punctuator($crate::token::Punctuator::Asterisk)};
-    [/=] =>                 {$crate::token::RawToken::Punctuator($crate::token::Punctuator::SlashEq)};
-    [/] =>                  {$crate::token::RawToken::Punctuator($crate::token::Punctuator::Slash)};
-    [!=] =>                 {$crate::token::RawToken::Punctuator($crate::token::Punctuator::NotEq)};
-    [!] =>                  {$crate::token::RawToken::Punctuator($crate::token::Punctuator::Bang)};
-    [>>] =>                 {$crate::token::RawToken::Punctuator($crate::token::Punctuator::RightShift)};
-    [>=] =>                 {$crate::token::RawToken::Punctuator($crate::token::Punctuator::GreaterThanOrEq)};
-    [>] =>                  {$crate::token::RawToken::Punctuator($crate::token::Punctuator::GreaterThan)};
-    [<<] =>                 {$crate::token::RawToken::Punctuator($crate::token::Punctuator::LeftShift)};
-    [<=] =>                 {$crate::token::RawToken::Punctuator($crate::token::Punctuator::LessThanOrEq)};
-    [<] =>                  {$crate::token::RawToken::Punctuator($crate::token::Punctuator::LessThan)};
-    [==] =>                 {$crate::token::RawToken::Punctuator($crate::token::Punctuator::Eq)};
-    [=] =>                  {$crate::token::RawToken::Punctuator($crate::token::Punctuator::Assign)};
-    [|=] =>                 {$crate::token::RawToken::Punctuator($crate::token::Punctuator::OrEq)};
-    [||] =>                 {$crate::token::RawToken::Punctuator($crate::token::Punctuator::OrOr)};
-    [|] =>                  {$crate::token::RawToken::Punctuator($crate::token::Punctuator::Or)};
-    [?] =>                  {$crate::token::RawToken::Punctuator($crate::token::Punctuator::QuestionMark)};
-    [&&] =>                 {$crate::token::RawToken::Punctuator($crate::token::Punctuator::AndAnd)};
-    [&=] =>                 {$crate::token::RawToken::Punctuator($crate::token::Punctuator::AndEq)};
-    [&] =>                  {$crate::token::RawToken::Punctuator($crate::token::Punctuator::And)};
-    [^=] =>                 {$crate::token::RawToken::Punctuator($crate::token::Punctuator::XorEq)};
-    [^] =>                  {$crate::token::RawToken::Punctuator($crate::token::Punctuator::Xor)};
-    [~] =>                  {$crate::token::RawToken::Punctuator($crate::token::Punctuator::Not)};
-    ['('] =>                {$crate::token::RawToken::Punctuator($crate::token::Punctuator::OpenParent)};
-    [')'] =>                {$crate::token::RawToken::Punctuator($crate::token::Punctuator::CloseParent)};
-    ['['] =>                {$crate::token::RawToken::Punctuator($crate::token::Punctuator::OpenBracket)};
-    [']'] =>                {$crate::token::RawToken::Punctuator($crate::token::Punctuator::CloseBracket)};
-    ['{'] =>                {$crate::token::RawToken::Punctuator($crate::token::Punctuator::OpenBrace)};
-    ['}'] =>                {$crate::token::RawToken::Punctuator($crate::token::Punctuator::CloseBrace)};
-    [,] =>                  {$crate::token::RawToken::Punctuator($crate::token::Punctuator::Comma)};
-    [.] =>                  {$crate::token::RawToken::Punctuator($crate::token::Punctuator::Dot)};
-    [..] =>                 {$crate::token::RawToken::Punctuator($crate::token::Punctuator::DotDot)};
-    [;] =>                  {$crate::token::RawToken::Punctuator($crate::token::Punctuator::Semicolon)};
-    [%] =>                  {$crate::token::RawToken::Punctuator($crate::token::Punctuator::Percent)};
-    [%=] =>                 {$crate::token::RawToken::Punctuator($crate::token::Punctuator::PercentEq)};
-    [#] =>                  {$crate::token::RawToken::Punctuator($crate::token::Punctuator::HashTag)};
-    [=>] =>                 {$crate::token::RawToken::Punctuator($crate::token::Punctuator::Arrow)};
-    [true] =>               {$crate::token::RawToken::TrueBoolLiteral};
-    [false] =>              {$crate::token::RawToken::FalseBoolLiteral};
-    [import] =>             {$crate::token::RawToken::Keyword($crate::token::Keyword::Import)};
-    [pub] =>                {$crate::token::RawToken::Keyword($crate::token::Keyword::Pub)};
-    [fun] =>                {$crate::token::RawToken::Keyword($crate::token::Keyword::Fun)};
-    [struct] =>             {$crate::token::RawToken::Keyword($crate::token::Keyword::Struct)};
-    [interface] =>          {$crate::token::RawToken::Keyword($crate::token::Keyword::Interface)};
-    [return] =>             {$crate::token::RawToken::Keyword($crate::token::Keyword::Return)};
-    [defer] =>              {$crate::token::RawToken::Keyword($crate::token::Keyword::Defer)};
-    [enum] =>               {$crate::token::RawToken::Keyword($crate::token::Keyword::Enum)};
-    [if] =>                 {$crate::token::RawToken::Keyword($crate::token::Keyword::If)};
-    [else] =>               {$crate::token::RawToken::Keyword($crate::token::Keyword::Else)};
-    [while] =>              {$crate::token::RawToken::Keyword($crate::token::Keyword::While)};
-    [let] =>                {$crate::token::RawToken::Keyword($crate::token::Keyword::Let)};
-    [as] =>                 {$crate::token::RawToken::Keyword($crate::token::Keyword::As)};
-    [type] =>               {$crate::token::RawToken::Keyword($crate::token::Keyword::Type)};
-    [for] =>                {$crate::token::RawToken::Keyword($crate::token::Keyword::For)};
-    [where] =>              {$crate::token::RawToken::Keyword($crate::token::Keyword::Where)};
-    [match] =>              {$crate::token::RawToken::Keyword($crate::token::Keyword::Match)};
-    [break] =>              {$crate::token::RawToken::Keyword($crate::token::Keyword::Break)};
-    [continue] =>           {$crate::token::RawToken::Keyword($crate::token::Keyword::Continue)};
-    [dyn] =>                {$crate::token::RawToken::Keyword($crate::token::Keyword::Dyn)};
-    [loop] =>               {$crate::token::RawToken::Keyword($crate::token::Keyword::Loop)};
-    [implements] =>         {$crate::token::RawToken::Keyword($crate::token::Keyword::Implements)};
+macro_rules! map_precedences {
+    { $($($punctuators:ident),* => $precedence:ident,)* } => {
+        impl From<Punctuator> for Precedence {
+            fn from(value: Punctuator) -> Self {
+                match value {
+                    $($(| Punctuator::$punctuators)* => Precedence::$precedence,)*
+                    _ => Precedence::Lowest
+                }
+            }
+        }
+
+        impl From<RawToken> for Precedence {
+            fn from(value: RawToken) -> Self {
+                match value {
+                    RawToken::Punctuator(punctuator) => punctuator.into(),
+                    RawToken::Keyword(Keyword::As) => Precedence::As,
+                    _ => Precedence::Lowest,
+                }
+            }
+        }
+    };
 }
 
-/// List of reserved Ry names: keywords, boolean literals & etc..
-pub static RESERVED: phf::Map<&'static str, RawToken> = phf_map! {
-    "true" => RawToken::TrueBoolLiteral,
-    "false" => RawToken::FalseBoolLiteral,
-    "import" => Token![import],
-    "pub" => Token![pub],
-    "fun" => Token![fun],
-    "struct" => Token![struct],
-    "interface" => Token![interface],
-    "return" => Token![return],
-    "defer" => Token![defer],
-    "enum" => Token![enum],
-    "if" => Token![if],
-    "else" => Token![else],
-    "while" => Token![while],
-    "let" => Token![let],
-    "as" => Token![as],
-    "type" => Token![type],
-    "for" => Token![for],
-    "where" => Token![where],
-    "match" => Token![match],
-    "break" => Token![break],
-    "continue" => Token![continue],
-    "dyn" => Token![dyn],
-    "loop" => Token![loop],
-    "implements" => Token![implements],
-};
-
-impl Punctuator {
-    #[inline]
-    #[must_use]
-    pub const fn to_precedence(&self) -> Precedence {
-        match self {
-            Self::OrOr => Precedence::OrOr,
-            Self::AndAnd => Precedence::AndAnd,
-            Self::Or => Precedence::Or,
-            Self::Xor => Precedence::Xor,
-            Self::And => Precedence::And,
-            Self::Eq | Self::NotEq => Precedence::Eq,
-            Self::Assign
-            | Self::PlusEq
-            | Self::MinusEq
-            | Self::AsteriskEq
-            | Self::SlashEq
-            | Self::OrEq
-            | Self::XorEq => Precedence::Assign,
-            Self::LessThan | Self::LessThanOrEq | Self::GreaterThan | Self::GreaterThanOrEq => {
-                Precedence::Comparison
-            }
-            Self::OpenBracket => Precedence::GenericArgument,
-            Self::LeftShift | Self::RightShift => Precedence::LeftRightShift,
-            Self::Plus | Self::Minus => Precedence::Sum,
-            Self::Asterisk | Self::Slash => Precedence::Product,
-            Self::AsteriskAsterisk => Precedence::Power,
-            Self::Percent => Precedence::Mod,
-            Self::OpenParent => Precedence::Call,
-            Self::Dot => Precedence::Property,
-            Self::Not | Self::PlusPlus | Self::MinusMinus | Self::Bang | Self::QuestionMark => {
-                Precedence::Unary
-            }
-            Self::OpenBrace => Precedence::Struct,
-            _ => Precedence::Lowest,
-        }
-    }
-}
-
-impl RawToken {
-    #[inline]
-    #[must_use]
-    pub const fn to_precedence(&self) -> Precedence {
-        match self {
-            Self::Punctuator(punctuator) => punctuator.to_precedence(),
-            Self::Keyword(Keyword::As) => Precedence::As,
-            _ => Precedence::Lowest,
-        }
-    }
-
-    #[inline]
-    #[must_use]
-    pub const fn binary_operator(&self) -> bool {
-        matches!(
-            self,
-            Token![+=]
-                | Token![+]
-                | Token![-=]
-                | Token![-]
-                | Token![**]
-                | Token![*=]
-                | Token![*]
-                | Token![/=]
-                | Token![/]
-                | Token![!=]
-                | Token![!]
-                | Token![>>]
-                | Token![>=]
-                | Token![>]
-                | Token![<<]
-                | Token![<=]
-                | Token![<]
-                | Token![==]
-                | Token![=]
-                | Token![|=]
-                | Token![||]
-                | Token![|]
-                | Token![&]
-                | Token![&&]
-                | Token![&=]
-                | Token![%]
-                | Token![%=]
-        )
-    }
-
-    #[inline]
-    #[must_use]
-    pub const fn prefix_operator(&self) -> bool {
-        matches!(
-            self,
-            Token![!] | Token![~] | Token![++] | Token![--] | Token![-] | Token![+]
-        )
-    }
-
-    #[inline]
-    #[must_use]
-    pub const fn postfix_operator(&self) -> bool {
-        matches!(self, Token![?] | Token![++] | Token![--])
-    }
+map_precedences! {
+    DoubleOr => DoubleOr,
+    DoubleAmpersand => DoubleAmpersand,
+    Or => Or,
+    Caret => Xor,
+    Ampersand => Ampersand,
+    Eq, PlusEq, MinusEq, AsteriskEq, SlashEq, OrEq, CaretEq, PercentEq => Assign,
+    DoubleEq, BangEq, Less, LessEq, Greater, GreaterEq => Comparison,
+    LeftShift, RightShift => Shift,
+    OpenBracket => GenericArgument,
+    Plus, Minus => Sum,
+    Asterisk, Slash => Product,
+    Percent => Mod,
+    OpenParent => Call,
+    Dot => Field,
+    Tilde, DoublePlus, DoubleMinus, Bang, QuestionMark => Unary,
+    OpenBrace => Struct,
 }

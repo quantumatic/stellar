@@ -1,5 +1,6 @@
 use ry_ast::{
-    token::RawToken, Bounds, GenericParameter, Token, Type, TypeConstructor, WherePredicate,
+    token::{Keyword, Punctuator, RawToken},
+    Bounds, GenericParameter, Type, TypeConstructor, WherePredicate,
 };
 
 use crate::{
@@ -9,20 +10,6 @@ use crate::{
 
 pub(crate) struct BoundsParser;
 
-pub(crate) struct TypeParser;
-
-struct InterfaceObjectTypeParser;
-
-struct ParenthesizedTupleOrFunctionTypeParser;
-
-struct TypeConstructorParser;
-
-pub(crate) struct GenericParametersParser;
-
-pub(crate) struct TypeArgumentsParser;
-
-pub(crate) struct WherePredicatesParser;
-
 impl Parse for BoundsParser {
     type Output = Option<Bounds>;
 
@@ -30,7 +17,7 @@ impl Parse for BoundsParser {
         let mut bounds = vec![];
         bounds.push(TypeConstructorParser.parse(state)?);
 
-        while state.next_token.raw == Token![+] {
+        while state.next_token.raw == Punctuator::Plus {
             state.advance();
 
             bounds.push(TypeConstructorParser.parse(state)?);
@@ -40,18 +27,22 @@ impl Parse for BoundsParser {
     }
 }
 
+pub(crate) struct TypeParser;
+
 impl Parse for TypeParser {
     type Output = Option<Type>;
 
     fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
         match state.next_token.raw {
-            Token!['('] => ParenthesizedTupleOrFunctionTypeParser.parse(state),
+            RawToken::Punctuator(Punctuator::OpenParent) => {
+                ParenthesizedTupleOrFunctionTypeParser.parse(state)
+            }
             RawToken::Identifier => TypeConstructorParser.parse(state).map(Type::Constructor),
-            Token![dyn] => InterfaceObjectTypeParser.parse(state),
+            RawToken::Keyword(Keyword::Dyn) => InterfaceObjectTypeParser.parse(state),
             _ => {
                 state.add_diagnostic(UnexpectedTokenDiagnostic::new(
                     state.next_token,
-                    expected!("identifier", Token!['['], Token![#], Token!['(']),
+                    expected!("identifier", Punctuator::OpenParent, Keyword::Dyn),
                     "type",
                 ));
 
@@ -60,6 +51,8 @@ impl Parse for TypeParser {
         }
     }
 }
+
+struct InterfaceObjectTypeParser;
 
 impl Parse for InterfaceObjectTypeParser {
     type Output = Option<Type>;
@@ -76,6 +69,8 @@ impl Parse for InterfaceObjectTypeParser {
     }
 }
 
+struct ParenthesizedTupleOrFunctionTypeParser;
+
 impl Parse for ParenthesizedTupleOrFunctionTypeParser {
     type Output = Option<Type>;
 
@@ -83,13 +78,16 @@ impl Parse for ParenthesizedTupleOrFunctionTypeParser {
         let start = state.next_token.location.start;
         state.advance(); // `(`
 
-        let element_types = parse_list!(state, "parenthesized or tuple type", Token![')'], {
-            TypeParser.parse(state)
-        });
+        let element_types = parse_list!(
+            state,
+            node_name: "parenthesized or tuple type",
+            closing_token: Punctuator::CloseParent,
+            parse_element_expr: TypeParser.parse(state)
+        );
 
         state.advance(); // `)`
 
-        if state.next_token.raw == Token![:] {
+        if state.next_token.raw == Punctuator::Colon {
             state.advance();
 
             let return_type = Box::new(TypeParser.parse(state)?);
@@ -143,41 +141,50 @@ impl Parse for ParenthesizedTupleOrFunctionTypeParser {
     }
 }
 
+pub(crate) struct GenericParametersParser;
+
 impl OptionallyParse for GenericParametersParser {
     type Output = Option<Option<Vec<GenericParameter>>>;
 
     fn optionally_parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
-        if state.next_token.raw != Token!['['] {
+        if state.next_token.raw != Punctuator::OpenBracket {
             return Some(None);
         }
 
         state.advance();
 
-        let result = parse_list!(state, "generic parameters", Token![']'], {
-            Some(GenericParameter {
-                name: state.consume_identifier("generic parameter name")?,
-                bounds: if state.next_token.raw == Token![:] {
-                    state.advance();
+        let result = parse_list!(
+            state,
+            node_name: "generic parameters",
+            closing_token: Punctuator::CloseBracket,
+            parse_element_expr: {
+                Some(GenericParameter {
+                    name: state.consume_identifier("generic parameter name")?,
+                    bounds: if state.next_token.raw == Punctuator::Colon {
+                        state.advance();
 
-                    Some(BoundsParser.parse(state)?)
-                } else {
-                    None
-                },
-                default_value: if state.next_token.raw == Token![=] {
-                    state.advance();
+                        Some(BoundsParser.parse(state)?)
+                    } else {
+                        None
+                    },
+                    default_value: if state.next_token.raw == Punctuator::Eq {
+                        state.advance();
 
-                    Some(TypeParser.parse(state)?)
-                } else {
-                    None
-                },
-            })
-        });
+                        Some(TypeParser.parse(state)?)
+                    } else {
+                        None
+                    },
+                })
+            }
+        );
 
         state.advance();
 
         Some(Some(result))
     }
 }
+
+struct TypeConstructorParser;
 
 impl Parse for TypeConstructorParser {
     type Output = Option<TypeConstructor>;
@@ -194,11 +201,13 @@ impl Parse for TypeConstructorParser {
     }
 }
 
+pub(crate) struct TypeArgumentsParser;
+
 impl OptionallyParse for TypeArgumentsParser {
     type Output = Option<Option<Vec<Type>>>;
 
     fn optionally_parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
-        if state.next_token.raw != Token!['['] {
+        if state.next_token.raw != Punctuator::OpenBracket {
             return Some(None);
         }
 
@@ -211,9 +220,12 @@ impl Parse for TypeArgumentsParser {
     fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
         state.advance();
 
-        let result = parse_list!(state, "type arguments", Token![']'], {
-            TypeParser.parse(state)
-        });
+        let result = parse_list!(
+            state,
+            node_name: "type arguments",
+            closing_token: Punctuator::CloseBracket,
+            parse_element_expr: TypeParser.parse(state)
+        );
 
         state.advance();
 
@@ -221,11 +233,13 @@ impl Parse for TypeArgumentsParser {
     }
 }
 
+pub(crate) struct WherePredicatesParser;
+
 impl OptionallyParse for WherePredicatesParser {
     type Output = Option<Option<Vec<WherePredicate>>>;
 
     fn optionally_parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
-        if state.next_token.raw != Token![where] {
+        if state.next_token.raw != Keyword::Where {
             return Some(None);
         }
 
@@ -233,12 +247,12 @@ impl OptionallyParse for WherePredicatesParser {
 
         Some(Some(parse_list!(
             state,
-            "where clause",
-            (Token!['{']) or (Token![;]),
-            {
+            node_name: "where clause",
+            closing_token: one_of(Punctuator::CloseBrace, Punctuator::Semicolon),
+            parse_element_expr: {
                 let left = TypeParser.parse(state)?;
 
-                state.consume(Token![:], "where predicate")?;
+                state.consume(Punctuator::Colon, "where predicate")?;
 
                 Some(WherePredicate { ty: left, bounds: BoundsParser.parse(state)? })
             }

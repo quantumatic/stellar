@@ -173,7 +173,7 @@ impl BuildDiagnostic for UnnecessaryVisibilityQualifierDiagnostic {
             labels.push(
                 name_location
                     .to_secondary_label()
-                    .with_message("happened when analyzing the trait definition"),
+                    .with_message("happened when analyzing the interface method"),
             );
         }
 

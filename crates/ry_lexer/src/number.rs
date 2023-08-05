@@ -100,7 +100,7 @@ impl Lexer<'_, '_> {
 
             if digit_separator & 1 == 0 {
                 return Token {
-                    raw: RawToken::Error(RawLexError::HasNoDigits),
+                    raw: RawToken::Error(RawLexError::NumberContainsNoDigits),
                     location: self.location_from(start_offset),
                 };
             }

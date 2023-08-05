@@ -28,7 +28,7 @@
     html_favicon_url = "https://raw.githubusercontent.com/abs0luty/Ry/main/additional/icon/ry.png"
 )]
 #![warn(clippy::dbg_macro)]
-#![deny(
+#![warn(
     // rustc lint groups https://doc.rust-lang.org/rustc/lints/groups.html
     warnings,
     future_incompatible,
@@ -51,7 +51,7 @@
     trivial_numeric_casts,
     unreachable_pub,
     unsafe_op_in_unsafe_fn,
-    unused_crate_dependencies,
+    //unused_crate_dependencies,
     unused_import_braces,
     unused_lifetimes,
     unused_qualifications,
@@ -86,7 +86,7 @@ use std::fmt::Display;
 
 use ry_filesystem::location::Location;
 use ry_interner::{PathID, Symbol};
-use token::RawToken;
+use token::{Punctuator, RawToken};
 
 pub mod precedence;
 pub mod serialize;
@@ -523,9 +523,80 @@ pub struct BinaryOperator {
     pub raw: RawBinaryOperator,
 }
 
-/// A binary operator, e.g. `+`, `**`, `/`.
-#[derive(Debug, PartialEq, Copy, Clone, Eq, Hash)]
-pub enum RawBinaryOperator {
+macro_rules! make_operator_type {
+    {#[doc = $type_doc:expr] $type_name:ident,
+        #[doc = $token_check_fn_doc:expr] $token_check_fn_name:ident,
+        $(#[doc = $doc:expr] $name:ident),*} => {
+        #[doc=$type_doc]
+        #[derive(Debug, PartialEq, Copy, Clone, Eq, Hash)]
+        pub enum $type_name {
+            $(
+                #[doc=$doc]
+                $name,
+            )*
+        }
+
+        impl RawToken {
+            #[doc=$token_check_fn_doc]
+            pub const fn $token_check_fn_name(self) -> bool {
+                matches!(self, RawToken::Punctuator($(| Punctuator::$name)*))
+            }
+        }
+
+        impl From<Punctuator> for $type_name {
+            fn from(punctuator: Punctuator) -> Self {
+                match punctuator {
+                    $(Punctuator::$name => Self::$name,)*
+                    _ => unreachable!(),
+                }
+            }
+        }
+
+        impl From<RawToken> for $type_name {
+            fn from(token: RawToken) -> Self {
+                if let RawToken::Punctuator(punctuator) = token {
+                    punctuator.into()
+                } else {
+                    unreachable!()
+                }
+            }
+        }
+
+        impl From<$type_name> for Punctuator {
+            fn from(value: $type_name) -> Self {
+                match value {
+                    $($type_name::$name => Punctuator::$name,)*
+                }
+            }
+        }
+
+        impl From<$type_name> for RawToken {
+            fn from(value: $type_name) -> Self {
+                RawToken::Punctuator(value.into()).into()
+            }
+        }
+
+        impl From<$type_name> for String {
+            fn from(value: $type_name) -> Self {
+                RawToken::Punctuator(value.into()).into()
+            }
+        }
+
+        impl Display for $type_name {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                RawToken::from(*self).fmt(f)
+            }
+        }
+    };
+}
+
+make_operator_type! {
+    /// A binary operator, e.g. `+`, `**`, `/`.
+    RawBinaryOperator,
+
+    /// Returns `true` if the token is a binary operator.
+    is_binary_operator,
+
     /// Plus Equal (`+=`).
     PlusEq,
 
@@ -538,14 +609,14 @@ pub enum RawBinaryOperator {
     /// Minus (`-`).
     Minus,
 
-    /// Double star (`**`).
-    DoubleStar,
+    /// Asterisk Equal (`*=`).
+    AsteriskEq,
 
-    /// Star Equal (`*=`).
-    StarEq,
+    /// Asterisk (`*`).
+    Asterisk,
 
-    /// Star (`*`).
-    Star,
+    /// Double Asterisk (`**`).
+    DoubleAsterisk,
 
     /// Slash Equal (`/=`).
     SlashEq,
@@ -553,7 +624,7 @@ pub enum RawBinaryOperator {
     /// Slash (`/`).
     Slash,
 
-    /// Not Equal (`!=`).
+    /// Bang Equal (`!=`).
     BangEq,
 
     /// Right Shift (`>>`).
@@ -562,20 +633,20 @@ pub enum RawBinaryOperator {
     /// Left Shift (`<<`).
     LeftShift,
 
-    /// Less Equal (`<=`).
+    /// Less Or Equal (`<=`).
     LessEq,
 
     /// Less (`<`).
     Less,
 
-    /// Greater Equal (`>=`).
+    /// Greater Or Equal (`>=`).
     GreaterEq,
 
     /// Greater (`>`).
     Greater,
 
     /// Double Equal (`==`).
-    EqEq,
+    DoubleEq,
 
     /// Equal (`=`).
     Eq,
@@ -583,105 +654,26 @@ pub enum RawBinaryOperator {
     /// Or (`|`).
     Or,
 
-    /// And (`&`).
-    And,
+    /// Ampersand (`&`).
+    Ampersand,
 
     /// Double Or (`||`).
     DoubleOr,
 
-    /// Double And (`&&`).
-    DoubleAnd,
+    /// Double Ampersand (`&&`).
+    DoubleAmpersand,
 
     /// Or Equal (`|=`).
     OrEq,
 
-    /// And Equal (`&=`).
-    AndEq,
+    /// Ampersand Equal (`&=`).
+    AmpersandEq,
 
     /// Percent (`%`).
     Percent,
 
     /// Percent Equal (`%=`).
-    PercentEq,
-}
-
-impl From<RawToken> for RawBinaryOperator {
-    fn from(token: RawToken) -> Self {
-        match token {
-            Token![+=] => Self::PlusEq,
-            Token![+] => Self::Plus,
-            Token![-=] => Self::MinusEq,
-            Token![-] => Self::Minus,
-            Token![*=] => Self::StarEq,
-            Token![**] => Self::DoubleStar,
-            Token![*] => Self::Star,
-            Token![/=] => Self::SlashEq,
-            Token![/] => Self::Slash,
-            Token![!=] => Self::BangEq,
-            Token![>>] => Self::RightShift,
-            Token![<<] => Self::LeftShift,
-            Token![<=] => Self::LessEq,
-            Token![<] => Self::Less,
-            Token![>=] => Self::GreaterEq,
-            Token![>] => Self::Greater,
-            Token![==] => Self::EqEq,
-            Token![=] => Self::Eq,
-            Token![|] => Self::Or,
-            Token![&] => Self::And,
-            Token![||] => Self::DoubleOr,
-            Token![&&] => Self::DoubleAnd,
-            Token![|=] => Self::OrEq,
-            Token![&=] => Self::AndEq,
-            Token![%] => Self::Percent,
-            Token![%=] => Self::PercentEq,
-            _ => unreachable!(),
-        }
-    }
-}
-
-impl From<RawBinaryOperator> for RawToken {
-    fn from(operator: RawBinaryOperator) -> Self {
-        match operator {
-            RawBinaryOperator::PlusEq => Token![+=],
-            RawBinaryOperator::Plus => Token![+],
-            RawBinaryOperator::MinusEq => Token![-=],
-            RawBinaryOperator::Minus => Token![-],
-            RawBinaryOperator::StarEq => Token![*=],
-            RawBinaryOperator::DoubleStar => Token![**],
-            RawBinaryOperator::Star => Token![*],
-            RawBinaryOperator::SlashEq => Token![/=],
-            RawBinaryOperator::Slash => Token![/],
-            RawBinaryOperator::BangEq => Token![!=],
-            RawBinaryOperator::RightShift => Token![>>],
-            RawBinaryOperator::LeftShift => Token![<<],
-            RawBinaryOperator::LessEq => Token![<=],
-            RawBinaryOperator::Less => Token![<],
-            RawBinaryOperator::GreaterEq => Token![>=],
-            RawBinaryOperator::Greater => Token![>],
-            RawBinaryOperator::EqEq => Token![==],
-            RawBinaryOperator::Eq => Token![=],
-            RawBinaryOperator::Or => Token![|],
-            RawBinaryOperator::And => Token![&],
-            RawBinaryOperator::DoubleOr => Token![||],
-            RawBinaryOperator::DoubleAnd => Token![&&],
-            RawBinaryOperator::OrEq => Token![|=],
-            RawBinaryOperator::AndEq => Token![&=],
-            RawBinaryOperator::Percent => Token![%],
-            RawBinaryOperator::PercentEq => Token![%=],
-        }
-    }
-}
-
-impl From<RawBinaryOperator> for String {
-    fn from(value: RawBinaryOperator) -> Self {
-        RawToken::from(value).into()
-    }
-}
-
-impl Display for RawBinaryOperator {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        RawToken::from(*self).fmt(f)
-    }
+    PercentEq
 }
 
 /// A prefix operator with a specific location.
@@ -693,14 +685,18 @@ pub struct PrefixOperator {
     pub raw: RawPrefixOperator,
 }
 
-/// A prefix operator, e.g. `!`, `++`, `-`.
-#[derive(Debug, PartialEq, Copy, Clone, Eq, Hash)]
-pub enum RawPrefixOperator {
+make_operator_type! {
+    /// A prefix operator, e.g. `!`, `++`, `-`.
+    RawPrefixOperator,
+
+    /// Returns `true` if the token is a prefix operator.
+    is_prefix_operator,
+
     /// Bang (`!`).
     Bang,
 
     /// Not (`~`).
-    Not,
+    Tilde,
 
     /// Double Plus (`++`).
     DoublePlus,
@@ -712,46 +708,7 @@ pub enum RawPrefixOperator {
     Plus,
 
     /// Minus (`-`).
-    Minus,
-}
-
-impl From<RawToken> for RawPrefixOperator {
-    fn from(token: RawToken) -> Self {
-        match token {
-            Token![++] => Self::DoublePlus,
-            Token![--] => Self::DoubleMinus,
-            Token![+] => Self::Plus,
-            Token![-] => Self::Minus,
-            Token![!] => Self::Bang,
-            Token![~] => Self::Not,
-            _ => unreachable!(),
-        }
-    }
-}
-
-impl From<RawPrefixOperator> for RawToken {
-    fn from(operator: RawPrefixOperator) -> Self {
-        match operator {
-            RawPrefixOperator::Bang => Token![!],
-            RawPrefixOperator::Not => Token![~],
-            RawPrefixOperator::DoublePlus => Token![++],
-            RawPrefixOperator::DoubleMinus => Token![--],
-            RawPrefixOperator::Plus => Token![+],
-            RawPrefixOperator::Minus => Token![-],
-        }
-    }
-}
-
-impl From<RawPrefixOperator> for String {
-    fn from(value: RawPrefixOperator) -> Self {
-        RawToken::from(value).into()
-    }
-}
-
-impl Display for RawPrefixOperator {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        RawToken::from(*self).fmt(f)
-    }
+    Minus
 }
 
 /// A postfix operator with a specific location.
@@ -763,9 +720,13 @@ pub struct PostfixOperator {
     pub raw: RawPostfixOperator,
 }
 
-/// A postfix operator, e.g. `?`, `++`.
-#[derive(Debug, PartialEq, Copy, Clone, Eq, Hash)]
-pub enum RawPostfixOperator {
+make_operator_type! {
+    /// A postfix operator, e.g. `?`, `++`.
+    RawPostfixOperator,
+
+    /// Returns `true` if the token is a postfix operator.
+    is_postfix_operator,
+
     /// Question Mark (`?`).
     QuestionMark,
 
@@ -773,40 +734,7 @@ pub enum RawPostfixOperator {
     DoublePlus,
 
     /// Double Minus (`--`).
-    DoubleMinus,
-}
-
-impl From<RawToken> for RawPostfixOperator {
-    fn from(token: RawToken) -> Self {
-        match token {
-            Token![?] => Self::QuestionMark,
-            Token![++] => Self::DoublePlus,
-            Token![--] => Self::DoubleMinus,
-            _ => unreachable!(),
-        }
-    }
-}
-
-impl From<RawPostfixOperator> for RawToken {
-    fn from(operator: RawPostfixOperator) -> Self {
-        match operator {
-            RawPostfixOperator::QuestionMark => Token![?],
-            RawPostfixOperator::DoublePlus => Token![++],
-            RawPostfixOperator::DoubleMinus => Token![--],
-        }
-    }
-}
-
-impl From<RawPostfixOperator> for String {
-    fn from(value: RawPostfixOperator) -> Self {
-        RawToken::from(value).into()
-    }
-}
-
-impl Display for RawPostfixOperator {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        RawToken::from(*self).fmt(f)
-    }
+    DoubleMinus
 }
 
 /// A match expression item - `pattern` `=>` `expression`.

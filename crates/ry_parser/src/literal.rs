@@ -1,4 +1,4 @@
-use ry_ast::{token::RawToken, Literal, Token};
+use ry_ast::{token::RawToken, Literal};
 
 use crate::{
     diagnostics::{FloatOverflowDiagnostic, IntegerOverflowDiagnostic},
@@ -54,14 +54,14 @@ impl Parse for LiteralParser {
                     location: state.current_token.location,
                 })
             }
-            Token![true] => {
+            RawToken::TrueBoolLiteral => {
                 state.advance();
                 Some(Literal::Boolean {
                     value: true,
                     location: state.current_token.location,
                 })
             }
-            Token![false] => {
+            RawToken::FalseBoolLiteral => {
                 state.advance();
                 Some(Literal::Boolean {
                     value: false,

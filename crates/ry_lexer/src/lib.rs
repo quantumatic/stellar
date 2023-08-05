@@ -68,10 +68,7 @@
 
 use std::{mem, str::Chars, string::String};
 
-use ry_ast::{
-    token::{LexError, RawLexError, RawToken, Token, RESERVED},
-    Token,
-};
+use ry_ast::token::{LexError, Punctuator, RawLexError, RawToken, Token, get_keyword};
 use ry_filesystem::location::Location;
 use ry_interner::{IdentifierInterner, PathID, Symbol};
 use ry_stable_likely::unlikely;
@@ -222,9 +219,9 @@ impl<'s, 'i> Lexer<'s, 'i> {
 
     /// Advances the lexer state to the next character, and returns the token
     /// with location being the current character location in the source text.
-    fn advance_with(&mut self, raw: RawToken) -> Token {
+    fn advance_with(&mut self, raw: impl Into<RawToken>) -> Token {
         let token = Token {
-            raw,
+            raw: raw.into(),
             location: self.current_char_location(),
         };
 
@@ -254,9 +251,9 @@ impl<'s, 'i> Lexer<'s, 'i> {
 
     /// Advances the lexer state to the next 2 characters, and returns the token
     /// with location being `self.location..self.location + 2`.
-    fn advance_twice_with(&mut self, raw: RawToken) -> Token {
+    fn advance_twice_with(&mut self, raw: impl Into<RawToken>) -> Token {
         let token = Token {
-            raw,
+            raw: raw.into(),
             location: self.make_location(self.offset, self.offset + 2),
         };
 
@@ -480,7 +477,7 @@ impl<'s, 'i> Lexer<'s, 'i> {
             }
             0 => {
                 return Token {
-                    raw: RawToken::Error(RawLexError::EmptyCharLiteral),
+                    raw: RawToken::Error(RawLexError::EmptyCharacterLiteral),
                     location: self.location_from(start_offset),
                 };
             }
@@ -618,9 +615,9 @@ impl<'s, 'i> Lexer<'s, 'i> {
         let start_location = self.offset;
         let name = self.advance_while(start_location, |current, _| is_id_continue(current));
 
-        if let Some(reserved) = RESERVED.get(name) {
+        if let Some(reserved) = get_keyword(name) {
             Token {
-                raw: *reserved,
+                raw: reserved.into(),
                 location: self.location_from(start_location),
             }
         } else {
@@ -654,24 +651,26 @@ impl<'s, 'i> Lexer<'s, 'i> {
         }
 
         match (self.current, self.next) {
-            (':', _) => self.advance_with(Token![:]),
-            ('@', _) => self.advance_with(Token![@]),
+            (':', _) => self.advance_with(Punctuator::Colon),
+            ('@', _) => self.advance_with(Punctuator::At),
 
             ('"', _) => self.tokenize_string_literal(),
             ('\'', _) => self.tokenize_char_literal(),
             ('`', _) => self.tokenize_wrapped_identifier(),
 
-            ('+', '+') => self.advance_twice_with(Token![++]),
-            ('+', '=') => self.advance_twice_with(Token![+=]),
-            ('+', _) => self.advance_with(Token![+]),
-            ('-', '-') => self.advance_twice_with(Token![--]),
-            ('-', '=') => self.advance_twice_with(Token![-=]),
-            ('-', _) => self.advance_with(Token![-]),
-            ('*', '*') => self.advance_twice_with(Token![**]),
-            ('*', '=') => self.advance_twice_with(Token![*=]),
-            ('*', _) => self.advance_with(Token![*]),
+            ('+', '+') => self.advance_twice_with(Punctuator::DoublePlus),
+            ('+', '=') => self.advance_twice_with(Punctuator::PlusEq),
+            ('+', _) => self.advance_with(Punctuator::Plus),
 
-            ('#', _) => self.advance_with(Token![#]),
+            ('-', '-') => self.advance_twice_with(Punctuator::DoubleMinus),
+            ('-', '=') => self.advance_twice_with(Punctuator::MinusEq),
+            ('-', _) => self.advance_with(Punctuator::Minus),
+
+            ('*', '*') => self.advance_twice_with(Punctuator::DoubleAsterisk),
+            ('*', '=') => self.advance_twice_with(Punctuator::AsteriskEq),
+            ('*', _) => self.advance_with(Punctuator::Asterisk),
+
+            ('#', _) => self.advance_with(Punctuator::HashTag),
 
             ('/', '/') => {
                 self.advance();
@@ -683,40 +682,40 @@ impl<'s, 'i> Lexer<'s, 'i> {
                 }
             }
 
-            ('/', '=') => self.advance_twice_with(Token![/=]),
-            ('/', _) => self.advance_with(Token![/]),
-            ('!', '=') => self.advance_twice_with(Token![!=]),
-            ('!', _) => self.advance_with(Token![!]),
-            ('>', '>') => self.advance_twice_with(Token![>>]),
-            ('>', '=') => self.advance_twice_with(Token![>=]),
-            ('>', _) => self.advance_with(Token![>]),
-            ('<', '<') => self.advance_twice_with(Token![<<]),
-            ('<', '=') => self.advance_twice_with(Token![<=]),
-            ('<', _) => self.advance_with(Token![<]),
-            ('=', '=') => self.advance_twice_with(Token![==]),
-            ('=', '>') => self.advance_twice_with(Token![=>]),
-            ('=', _) => self.advance_with(Token![=]),
-            ('|', '=') => self.advance_twice_with(Token![|=]),
-            ('|', '|') => self.advance_twice_with(Token![||]),
-            ('|', _) => self.advance_with(Token![|]),
-            ('?', _) => self.advance_with(Token![?]),
-            ('&', '&') => self.advance_twice_with(Token![&&]),
-            ('&', _) => self.advance_with(Token![&]),
-            ('^', '=') => self.advance_twice_with(Token![^=]),
-            ('^', _) => self.advance_with(Token![^]),
-            ('~', _) => self.advance_with(Token![~]),
-            ('(', _) => self.advance_with(Token!['(']),
-            (')', _) => self.advance_with(Token![')']),
-            ('[', _) => self.advance_with(Token!['[']),
-            (']', _) => self.advance_with(Token![']']),
-            ('{', _) => self.advance_with(Token!['{']),
-            ('}', _) => self.advance_with(Token!['}']),
-            (',', _) => self.advance_with(Token![,]),
-            (';', _) => self.advance_with(Token![;]),
-            ('%', '=') => self.advance_with(Token![%=]),
-            ('%', _) => self.advance_with(Token![%]),
+            ('/', '=') => self.advance_twice_with(Punctuator::SlashEq),
+            ('/', _) => self.advance_with(Punctuator::Slash),
+            ('!', '=') => self.advance_twice_with(Punctuator::BangEq),
+            ('!', _) => self.advance_with(Punctuator::Bang),
+            ('>', '>') => self.advance_twice_with(Punctuator::RightShift),
+            ('>', '=') => self.advance_twice_with(Punctuator::GreaterEq),
+            ('>', _) => self.advance_with(Punctuator::Greater),
+            ('<', '<') => self.advance_twice_with(Punctuator::LeftShift),
+            ('<', '=') => self.advance_twice_with(Punctuator::LessEq),
+            ('<', _) => self.advance_with(Punctuator::Less),
+            ('=', '=') => self.advance_twice_with(Punctuator::DoubleEq),
+            ('=', '>') => self.advance_twice_with(Punctuator::Arrow),
+            ('=', _) => self.advance_with(Punctuator::Eq),
+            ('|', '=') => self.advance_twice_with(Punctuator::OrEq),
+            ('|', '|') => self.advance_twice_with(Punctuator::DoubleOr),
+            ('|', _) => self.advance_with(Punctuator::Or),
+            ('?', _) => self.advance_with(Punctuator::QuestionMark),
+            ('&', '&') => self.advance_twice_with(Punctuator::DoubleAmpersand),
+            ('&', _) => self.advance_with(Punctuator::Ampersand),
+            ('^', '=') => self.advance_twice_with(Punctuator::CaretEq),
+            ('^', _) => self.advance_with(Punctuator::Caret),
+            ('~', _) => self.advance_with(Punctuator::Tilde),
+            ('(', _) => self.advance_with(Punctuator::OpenParent),
+            (')', _) => self.advance_with(Punctuator::CloseParent),
+            ('[', _) => self.advance_with(Punctuator::OpenBracket),
+            (']', _) => self.advance_with(Punctuator::CloseBracket),
+            ('{', _) => self.advance_with(Punctuator::OpenBrace),
+            ('}', _) => self.advance_with(Punctuator::CloseBrace),
+            (',', _) => self.advance_with(Punctuator::Comma),
+            (';', _) => self.advance_with(Punctuator::Semicolon),
+            ('%', '=') => self.advance_with(Punctuator::PercentEq),
+            ('%', _) => self.advance_with(Punctuator::Percent),
 
-            ('.', '.') => self.advance_twice_with(Token![..]),
+            ('.', '.') => self.advance_twice_with(Punctuator::DoubleDot),
 
             (c, n) => {
                 if number::decimal(c) || (c == '.' && number::decimal(n)) {
@@ -724,7 +723,7 @@ impl<'s, 'i> Lexer<'s, 'i> {
                 } else if is_id_start(c) {
                     return self.tokenize_identifier_or_keyword();
                 } else if c == '.' {
-                    return self.advance_with(Token![.]);
+                    return self.advance_with(Punctuator::Dot);
                 }
 
                 self.advance_with(RawToken::Error(RawLexError::UnexpectedChar))

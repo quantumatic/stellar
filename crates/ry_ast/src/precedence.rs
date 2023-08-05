@@ -27,10 +27,10 @@ pub enum Precedence {
     Assign,
 
     /// Precedence corresponding to binary expressions with `||` operator.
-    OrOr,
+    DoubleOr,
 
     /// Precedence corresponding to binary expressions with `&&` operator.
-    AndAnd,
+    DoubleAmpersand,
 
     /// Precedence corresponding to binary expressions with `|` operator.
     Or,
@@ -39,19 +39,15 @@ pub enum Precedence {
     Xor,
 
     /// Precedence corresponding to binary expressions with `&` operator.
-    And,
-
-    /// Precedence corresponding to binary expressions with equality operators:
-    /// `==`, `!=`.
-    Eq,
+    Ampersand,
 
     /// Precedence corresponding to binary expressions with comparison operators:
-    /// `<`, `<=`, `>`, `>=`.
+    /// `<`, `<=`, `>`, `>=`, `==` and `!=`.
     Comparison,
 
     /// Precedence corresponding to binary expressions with shift operators:
     /// `<<`, `>>`.
-    LeftRightShift,
+    Shift,
 
     /// Precedence corresponding to binary expressions with addition and
     /// subtraction operators: `+`, `-`.
@@ -86,11 +82,11 @@ pub enum Precedence {
     /// Precedence corresponding to struct expressions.
     Struct,
 
-    /// Precedence corresponding to property access expressions:
+    /// Precedence corresponding to field access expressions:
     /// ```txt
     /// a.b
     /// ```
-    Property,
+    Field,
 
     /// Precedence corresponding to generic arguments expressions:
     /// ```txt
