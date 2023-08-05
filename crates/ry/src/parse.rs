@@ -47,7 +47,7 @@ pub fn command(path_str: &str) {
 
                 let (filename, mut file) = create_unique_file("ast", "txt");
                 file.write_all(ast_string.as_bytes())
-                    .unwrap_or_else(|_| panic!("Cannot write to file {}", filename));
+                    .unwrap_or_else(|_| panic!("Cannot write to file {filename}"));
 
                 log_with_left_padded_prefix("Emitted", format!("AST in `{filename}`"));
             }
