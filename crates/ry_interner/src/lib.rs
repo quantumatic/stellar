@@ -205,19 +205,16 @@ impl InternerStorage {
     }
 
     /// Interns the given string and returns corresponding symbol.
-    #[inline]
     fn intern(&mut self, string: &str) -> Symbol {
         self.push(string)
     }
 
     /// Resolves the given symbol to its original string.
-    #[inline]
     fn resolve(&self, symbol: Symbol) -> Option<&str> {
         self.span_of(symbol).map(|span| self.str_at(span))
     }
 
     /// Resolves the given symbol to its original string, but without additional checks.
-    #[inline]
     unsafe fn unchecked_resolve(&self, symbol: Symbol) -> &str {
         unsafe { self.str_at(self.unchecked_span_of(symbol)) }
     }
@@ -314,7 +311,6 @@ impl Interner {
     /// let hello_symbol = interner.get_or_intern("hello");
     /// assert_eq!(Some(hello_symbol), interner.get("hello"));
     /// ```
-    #[inline]
     pub fn get(&self, string: impl AsRef<str>) -> Option<Symbol> {
         let string = string.as_ref();
         let hash = hash_value(&self.hasher, string);
@@ -328,7 +324,6 @@ impl Interner {
     }
 
     /// Interns the given string and returns a corresponding symbol.
-    #[inline]
     fn get_or_intern_using<T>(
         &mut self,
         string: T,
