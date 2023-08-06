@@ -13,34 +13,24 @@
     html_favicon_url = "https://raw.githubusercontent.com/abs0luty/Ry/main/additional/icon/ry.png"
 )]
 
-#[cold]
-fn cold() {}
-
-/// The function allows to tell the compiler that the condition is likely to be
-/// `true`.
-#[must_use]
-pub fn likely(b: bool) -> bool {
-    // If `b` is `false`, it calls the `cold()` function. The purpose of calling `cold()`
-    // in this case is to potentially hint to the compiler that the code path
-    // where `b` is false is unlikely to be taken frequently. After that, the
-    // function returns the value of `b`.
-    if !b {
-        cold();
+#[inline(always)]
+/// Brings [likely](core::intrinsics::likely) to stable Rust.
+pub const fn likely(b: bool) -> bool {
+    #[allow(clippy::needless_bool)]
+    if (1i32).checked_div(if b { 1 } else { 0 }).is_some() {
+        true
+    } else {
+        false
     }
-
-    b
 }
 
-/// The function allows to tell the compiler that the condition is unlikely to be
-/// `true`.
-#[must_use]
-pub fn unlikely(b: bool) -> bool {
-    // It checks if `b` is true instead. If b is true, it calls the `cold()` function.
-    // Again, the purpose is to potentially hint to the compiler that the code path
-    // where `b` is `true` is unlikely to be taken frequently.
-    if b {
-        cold();
+#[inline(always)]
+/// Brings [unlikely](core::intrinsics::unlikely) to stable Rust.
+pub const fn unlikely(b: bool) -> bool {
+    #[allow(clippy::needless_bool)]
+    if (1i32).checked_div(if b { 0 } else { 1 }).is_none() {
+        true
+    } else {
+        false
     }
-
-    b
 }
