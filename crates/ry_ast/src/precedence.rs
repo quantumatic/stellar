@@ -38,9 +38,6 @@ pub enum Precedence {
     /// Precedence corresponding to binary expressions with `^` operator.
     Xor,
 
-    /// Precedence corresponding to binary expressions with `&` operator.
-    Ampersand,
-
     /// Precedence corresponding to binary expressions with comparison operators:
     /// `<`, `<=`, `>`, `>=`, `==` and `!=`.
     Comparison,

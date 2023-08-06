@@ -419,16 +419,6 @@ macro_rules! map_precedences {
                 }
             }
         }
-
-        impl From<RawToken> for Precedence {
-            fn from(value: RawToken) -> Self {
-                match value {
-                    RawToken::Punctuator(punctuator) => punctuator.into(),
-                    RawToken::Keyword(Keyword::As) => Precedence::As,
-                    _ => Precedence::Lowest,
-                }
-            }
-        }
     };
 }
 
@@ -437,7 +427,6 @@ map_precedences! {
     DoubleAmpersand => DoubleAmpersand,
     Or => Or,
     Caret => Xor,
-    Ampersand => Ampersand,
     Eq, PlusEq, MinusEq, AsteriskEq, SlashEq, OrEq, CaretEq, PercentEq => Assign,
     DoubleEq, BangEq, Less, LessEq, Greater, GreaterEq => Comparison,
     LeftShift, RightShift => Shift,
@@ -449,4 +438,14 @@ map_precedences! {
     Dot => Field,
     Tilde, DoublePlus, DoubleMinus, Bang, QuestionMark => Unary,
     OpenBrace => Struct,
+}
+
+impl From<RawToken> for Precedence {
+    fn from(value: RawToken) -> Self {
+        match value {
+            RawToken::Punctuator(punctuator) => punctuator.into(),
+            RawToken::Keyword(Keyword::As) => Precedence::As,
+            _ => Precedence::Lowest,
+        }
+    }
 }
