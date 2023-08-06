@@ -444,8 +444,8 @@ impl From<RawToken> for Precedence {
     fn from(value: RawToken) -> Self {
         match value {
             RawToken::Punctuator(punctuator) => punctuator.into(),
-            RawToken::Keyword(Keyword::As) => Precedence::As,
-            _ => Precedence::Lowest,
+            RawToken::Keyword(Keyword::As) => Self::As,
+            _ => Self::Lowest,
         }
     }
 }
