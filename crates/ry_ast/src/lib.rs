@@ -513,37 +513,48 @@ impl Expression {
     }
 }
 
-/// A binary operator with a specific location.
-///
-/// See [`BinaryOperator`] for more information.
-#[derive(Debug, PartialEq, Copy, Clone, Eq, Hash)]
-pub struct BinaryOperator {
-    pub location: Location,
-    pub raw: RawBinaryOperator,
-}
+macro_rules! operator_type {
+    {
+        $(#[$($operator_type_doc:tt)*])*
+        $operator_type_name:ident,
 
-macro_rules! make_operator_type {
-    {#[doc = $type_doc:expr] $type_name:ident,
-        #[doc = $token_check_fn_doc:expr] $token_check_fn_name:ident,
-        $(#[doc = $doc:expr] $name:ident),*} => {
-        #[doc=$type_doc]
+        $(#[$($raw_operator_type_doc:tt)*])*
+        $raw_operator_type_name:ident,
+
+        $(#[$($token_check_fn_doc:tt)*])*
+        $token_check_fn_name:ident,
+
+        $(
+            $(#[$($doc:tt)*])*
+            $name:ident
+        ),*
+    } => {
+        $(#[$($operator_type_doc)*])*
         #[derive(Debug, PartialEq, Copy, Clone, Eq, Hash)]
-        pub enum $type_name {
+        pub struct $operator_type_name {
+            pub raw: $raw_operator_type_name,
+            pub location: Location,
+        }
+
+        $(#[$($raw_operator_type_doc)*])*
+        #[derive(Debug, PartialEq, Copy, Clone, Eq, Hash)]
+        pub enum $raw_operator_type_name {
             $(
-                #[doc=$doc]
+                $(#[$($doc)*])*
                 $name,
             )*
         }
 
         impl RawToken {
-            #[doc=$token_check_fn_doc]
+            $(#[$($raw_operator_type_doc)*])*
+            #[inline]
             #[must_use]
             pub const fn $token_check_fn_name(self) -> bool {
                 matches!(self, RawToken::Punctuator($(| Punctuator::$name)*))
             }
         }
 
-        impl From<Punctuator> for $type_name {
+        impl From<Punctuator> for $raw_operator_type_name {
             fn from(punctuator: Punctuator) -> Self {
                 match punctuator {
                     $(Punctuator::$name => Self::$name,)*
@@ -552,7 +563,7 @@ macro_rules! make_operator_type {
             }
         }
 
-        impl From<RawToken> for $type_name {
+        impl From<RawToken> for $raw_operator_type_name {
             fn from(token: RawToken) -> Self {
                 if let RawToken::Punctuator(punctuator) = token {
                     punctuator.into()
@@ -562,27 +573,27 @@ macro_rules! make_operator_type {
             }
         }
 
-        impl From<$type_name> for Punctuator {
-            fn from(value: $type_name) -> Self {
+        impl From<$raw_operator_type_name> for Punctuator {
+            fn from(value: $raw_operator_type_name) -> Self {
                 match value {
-                    $($type_name::$name => Punctuator::$name,)*
+                    $($raw_operator_type_name::$name => Punctuator::$name,)*
                 }
             }
         }
 
-        impl From<$type_name> for RawToken {
-            fn from(value: $type_name) -> Self {
+        impl From<$raw_operator_type_name> for RawToken {
+            fn from(value: $raw_operator_type_name) -> Self {
                 RawToken::Punctuator(value.into()).into()
             }
         }
 
-        impl From<$type_name> for String {
-            fn from(value: $type_name) -> Self {
+        impl From<$raw_operator_type_name> for String {
+            fn from(value: $raw_operator_type_name) -> Self {
                 RawToken::Punctuator(value.into()).into()
             }
         }
 
-        impl Display for $type_name {
+        impl Display for $raw_operator_type_name {
             fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
                 RawToken::from(*self).fmt(f)
             }
@@ -590,7 +601,12 @@ macro_rules! make_operator_type {
     };
 }
 
-make_operator_type! {
+operator_type! {
+    /// A binary operator with a particular location.
+    ///
+    /// See [`RawBinaryOperator`] for more information.
+    BinaryOperator,
+
     /// A binary operator, e.g. `+`, `**`, `/`.
     RawBinaryOperator,
 
@@ -676,16 +692,12 @@ make_operator_type! {
     PercentEq
 }
 
-/// A prefix operator with a specific location.
-///
-/// See [`PrefixOperator`] for more information.
-#[derive(Debug, PartialEq, Copy, Clone, Eq, Hash)]
-pub struct PrefixOperator {
-    pub location: Location,
-    pub raw: RawPrefixOperator,
-}
+operator_type! {
+    /// A prefix operator with a particular location.
+    ///
+    /// See [`RawPrefixOperator`] for more information.
+    PrefixOperator,
 
-make_operator_type! {
     /// A prefix operator, e.g. `!`, `++`, `-`.
     RawPrefixOperator,
 
@@ -711,16 +723,12 @@ make_operator_type! {
     Minus
 }
 
-/// A postfix operator with a specific location.
-///
-/// See [`PostfixOperator`] for more information.
-#[derive(Debug, PartialEq, Copy, Clone, Eq, Hash)]
-pub struct PostfixOperator {
-    pub location: Location,
-    pub raw: RawPostfixOperator,
-}
+operator_type! {
+    /// A postfix operator with a particular location.
+    ///
+    /// See [`RawPostfixOperator`] for more information.
+    PostfixOperator,
 
-make_operator_type! {
     /// A postfix operator, e.g. `?`, `++`.
     RawPostfixOperator,
 

@@ -21,7 +21,7 @@ use crate::{
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub struct ExpressionParser {
     precedence: Precedence,
-    ignore_struct: bool,
+    prohibit_struct_expressions: bool,
 }
 
 impl ExpressionParser {
@@ -40,11 +40,11 @@ impl ExpressionParser {
         self
     }
 
-    /// Creates a parser for expressions, that ignores struct expressions.
+    /// Creates a parser for expressions, that disallows struct expressions.
     #[inline]
     #[must_use]
-    pub const fn ignore_struct(mut self, ignore_struct: bool) -> Self {
-        self.ignore_struct = ignore_struct;
+    pub const fn prohibit_struct_expressions(mut self, prohibit_struct_expressions: bool) -> Self {
+        self.prohibit_struct_expressions = prohibit_struct_expressions;
         self
     }
 }
@@ -54,7 +54,7 @@ impl Parse for ExpressionParser {
 
     fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
         let mut left = PrimaryExpressionParser {
-            ignore_struct: self.ignore_struct,
+            prohibit_struct_expressions: self.prohibit_struct_expressions,
         }
         .parse(state)?;
 
@@ -71,7 +71,7 @@ impl Parse for ExpressionParser {
                 }
                 RawToken::Keyword(Keyword::As) => CastExpressionParser { left }.parse(state)?,
                 RawToken::Punctuator(Punctuator::OpenBrace) => {
-                    if self.ignore_struct {
+                    if self.prohibit_struct_expressions {
                         return Some(left);
                     }
 
@@ -81,7 +81,7 @@ impl Parse for ExpressionParser {
                     if state.next_token.raw.is_binary_operator() {
                         BinaryExpressionParser {
                             left,
-                            ignore_struct: self.ignore_struct,
+                            prohibit_struct_expressions: self.prohibit_struct_expressions,
                         }
                         .parse(state)?
                     } else if state.next_token.raw.is_postfix_operator() {
@@ -108,7 +108,7 @@ impl Parse for WhileExpressionParser {
 
         let condition = ExpressionParser {
             precedence: Precedence::Lowest,
-            ignore_struct: true,
+            prohibit_struct_expressions: true,
         }
         .parse(state)?;
 
@@ -131,7 +131,9 @@ impl Parse for MatchExpressionParser {
         let start = state.next_token.location.start;
         state.advance(); // `match`
 
-        let expression = ExpressionParser::new().ignore_struct(true).parse(state)?;
+        let expression = ExpressionParser::new()
+            .prohibit_struct_expressions(true)
+            .parse(state)?;
 
         let block = MatchExpressionBlockParser.parse(state)?;
 
@@ -181,7 +183,7 @@ impl Parse for MatchExpressionUnitParser {
 }
 
 struct PrimaryExpressionParser {
-    ignore_struct: bool,
+    prohibit_struct_expressions: bool,
 }
 
 impl Parse for PrimaryExpressionParser {
@@ -219,7 +221,7 @@ impl Parse for PrimaryExpressionParser {
             _ => {
                 if state.next_token.raw.is_prefix_operator() {
                     return PrefixExpressionParser {
-                        ignore_struct: self.ignore_struct,
+                        prohibit_struct_expressions: self.prohibit_struct_expressions,
                     }
                     .parse(state);
                 }
@@ -287,7 +289,7 @@ impl Parse for FieldAccessExpressionParser {
 }
 
 struct PrefixExpressionParser {
-    ignore_struct: bool,
+    prohibit_struct_expressions: bool,
 }
 impl Parse for PrefixExpressionParser {
     type Output = Option<Expression>;
@@ -302,7 +304,7 @@ impl Parse for PrefixExpressionParser {
 
         let inner = ExpressionParser {
             precedence: Precedence::Unary,
-            ignore_struct: self.ignore_struct,
+            prohibit_struct_expressions: self.prohibit_struct_expressions,
         }
         .parse(state)?;
 
@@ -408,7 +410,7 @@ impl Parse for IfExpressionParser {
 
         let condition = ExpressionParser {
             precedence: Precedence::Lowest,
-            ignore_struct: true,
+            prohibit_struct_expressions: true,
         }
         .parse(state)?;
 
@@ -430,7 +432,7 @@ impl Parse for IfExpressionParser {
 
             let condition = ExpressionParser {
                 precedence: Precedence::Lowest,
-                ignore_struct: true,
+                prohibit_struct_expressions: true,
             }
             .parse(state)?;
             let block = StatementsBlockParser.parse(state)?;
@@ -495,7 +497,7 @@ impl Parse for CallExpressionParser {
 
 struct BinaryExpressionParser {
     left: Expression,
-    ignore_struct: bool,
+    prohibit_struct_expressions: bool,
 }
 
 impl Parse for BinaryExpressionParser {
@@ -513,7 +515,7 @@ impl Parse for BinaryExpressionParser {
 
         let right = ExpressionParser {
             precedence,
-            ignore_struct: self.ignore_struct,
+            prohibit_struct_expressions: self.prohibit_struct_expressions,
         }
         .parse(state)?;
 
