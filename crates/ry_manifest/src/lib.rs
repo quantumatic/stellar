@@ -160,9 +160,7 @@ pub struct DetailedTomlDependency {
 /// See [crate level documentation] for more information.
 ///
 /// [crate level documentation]: crate
-pub fn parse_manifest<S>(source: S) -> Result<TomlManifest, String>
-where
-    S: AsRef<str>,
+pub fn parse_manifest(source: impl AsRef<str>) -> Result<TomlManifest, String>
 {
     let toml = parse_document(source)?;
 
