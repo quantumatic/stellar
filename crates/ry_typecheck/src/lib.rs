@@ -22,9 +22,10 @@ pub mod type_variable_factory;
 
 #[derive(Debug)]
 pub struct TypeCheckingContext<'i, 'p, 'd> {
+    pub resolution_environment: ResolutionEnvironment,
+
     identifier_interner: &'i mut IdentifierInterner,
     path_interner: &'p PathInterner,
-    resolution_environment: ResolutionEnvironment,
     type_variable_factory: TypeVariableFactory,
     items: FxHashMap<DefinitionID, ModuleItem>,
     signatures: FxHashMap<DefinitionID, ModuleItemSignature>,
@@ -54,12 +55,6 @@ impl<'i, 'p, 'd> TypeCheckingContext<'i, 'p, 'd> {
             signatures: FxHashMap::default(),
             diagnostics,
         }
-    }
-
-    pub fn add_package(&mut self, name: Symbol, package_root_module_id: ModuleID) {
-        self.resolution_environment
-            .packages_root_modules
-            .insert(name, package_root_module_id);
     }
 
     pub fn add_module(&mut self, module_id: ModuleID, path: Path, hir: Module) {
@@ -106,7 +101,7 @@ impl<'i, 'p, 'd> TypeCheckingContext<'i, 'p, 'd> {
                             item.symbol(),
                             EnumItemID {
                                 enum_definition_id: definition_id,
-                                item_name: item.symbol(),
+                                item_id: item.symbol(),
                             },
                         );
                     }

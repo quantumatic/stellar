@@ -80,6 +80,10 @@ use ry_interner::{IdentifierInterner, PathID, Symbol};
 
 pub mod diagnostics;
 
+/// An ID assigned for every package in a workspace.
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
+pub struct PackageID(pub Symbol);
+
 /// An ID assigned for every module in a workspace.
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
 pub struct ModuleID(pub PathID);
@@ -99,7 +103,7 @@ pub struct DefinitionID {
 #[derive(Debug, PartialEq, Eq, Clone, Default)]
 pub struct ResolutionEnvironment {
     /// Packages' root modules that are analyzed in the workspace.
-    pub packages_root_modules: FxHashMap<Symbol, ModuleID>,
+    pub packages_root_modules: FxHashMap<PackageID, ModuleID>,
 
     /// Modules, that are analyzed in the workspace.
     pub module_scopes: FxHashMap<ModuleID, ModuleScope>,
@@ -177,7 +181,7 @@ impl ResolutionEnvironment {
 
         if !self
             .packages_root_modules
-            .contains_key(&first_identifier.symbol)
+            .contains_key(&PackageID(first_identifier.symbol))
         {
             diagnostics.add_single_file_diagnostic(
                 first_identifier.location.file_path_id,
@@ -220,7 +224,7 @@ pub enum NameBinding {
 }
 
 /// A trait for getting the full path of a definition.
-pub trait GetFullPath: Sized + Debug + Copy {
+pub trait ResolveFullPath: Sized + Debug + Copy {
     /// Returns the full path of the definition.
     fn full_path(self, environment: &ResolutionEnvironment) -> Option<Path>;
 
@@ -232,7 +236,7 @@ pub trait GetFullPath: Sized + Debug + Copy {
     }
 }
 
-impl GetFullPath for DefinitionID {
+impl ResolveFullPath for DefinitionID {
     fn full_path(self, environment: &ResolutionEnvironment) -> Option<Path> {
         environment
             .module_paths
@@ -248,10 +252,25 @@ impl GetFullPath for DefinitionID {
     }
 }
 
-impl GetFullPath for ModuleID {
+impl ResolveFullPath for ModuleID {
     #[inline]
     fn full_path(self, environment: &ResolutionEnvironment) -> Option<Path> {
         environment.module_paths.get(&self).cloned()
+    }
+}
+
+impl ResolveFullPath for EnumItemID {
+    #[inline]
+    fn full_path(self, environment: &ResolutionEnvironment) -> Option<Path> {
+        self.enum_definition_id
+            .full_path(environment)
+            .map(|path| Path {
+                symbols: path
+                    .symbols
+                    .into_iter()
+                    .chain(iter::once(self.item_id))
+                    .collect(),
+            })
     }
 }
 
@@ -349,7 +368,7 @@ fn resolve_path_segment(
                 .get(
                     environment
                         .packages_root_modules
-                        .get(&package_symbol)
+                        .get(&PackageID(package_symbol))
                         .unwrap(),
                 )
                 // Module must exist at this point, or something went wrong when
@@ -577,7 +596,7 @@ impl ModuleScope {
         if let Some(binding) = self.bindings.get(&identifier.symbol).copied().or_else(|| {
             if environment
                 .packages_root_modules
-                .contains_key(&identifier.symbol)
+                .contains_key(&PackageID(identifier.symbol))
             {
                 Some(NameBinding::Package(identifier.symbol))
             } else {
@@ -616,6 +635,7 @@ impl ModuleScope {
 pub struct EnumItemID {
     /// ID of the enum definition.
     pub enum_definition_id: DefinitionID,
-    /// Enum item name.
-    pub item_name: Symbol,
+
+    /// Enum item symbol.
+    pub item_id: Symbol,
 }

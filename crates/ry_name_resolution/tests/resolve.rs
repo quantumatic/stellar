@@ -3,7 +3,7 @@ use ry_diagnostics::GlobalDiagnostics;
 use ry_filesystem::location::DUMMY_LOCATION;
 use ry_fx_hash::FxHashMap;
 use ry_interner::{IdentifierInterner, PathInterner};
-use ry_name_resolution::{ModuleID, ModuleScope, NameBinding, ResolutionEnvironment};
+use ry_name_resolution::{ModuleID, ModuleScope, NameBinding, PackageID, ResolutionEnvironment};
 
 macro_rules! dummy_identifier {
     ($symbol:expr) => {
@@ -60,7 +60,7 @@ fn resolve_module() {
 
     environment
         .packages_root_modules
-        .insert(a, package_root_module_id);
+        .insert(PackageID(a), package_root_module_id);
     environment
         .module_scopes
         .insert(package_root_module_id, package_root_module_scope);
@@ -156,7 +156,7 @@ fn import() {
 
     environment
         .packages_root_modules
-        .insert(a, package_root_module_id);
+        .insert(PackageID(a), package_root_module_id);
     environment
         .module_scopes
         .insert(package_root_module_id, package_root_module_scope);
