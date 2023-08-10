@@ -257,24 +257,22 @@ impl NameBinding {
         diagnostics: &mut GlobalDiagnostics,
         environment: &ResolutionEnvironment,
     ) -> Option<Self> {
-        Some(
-            iter::once(first_identifier)
-                .chain(other_identifiers.into_iter())
-                .tuple_windows()
-                .try_fold(
-                    self,
-                    |binding, (previous_identifier, current_identifier)| {
-                        resolve_path_segment(
-                            binding,
-                            previous_identifier,
-                            current_identifier,
-                            identifier_interner,
-                            diagnostics,
-                            environment,
-                        )
-                    },
-                )?,
-        )
+        iter::once(first_identifier)
+            .chain(other_identifiers)
+            .tuple_windows()
+            .try_fold(
+                self,
+                |binding, (previous_identifier, current_identifier)| {
+                    resolve_path_segment(
+                        binding,
+                        previous_identifier,
+                        current_identifier,
+                        identifier_interner,
+                        diagnostics,
+                        environment,
+                    )
+                },
+            )
     }
 }
 
@@ -386,7 +384,7 @@ fn resolve_path_segment(
                     .build(),
                 );
 
-                return None;
+                None
             }
         }
         NameBinding::Module(submodule_id) => {
@@ -418,7 +416,7 @@ fn resolve_path_segment(
             };
 
             if let NameBinding::ModuleItem(definition_id) = binding {
-                if *environment.visibilities.get(&definition_id).unwrap() == Visibility::Private {
+                if *environment.visibilities.get(definition_id).unwrap() == Visibility::Private {
                     diagnostics.add_single_file_diagnostic(
                         current_identifier.location.file_path_id,
                         FailedToResolvePrivateModuleItemDiagnostic {
@@ -440,7 +438,7 @@ fn resolve_path_segment(
                 }
             }
 
-            return Some(*binding);
+            Some(*binding)
         }
     }
 }
