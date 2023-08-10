@@ -7,6 +7,7 @@ use ry_name_resolution::Path;
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
 pub enum Type {
     Unit,
+    Invalid,
     Constructor(TypeConstructor),
     Tuple {
         element_types: Vec<Self>,
@@ -28,6 +29,7 @@ pub enum Type {
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
 pub enum TypeKind {
+    Invalid,
     Unit,
     Constructor,
     Tuple,
@@ -42,6 +44,7 @@ impl Type {
     #[must_use]
     pub const fn kind(&self) -> TypeKind {
         match self {
+            Self::Invalid => TypeKind::Invalid,
             Self::Constructor(..) => TypeKind::Constructor,
             Self::Tuple { .. } => TypeKind::Tuple,
             Self::Function { .. } => TypeKind::Function,
@@ -95,25 +98,13 @@ pub trait Typed {
     fn ty(&self) -> Type;
 }
 
-/// Creates a type constructor for a given symbol.
-#[inline]
-#[must_use]
-fn primitive_constructor(identifier_id: IdentifierID) -> Type {
-    Type::Constructor(TypeConstructor {
-        left: Path {
-            identifiers: vec![identifier_id],
-        },
-        right: vec![],
-    })
-}
-
 macro_rules! t {
     ($name:ident, $symbol:ident) => {
         #[inline]
         #[must_use]
         #[doc = concat!("Returns a `", stringify!($name), "` type.")]
         pub fn $name() -> Type {
-            primitive_constructor(builtin_identifiers::$symbol)
+            Type::Constructor(TypeConstructor::primitive(builtin_identifiers::$symbol))
         }
     };
 }
@@ -135,6 +126,44 @@ t!(string, STRING);
 pub struct TypeConstructor {
     pub left: Path,
     pub right: Vec<Type>,
+}
+
+impl TypeConstructor {
+    #[inline]
+    #[must_use]
+    pub const fn new(left: Path, right: Vec<Type>) -> Self {
+        Self { left, right }
+    }
+
+    #[inline]
+    #[must_use]
+    pub fn primitive(identifier_id: IdentifierID) -> Self {
+        Self {
+            left: Path {
+                identifiers: vec![identifier_id],
+            },
+            right: vec![],
+        }
+    }
+}
+
+impl Type {
+    #[inline]
+    #[must_use]
+    pub fn primitive(identifier_id: IdentifierID) -> Self {
+        Self::Constructor(TypeConstructor::primitive(identifier_id))
+    }
+
+    #[inline]
+    #[must_use]
+    pub fn list_type(self) -> Type {
+        Type::Constructor(TypeConstructor {
+            left: Path {
+                identifiers: vec![builtin_identifiers::LIST],
+            },
+            right: vec![self],
+        })
+    }
 }
 
 /// Returns a list type with the given element type.

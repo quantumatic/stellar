@@ -403,13 +403,7 @@ where
     visitor.visit_identifier(alias.name);
     visitor.visit_generic_parameters(alias.generic_parameters.as_deref());
 
-    if let Some(bounds) = &alias.bounds {
-        visitor.visit_bounds(bounds);
-    }
-
-    if let Some(value) = &alias.value {
-        visitor.visit_type(value);
-    }
+    visitor.visit_type(&alias.value);
 }
 
 pub fn walk_tuple_fields<'ast, V>(visitor: &mut V, fields: &'ast [TupleField])

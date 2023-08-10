@@ -1,12 +1,13 @@
-use ry_ast::Bounds;
+use ry_filesystem::location::Location;
 use ry_fx_hash::FxHashMap;
 use ry_interner::IdentifierID;
-use ry_thir::ty::Type;
 
-#[derive(Default)]
+use crate::ty::Type;
+
+#[derive(Default, PartialEq, Clone, Debug)]
 pub struct GenericParameterScope<'p> {
     parent_scope: Option<&'p GenericParameterScope<'p>>,
-    parameters: FxHashMap<IdentifierID, GenericData>,
+    parameters: FxHashMap<IdentifierID, GenericParameterData>,
 }
 
 impl<'p> GenericParameterScope<'p> {
@@ -20,13 +21,17 @@ impl<'p> GenericParameterScope<'p> {
     }
 
     #[inline]
-    pub fn add_generic_parameter(&mut self, parameter_name: IdentifierID, data: GenericData) {
+    pub fn add_generic_parameter(
+        &mut self,
+        parameter_name: IdentifierID,
+        data: GenericParameterData,
+    ) {
         self.parameters.insert(parameter_name, data);
     }
 
-    pub fn resolve(&self, parameter_name: IdentifierID) -> Option<&GenericData> {
-        if let data @ Some(..) = self.parameters.get(&parameter_name) {
-            data
+    pub fn resolve(&self, parameter_name: IdentifierID) -> Option<&GenericParameterData> {
+        if let Some(data) = self.parameters.get(&parameter_name) {
+            Some(data)
         } else if let Some(parent_scope) = self.parent_scope {
             parent_scope.resolve(parameter_name)
         } else {
@@ -47,6 +52,7 @@ impl<'p> GenericParameterScope<'p> {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct GenericData {
+pub struct GenericParameterData {
+    pub location: Location,
     pub default_value: Option<Type>,
 }

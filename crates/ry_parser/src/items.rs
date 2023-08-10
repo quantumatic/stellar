@@ -350,21 +350,9 @@ impl Parse for TypeAliasParser {
         let name = state.consume_identifier("type alias")?;
         let generic_parameters = GenericParametersParser.optionally_parse(state)?;
 
-        let bounds = if state.next_token.raw == Punctuator::Colon {
-            state.advance();
+        state.consume(Punctuator::Eq, "type alias")?;
 
-            Some(BoundsParser.parse(state)?)
-        } else {
-            None
-        };
-
-        let value = if state.next_token.raw == Punctuator::Eq {
-            state.advance();
-
-            Some(TypeParser.parse(state)?)
-        } else {
-            None
-        };
+        let value = TypeParser.parse(state)?;
 
         state.consume(Punctuator::Semicolon, "type alias")?;
 
@@ -372,7 +360,6 @@ impl Parse for TypeAliasParser {
             visibility: self.visibility,
             name,
             generic_parameters,
-            bounds,
             value,
             docstring: self.docstring,
         })

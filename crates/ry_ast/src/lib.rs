@@ -321,8 +321,7 @@ pub struct TypeAlias {
     pub visibility: Visibility,
     pub name: IdentifierAST,
     pub generic_parameters: Option<Vec<GenericParameter>>,
-    pub bounds: Option<Bounds>,
-    pub value: Option<Type>,
+    pub value: Type,
     pub docstring: Option<String>,
 }
 
@@ -1112,7 +1111,7 @@ pub struct Module {
 }
 
 /// A visibility qualifier - `pub` or nothing (private visibility).
-#[derive(Debug, PartialEq, Eq, Clone, Copy, Default)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, Default)]
 pub enum Visibility {
     #[default]
     Private,

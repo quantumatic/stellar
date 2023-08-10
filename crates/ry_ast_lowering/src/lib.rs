@@ -620,8 +620,7 @@ impl<'d> LoweringContext<'d> {
             visibility: ast.visibility,
             name: ast.name,
             generic_parameters: self.lower_generic_parameters(ast.generic_parameters),
-            bounds: ast.bounds,
-            value: ast.value.map(|ty| self.lower_type(ty)),
+            value: self.lower_type(ast.value),
             docstring: ast.docstring,
         }
     }

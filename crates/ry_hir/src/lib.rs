@@ -214,8 +214,7 @@ pub struct TypeAlias {
     pub visibility: Visibility,
     pub name: IdentifierAST,
     pub generic_parameters: Vec<GenericParameter>,
-    pub bounds: Option<ry_ast::Bounds>,
-    pub value: Option<Type>,
+    pub value: Type,
     pub docstring: Option<String>,
 }
 

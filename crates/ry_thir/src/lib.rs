@@ -59,12 +59,14 @@
     clippy::unnested_or_patterns
 )]
 
-use ry_ast::{IdentifierAST, Literal, Path, Visibility, WherePredicate};
+use generic_parameter_scope::GenericParameterScope;
+use ry_ast::{IdentifierAST, Literal, Path, Visibility};
 use ry_filesystem::location::Location;
 use ry_fx_hash::FxHashMap;
 use ry_interner::IdentifierID;
-use ty::Type;
+use ty::{Type, TypeConstructor};
 
+pub mod generic_parameter_scope;
 pub mod ty;
 
 /// A pattern, e.g. `Some(x)`, `None`, `a @ [3, ..]`, `[1, .., 3]`, `(1, \"hello\")`, `3.2`.
@@ -394,16 +396,22 @@ pub enum Statement {
 /// A block of statements - `{ <stmt>* }`.
 pub type StatementsBlock = Vec<Statement>;
 
-#[derive(Debug, PartialEq, Eq, Clone)]
-pub struct TypeSignature {
-    pub name: IdentifierAST,
-    pub type_parameters: Vec<IdentifierAST>,
-    pub predicates: Vec<WherePredicate>,
+#[derive(Debug, PartialEq, Clone)]
+pub struct Predicate {
+    pub ty: Type,
+    pub bounds: Vec<TypeConstructor>,
 }
 
-#[derive(Debug, PartialEq, Eq, Clone)]
-pub struct Enum {
-    pub type_signature: TypeSignature,
+#[derive(Debug, PartialEq, Clone)]
+pub struct TypeSignature<'g> {
+    pub name: IdentifierAST,
+    pub generic_parameter_scope: GenericParameterScope<'g>,
+    pub bounds: Vec<Predicate>,
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub struct Enum<'g> {
+    pub type_signature: TypeSignature<'g>,
     pub items: FxHashMap<IdentifierID, EnumItem>,
 }
 
@@ -432,9 +440,9 @@ pub struct EnumItemTupleField {
     pub ty: Type,
 }
 
-#[derive(Debug, PartialEq, Eq, Clone)]
-pub struct Struct {
-    pub type_signature: TypeSignature,
+#[derive(Debug, PartialEq, Clone)]
+pub struct Struct<'g> {
+    pub type_signature: TypeSignature<'g>,
     pub fields: FxHashMap<IdentifierID, StructField>,
 }
 
@@ -445,27 +453,27 @@ pub struct StructField {
     pub ty: Type,
 }
 
-#[derive(Debug, PartialEq, Eq, Clone)]
-pub struct TypeAliasSignature {
+#[derive(Debug, PartialEq, Clone)]
+pub struct TypeAliasSignature<'g> {
     pub name: IdentifierAST,
-    pub type_parameters: Vec<IdentifierAST>,
+    pub generic_parameter_scope: GenericParameterScope<'g>,
     pub value: Type,
 }
 
-#[derive(Debug, PartialEq, Eq, Clone)]
-pub struct InterfaceSignature {
+#[derive(Debug, PartialEq, Clone)]
+pub struct InterfaceSignature<'g> {
     pub name: IdentifierAST,
-    pub type_parameters: Vec<IdentifierAST>,
-    pub predicates: Vec<WherePredicate>,
+    pub generic_parameter_scope: GenericParameterScope<'g>,
+    pub bounds: Vec<Predicate>,
 }
 
-#[derive(Debug, PartialEq, Eq, Clone)]
-pub struct FunctionSignature {
+#[derive(Debug, PartialEq, Clone)]
+pub struct FunctionSignature<'g> {
     pub name: IdentifierAST,
-    pub type_parameters: Vec<IdentifierAST>,
+    pub generic_parameter_scope: GenericParameterScope<'g>,
     pub parameters: FxHashMap<IdentifierID, FunctionParameter>,
     pub return_type: Type,
-    pub predicates: Vec<WherePredicate>,
+    pub bounds: Vec<Predicate>,
 }
 
 #[derive(Debug, PartialEq, Eq, Clone)]
@@ -475,39 +483,40 @@ pub struct FunctionParameter {
 }
 
 #[derive(Debug, PartialEq, Clone)]
-pub struct Function {
-    pub signature: FunctionSignature,
+pub struct Function<'g> {
+    pub signature: FunctionSignature<'g>,
     pub body: Vec<Statement>,
 }
 
 #[derive(Debug, PartialEq, Clone)]
-pub struct Interface {
+pub struct Interface<'g> {
     pub name: IdentifierAST,
-    pub type_parameters: Vec<IdentifierAST>,
-    pub predicates: Vec<WherePredicate>,
-    pub methods: Vec<Function>,
+    pub generic_parameter_scope: GenericParameterScope<'g>,
+    pub bounds: Vec<Predicate>,
+    pub methods: Vec<Function<'g>>,
 }
 
-#[derive(Debug, PartialEq, Eq, Clone)]
-pub enum ModuleItemSignature {
-    Type(TypeSignature),
-    TypeAlias(TypeAliasSignature),
-    Interface(InterfaceSignature),
-    Function(FunctionSignature),
+#[derive(Debug, PartialEq, Clone)]
+pub enum ModuleItemSignature<'g> {
+    Type(TypeSignature<'g>),
+    TypeAlias(TypeAliasSignature<'g>),
+    Interface(InterfaceSignature<'g>),
+    Function(FunctionSignature<'g>),
 }
 
-#[derive(Debug, PartialEq, Eq, Clone)]
-pub enum ModuleItem {
+#[derive(Debug, PartialEq, Clone)]
+pub enum ModuleItem<'g> {
     Enum {
-        signature: TypeSignature,
+        signature: TypeSignature<'g>,
         items: FxHashMap<IdentifierID, EnumItem>,
     },
     Struct {
-        signature: TypeSignature,
+        signature: TypeSignature<'g>,
         fields: FxHashMap<IdentifierID, StructField>,
     },
     Interface {
-        signature: InterfaceSignature,
-        methods: FxHashMap<IdentifierID, FunctionSignature>,
+        signature: InterfaceSignature<'g>,
+        methods: FxHashMap<IdentifierID, Function<'g>>,
     },
+    Function(Function<'g>),
 }
