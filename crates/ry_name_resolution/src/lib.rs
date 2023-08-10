@@ -239,7 +239,7 @@ pub trait ResolveFullPath: Sized + Debug + Copy {
 impl ResolveFullPath for PackageID {
     fn full_path(self, _: &ResolutionEnvironment) -> Option<Path> {
         Some(Path {
-            symbols: vec![self.0],
+            identifiers: vec![self.0],
         })
     }
 }
@@ -250,9 +250,9 @@ impl ResolveFullPath for DefinitionID {
             .module_paths
             .get(&self.module_id)
             .map(|module_path| Path {
-                symbols: module_path
+                identifiers: module_path
                     .clone()
-                    .symbols
+                    .identifiers
                     .into_iter()
                     .chain(iter::once(self.symbol))
                     .collect(),
@@ -273,8 +273,8 @@ impl ResolveFullPath for EnumItemID {
         self.enum_definition_id
             .full_path(environment)
             .map(|path| Path {
-                symbols: path
-                    .symbols
+                identifiers: path
+                    .identifiers
                     .into_iter()
                     .chain(iter::once(self.item_id))
                     .collect(),
@@ -533,7 +533,7 @@ fn resolve_path_segment(
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
 pub struct Path {
     /// List of semantic symbols.
-    pub symbols: Vec<IdentifierID>,
+    pub identifiers: Vec<IdentifierID>,
 }
 
 /// Data that Ry compiler has about a module.

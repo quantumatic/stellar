@@ -94,74 +94,6 @@ impl SymbolID for IdentifierID {
     }
 }
 
-/// Defines all primitive symbols that are interned by default.
-pub mod builtin_symbols {
-    use crate::IdentifierID;
-
-    /// `_` symbol.
-    pub const UNDERSCORE: IdentifierID = IdentifierID(0);
-
-    /// `int8` symbol.
-    pub const INT8: IdentifierID = IdentifierID(1);
-
-    /// `int16` symbol.
-    pub const INT16: IdentifierID = IdentifierID(2);
-
-    /// `int32` symbol.
-    pub const INT32: IdentifierID = IdentifierID(3);
-
-    /// `int64` symbol.
-    pub const INT64: IdentifierID = IdentifierID(4);
-
-    /// `uint8` symbol.
-    pub const UINT8: IdentifierID = IdentifierID(5);
-
-    /// `uint16` symbol.
-    pub const UINT16: IdentifierID = IdentifierID(6);
-
-    /// `uint32` symbol.
-    pub const UINT32: IdentifierID = IdentifierID(7);
-
-    /// `uint64` symbol.
-    pub const UINT64: IdentifierID = IdentifierID(8);
-
-    /// `float32` symbol.
-    pub const FLOAT32: IdentifierID = IdentifierID(9);
-
-    /// `float64` symbol.
-    pub const FLOAT64: IdentifierID = IdentifierID(10);
-
-    /// `isize` symbol.
-    pub const ISIZE: IdentifierID = IdentifierID(11);
-
-    /// `usize` symbol.
-    pub const USIZE: IdentifierID = IdentifierID(12);
-
-    /// `bool` symbol.
-    pub const BOOL: IdentifierID = IdentifierID(13);
-
-    /// `String` symbol.
-    pub const STRING: IdentifierID = IdentifierID(14);
-
-    /// `List` symbol.
-    pub const LIST: IdentifierID = IdentifierID(15);
-
-    /// `char` symbol.
-    pub const CHAR: IdentifierID = IdentifierID(16);
-
-    /// `self` symbol.
-    pub const SMALL_SELF: IdentifierID = IdentifierID(17);
-
-    /// `Self` symbol.
-    pub const BIG_SELF: IdentifierID = IdentifierID(18);
-
-    /// `sizeof` symbol.
-    pub const SIZE_OF: IdentifierID = IdentifierID(19);
-
-    /// `std` symbol.
-    pub const STD: IdentifierID = IdentifierID(20);
-}
-
 /// A trait, that is implemented for types which represent unique ID-s of
 /// interned objects in [`Interner`].
 pub trait SymbolID: Copy {
@@ -364,14 +296,6 @@ where
     }
 }
 
-macro_rules! intern_primitive_symbols {
-    ($interner:ident, $($name:ident),*) => {
-        $(
-            $interner.get_or_intern(stringify!($name));
-        )*
-    }
-}
-
 impl<S> Interner<S>
 where
     S: SymbolID,
@@ -502,7 +426,7 @@ struct Span {
 ///
 /// Data structure that allows to resolve/intern identifiers. The only
 /// difference between identifier interner and [string interner] is that
-/// the former contains builtin identifiers (see [`builtin_symbols`] for more details).
+/// the former contains builtin identifiers (see [`builtin_identifiers`] for more details).
 ///
 /// See:
 /// - [`IdentifierInterner::new()`] to create a new empty instance of [`IdentifierInterner`].
@@ -511,22 +435,46 @@ struct Span {
 #[derive(Debug, Clone, Default)]
 pub struct IdentifierInterner(Interner<IdentifierID>);
 
+macro_rules! define_builtin_identifiers {
+    ($($id_name:ident = $value:tt => $id:tt),+) => {
+        /// Defines all builtin identifiers (that are automatically interned by
+        /// [`IdentifierInterner`]).
+        pub mod builtin_identifiers {
+            use crate::IdentifierID;
+
+            $(
+                #[doc = concat!("Builtin identifier `", $id, "`.")]
+                pub const $id_name: IdentifierID = IdentifierID($value);
+            )+
+        }
+
+        impl IdentifierInterner {
+            /// Creates a new empty [`IdentifierInterner`], that **already contains builtin identifiers**!
+            #[must_use]
+            pub fn new() -> Self {
+                let mut interner = Interner::new();
+
+                $(
+                    interner.get_or_intern($id);
+                )+
+
+                Self(interner)
+            }
+        }
+    };
+}
+
+define_builtin_identifiers! {
+    UNDERSCORE = 0 => "_",
+    INT8 = 1 => "int8", INT16 = 2 => "int16", INT32 = 3 => "int32", INT64 = 4 => "int64",
+    UINT8 = 5 => "uint8", UINT16 = 6 => "uint16", UINT32 = 7 => "uint32", UINT64 = 8 => "uint64",
+    FLOAT32 = 9 => "float32", FLOAT64 = 10 => "float64", ISIZE = 11 => "isize",
+    USIZE = 12 => "usize", BOOL = 13 => "bool", STRING = 14 => "String", LIST = 15 => "List",
+    CHAR = 16 => "char", SMALL_SELF = 17 => "self", BIG_SELF = 18 => "Self",
+    SIZE_OF = 19 => "sizeof", STD = 20 => "std"
+}
+
 impl IdentifierInterner {
-    /// Creates a new empty [`IdentifierInterner`], that **already contains builtin identifiers**!
-    #[must_use]
-    pub fn new() -> Self {
-        let mut interner = Interner::new();
-
-        interner.get_or_intern("_");
-
-        intern_primitive_symbols!(
-            interner, int8, int16, int32, int64, uint8, uint16, uint32, uint64, float32, float64,
-            isize, usize, bool, String, List, char, self, Self, sizeof, std
-        );
-
-        Self(interner)
-    }
-
     /// Returns the number of identifiers interned by the interner.
     #[inline]
     #[must_use]
@@ -565,7 +513,7 @@ impl IdentifierInterner {
     ///
     /// # Example
     /// ```
-    /// # use ry_interner::{IdentifierInterner, builtin_symbols::UINT8, IdentifierID};
+    /// # use ry_interner::{IdentifierInterner, builtin_identifiers::UINT8, IdentifierID};
     /// let mut identifier_interner = IdentifierInterner::new();
     ///
     /// let hello_id = identifier_interner.get_or_intern("hello");

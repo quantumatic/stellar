@@ -1,7 +1,7 @@
 //! Defines [`Type`] for working with types and THIR nodes.
 
 use ry_filesystem::location::Location;
-use ry_interner::{builtin_symbols, IdentifierID};
+use ry_interner::{builtin_identifiers, IdentifierID};
 use ry_name_resolution::Path;
 
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
@@ -98,10 +98,10 @@ pub trait Typed {
 /// Creates a type constructor for a given symbol.
 #[inline]
 #[must_use]
-fn primitive_constructor(symbol: IdentifierID) -> Type {
+fn primitive_constructor(identifier_id: IdentifierID) -> Type {
     Type::Constructor(TypeConstructor {
         left: Path {
-            symbols: vec![symbol],
+            identifiers: vec![identifier_id],
         },
         right: vec![],
     })
@@ -113,7 +113,7 @@ macro_rules! t {
         #[must_use]
         #[doc = concat!("Returns a `", stringify!($name), "` type.")]
         pub fn $name() -> Type {
-            primitive_constructor(builtin_symbols::$symbol)
+            primitive_constructor(builtin_identifiers::$symbol)
         }
     };
 }
@@ -143,7 +143,7 @@ pub struct TypeConstructor {
 pub fn list_of(element_type: Type) -> Type {
     Type::Constructor(TypeConstructor {
         left: Path {
-            symbols: vec![builtin_symbols::LIST],
+            identifiers: vec![builtin_identifiers::LIST],
         },
         right: vec![element_type],
     })

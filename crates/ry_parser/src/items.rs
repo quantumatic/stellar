@@ -4,7 +4,7 @@ use ry_ast::{
     ModuleItemKind, NotSelfFunctionParameter, SelfFunctionParameter, StructField, TupleField,
     TypeAlias, Visibility,
 };
-use ry_interner::builtin_symbols;
+use ry_interner::builtin_identifiers;
 
 use crate::{
     diagnostics::{
@@ -272,7 +272,7 @@ impl Parse for FunctionParser {
             node_name: "function parameters",
             closing_token: Punctuator::CloseParent,
             parse_element_expr: {
-                if state.lexer.scanned_identifier == builtin_symbols::SMALL_SELF {
+                if state.lexer.scanned_identifier == builtin_identifiers::SMALL_SELF {
                     state.advance();
 
                     Some(FunctionParameter::SelfParameter(SelfFunctionParameter {
