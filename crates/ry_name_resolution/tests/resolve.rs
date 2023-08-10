@@ -66,7 +66,7 @@ fn resolve_module() {
 
     assert_eq!(
         environment.resolve_path(
-            &Path {
+            Path {
                 location: DUMMY_LOCATION,
                 identifiers: vec![dummy_identifier!(a), dummy_identifier!(a)],
             },
@@ -78,7 +78,7 @@ fn resolve_module() {
 
     assert_eq!(
         environment.resolve_path(
-            &Path {
+            Path {
                 location: DUMMY_LOCATION,
                 identifiers: vec![dummy_identifier!(b)],
             },
