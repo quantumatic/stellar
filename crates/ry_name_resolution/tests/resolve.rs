@@ -6,9 +6,9 @@ use ry_interner::{IdentifierInterner, PathInterner};
 use ry_name_resolution::{ModuleID, ModuleScope, NameBinding, PackageID, ResolutionEnvironment};
 
 macro_rules! dummy_identifier {
-    ($symbol:expr) => {
+    ($id:expr) => {
         IdentifierAST {
-            symbol: $symbol,
+            id: $id,
             location: DUMMY_LOCATION,
         }
     };

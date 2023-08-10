@@ -84,7 +84,7 @@
 use std::fmt::Display;
 
 use ry_filesystem::location::Location;
-use ry_interner::Symbol;
+use ry_interner::IdentifierID;
 use token::{Punctuator, RawToken};
 
 pub mod precedence;
@@ -125,16 +125,11 @@ impl Literal {
     }
 }
 
-/// A symbol with a specified location, e.g. `foo`, `std`.
-///
-/// The reason why it's called [`IdentifierAST`] is because the name
-/// [`Identifier`] already exists in the [`token`] module.
-///
-/// [`Identifier`]: crate::token::RawToken::Identifier
+/// An identifier with a specified location, e.g. `foo`, `std`.
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
 pub struct IdentifierAST {
     pub location: Location,
-    pub symbol: Symbol,
+    pub id: IdentifierID,
 }
 
 /// A sequence of identifiers separated by `.`, e.g. `std.io`, `foo`.
@@ -903,52 +898,52 @@ impl ModuleItem {
         }
     }
 
-    /// Returns the name of the item.
+    /// Returns the id of the item name identifier.
     #[inline]
     #[must_use]
-    pub const fn name(&self) -> Option<Symbol> {
+    pub const fn name_identifier_id(&self) -> Option<IdentifierID> {
         match self {
             Self::Enum {
-                name: IdentifierAST { symbol, .. },
+                name: IdentifierAST { id, .. },
                 ..
             }
             | Self::Function(Function {
                 signature:
                     FunctionSignature {
-                        name: IdentifierAST { symbol, .. },
+                        name: IdentifierAST { id, .. },
                         ..
                     },
                 ..
             })
             | Self::Struct {
-                name: IdentifierAST { symbol, .. },
+                name: IdentifierAST { id, .. },
                 ..
             }
             | Self::TupleLikeStruct {
-                name: IdentifierAST { symbol, .. },
+                name: IdentifierAST { id, .. },
                 ..
             }
             | Self::Interface {
-                name: IdentifierAST { symbol, .. },
+                name: IdentifierAST { id, .. },
                 ..
             }
             | Self::TypeAlias(TypeAlias {
-                name: IdentifierAST { symbol, .. },
+                name: IdentifierAST { id, .. },
                 ..
-            }) => Some(*symbol),
+            }) => Some(*id),
             Self::Import { .. } => None,
         }
     }
 
-    /// Returns the name of the item.
+    /// Returns the id of the item name identifier.
     ///
     /// # Panics
     ///
     /// If the item does not have a name.
     #[inline]
     #[must_use]
-    pub fn name_or_panic(&self) -> Symbol {
-        self.name().unwrap()
+    pub fn name_identifier_id_or_panic(&self) -> IdentifierID {
+        self.name_identifier_id().unwrap()
     }
 
     /// Returns the kind of the item.

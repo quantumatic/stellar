@@ -2,10 +2,10 @@
 
 use generic_parameter_scope::GenericParameterScope;
 use ry_ast::ImportPath;
-use ry_diagnostics::GlobalDiagnostics;
+use ry_diagnostics::{BuildDiagnostic, GlobalDiagnostics};
 use ry_fx_hash::FxHashMap;
 use ry_hir::Module;
-use ry_interner::{IdentifierInterner, PathID, PathInterner, Symbol};
+use ry_interner::{IdentifierID, IdentifierInterner, PathID, PathInterner};
 use ry_name_resolution::{
     DefinitionID, EnumData, EnumItemID, ModuleID, ModuleScope, NameBinding, NameBindingKind, Path,
     ResolutionEnvironment,
@@ -15,6 +15,8 @@ use ry_thir::{
     InterfaceSignature, ModuleItemSignature,
 };
 use type_variable_factory::TypeVariableFactory;
+
+use crate::diagnostics::ExpectedType;
 
 pub mod diagnostics;
 pub mod generic_parameter_scope;
@@ -29,7 +31,7 @@ pub struct TypeCheckingContext<'i, 'p, 'd> {
     type_variable_factory: TypeVariableFactory,
     items: FxHashMap<DefinitionID, ModuleItem>,
     signatures: FxHashMap<DefinitionID, ModuleItemSignature>,
-    substitutions: FxHashMap<Symbol, Type>,
+    substitutions: FxHashMap<IdentifierID, Type>,
     diagnostics: &'d mut GlobalDiagnostics,
 }
 
@@ -90,7 +92,7 @@ impl<'i, 'p, 'd> TypeCheckingContext<'i, 'p, 'd> {
                     ..
                 } => {
                     let definition_id = DefinitionID {
-                        symbol: name.symbol,
+                        symbol: name.id,
                         module_id,
                     };
 
@@ -136,101 +138,114 @@ impl<'i, 'p, 'd> TypeCheckingContext<'i, 'p, 'd> {
             .resolve_imports(self.identifier_interner, self.diagnostics);
     }
 
-    pub fn lower_type(
+    pub fn resolve_type(
         &mut self,
         ty: ry_hir::Type,
-        identifier_interner: &mut IdentifierInterner,
-        diagnostics: &mut GlobalDiagnostics,
         generic_parameter_scope: &GenericParameterScope,
         module_scope: &ModuleScope,
-        environment: &ResolutionEnvironment,
-    ) -> Type {
+    ) -> Option<Type> {
         match ty {
-            ry_hir::Type::Constructor(constructor) => self.resolve_type_constructor(
-                constructor,
-                identifier_interner,
-                diagnostics,
-                generic_parameter_scope,
-                module_scope,
-                environment,
-            ),
-            ry_hir::Type::Tuple { element_types, .. } => Type::Tuple {
+            ry_hir::Type::Constructor(constructor) => {
+                self.resolve_type_constructor(constructor, generic_parameter_scope, module_scope)
+            }
+            ry_hir::Type::Tuple { element_types, .. } => Some(Type::Tuple {
                 element_types: element_types
                     .into_iter()
-                    .map(|element| {
-                        self.lower_type(
-                            element,
-                            identifier_interner,
-                            diagnostics,
-                            generic_parameter_scope,
-                            module_scope,
-                            environment,
-                        )
+                    .filter_map(|element| {
+                        self.resolve_type(element, generic_parameter_scope, module_scope)
                     })
                     .collect(),
-            },
+            }),
             ry_hir::Type::Function {
                 parameter_types,
                 return_type,
                 ..
-            } => Type::Function {
+            } => Some(Type::Function {
                 parameter_types: parameter_types
                     .into_iter()
-                    .map(|parameter| {
-                        self.lower_type(
-                            parameter,
-                            identifier_interner,
-                            diagnostics,
-                            generic_parameter_scope,
-                            module_scope,
-                            environment,
-                        )
+                    .filter_map(|parameter| {
+                        self.resolve_type(parameter, generic_parameter_scope, module_scope)
                     })
                     .collect(),
-                return_type: Box::new(self.lower_type(
+                return_type: Box::new(self.resolve_type(
                     *return_type,
-                    identifier_interner,
-                    diagnostics,
                     generic_parameter_scope,
                     module_scope,
-                    environment,
-                )),
-            },
-            ry_hir::Type::InterfaceObject { location, bounds } => Type::InterfaceObject {
+                )?),
+            }),
+            ry_hir::Type::InterfaceObject { location, bounds } => Some(Type::InterfaceObject {
                 bounds: bounds
                     .into_iter()
-                    .map(|interface| self.resolve_interface_type_constructor(interface))
+                    .filter_map(|interface| {
+                        self.resolve_interface_type_constructor(interface, module_scope)
+                    })
                     .collect(),
-            },
+            }),
         }
     }
 
     fn resolve_type_constructor(
         &mut self,
         ty: ry_ast::TypeConstructor,
-        identifier_interner: &mut IdentifierInterner,
-        diagnostics: &mut GlobalDiagnostics,
         generic_parameter_scope: &GenericParameterScope,
         module_scope: &ModuleScope,
-        environment: &ResolutionEnvironment,
-    ) -> Type {
-        let Some(name_binding) =
-            module_scope.resolve_path(ty.path, identifier_interner, diagnostics, environment)
-        else {
-            return self
-                .type_variable_factory
-                .make_unknown_type_placeholder(ty.location);
+    ) -> Option<Type> {
+        let Some(name_binding) = module_scope.resolve_path(
+            ty.path,
+            self.identifier_interner,
+            self.diagnostics,
+            &self.resolution_environment,
+        ) else {
+            return None;
         };
 
-        if name_binding.kind() != NameBindingKind::ModuleItem {}
+        let name_binding_kind = name_binding.kind();
+
+        if name_binding_kind != NameBindingKind::ModuleItem {
+            self.diagnostics.add_single_file_diagnostic(
+                ty.location.file_path_id,
+                ExpectedType {
+                    location: ty.location,
+                    name_binding_kind,
+                }
+                .build(),
+            );
+
+            return None;
+        }
 
         todo!()
     }
 
     fn resolve_interface_type_constructor(
-        &self,
+        &mut self,
         interface: ry_ast::TypeConstructor,
-    ) -> TypeConstructor {
+        module_scope: &ModuleScope,
+    ) -> Option<TypeConstructor> {
+        let Some(name_binding) = module_scope.resolve_path(
+            interface.path,
+            self.identifier_interner,
+            self.diagnostics,
+            &self.resolution_environment,
+        ) else {
+            return None;
+        };
+
+        let name_binding_kind = name_binding.kind();
+
+        if name_binding_kind != NameBindingKind::ModuleItem {
+            self.diagnostics.add_single_file_diagnostic(
+                interface.location.file_path_id,
+                ExpectedType {
+                    location: interface.location,
+                    name_binding_kind,
+                }
+                .build(),
+            );
+
+            return None;
+        }
+
         todo!()
     }
 

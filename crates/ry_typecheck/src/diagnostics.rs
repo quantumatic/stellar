@@ -2,6 +2,7 @@ use codespan_reporting::diagnostic::Diagnostic;
 use ry_diagnostics::BuildDiagnostic;
 use ry_filesystem::location::Location;
 use ry_interner::PathID;
+use ry_name_resolution::NameBindingKind;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct DuplicateTraitBoundDiagnostic {
@@ -48,33 +49,33 @@ impl BuildDiagnostic for UnnecessaryEqualityPredicateDiagnostic {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct ExpectedNominalTypeInInherentImplDiagnostic {
+pub struct ExpectedType {
     pub location: Location,
+    pub name_binding_kind: NameBindingKind,
 }
 
-impl BuildDiagnostic for ExpectedNominalTypeInInherentImplDiagnostic {
+impl BuildDiagnostic for ExpectedType {
     fn build(&self) -> Diagnostic<PathID> {
         Diagnostic::error()
             .with_code("E009")
-            .with_message("expected nominal type in inherent implementation")
+            .with_message(format!("expected type, got {}", self.name_binding_kind))
             .with_labels(vec![self.location.to_primary_label()])
-            .with_notes(vec![
-                "either implement a trait or create a new wrapper type".to_owned(),
-            ])
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct PrimitiveTypeInInherentImplDiagnostic {
+pub struct ExpectedInterface {
     pub location: Location,
+    pub name_binding_kind: NameBindingKind,
 }
 
-impl BuildDiagnostic for PrimitiveTypeInInherentImplDiagnostic {
+impl BuildDiagnostic for ExpectedInterface {
     fn build(&self) -> Diagnostic<PathID> {
         Diagnostic::error()
-            .with_code("E010")
-            .with_message("cannot define inherent impl for primitive types")
+            .with_code("E009")
+            .with_message(format!(
+                "expected interface, got {}",
+                self.name_binding_kind
+            ))
             .with_labels(vec![self.location.to_primary_label()])
-            .with_notes(vec!["consider using an extension trait instead".to_owned()])
     }
 }

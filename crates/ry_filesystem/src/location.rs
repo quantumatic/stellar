@@ -9,7 +9,7 @@ use codespan_reporting::diagnostic::Label;
 use ry_interner::PathID;
 
 /// Represents location in the source text.
-#[derive(Debug, Copy, Clone, Hash, Default, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct Location {
     /// ID of the source file.
     pub file_path_id: PathID,
@@ -22,7 +22,7 @@ pub struct Location {
 }
 
 /// Offset of a byte in a source text.
-#[derive(Debug, Copy, Clone, Hash, Default, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, Default, PartialEq, Eq, Hash)]
 pub struct ByteOffset(pub usize);
 
 impl Display for ByteOffset {

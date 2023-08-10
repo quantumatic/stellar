@@ -76,13 +76,13 @@ use itertools::Itertools;
 use ry_ast::{IdentifierAST, Visibility};
 use ry_diagnostics::{BuildDiagnostic, GlobalDiagnostics};
 use ry_fx_hash::FxHashMap;
-use ry_interner::{IdentifierInterner, PathID, Symbol};
+use ry_interner::{IdentifierID, IdentifierInterner, PathID};
 
 pub mod diagnostics;
 
 /// An ID assigned for every package in a workspace.
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
-pub struct PackageID(pub Symbol);
+pub struct PackageID(pub IdentifierID);
 
 /// An ID assigned for every module in a workspace.
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
@@ -92,7 +92,7 @@ pub struct ModuleID(pub PathID);
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
 pub struct DefinitionID {
     /// Interned name of the definition.
-    pub symbol: Symbol,
+    pub symbol: IdentifierID,
 
     /// ID of the module that contains the definition.
     pub module_id: ModuleID,
@@ -122,7 +122,7 @@ pub struct ResolutionEnvironment {
 #[derive(Debug, PartialEq, Eq, Clone, Default)]
 pub struct ResolvedImports {
     /// List of resolved imports.
-    pub imports: FxHashMap<Symbol, NameBinding>,
+    pub imports: FxHashMap<IdentifierID, NameBinding>,
 }
 
 impl ResolutionEnvironment {
@@ -181,13 +181,13 @@ impl ResolutionEnvironment {
 
         if !self
             .packages_root_modules
-            .contains_key(&PackageID(first_identifier.symbol))
+            .contains_key(&PackageID(first_identifier.id))
         {
             diagnostics.add_single_file_diagnostic(
                 first_identifier.location.file_path_id,
                 FailedToResolvePackageDiagnostic {
                     package_name: identifier_interner
-                        .resolve(first_identifier.symbol)
+                        .resolve(first_identifier.id)
                         .unwrap()
                         .to_owned(),
                     location: first_identifier.location,
@@ -197,7 +197,7 @@ impl ResolutionEnvironment {
             return None;
         }
 
-        NameBinding::Package(PackageID(first_identifier.symbol)).resolve_rest_of_the_path(
+        NameBinding::Package(PackageID(first_identifier.id)).resolve_rest_of_the_path(
             first_identifier,
             identifiers,
             identifier_interner,
@@ -400,12 +400,12 @@ fn resolve_path_segment(
                     current_identifier.location.file_path_id,
                     FailedToResolveModuleDiagnostic {
                         module_name: identifier_interner
-                            .resolve(current_identifier.symbol)
+                            .resolve(current_identifier.id)
                             .unwrap()
                             .to_owned(),
                         module_name_location: current_identifier.location,
                         package_name: identifier_interner
-                            .resolve(previous_identifier.symbol)
+                            .resolve(previous_identifier.id)
                             .unwrap()
                             .to_owned(),
                         package_name_location: previous_identifier.location,
@@ -423,12 +423,12 @@ fn resolve_path_segment(
                 current_identifier.location.file_path_id,
                 ModuleItemsExceptEnumsDoNotServeAsNamespacesDiagnostic {
                     name: identifier_interner
-                        .resolve(current_identifier.symbol)
+                        .resolve(current_identifier.id)
                         .unwrap()
                         .to_owned(),
                     name_location: current_identifier.location,
                     module_item_name: identifier_interner
-                        .resolve(previous_identifier.symbol)
+                        .resolve(previous_identifier.id)
                         .unwrap()
                         .to_owned(),
                     module_item_name_location: previous_identifier.location,
@@ -447,7 +447,7 @@ fn resolve_path_segment(
             {
                 enum_scope
                     .items
-                    .get(&current_identifier.symbol)
+                    .get(&current_identifier.id)
                     .copied()
                     .map(NameBinding::EnumItem)
             } else {
@@ -455,12 +455,12 @@ fn resolve_path_segment(
                     current_identifier.location.file_path_id,
                     ModuleItemsExceptEnumsDoNotServeAsNamespacesDiagnostic {
                         name: identifier_interner
-                            .resolve(current_identifier.symbol)
+                            .resolve(current_identifier.id)
                             .unwrap()
                             .to_owned(),
                         name_location: current_identifier.location,
                         module_item_name: identifier_interner
-                            .resolve(previous_identifier.symbol)
+                            .resolve(previous_identifier.id)
                             .unwrap()
                             .to_owned(),
                         module_item_name_location: previous_identifier.location,
@@ -477,18 +477,18 @@ fn resolve_path_segment(
                 .get(&submodule_id)
                 .unwrap()
                 .bindings
-                .get(&current_identifier.symbol)
+                .get(&current_identifier.id)
             else {
                 diagnostics.add_single_file_diagnostic(
                     current_identifier.location.file_path_id,
                     FailedToResolveModuleItemDiagnostic {
                         item_name: identifier_interner
-                            .resolve(current_identifier.symbol)
+                            .resolve(current_identifier.id)
                             .unwrap()
                             .to_owned(),
                         item_name_location: current_identifier.location,
                         module_name: identifier_interner
-                            .resolve(previous_identifier.symbol)
+                            .resolve(previous_identifier.id)
                             .unwrap()
                             .to_owned(),
                         module_name_location: previous_identifier.location,
@@ -505,12 +505,12 @@ fn resolve_path_segment(
                         current_identifier.location.file_path_id,
                         FailedToResolvePrivateModuleItemDiagnostic {
                             item_name: identifier_interner
-                                .resolve(current_identifier.symbol)
+                                .resolve(current_identifier.id)
                                 .unwrap()
                                 .to_owned(),
                             item_name_location: current_identifier.location,
                             module_name: identifier_interner
-                                .resolve(previous_identifier.symbol)
+                                .resolve(previous_identifier.id)
                                 .unwrap()
                                 .to_owned(),
                             module_name_location: previous_identifier.location,
@@ -533,33 +533,33 @@ fn resolve_path_segment(
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
 pub struct Path {
     /// List of semantic symbols.
-    pub symbols: Vec<Symbol>,
+    pub symbols: Vec<IdentifierID>,
 }
 
 /// Data that Ry compiler has about a module.
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct ModuleScope {
     /// Interned name of the module.
-    pub name: Symbol,
+    pub name: IdentifierID,
 
     /// ID of the module's source file path.
     pub id: ModuleID,
 
     /// The module items name bindings.
-    pub bindings: FxHashMap<Symbol, NameBinding>,
+    pub bindings: FxHashMap<IdentifierID, NameBinding>,
 
     /// Enums.
-    pub enums: FxHashMap<Symbol, EnumData>,
+    pub enums: FxHashMap<IdentifierID, EnumData>,
 
     /// Imports used in the module.
-    pub imports: FxHashMap<Symbol, ry_ast::Path>,
+    pub imports: FxHashMap<IdentifierID, ry_ast::Path>,
 }
 
 /// Data the Ry compiler has about a particular enum.
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct EnumData {
     /// Enum items.
-    pub items: FxHashMap<Symbol, EnumItemID>,
+    pub items: FxHashMap<IdentifierID, EnumItemID>,
 }
 
 impl ModuleScope {
@@ -608,12 +608,12 @@ impl ModuleScope {
         diagnostics: &mut GlobalDiagnostics,
         environment: &ResolutionEnvironment,
     ) -> Option<NameBinding> {
-        if let Some(binding) = self.bindings.get(&identifier.symbol).copied().or_else(|| {
+        if let Some(binding) = self.bindings.get(&identifier.id).copied().or_else(|| {
             if environment
                 .packages_root_modules
-                .contains_key(&PackageID(identifier.symbol))
+                .contains_key(&PackageID(identifier.id))
             {
-                Some(NameBinding::Package(PackageID(identifier.symbol)))
+                Some(NameBinding::Package(PackageID(identifier.id)))
             } else {
                 None
             }
@@ -623,7 +623,7 @@ impl ModuleScope {
             // check for possible name binding that can come from imports
             if let Some(binding) = environment.resolved_imports[&self.id]
                 .imports
-                .get(&identifier.symbol)
+                .get(&identifier.id)
             {
                 Some(*binding)
             } else {
@@ -631,7 +631,7 @@ impl ModuleScope {
                     identifier.location.file_path_id,
                     FailedToResolveNameDiagnostic {
                         name: identifier_interner
-                            .resolve(identifier.symbol)
+                            .resolve(identifier.id)
                             .unwrap()
                             .to_owned(),
                         location: identifier.location,
@@ -652,5 +652,5 @@ pub struct EnumItemID {
     pub enum_definition_id: DefinitionID,
 
     /// Enum item symbol.
-    pub item_id: Symbol,
+    pub item_id: IdentifierID,
 }

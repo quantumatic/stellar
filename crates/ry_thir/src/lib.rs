@@ -62,7 +62,7 @@
 use ry_ast::{IdentifierAST, Literal, Path, Visibility, WherePredicate};
 use ry_filesystem::location::Location;
 use ry_fx_hash::FxHashMap;
-use ry_interner::Symbol;
+use ry_interner::IdentifierID;
 use ty::Type;
 
 pub mod ty;
@@ -404,7 +404,7 @@ pub struct TypeSignature {
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Enum {
     pub type_signature: TypeSignature,
-    pub items: FxHashMap<Symbol, EnumItem>,
+    pub items: FxHashMap<IdentifierID, EnumItem>,
 }
 
 #[derive(Debug, PartialEq, Eq, Clone)]
@@ -412,11 +412,11 @@ pub enum EnumItem {
     Just(IdentifierAST),
     TupleLike {
         name: IdentifierAST,
-        fields: FxHashMap<Symbol, EnumItemTupleField>,
+        fields: FxHashMap<IdentifierID, EnumItemTupleField>,
     },
     Struct {
         name: IdentifierAST,
-        fields: FxHashMap<Symbol, EnumItemStructField>,
+        fields: FxHashMap<IdentifierID, EnumItemStructField>,
     },
 }
 
@@ -435,7 +435,7 @@ pub struct EnumItemTupleField {
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Struct {
     pub type_signature: TypeSignature,
-    pub fields: FxHashMap<Symbol, StructField>,
+    pub fields: FxHashMap<IdentifierID, StructField>,
 }
 
 #[derive(Debug, PartialEq, Eq, Clone)]
@@ -463,7 +463,7 @@ pub struct InterfaceSignature {
 pub struct FunctionSignature {
     pub name: IdentifierAST,
     pub type_parameters: Vec<IdentifierAST>,
-    pub parameters: FxHashMap<Symbol, FunctionParameter>,
+    pub parameters: FxHashMap<IdentifierID, FunctionParameter>,
     pub return_type: Type,
     pub predicates: Vec<WherePredicate>,
 }
@@ -500,14 +500,14 @@ pub enum ModuleItemSignature {
 pub enum ModuleItem {
     Enum {
         signature: TypeSignature,
-        items: FxHashMap<Symbol, EnumItem>,
+        items: FxHashMap<IdentifierID, EnumItem>,
     },
     Struct {
         signature: TypeSignature,
-        fields: FxHashMap<Symbol, StructField>,
+        fields: FxHashMap<IdentifierID, StructField>,
     },
     Interface {
         signature: InterfaceSignature,
-        methods: FxHashMap<Symbol, FunctionSignature>,
+        methods: FxHashMap<IdentifierID, FunctionSignature>,
     },
 }

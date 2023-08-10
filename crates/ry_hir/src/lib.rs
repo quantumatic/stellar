@@ -66,7 +66,7 @@ use std::fmt::Display;
 use ry_ast::Bounds;
 pub use ry_ast::{IdentifierAST, ImportPath, Literal, Path, TypeConstructor, Visibility};
 use ry_filesystem::location::Location;
-use ry_interner::Symbol;
+use ry_interner::IdentifierID;
 
 /// A pattern, e.g. `Some(x)`, `None`, `a @ [3, ..]`, `[1, .., 3]`, `(1, \"hello\")`, `3.2`.
 #[derive(Debug, PartialEq, Clone)]
@@ -563,51 +563,51 @@ impl ModuleItem {
         }
     }
 
-    /// Returns the name of the item.
+    /// Returns the location of the item.
     #[inline]
     #[must_use]
-    pub const fn name(&self) -> Option<Symbol> {
+    pub const fn name(&self) -> Option<IdentifierID> {
         match self {
             Self::Enum {
-                name: IdentifierAST { symbol, .. },
+                name: IdentifierAST { id, .. },
                 ..
             }
             | Self::Function(Function {
                 signature:
                     FunctionSignature {
-                        name: IdentifierAST { symbol, .. },
+                        name: IdentifierAST { id, .. },
                         ..
                     },
                 ..
             })
             | Self::Struct {
-                name: IdentifierAST { symbol, .. },
+                name: IdentifierAST { id, .. },
                 ..
             }
             | Self::TupleLikeStruct {
-                name: IdentifierAST { symbol, .. },
+                name: IdentifierAST { id, .. },
                 ..
             }
             | Self::Interface {
-                name: IdentifierAST { symbol, .. },
+                name: IdentifierAST { id, .. },
                 ..
             }
             | Self::TypeAlias(TypeAlias {
-                name: IdentifierAST { symbol, .. },
+                name: IdentifierAST { id, .. },
                 ..
-            }) => Some(*symbol),
+            }) => Some(*id),
             Self::Import { .. } => None,
         }
     }
 
-    /// Returns the name of the item.
+    /// Returns the id of the item name identifier.
     ///
     /// # Panics
     ///
     /// If the item does not have a name.
     #[inline]
     #[must_use]
-    pub fn name_or_panic(&self) -> Symbol {
+    pub fn name_or_panic(&self) -> IdentifierID {
         self.name().unwrap()
     }
 
@@ -712,8 +712,8 @@ impl EnumItem {
 
     #[inline]
     #[must_use]
-    pub const fn symbol(&self) -> Symbol {
-        self.name().symbol
+    pub const fn symbol(&self) -> IdentifierID {
+        self.name().id
     }
 }
 

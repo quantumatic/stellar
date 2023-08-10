@@ -67,6 +67,7 @@ use core::{
 };
 use std::{
     hash::BuildHasherDefault,
+    marker::PhantomData,
     path::{Path, PathBuf},
 };
 
@@ -77,75 +78,136 @@ use alloc::{string::String, vec::Vec};
 use hashbrown::{hash_map::RawEntryMut, HashMap};
 use ry_fx_hash::FxHasher;
 
-/// Represents unique symbol corresponding to some interned string.
-pub type Symbol = usize;
+/// Represents unique symbol corresponding to some interned identifier.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct IdentifierID(pub usize);
+
+impl SymbolID for IdentifierID {
+    #[inline]
+    fn into_storage_index(self) -> usize {
+        self.0
+    }
+
+    #[inline]
+    fn from_storage_index(index: usize) -> Self {
+        Self(index)
+    }
+}
 
 /// Defines all primitive symbols that are interned by default.
 pub mod builtin_symbols {
-    use crate::Symbol;
+    use crate::IdentifierID;
 
     /// `_` symbol.
-    pub const UNDERSCORE: Symbol = 0;
+    pub const UNDERSCORE: IdentifierID = IdentifierID(0);
 
     /// `int8` symbol.
-    pub const INT8: Symbol = 1;
+    pub const INT8: IdentifierID = IdentifierID(1);
 
     /// `int16` symbol.
-    pub const INT16: Symbol = 2;
+    pub const INT16: IdentifierID = IdentifierID(2);
 
     /// `int32` symbol.
-    pub const INT32: Symbol = 3;
+    pub const INT32: IdentifierID = IdentifierID(3);
 
     /// `int64` symbol.
-    pub const INT64: Symbol = 4;
+    pub const INT64: IdentifierID = IdentifierID(4);
 
     /// `uint8` symbol.
-    pub const UINT8: Symbol = 5;
+    pub const UINT8: IdentifierID = IdentifierID(5);
 
     /// `uint16` symbol.
-    pub const UINT16: Symbol = 6;
+    pub const UINT16: IdentifierID = IdentifierID(6);
 
     /// `uint32` symbol.
-    pub const UINT32: Symbol = 7;
+    pub const UINT32: IdentifierID = IdentifierID(7);
 
     /// `uint64` symbol.
-    pub const UINT64: Symbol = 8;
+    pub const UINT64: IdentifierID = IdentifierID(8);
 
     /// `float32` symbol.
-    pub const FLOAT32: Symbol = 9;
+    pub const FLOAT32: IdentifierID = IdentifierID(9);
 
     /// `float64` symbol.
-    pub const FLOAT64: Symbol = 10;
+    pub const FLOAT64: IdentifierID = IdentifierID(10);
 
     /// `isize` symbol.
-    pub const ISIZE: Symbol = 11;
+    pub const ISIZE: IdentifierID = IdentifierID(11);
 
     /// `usize` symbol.
-    pub const USIZE: Symbol = 12;
+    pub const USIZE: IdentifierID = IdentifierID(12);
 
     /// `bool` symbol.
-    pub const BOOL: Symbol = 13;
+    pub const BOOL: IdentifierID = IdentifierID(13);
 
     /// `String` symbol.
-    pub const STRING: Symbol = 14;
+    pub const STRING: IdentifierID = IdentifierID(14);
 
     /// `List` symbol.
-    pub const LIST: Symbol = 15;
+    pub const LIST: IdentifierID = IdentifierID(15);
 
     /// `char` symbol.
-    pub const CHAR: Symbol = 16;
+    pub const CHAR: IdentifierID = IdentifierID(16);
 
     /// `self` symbol.
-    pub const SMALL_SELF: Symbol = 17;
+    pub const SMALL_SELF: IdentifierID = IdentifierID(17);
 
     /// `Self` symbol.
-    pub const BIG_SELF: Symbol = 18;
+    pub const BIG_SELF: IdentifierID = IdentifierID(18);
 
     /// `sizeof` symbol.
-    pub const SIZE_OF: Symbol = 19;
+    pub const SIZE_OF: IdentifierID = IdentifierID(19);
 
     /// `std` symbol.
-    pub const STD: Symbol = 20;
+    pub const STD: IdentifierID = IdentifierID(20);
+}
+
+/// A trait, that is implemented for types which represent unique ID-s of
+/// interned objects in [`Interner`].
+pub trait SymbolID: Copy {
+    /// Returns an index of the symbol in the interner memory storage.
+    #[must_use]
+    fn into_storage_index(self) -> usize;
+
+    /// Returns an interned symbol id from the index in the interner memory storage.
+    #[must_use]
+    fn from_storage_index(index: usize) -> Self;
+}
+
+impl SymbolID for usize {
+    #[inline]
+    fn into_storage_index(self) -> usize {
+        self
+    }
+
+    #[inline]
+    fn from_storage_index(index: usize) -> Self {
+        index
+    }
+}
+
+impl SymbolID for u64 {
+    #[inline]
+    fn into_storage_index(self) -> usize {
+        usize::try_from(self).unwrap()
+    }
+
+    #[inline]
+    fn from_storage_index(index: usize) -> Self {
+        index as Self
+    }
+}
+
+impl SymbolID for u32 {
+    #[inline]
+    fn into_storage_index(self) -> usize {
+        usize::try_from(self).unwrap()
+    }
+
+    #[inline]
+    fn from_storage_index(index: usize) -> Self {
+        Self::try_from(index).unwrap()
+    }
 }
 
 /// # String Interner
@@ -161,22 +223,46 @@ pub mod builtin_symbols {
 /// - [`Interner::get_or_intern()`] to intern a new string.
 /// - [`Interner::resolve()`] to resolve already interned strings.
 #[derive(Debug, Clone)]
-pub struct Interner {
-    dedup: HashMap<Symbol, (), ()>,
+pub struct Interner<S>
+where
+    S: SymbolID,
+{
+    dedup: HashMap<S, (), ()>,
     hasher: BuildHasherDefault<FxHasher>,
-    backend: InternerStorage,
+    backend: InternerStorage<S>,
 }
 
 /// Storage for interned strings.
-#[derive(Debug, Clone, Default)]
-struct InternerStorage {
+#[derive(Debug, Clone)]
+struct InternerStorage<S>
+where
+    S: SymbolID,
+{
     ends: Vec<usize>,
 
     /// All interned strings live here.
     storage: String,
+
+    marker: PhantomData<fn() -> S>,
 }
 
-impl Default for Interner {
+impl<S> Default for InternerStorage<S>
+where
+    S: SymbolID,
+{
+    fn default() -> Self {
+        Self {
+            ends: Vec::new(),
+            storage: String::new(),
+            marker: PhantomData,
+        }
+    }
+}
+
+impl<S> Default for Interner<S>
+where
+    S: SymbolID,
+{
     /// Creates a new empty [`Interner`].
     #[inline]
     fn default() -> Self {
@@ -194,29 +280,33 @@ where
     state.finish()
 }
 
-impl InternerStorage {
+impl<S> InternerStorage<S>
+where
+    S: SymbolID,
+{
     #[must_use]
     #[inline]
     fn with_capacity(capacity: usize) -> Self {
         Self {
             ends: Vec::with_capacity(capacity),
             storage: String::default(),
+            marker: PhantomData,
         }
     }
 
     /// Interns the given string and returns corresponding symbol.
-    fn intern(&mut self, string: &str) -> Symbol {
+    fn intern(&mut self, string: &str) -> S {
         self.push(string)
     }
 
     /// Resolves the given symbol to its original string.
-    fn resolve(&self, symbol: Symbol) -> Option<&str> {
+    fn resolve(&self, symbol: S) -> Option<&str> {
         self.span_of(symbol).map(|span| self.str_at(span))
     }
 
     /// Resolves the given symbol to its original string, but without additional checks.
-    unsafe fn unchecked_resolve(&self, symbol: Symbol) -> &str {
-        unsafe { self.str_at(self.unchecked_span_of(symbol)) }
+    unsafe fn unchecked_resolve(&self, symbol_id: S) -> &str {
+        unsafe { self.str_at(self.unchecked_span_of(symbol_id)) }
     }
 
     /// Shrink capacity to fit interned symbols exactly.
@@ -226,22 +316,33 @@ impl InternerStorage {
     }
 
     /// Returns the index of the next symbol.
-    fn next_symbol(&self) -> Symbol {
-        self.ends.len()
+    fn next_symbol(&self) -> S {
+        S::from_storage_index(self.ends.len())
     }
 
     /// Returns the span for the given symbol if any.
-    fn span_of(&self, symbol: Symbol) -> Option<Span> {
-        self.ends.get(symbol).copied().map(|end| Span {
-            start: self.ends.get(symbol.wrapping_sub(1)).copied().unwrap_or(0),
-            end,
-        })
+    fn span_of(&self, symbol_id: S) -> Option<Span> {
+        self.ends
+            .get(symbol_id.into_storage_index())
+            .copied()
+            .map(|end| Span {
+                start: self
+                    .ends
+                    .get(symbol_id.into_storage_index().wrapping_sub(1))
+                    .copied()
+                    .unwrap_or(0),
+                end,
+            })
     }
 
     /// Returns the span for the given symbol if any, but without additional checks.
-    unsafe fn unchecked_span_of(&self, symbol: Symbol) -> Span {
-        let end = unsafe { *self.ends.get_unchecked(symbol) };
-        let start = self.ends.get(symbol.wrapping_sub(1)).copied().unwrap_or(0);
+    unsafe fn unchecked_span_of(&self, symbol_id: S) -> Span {
+        let end = unsafe { *self.ends.get_unchecked(symbol_id.into_storage_index()) };
+        let start = self
+            .ends
+            .get(symbol_id.into_storage_index().wrapping_sub(1))
+            .copied()
+            .unwrap_or(0);
 
         Span { start, end }
     }
@@ -251,7 +352,7 @@ impl InternerStorage {
     }
 
     /// Pushes the string into the buffer and returns corresponding symbol.
-    fn push(&mut self, string: &str) -> Symbol {
+    fn push(&mut self, string: &str) -> S {
         self.storage.push_str(string);
 
         let end = self.storage.as_bytes().len();
@@ -271,7 +372,10 @@ macro_rules! intern_primitive_symbols {
     }
 }
 
-impl Interner {
+impl<S> Interner<S>
+where
+    S: SymbolID,
+{
     /// Creates a new empty [`Interner`], that only contains builtin symbols.
     #[inline]
     #[must_use]
@@ -307,11 +411,11 @@ impl Interner {
     /// # Example
     /// ```
     /// # use ry_interner::Interner;
-    /// let mut interner = Interner::default();
-    /// let hello_symbol = interner.get_or_intern("hello");
-    /// assert_eq!(Some(hello_symbol), interner.get("hello"));
+    /// let mut interner = Interner::<usize>::default();
+    /// let hello_id = interner.get_or_intern("hello");
+    /// assert_eq!(Some(hello_id), interner.get("hello"));
     /// ```
-    pub fn get(&self, string: impl AsRef<str>) -> Option<Symbol> {
+    pub fn get(&self, string: impl AsRef<str>) -> Option<S> {
         let string = string.as_ref();
         let hash = hash_value(&self.hasher, string);
 
@@ -327,8 +431,8 @@ impl Interner {
     fn get_or_intern_using<T>(
         &mut self,
         string: T,
-        intern_fn: fn(&mut InternerStorage, T) -> Symbol,
-    ) -> Symbol
+        intern_fn: fn(&mut InternerStorage<S>, T) -> S,
+    ) -> S
     where
         T: AsRef<str> + Copy + Hash + for<'a> PartialEq<&'a str>,
     {
@@ -337,15 +441,17 @@ impl Interner {
         let hasher = &self.hasher;
         let hash = hash_value(hasher, string_ref);
 
-        let entry = self.dedup.raw_entry_mut().from_hash(hash, |symbol| {
-            string_ref == unsafe { self.backend.unchecked_resolve(*symbol) }
+        let entry = self.dedup.raw_entry_mut().from_hash(hash, |symbol_id| {
+            string_ref == unsafe { self.backend.unchecked_resolve(*symbol_id) }
         });
 
         let (&mut symbol, &mut ()) = match entry {
             RawEntryMut::Vacant(vacant) => {
                 let symbol = intern_fn(&mut self.backend, string);
-                vacant.insert_with_hasher(hash, symbol, (), |symbol| {
-                    hash_value(hasher, unsafe { self.backend.unchecked_resolve(*symbol) })
+                vacant.insert_with_hasher(hash, symbol, (), |symbol_id| {
+                    hash_value(hasher, unsafe {
+                        self.backend.unchecked_resolve(*symbol_id)
+                    })
                 })
             }
             RawEntryMut::Occupied(occupied) => occupied.into_key_value(),
@@ -356,7 +462,7 @@ impl Interner {
 
     /// Interns the given string and returns a corresponding symbol.
     #[inline]
-    pub fn get_or_intern(&mut self, string: impl AsRef<str>) -> Symbol {
+    pub fn get_or_intern(&mut self, string: impl AsRef<str>) -> S {
         self.get_or_intern_using(string.as_ref(), InternerStorage::intern)
     }
 
@@ -371,15 +477,15 @@ impl Interner {
     /// # Example
     /// ```
     /// # use ry_interner::Interner;
-    /// let mut interner = Interner::default();
-    /// let hello_symbol = interner.get_or_intern("hello");
+    /// let mut interner = Interner::<usize>::default();
+    /// let hello_id = interner.get_or_intern("hello");
     ///
-    /// assert_eq!(interner.get("hello"), Some(hello_symbol));
+    /// assert_eq!(interner.get("hello"), Some(hello_id));
     /// assert_eq!(interner.get("!"), None);
     /// ```
     #[inline]
     #[must_use]
-    pub fn resolve(&self, symbol: Symbol) -> Option<&str> {
+    pub fn resolve(&self, symbol: S) -> Option<&str> {
         self.backend.resolve(symbol)
     }
 }
@@ -403,7 +509,7 @@ struct Span {
 /// - [`IdentifierInterner::get_or_intern()`] to intern a new string.
 /// - [`IdentifierInterner::resolve()`] to resolve already interned strings.
 #[derive(Debug, Clone, Default)]
-pub struct IdentifierInterner(Interner);
+pub struct IdentifierInterner(Interner<IdentifierID>);
 
 impl IdentifierInterner {
     /// Creates a new empty [`IdentifierInterner`], that **already contains builtin identifiers**!
@@ -435,17 +541,17 @@ impl IdentifierInterner {
     /// ```
     /// # use ry_interner::IdentifierInterner;
     /// let mut identifier_interner = IdentifierInterner::new();
-    /// let hello_symbol = identifier_interner.get_or_intern("hello");
-    /// assert_eq!(Some(hello_symbol), identifier_interner.get("hello"));
+    /// let hello_id = identifier_interner.get_or_intern("hello");
+    /// assert_eq!(Some(hello_id), identifier_interner.get("hello"));
     /// ```
     #[inline]
-    pub fn get(&self, identifier: impl AsRef<str>) -> Option<Symbol> {
+    pub fn get(&self, identifier: impl AsRef<str>) -> Option<IdentifierID> {
         self.0.get(identifier)
     }
 
     /// Interns the given identifier (if it doesn't exist) and returns a corresponding symbol.
     #[inline]
-    pub fn get_or_intern(&mut self, identifier: impl AsRef<str>) -> Symbol {
+    pub fn get_or_intern(&mut self, identifier: impl AsRef<str>) -> IdentifierID {
         self.0.get_or_intern(identifier)
     }
 
@@ -459,17 +565,18 @@ impl IdentifierInterner {
     ///
     /// # Example
     /// ```
-    /// # use ry_interner::{IdentifierInterner, builtin_symbols::UINT8};
+    /// # use ry_interner::{IdentifierInterner, builtin_symbols::UINT8, IdentifierID};
     /// let mut identifier_interner = IdentifierInterner::new();
-    /// let hello_symbol = identifier_interner.get_or_intern("hello");
     ///
-    /// assert_eq!(identifier_interner.resolve(hello_symbol), Some("hello"));
+    /// let hello_id = identifier_interner.get_or_intern("hello");
+    ///
+    /// assert_eq!(identifier_interner.resolve(hello_id), Some("hello"));
     /// assert_eq!(identifier_interner.resolve(UINT8), Some("uint8")); // interned by default
-    /// assert_eq!(identifier_interner.resolve(3123123123), None);
+    /// assert_eq!(identifier_interner.resolve(IdentifierID(3123123123)), None);
     /// ```
     #[inline]
     #[must_use]
-    pub fn resolve(&self, symbol: Symbol) -> Option<&str> {
+    pub fn resolve(&self, symbol: IdentifierID) -> Option<&str> {
         self.0.resolve(symbol)
     }
 }
@@ -479,11 +586,23 @@ impl IdentifierInterner {
 ///
 /// The ID-s that correspond to file paths have a type of [`PathID`].
 #[derive(Debug, Clone)]
-pub struct PathInterner(Interner);
+pub struct PathInterner(Interner<PathID>);
 
 /// ID of a path in the [`PathInterner`].
-#[derive(Debug, Copy, Clone, Hash, Default, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct PathID(pub usize);
+
+impl SymbolID for PathID {
+    #[inline]
+    fn into_storage_index(self) -> usize {
+        self.0
+    }
+
+    #[inline]
+    fn from_storage_index(index: usize) -> Self {
+        Self(index)
+    }
+}
 
 /// ID of a path, that will never exist in the [`PathInterner`].
 pub const DUMMY_PATH_ID: PathID = PathID(0);
@@ -510,17 +629,15 @@ impl PathInterner {
     #[inline]
     #[must_use]
     pub fn get_or_intern(&mut self, path: impl AsRef<Path>) -> PathID {
-        PathID(
-            self.0
-                .get_or_intern(path.as_ref().to_str().expect("Invalid UTF-8 path")),
-        )
+        self.0
+            .get_or_intern(path.as_ref().to_str().expect("Invalid UTF-8 path"))
     }
 
     /// Resolves a path stored in the storage.
     #[inline]
     #[must_use]
     pub fn resolve(&self, id: PathID) -> Option<PathBuf> {
-        self.0.resolve(id.0).map(PathBuf::from)
+        self.0.resolve(id).map(PathBuf::from)
     }
 
     /// Resolves a path stored in the storage (same as `resolve_path()`),

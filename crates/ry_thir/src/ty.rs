@@ -1,7 +1,7 @@
 //! Defines [`Type`] for working with types and THIR nodes.
 
 use ry_filesystem::location::Location;
-use ry_interner::{builtin_symbols, Symbol};
+use ry_interner::{builtin_symbols, IdentifierID};
 use ry_name_resolution::Path;
 
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
@@ -57,7 +57,7 @@ impl Type {
 pub enum TypeVariable {
     TypeArgument {
         /// Interned name of the corresponding generic parameter.
-        symbol: Symbol,
+        symbol: IdentifierID,
         /// Location of the type argument itself (if exists), e.g. location `_` in `HashMap[_, int32]`.
         location: Option<Location>,
         /// Path to the type that contains the correspoding generic parameter.
@@ -98,7 +98,7 @@ pub trait Typed {
 /// Creates a type constructor for a given symbol.
 #[inline]
 #[must_use]
-fn primitive_constructor(symbol: Symbol) -> Type {
+fn primitive_constructor(symbol: IdentifierID) -> Type {
     Type::Constructor(TypeConstructor {
         left: Path {
             symbols: vec![symbol],

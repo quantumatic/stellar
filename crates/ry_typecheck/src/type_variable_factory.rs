@@ -1,5 +1,5 @@
 use ry_filesystem::location::Location;
-use ry_interner::Symbol;
+use ry_interner::IdentifierID;
 use ry_name_resolution::Path;
 use ry_thir::ty::{Type, TypeVariable};
 
@@ -55,7 +55,7 @@ impl TypeVariableFactory {
     #[must_use]
     pub fn make_variable_for_type_argument(
         &mut self,
-        symbol: Symbol,
+        symbol: IdentifierID,
         location: Option<Location>,
         origin_type_path: Path,
         origin_location: Location,
@@ -73,7 +73,7 @@ impl TypeVariableFactory {
     #[must_use]
     pub fn make_type_argument_placeholder(
         &mut self,
-        symbol: Symbol,
+        symbol: IdentifierID,
         location: Option<Location>,
         origin_type_path: Path,
         origin_location: Location,

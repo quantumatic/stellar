@@ -68,7 +68,7 @@ use std::{mem, str::Chars, string::String};
 
 use ry_ast::token::{get_keyword, LexError, Punctuator, RawLexError, RawToken, Token};
 use ry_filesystem::location::{ByteOffset, Location};
-use ry_interner::{IdentifierInterner, PathID, Symbol};
+use ry_interner::{IdentifierID, IdentifierInterner, PathID};
 use ry_stable_likely::unlikely;
 
 mod number;
@@ -140,7 +140,7 @@ pub struct Lexer<'s, 'i> {
     offset: ByteOffset,
 
     /// Symbol corresponding to an identifier being processed early on.
-    pub scanned_identifier: Symbol,
+    pub scanned_identifier: IdentifierID,
     /// Buffer for storing scanned characters (after processing escape sequences).
     pub scanned_char: char,
     /// Buffer for storing scanned strings (after processing escape sequences).
@@ -169,7 +169,7 @@ impl<'s, 'i> Lexer<'s, 'i> {
             chars,
             identifier_interner,
             offset: ByteOffset(0),
-            scanned_identifier: 0,
+            scanned_identifier: IdentifierID(0),
             scanned_char: '\0',
             scanned_string: String::new(),
         }

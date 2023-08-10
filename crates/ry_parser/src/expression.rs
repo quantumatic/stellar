@@ -203,7 +203,7 @@ impl Parse for PrimaryExpressionParser {
 
                 Some(Expression::Identifier(IdentifierAST {
                     location: state.current_token.location,
-                    symbol,
+                    id: symbol,
                 }))
             }
             RawToken::Punctuator(Punctuator::OpenParent) => {

@@ -189,7 +189,7 @@ impl Visitor<'_> for Serializer<'_> {
         self.write(format!(
             "IDENTIFIER: {} <{}>",
             self.identifier_interner
-                .resolve(identifier.symbol)
+                .resolve(identifier.id)
                 .unwrap_or("?"),
             identifier.location
         ));

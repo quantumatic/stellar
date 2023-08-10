@@ -444,7 +444,7 @@ impl<'s, 'd, 'i> ParseState<'s, 'd, 'i> {
         let locationned_symbol = if self.next_token.raw == RawToken::Identifier {
             IdentifierAST {
                 location: self.next_token.location,
-                symbol: self.lexer.scanned_identifier,
+                id: self.lexer.scanned_identifier,
             }
         } else {
             self.add_diagnostic(UnexpectedTokenDiagnostic::new(

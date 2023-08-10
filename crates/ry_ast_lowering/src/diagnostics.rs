@@ -3,7 +3,7 @@ use ry_diagnostics::BuildDiagnostic;
 use ry_filesystem::location::Location;
 use ry_interner::PathID;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct UnnecessaryParenthesesInPatternDiagnostic {
     pub location: Location,
 }
@@ -23,7 +23,7 @@ impl BuildDiagnostic for UnnecessaryParenthesesInPatternDiagnostic {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct UnnecessaryParenthesizedExpression {
     pub location: Location,
 }
@@ -43,7 +43,7 @@ impl BuildDiagnostic for UnnecessaryParenthesizedExpression {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct UnnecessaryParenthesizedType {
     pub location: Location,
 }
