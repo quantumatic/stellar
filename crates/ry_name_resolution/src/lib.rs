@@ -197,7 +197,7 @@ impl ResolutionEnvironment {
             return None;
         }
 
-        NameBinding::Package(first_identifier.symbol).resolve_rest_of_the_path(
+        NameBinding::Package(PackageID(first_identifier.symbol)).resolve_rest_of_the_path(
             first_identifier,
             identifiers,
             identifier_interner,
@@ -211,7 +211,7 @@ impl ResolutionEnvironment {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum NameBinding {
     /// A package.
-    Package(Symbol),
+    Package(PackageID),
 
     /// A submodule.
     Module(ModuleID),
@@ -233,6 +233,14 @@ pub trait ResolveFullPath: Sized + Debug + Copy {
     fn full_path_or_panic(self, environment: &ResolutionEnvironment) -> Path {
         self.full_path(environment)
             .unwrap_or_else(|| panic!("Failed to get full path of the definition id:\n{self:?}"))
+    }
+}
+
+impl ResolveFullPath for PackageID {
+    fn full_path(self, _: &ResolutionEnvironment) -> Option<Path> {
+        Some(Path {
+            symbols: vec![self.0],
+        })
     }
 }
 
@@ -271,6 +279,18 @@ impl ResolveFullPath for EnumItemID {
                     .chain(iter::once(self.item_id))
                     .collect(),
             })
+    }
+}
+
+impl ResolveFullPath for NameBinding {
+    #[inline]
+    fn full_path(self, environment: &ResolutionEnvironment) -> Option<Path> {
+        match self {
+            Self::Package(package_id) => package_id.full_path(environment),
+            Self::Module(module_id) => module_id.full_path(environment),
+            Self::ModuleItem(definition_id) => definition_id.full_path(environment),
+            Self::EnumItem(enum_item_id) => enum_item_id.full_path(environment),
+        }
     }
 }
 
@@ -362,15 +382,10 @@ fn resolve_path_segment(
     environment: &ResolutionEnvironment,
 ) -> Option<NameBinding> {
     match binding {
-        NameBinding::Package(package_symbol) => {
+        NameBinding::Package(package_id) => {
             let Some(module) = environment
                 .module_scopes
-                .get(
-                    environment
-                        .packages_root_modules
-                        .get(&PackageID(package_symbol))
-                        .unwrap(),
-                )
+                .get(environment.packages_root_modules.get(&package_id).unwrap())
                 // Module must exist at this point, or something went wrong when
                 // building the name resolution environment.
                 .unwrap()
@@ -598,7 +613,7 @@ impl ModuleScope {
                 .packages_root_modules
                 .contains_key(&PackageID(identifier.symbol))
             {
-                Some(NameBinding::Package(identifier.symbol))
+                Some(NameBinding::Package(PackageID(identifier.symbol)))
             } else {
                 None
             }
