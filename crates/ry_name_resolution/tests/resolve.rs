@@ -3,7 +3,7 @@ use ry_diagnostics::GlobalDiagnostics;
 use ry_filesystem::location::DUMMY_LOCATION;
 use ry_fx_hash::FxHashMap;
 use ry_interner::{IdentifierInterner, PathInterner};
-use ry_name_resolution::{ModuleScope, NameBinding, ResolutionEnvironment};
+use ry_name_resolution::{ModuleID, ModuleScope, NameBinding, ResolutionEnvironment};
 
 macro_rules! dummy_identifier {
     ($symbol:expr) => {
@@ -28,15 +28,19 @@ fn resolve_module() {
     let b = identifier_interner.get_or_intern("b");
 
     let mut path_interner = PathInterner::new();
+
     let package_root_module_path_id = path_interner.get_or_intern("a/package.ry");
     let child_module_path_id = path_interner.get_or_intern("a/a.ry");
+
+    let package_root_module_id = ModuleID(package_root_module_path_id);
+    let child_module_id = ModuleID(child_module_path_id);
 
     let mut environment = ResolutionEnvironment::new();
     let mut diagnostics = GlobalDiagnostics::new();
 
     let mut package_root_module_scope = ModuleScope {
         name: a,
-        path_id: package_root_module_path_id,
+        id: package_root_module_id,
         bindings: FxHashMap::default(),
         enums: FxHashMap::default(),
         imports: FxHashMap::default(),
@@ -44,11 +48,11 @@ fn resolve_module() {
 
     package_root_module_scope
         .bindings
-        .insert(a, NameBinding::Module(child_module_path_id));
+        .insert(a, NameBinding::Module(child_module_id));
 
     let child_module_scope = ModuleScope {
         name: a,
-        path_id: child_module_path_id,
+        id: child_module_id,
         bindings: FxHashMap::default(),
         enums: FxHashMap::default(),
         imports: FxHashMap::default(),
@@ -56,13 +60,13 @@ fn resolve_module() {
 
     environment
         .packages_root_modules
-        .insert(a, package_root_module_path_id);
+        .insert(a, package_root_module_id);
     environment
-        .modules
-        .insert(package_root_module_path_id, package_root_module_scope);
+        .module_scopes
+        .insert(package_root_module_id, package_root_module_scope);
     environment
-        .modules
-        .insert(child_module_path_id, child_module_scope);
+        .module_scopes
+        .insert(child_module_id, child_module_scope);
 
     assert_eq!(
         environment.resolve_path(
@@ -73,7 +77,7 @@ fn resolve_module() {
             &identifier_interner,
             &mut diagnostics
         ),
-        Some(NameBinding::Module(child_module_path_id))
+        Some(NameBinding::Module(child_module_id))
     );
 
     assert_eq!(
@@ -106,26 +110,30 @@ fn import() {
     let c = identifier_interner.get_or_intern("c");
 
     let mut path_interner = PathInterner::new();
+
     let package_root_module_path_id = path_interner.get_or_intern("a/package.ry");
     let child_module_path_id = path_interner.get_or_intern("a/b.ry");
+
+    let package_root_module_id = ModuleID(package_root_module_path_id);
+    let child_module_id = ModuleID(child_module_path_id);
 
     let mut environment = ResolutionEnvironment::new();
     let mut diagnostics = GlobalDiagnostics::new();
 
     let mut package_root_module_scope = ModuleScope {
         name: a,
-        path_id: package_root_module_path_id,
+        id: package_root_module_id,
         bindings: FxHashMap::default(),
         imports: FxHashMap::default(),
         enums: FxHashMap::default(),
     };
     package_root_module_scope
         .bindings
-        .insert(b, NameBinding::Module(child_module_path_id));
+        .insert(b, NameBinding::Module(child_module_id));
 
     let child_module_scope = ModuleScope {
         name: b,
-        path_id: child_module_path_id,
+        id: child_module_id,
         bindings: FxHashMap::default(),
         imports: FxHashMap::default(),
         enums: FxHashMap::default(),
@@ -148,20 +156,20 @@ fn import() {
 
     environment
         .packages_root_modules
-        .insert(a, package_root_module_path_id);
+        .insert(a, package_root_module_id);
     environment
-        .modules
-        .insert(package_root_module_path_id, package_root_module_scope);
+        .module_scopes
+        .insert(package_root_module_id, package_root_module_scope);
     environment
-        .modules
-        .insert(child_module_path_id, child_module_scope);
+        .module_scopes
+        .insert(child_module_id, child_module_scope);
 
     environment.resolve_imports(&identifier_interner, &mut diagnostics);
 
     assert_eq!(
         environment
-            .modules
-            .get(&package_root_module_path_id)
+            .module_scopes
+            .get(&package_root_module_id)
             .unwrap()
             .resolve(
                 dummy_identifier!(b),
@@ -169,12 +177,12 @@ fn import() {
                 &mut diagnostics,
                 &environment
             ),
-        Some(NameBinding::Module(child_module_path_id))
+        Some(NameBinding::Module(child_module_id))
     );
     assert_eq!(
         environment
-            .modules
-            .get(&package_root_module_path_id)
+            .module_scopes
+            .get(&package_root_module_id)
             .unwrap()
             .resolve(
                 dummy_identifier!(c),
@@ -182,6 +190,6 @@ fn import() {
                 &mut diagnostics,
                 &environment
             ),
-        Some(NameBinding::Module(child_module_path_id))
+        Some(NameBinding::Module(child_module_id))
     );
 }

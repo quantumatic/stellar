@@ -85,7 +85,7 @@ use ry_ast::{
     Expression, IdentifierAST, Module, ModuleItem, Pattern, Statement, Type, Visibility,
 };
 use ry_diagnostics::{BuildDiagnostic, GlobalDiagnostics};
-use ry_filesystem::location::{Location, LocationIndex};
+use ry_filesystem::location::{ByteOffset, Location, LocationIndex};
 use ry_interner::{IdentifierInterner, PathID, PathInterner};
 use ry_lexer::Lexer;
 use statement::StatementParser;
@@ -417,7 +417,7 @@ impl<'s, 'd, 'i> ParseState<'s, 'd, 'i> {
     /// Creates a new location with the parser state's file id and
     /// the given starting and ending byte offsets.
     #[inline]
-    pub(crate) const fn make_location(&self, start: usize, end: usize) -> Location {
+    pub(crate) const fn make_location(&self, start: ByteOffset, end: ByteOffset) -> Location {
         Location {
             file_path_id: self.lexer.file_path_id,
             start,
@@ -428,7 +428,7 @@ impl<'s, 'd, 'i> ParseState<'s, 'd, 'i> {
     /// Creates a new location with the state's file id and
     /// ending with a current token location's end byte location.
     #[inline]
-    pub(crate) const fn location_from(&self, start: usize) -> Location {
+    pub(crate) const fn location_from(&self, start: ByteOffset) -> Location {
         self.make_location(start, self.current_token.location.end)
     }
 

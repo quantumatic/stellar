@@ -63,7 +63,7 @@
     clippy::cast_possible_truncation
 )]
 
-use std::iter;
+use std::{fmt::Debug, iter};
 
 use derive_more::Display;
 use diagnostics::{
@@ -73,31 +73,45 @@ use diagnostics::{
     ModuleItemsExceptEnumsDoNotServeAsNamespacesDiagnostic,
 };
 use itertools::Itertools;
-use ry_ast::{DefinitionID, IdentifierAST, Visibility};
+use ry_ast::{IdentifierAST, Visibility};
 use ry_diagnostics::{BuildDiagnostic, GlobalDiagnostics};
 use ry_fx_hash::FxHashMap;
 use ry_interner::{IdentifierInterner, PathID, Symbol};
 
 pub mod diagnostics;
 
+/// An ID assigned for every module in a workspace.
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
+pub struct ModuleID(pub PathID);
+
+/// An ID for every definition (module item) in a workspace.
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
+pub struct DefinitionID {
+    /// Interned name of the definition.
+    pub symbol: Symbol,
+
+    /// ID of the module that contains the definition.
+    pub module_id: ModuleID,
+}
+
 /// A data structure used to store information about modules and packages that
 /// are going through the name resolution process.
 #[derive(Debug, PartialEq, Eq, Clone, Default)]
 pub struct ResolutionEnvironment {
     /// Packages' root modules that are analyzed in the workspace.
-    pub packages_root_modules: FxHashMap<Symbol, PathID>,
+    pub packages_root_modules: FxHashMap<Symbol, ModuleID>,
 
     /// Modules, that are analyzed in the workspace.
-    pub modules: FxHashMap<PathID, ModuleScope>,
+    pub module_scopes: FxHashMap<ModuleID, ModuleScope>,
 
     /// Storage of absolute paths of modules in the environment, e.g. `std.io`.
-    pub module_paths: FxHashMap<PathID, Path>,
+    pub module_paths: FxHashMap<ModuleID, Path>,
 
     /// Storage of visibilities of module items.
     pub visibilities: FxHashMap<DefinitionID, Visibility>,
 
     /// Resolved imports in all modules.
-    pub resolved_imports: FxHashMap<PathID, ResolvedImports>,
+    pub resolved_imports: FxHashMap<ModuleID, ResolvedImports>,
 }
 
 /// Resolved imports in a particular module.
@@ -128,7 +142,7 @@ impl ResolutionEnvironment {
         identifier_interner: &IdentifierInterner,
         diagnostics: &mut GlobalDiagnostics,
     ) {
-        for (module_path_id, module_scope) in &self.modules {
+        for (module_path_id, module_scope) in &self.module_scopes {
             let mut imports = FxHashMap::default();
 
             for (symbol, import_path) in &module_scope.imports {
@@ -196,13 +210,49 @@ pub enum NameBinding {
     Package(Symbol),
 
     /// A submodule.
-    Module(PathID),
+    Module(ModuleID),
 
     /// An item defined in a particular module.
     ModuleItem(DefinitionID),
 
     /// An enum item.
     EnumItem(EnumItemID),
+}
+
+/// A trait for getting the full path of a definition.
+pub trait GetFullPath: Sized + Debug + Copy {
+    /// Returns the full path of the definition.
+    fn full_path(self, environment: &ResolutionEnvironment) -> Option<Path>;
+
+    /// Returns the full path of the definition.
+    #[must_use]
+    fn full_path_or_panic(self, environment: &ResolutionEnvironment) -> Path {
+        self.full_path(environment)
+            .unwrap_or_else(|| panic!("Failed to get full path of the definition id:\n{:?}", self))
+    }
+}
+
+impl GetFullPath for DefinitionID {
+    fn full_path(self, environment: &ResolutionEnvironment) -> Option<Path> {
+        environment
+            .module_paths
+            .get(&self.module_id)
+            .map(|module_path| Path {
+                symbols: module_path
+                    .clone()
+                    .symbols
+                    .into_iter()
+                    .chain(iter::once(self.symbol))
+                    .collect(),
+            })
+    }
+}
+
+impl GetFullPath for ModuleID {
+    #[inline]
+    fn full_path(self, environment: &ResolutionEnvironment) -> Option<Path> {
+        environment.module_paths.get(&self).cloned()
+    }
 }
 
 /// A kind of a name binding.
@@ -295,7 +345,7 @@ fn resolve_path_segment(
     match binding {
         NameBinding::Package(package_symbol) => {
             let Some(module) = environment
-                .modules
+                .module_scopes
                 .get(
                     environment
                         .packages_root_modules
@@ -356,8 +406,8 @@ fn resolve_path_segment(
         }
         NameBinding::ModuleItem(definition_id) => {
             if let Some(enum_scope) = environment
-                .modules
-                .get(&definition_id.module_path_id)?
+                .module_scopes
+                .get(&definition_id.module_id)?
                 .enums
                 .get(&definition_id.symbol)
             {
@@ -389,7 +439,7 @@ fn resolve_path_segment(
         }
         NameBinding::Module(submodule_id) => {
             let Some(binding) = environment
-                .modules
+                .module_scopes
                 .get(&submodule_id)
                 .unwrap()
                 .bindings
@@ -459,7 +509,7 @@ pub struct ModuleScope {
     pub name: Symbol,
 
     /// ID of the module's source file path.
-    pub path_id: PathID,
+    pub id: ModuleID,
 
     /// The module items name bindings.
     pub bindings: FxHashMap<Symbol, NameBinding>,
@@ -537,7 +587,7 @@ impl ModuleScope {
             Some(binding)
         } else {
             // check for possible name binding that can come from imports
-            if let Some(binding) = environment.resolved_imports[&self.path_id]
+            if let Some(binding) = environment.resolved_imports[&self.id]
                 .imports
                 .get(&identifier.symbol)
             {

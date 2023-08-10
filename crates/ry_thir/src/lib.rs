@@ -402,7 +402,7 @@ pub struct TypeSignature {
 }
 
 #[derive(Debug, PartialEq, Eq, Clone)]
-pub struct EnumSignature {
+pub struct Enum {
     pub type_signature: TypeSignature,
     pub items: FxHashMap<Symbol, EnumItem>,
 }
@@ -433,7 +433,7 @@ pub struct EnumItemTupleField {
 }
 
 #[derive(Debug, PartialEq, Eq, Clone)]
-pub struct StructSignature {
+pub struct Struct {
     pub type_signature: TypeSignature,
     pub fields: FxHashMap<Symbol, StructField>,
 }
@@ -457,7 +457,6 @@ pub struct InterfaceSignature {
     pub name: IdentifierAST,
     pub type_parameters: Vec<IdentifierAST>,
     pub predicates: Vec<WherePredicate>,
-    pub methods: FxHashMap<Symbol, FunctionSignature>,
 }
 
 #[derive(Debug, PartialEq, Eq, Clone)]
@@ -491,8 +490,24 @@ pub struct Interface {
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub enum ModuleItemSignature {
-    Enum(EnumSignature),
+    Type(TypeSignature),
     TypeAlias(TypeAliasSignature),
     Interface(InterfaceSignature),
     Function(FunctionSignature),
+}
+
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub enum ModuleItem {
+    Enum {
+        signature: TypeSignature,
+        items: FxHashMap<Symbol, EnumItem>,
+    },
+    Struct {
+        signature: TypeSignature,
+        fields: FxHashMap<Symbol, StructField>,
+    },
+    Interface {
+        signature: InterfaceSignature,
+        methods: FxHashMap<Symbol, FunctionSignature>,
+    },
 }

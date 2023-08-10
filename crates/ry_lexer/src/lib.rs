@@ -67,7 +67,7 @@
 use std::{mem, str::Chars, string::String};
 
 use ry_ast::token::{get_keyword, LexError, Punctuator, RawLexError, RawToken, Token};
-use ry_filesystem::location::Location;
+use ry_filesystem::location::{ByteOffset, Location};
 use ry_interner::{IdentifierInterner, PathID, Symbol};
 use ry_stable_likely::unlikely;
 
@@ -80,7 +80,7 @@ mod number;
 /// # use ry_lexer::Lexer;
 /// # use ry_ast::token::{Token, RawToken::EndOfFile};
 /// # use ry_interner::IdentifierInterner;
-/// # use ry_filesystem::location::Location;
+/// # use ry_filesystem::location::{Location, ByteOffset};
 /// # use ry_interner::DUMMY_PATH_ID;
 /// let mut identifier_interner = IdentifierInterner::default();
 /// let mut lexer = Lexer::new(DUMMY_PATH_ID, "", &mut identifier_interner);
@@ -89,7 +89,11 @@ mod number;
 ///     lexer.next_token(),
 ///     Token {
 ///         raw: EndOfFile,
-///         location: Location { file_path_id: DUMMY_PATH_ID, start: 0, end: 1 }
+///         location: Location {
+///             file_path_id: DUMMY_PATH_ID,
+///             start: ByteOffset(0),
+///             end: ByteOffset(1)
+///         }
 ///     }
 /// );
 /// ```
@@ -133,7 +137,7 @@ pub struct Lexer<'s, 'i> {
     chars: Chars<'s>,
 
     /// Offset of the current character being processed.
-    offset: usize,
+    offset: ByteOffset,
 
     /// Symbol corresponding to an identifier being processed early on.
     pub scanned_identifier: Symbol,
@@ -164,7 +168,7 @@ impl<'s, 'i> Lexer<'s, 'i> {
             next,
             chars,
             identifier_interner,
-            offset: 0,
+            offset: ByteOffset(0),
             scanned_identifier: 0,
             scanned_char: '\0',
             scanned_string: String::new(),
@@ -229,7 +233,7 @@ impl<'s, 'i> Lexer<'s, 'i> {
 
     /// Returns a location with given start and end byte offsets
     /// and with the lexer's currently processed file path id.
-    const fn make_location(&self, start: usize, end: usize) -> Location {
+    const fn make_location(&self, start: ByteOffset, end: ByteOffset) -> Location {
         Location {
             file_path_id: self.file_path_id,
             start,
@@ -238,12 +242,13 @@ impl<'s, 'i> Lexer<'s, 'i> {
     }
 
     /// Returns a location of the current character.
-    const fn current_char_location(&self) -> Location {
+    #[allow(clippy::missing_const_for_fn)]
+    fn current_char_location(&self) -> Location {
         self.make_location(self.offset, self.offset + 1)
     }
 
     /// Returns a location ending with the current character's location.
-    const fn location_from(&self, start_offset: usize) -> Location {
+    const fn location_from(&self, start_offset: ByteOffset) -> Location {
         self.make_location(start_offset, self.offset)
     }
 
@@ -264,7 +269,7 @@ impl<'s, 'i> Lexer<'s, 'i> {
     /// Returns the string slice of source text between `start_offset`
     /// and `self.offset` when `f` returns `false` OR `self.eof() == true`.
     #[inline]
-    fn advance_while<F>(&mut self, start_offset: usize, mut f: F) -> &'s str
+    fn advance_while<F>(&mut self, start_offset: ByteOffset, mut f: F) -> &'s str
     where
         F: FnMut(char, char) -> bool,
     {
@@ -272,7 +277,7 @@ impl<'s, 'i> Lexer<'s, 'i> {
             self.advance();
         }
 
-        &self.source[start_offset..self.offset]
+        &self.source[start_offset.0..self.offset.0]
     }
 
     /// Processes an escape sequence.

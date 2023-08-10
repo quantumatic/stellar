@@ -1,13 +1,14 @@
 #![allow(warnings)]
 
 use generic_parameter_scope::GenericParameterScope;
-use ry_ast::{DefinitionID, ImportPath};
+use ry_ast::ImportPath;
 use ry_diagnostics::GlobalDiagnostics;
 use ry_fx_hash::FxHashMap;
 use ry_hir::Module;
 use ry_interner::{IdentifierInterner, PathID, PathInterner, Symbol};
 use ry_name_resolution::{
-    EnumData, EnumItemID, ModuleScope, NameBinding, Path, ResolutionEnvironment,
+    DefinitionID, EnumData, EnumItemID, ModuleID, ModuleScope, NameBinding, NameBindingKind, Path,
+    ResolutionEnvironment,
 };
 use ry_thir::{
     ty::{self, Type, TypeConstructor},
@@ -34,6 +35,7 @@ pub struct TypeCheckingContext<'i, 'p, 'd> {
 #[derive(Debug)]
 pub enum ModuleItem {
     HIR(ry_hir::ModuleItem),
+    THIR(ry_thir::ModuleItem),
 }
 
 impl<'i, 'p, 'd> TypeCheckingContext<'i, 'p, 'd> {
@@ -54,13 +56,13 @@ impl<'i, 'p, 'd> TypeCheckingContext<'i, 'p, 'd> {
         }
     }
 
-    pub fn add_package(&mut self, name: Symbol, package_root_module_path_id: PathID) {
+    pub fn add_package(&mut self, name: Symbol, package_root_module_id: ModuleID) {
         self.resolution_environment
             .packages_root_modules
-            .insert(name, package_root_module_path_id);
+            .insert(name, package_root_module_id);
     }
 
-    pub fn add_module(&mut self, module_path_id: PathID, path: Path, hir: Module) {
+    pub fn add_module(&mut self, module_id: ModuleID, path: Path, hir: Module) {
         let mut imports = FxHashMap::default();
         let mut enums = FxHashMap::default();
 
@@ -94,7 +96,7 @@ impl<'i, 'p, 'd> TypeCheckingContext<'i, 'p, 'd> {
                 } => {
                     let definition_id = DefinitionID {
                         symbol: name.symbol,
-                        module_path_id,
+                        module_id,
                     };
 
                     let mut items_data = FxHashMap::default();
@@ -117,7 +119,7 @@ impl<'i, 'p, 'd> TypeCheckingContext<'i, 'p, 'd> {
                 _ => {
                     let definition_id = DefinitionID {
                         symbol: item.name().unwrap(),
-                        module_path_id,
+                        module_id,
                     };
 
                     self.resolution_environment
@@ -130,7 +132,7 @@ impl<'i, 'p, 'd> TypeCheckingContext<'i, 'p, 'd> {
 
         self.resolution_environment
             .module_paths
-            .insert(module_path_id, path);
+            .insert(module_id, path);
     }
 
     #[inline]
@@ -225,6 +227,8 @@ impl<'i, 'p, 'd> TypeCheckingContext<'i, 'p, 'd> {
                 .make_unknown_type_placeholder(ty.location);
         };
 
+        if name_binding.kind() != NameBindingKind::ModuleItem {}
+
         todo!()
     }
 
@@ -232,6 +236,31 @@ impl<'i, 'p, 'd> TypeCheckingContext<'i, 'p, 'd> {
         &self,
         interface: ry_ast::TypeConstructor,
     ) -> TypeConstructor {
+        todo!()
+    }
+
+    fn get_signature(&mut self, definition_id: DefinitionID) -> Option<&ModuleItemSignature> {
+        if let Some(signature) = self.signatures.get(&definition_id) {
+            Some(signature)
+        } else {
+            let binding = self.items.get(&definition_id).unwrap();
+
+            match binding {
+                ModuleItem::THIR(_) => {
+                    panic!(
+                        "cannot have a THIR item without a signature at:\n{:?}",
+                        definition_id
+                    );
+                }
+                ModuleItem::HIR(hir) => todo!(),
+            }
+        }
+    }
+
+    fn analyze_signature<'a>(
+        &'a mut self,
+        hir: &ry_hir::ModuleItem,
+    ) -> Option<&'a ModuleItemSignature> {
         todo!()
     }
 }

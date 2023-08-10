@@ -84,20 +84,13 @@
 use std::fmt::Display;
 
 use ry_filesystem::location::Location;
-use ry_interner::{PathID, Symbol};
+use ry_interner::Symbol;
 use token::{Punctuator, RawToken};
 
 pub mod precedence;
 pub mod serialize;
 pub mod token;
 pub mod visit;
-
-/// An ID for every definition (module item) in a workspace.
-#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
-pub struct DefinitionID {
-    pub symbol: Symbol,
-    pub module_path_id: PathID,
-}
 
 /// A literal, e.g. `true`, `3`, `\"hello\"`.
 #[derive(Debug, PartialEq, Clone)]

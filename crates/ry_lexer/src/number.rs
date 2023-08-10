@@ -1,7 +1,7 @@
 use std::char::from_u32;
 
 use ry_ast::token::{NumberKind, RawLexError, RawToken, Token};
-use ry_filesystem::location::Location;
+use ry_filesystem::location::{ByteOffset, Location};
 
 use crate::{is_id_start, Lexer};
 
@@ -135,7 +135,7 @@ impl Lexer<'_, '_> {
             }
         }
 
-        let number_string = &self.source[start_offset..self.offset];
+        let number_string = &self.source[start_offset.0..self.offset.0];
 
         if let Some(location) = invalid_digit_location {
             if number_kind == NumberKind::Int {
@@ -174,7 +174,7 @@ impl Lexer<'_, '_> {
     /// successive digits, the function returns the location of the separator).
     fn check_for_invalid_separator(
         &self,
-        start_offset: usize,
+        start_offset: ByteOffset,
         number_string: &str,
     ) -> Option<Location> {
         let mut idx = 0;

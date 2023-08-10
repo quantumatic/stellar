@@ -482,10 +482,11 @@ impl IdentifierInterner {
 pub struct PathInterner(Interner);
 
 /// ID of a path in the [`PathInterner`].
-pub type PathID = usize;
+#[derive(Debug, Copy, Clone, Hash, Default, PartialEq, Eq)]
+pub struct PathID(pub usize);
 
 /// ID of a path, that will never exist in the [`PathInterner`].
-pub const DUMMY_PATH_ID: PathID = 0;
+pub const DUMMY_PATH_ID: PathID = PathID(0);
 
 impl Default for PathInterner {
     #[inline]
@@ -509,15 +510,17 @@ impl PathInterner {
     #[inline]
     #[must_use]
     pub fn get_or_intern(&mut self, path: impl AsRef<Path>) -> PathID {
-        self.0
-            .get_or_intern(path.as_ref().to_str().expect("Invalid UTF-8 path"))
+        PathID(
+            self.0
+                .get_or_intern(path.as_ref().to_str().expect("Invalid UTF-8 path")),
+        )
     }
 
     /// Resolves a path stored in the storage.
     #[inline]
     #[must_use]
     pub fn resolve(&self, id: PathID) -> Option<PathBuf> {
-        self.0.resolve(id).map(PathBuf::from)
+        self.0.resolve(id.0).map(PathBuf::from)
     }
 
     /// Resolves a path stored in the storage (same as `resolve_path()`),
@@ -527,6 +530,6 @@ impl PathInterner {
     #[allow(clippy::missing_panics_doc)]
     pub fn resolve_or_panic(&self, id: PathID) -> PathBuf {
         self.resolve(id)
-            .unwrap_or_else(|| panic!("Path with id: {id} is not found"))
+            .unwrap_or_else(|| panic!("Path with id: {} is not found", id.0))
     }
 }
