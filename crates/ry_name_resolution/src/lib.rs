@@ -294,7 +294,7 @@ fn resolve_path_segment(
 ) -> Option<NameBinding> {
     match binding {
         NameBinding::Package(package_symbol) => {
-            let module @ Some(_) = environment
+            let Some(module) = environment
                 .modules
                 .get(
                     environment
@@ -332,7 +332,7 @@ fn resolve_path_segment(
                 return None;
             };
 
-            module
+            Some(module)
         }
         NameBinding::EnumItem(_) => {
             diagnostics.add_single_file_diagnostic(
@@ -524,7 +524,7 @@ impl ModuleScope {
         diagnostics: &mut GlobalDiagnostics,
         environment: &ResolutionEnvironment,
     ) -> Option<NameBinding> {
-        if let binding @ Some(_) = self.bindings.get(&identifier.symbol).copied().or_else(|| {
+        if let Some(binding) = self.bindings.get(&identifier.symbol).copied().or_else(|| {
             if environment
                 .packages_root_modules
                 .contains_key(&identifier.symbol)
@@ -534,14 +534,14 @@ impl ModuleScope {
                 None
             }
         }) {
-            binding
+            Some(binding)
         } else {
             // check for possible name binding that can come from imports
-            if let binding @ Some(_) = environment.resolved_imports[&self.path_id]
+            if let Some(binding) = environment.resolved_imports[&self.path_id]
                 .imports
                 .get(&identifier.symbol)
             {
-                binding.copied()
+                Some(*binding)
             } else {
                 diagnostics.add_single_file_diagnostic(
                     identifier.location.file_path_id,

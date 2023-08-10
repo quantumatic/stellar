@@ -1,5 +1,6 @@
 #![allow(warnings)]
 
+use generic_parameter_scope::GenericParameterScope;
 use ry_ast::{DefinitionID, ImportPath};
 use ry_diagnostics::GlobalDiagnostics;
 use ry_fx_hash::FxHashMap;
@@ -76,7 +77,7 @@ impl<'i, 'p, 'd> TypeCheckingContext<'i, 'p, 'd> {
                     };
 
                     let Some(binding) = self.resolution_environment.resolve_path(
-                        &path,
+                        path,
                         self.identifier_interner,
                         self.diagnostics,
                     ) else {
@@ -143,7 +144,8 @@ impl<'i, 'p, 'd> TypeCheckingContext<'i, 'p, 'd> {
         ty: ry_hir::Type,
         identifier_interner: &mut IdentifierInterner,
         diagnostics: &mut GlobalDiagnostics,
-        scope: &ModuleScope,
+        generic_parameter_scope: &GenericParameterScope,
+        module_scope: &ModuleScope,
         environment: &ResolutionEnvironment,
     ) -> Type {
         match ty {
@@ -151,7 +153,8 @@ impl<'i, 'p, 'd> TypeCheckingContext<'i, 'p, 'd> {
                 constructor,
                 identifier_interner,
                 diagnostics,
-                scope,
+                generic_parameter_scope,
+                module_scope,
                 environment,
             ),
             ry_hir::Type::Tuple { element_types, .. } => Type::Tuple {
@@ -162,7 +165,8 @@ impl<'i, 'p, 'd> TypeCheckingContext<'i, 'p, 'd> {
                             element,
                             identifier_interner,
                             diagnostics,
-                            scope,
+                            generic_parameter_scope,
+                            module_scope,
                             environment,
                         )
                     })
@@ -180,7 +184,8 @@ impl<'i, 'p, 'd> TypeCheckingContext<'i, 'p, 'd> {
                             parameter,
                             identifier_interner,
                             diagnostics,
-                            scope,
+                            generic_parameter_scope,
+                            module_scope,
                             environment,
                         )
                     })
@@ -189,7 +194,8 @@ impl<'i, 'p, 'd> TypeCheckingContext<'i, 'p, 'd> {
                     *return_type,
                     identifier_interner,
                     diagnostics,
-                    scope,
+                    generic_parameter_scope,
+                    module_scope,
                     environment,
                 )),
             },
@@ -207,11 +213,12 @@ impl<'i, 'p, 'd> TypeCheckingContext<'i, 'p, 'd> {
         ty: ry_ast::TypeConstructor,
         identifier_interner: &mut IdentifierInterner,
         diagnostics: &mut GlobalDiagnostics,
-        scope: &ModuleScope,
+        generic_parameter_scope: &GenericParameterScope,
+        module_scope: &ModuleScope,
         environment: &ResolutionEnvironment,
     ) -> Type {
         let Some(name_binding) =
-            scope.resolve_path(&ty.path, identifier_interner, diagnostics, environment)
+            module_scope.resolve_path(ty.path, identifier_interner, diagnostics, environment)
         else {
             return self
                 .type_variable_factory
