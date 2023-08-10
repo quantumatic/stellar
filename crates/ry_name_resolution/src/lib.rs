@@ -228,7 +228,7 @@ pub trait GetFullPath: Sized + Debug + Copy {
     #[must_use]
     fn full_path_or_panic(self, environment: &ResolutionEnvironment) -> Path {
         self.full_path(environment)
-            .unwrap_or_else(|| panic!("Failed to get full path of the definition id:\n{:?}", self))
+            .unwrap_or_else(|| panic!("Failed to get full path of the definition id:\n{self:?}"))
     }
 }
 
