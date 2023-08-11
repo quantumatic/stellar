@@ -80,7 +80,7 @@ mod number;
 /// # use ry_lexer::Lexer;
 /// # use ry_ast::token::{Token, RawToken::EndOfFile};
 /// # use ry_interner::IdentifierInterner;
-/// # use ry_filesystem::location::{Location, ByteOffsetOffset};
+/// # use ry_filesystem::location::{Location, ByteOffset};
 /// # use ry_interner::DUMMY_PATH_ID;
 /// let mut identifier_interner = IdentifierInterner::default();
 /// let mut lexer = Lexer::new(DUMMY_PATH_ID, "", &mut identifier_interner);
@@ -91,8 +91,8 @@ mod number;
 ///         raw: EndOfFile,
 ///         location: Location {
 ///             file_path_id: DUMMY_PATH_ID,
-///             start: ByteOffsetOffset(0),
-///             end: ByteOffsetOffset(1)
+///             start: ByteOffset(0),
+///             end: ByteOffset(1)
 ///         }
 ///     }
 /// );
