@@ -4,7 +4,7 @@ use ry_ast::{
 };
 
 use crate::{
-    diagnostics::UnexpectedTokenDiagnostic, expected, literal::LiteralParser, macros::parse_list,
+    diagnostics::UnexpectedTokenDiagnostic, expected, list::ListParser, literal::LiteralParser,
     path::PathParser, Parse, ParseState,
 };
 
@@ -129,11 +129,10 @@ impl Parse for StructPatternParser {
     fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
         state.advance(); // `{`
 
-        let fields = parse_list!(
-            state,
-            node_name: "struct pattern",
-            closing_token: Punctuator::CloseBrace,
-            parse_element_expr: {
+        let fields = ListParser::new(
+            "struct pattern",
+            &[RawToken::from(Punctuator::CloseBrace)],
+            |state| {
                 if state.next_token.raw == Punctuator::DoubleDot {
                     state.advance();
 
@@ -157,8 +156,9 @@ impl Parse for StructPatternParser {
                         value_pattern,
                     })
                 }
-            }
-        );
+            },
+        )
+        .parse(state);
 
         state.advance();
 
@@ -179,12 +179,12 @@ impl Parse for ListPatternParser {
         let start = state.next_token.location.start;
         state.advance();
 
-        let inner_patterns = parse_list!(
-            state,
-            node_name: "list pattern",
-            closing_token: Punctuator::CloseBracket,
-            parse_element_expr: PatternParser.parse(state)
-        );
+        let inner_patterns = ListParser::new(
+            "list pattern",
+            &[RawToken::from(Punctuator::CloseBracket)],
+            |state| PatternParser.parse(state),
+        )
+        .parse(state);
 
         state.advance();
 
@@ -205,12 +205,12 @@ impl Parse for TupleLikePatternParser {
     fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
         state.advance(); // `(`
 
-        let inner_patterns = parse_list!(
-            state,
-            node_name: "enum item tuple pattern",
-            closing_token: Punctuator::CloseParent,
-            parse_element_expr: PatternParser.parse(state)
-        );
+        let inner_patterns = ListParser::new(
+            "enum item tuple pattern",
+            &[RawToken::from(Punctuator::CloseParent)],
+            |state| PatternParser.parse(state),
+        )
+        .parse(state);
 
         state.advance(); // `)`
 
@@ -231,12 +231,12 @@ impl Parse for GroupedOrTuplePatternParser {
         let start = state.next_token.location.start;
         state.advance();
 
-        let elements = parse_list!(
-            state,
-            node_name: "parenthesized or tuple pattern",
-            closing_token: Punctuator::CloseParent,
-            parse_element_expr: PatternParser.parse(state)
-        );
+        let elements = ListParser::new(
+            "parenthesized or tuple pattern",
+            &[RawToken::from(Punctuator::CloseParent)],
+            |state| PatternParser.parse(state),
+        )
+        .parse(state);
 
         state.advance();
 

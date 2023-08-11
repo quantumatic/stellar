@@ -324,15 +324,13 @@ impl<'i, 'p, 'g, 'd> TypeCheckingContext<'i, 'p, 'g, 'd> {
         )?;
         let generic_parameter_scope = Some(&generic_parameter_scope);
 
-        let value = self.resolve_type(hir.value.clone(), generic_parameter_scope, module_scope)?;
-
         todo!()
     }
 
-    fn analyze_generic_parameters_and_bounds(
-        &mut self,
+    fn analyze_generic_parameters_and_bounds<'a>(
+        &'a mut self,
         is_type_alias: bool,
-        parent_generic_parameter_scope: Option<&GenericParameterScope>,
+        parent_generic_parameter_scope: Option<&'a GenericParameterScope>,
         generic_parameters_hir: &[ry_hir::GenericParameter],
         where_predicates_hir: &[ry_hir::WherePredicate],
         module_scope: &ModuleScope,

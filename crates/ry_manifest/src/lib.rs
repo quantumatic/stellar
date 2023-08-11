@@ -176,10 +176,7 @@ pub fn parse_manifest(source: impl AsRef<str>) -> Result<TomlManifest, String> {
 }
 
 #[inline]
-fn parse_document<S>(source: S) -> Result<Document, String>
-where
-    S: AsRef<str>,
-{
+fn parse_document(source: impl AsRef<str>) -> Result<Document, String> {
     match source.as_ref().parse::<Document>() {
         Ok(table) => Ok(table),
         Err(err) => Err(format!("{err}")),

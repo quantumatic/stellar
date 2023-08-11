@@ -396,7 +396,7 @@ pub enum Statement {
 /// A block of statements - `{ <stmt>* }`.
 pub type StatementsBlock = Vec<Statement>;
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Predicate {
     pub ty: Type,
     pub bounds: Vec<TypeConstructor>,

@@ -29,6 +29,7 @@ impl<'p> GenericParameterScope<'p> {
         self.parameters.insert(parameter_name, data);
     }
 
+    #[must_use]
     pub fn resolve(&self, parameter_name: IdentifierID) -> Option<&GenericParameterData> {
         if let Some(data) = self.parameters.get(&parameter_name) {
             Some(data)
@@ -51,7 +52,7 @@ impl<'p> GenericParameterScope<'p> {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GenericParameterData {
     pub location: Location,
     pub default_value: Option<Type>,

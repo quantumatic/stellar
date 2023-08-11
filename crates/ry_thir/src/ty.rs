@@ -156,8 +156,8 @@ impl Type {
 
     #[inline]
     #[must_use]
-    pub fn list_type(self) -> Type {
-        Type::Constructor(TypeConstructor {
+    pub fn list_type(self) -> Self {
+        Self::Constructor(TypeConstructor {
             left: Path {
                 identifiers: vec![builtin_identifiers::LIST],
             },

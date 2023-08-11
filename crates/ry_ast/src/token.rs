@@ -348,10 +348,10 @@ pub enum RawToken {
     #[display(fmt = "{_0}")]
     Error(RawLexError),
     /// Keyword.
-    #[display(fmt = "{_0}")]
+    #[display(fmt = "`{_0}`")]
     Keyword(Keyword),
     /// Punctuator.
-    #[display(fmt = "{_0}")]
+    #[display(fmt = "`{_0}`")]
     Punctuator(Punctuator),
     /// String literal.
     #[display(fmt = "string literal")]

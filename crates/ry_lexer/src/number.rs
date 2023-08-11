@@ -5,27 +5,15 @@ use ry_filesystem::location::{ByteOffset, Location};
 
 use crate::{is_id_start, Lexer};
 
-/// True if `c` is a valid decimal digit.
-#[inline]
-pub(crate) const fn decimal(c: char) -> bool {
-    c.is_ascii_digit()
-}
-
-/// True if `c` is a valid hexadecimal digit.
-#[inline]
-pub(crate) fn hexadecimal(c: char) -> bool {
-    c.is_ascii_digit() || ('a'..='f').contains(&c.to_ascii_lowercase())
-}
-
 impl Lexer<'_, '_> {
     pub(crate) fn eat_number(&mut self) -> Token {
         let start_offset = self.offset;
 
-        // Weather the number is integer or float.
+        // If the number is an integer or a float.
         let mut number_kind = NumberKind::Invalid;
 
         // Base of the number.
-        let mut base = 10i8;
+        let mut base = 10;
 
         // 0b010
         //  ^ prefix = 'b'
@@ -137,11 +125,11 @@ impl Lexer<'_, '_> {
 
         let number_string = &self.source[start_offset.0..self.offset.0];
 
-        if let Some(location) = invalid_digit_location {
+        if let Some(invalid_digit_offset) = invalid_digit_location {
             if number_kind == NumberKind::Int {
                 return Token {
                     raw: RawToken::Error(RawLexError::InvalidDigit),
-                    location,
+                    location: invalid_digit_offset.next_byte_location_at(self.file_path_id),
                 };
             }
         }
@@ -183,7 +171,7 @@ impl Lexer<'_, '_> {
         for window in chars_slice.windows(3) {
             let (current, previous, next) = (window[0], window[1], window[2]);
 
-            if current != '_' || (hexadecimal(next) && hexadecimal(previous)) {
+            if current != '_' || (next.is_ascii_hexdigit() && previous.is_ascii_hexdigit()) {
                 idx += 1;
                 continue;
             }
@@ -197,8 +185,8 @@ impl Lexer<'_, '_> {
     /// Processes a group of digits.
     fn eat_digits(
         &mut self,
-        base: i8,
-        invalid_digit_location: &mut Option<Location>,
+        base: u8,
+        invalid_digit_offset: &mut Option<ByteOffset>,
         digit_separator: &mut i32,
     ) {
         #[inline]
@@ -209,23 +197,22 @@ impl Lexer<'_, '_> {
         }
 
         if base <= 10 {
-            let max = from_u32(base.try_into().unwrap())
-                .expect("Invalid max character in Lexer::eat_digits()");
+            let max = from_u32('0' as u32 + u32::from(base)).unwrap();
 
-            while decimal(self.current) || self.current == '_' {
+            while self.current.is_ascii_digit() || self.current == '_' {
                 let mut digit_separator_ = 1;
 
                 if self.current == '_' {
                     digit_separator_ = 2;
-                } else if self.current >= max && invalid_digit_location.is_none() {
-                    set_if_none(invalid_digit_location, self.current_char_location());
+                } else if self.current >= max && invalid_digit_offset.is_none() {
+                    set_if_none(invalid_digit_offset, self.offset);
                 }
 
                 *digit_separator |= digit_separator_;
                 self.advance();
             }
         } else {
-            while hexadecimal(self.current) || self.current == '_' {
+            while self.current.is_ascii_hexdigit() || self.current == '_' {
                 *digit_separator |= if self.current == '_' { 2 } else { 1 };
                 self.advance();
             }

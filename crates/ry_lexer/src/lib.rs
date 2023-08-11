@@ -80,7 +80,7 @@ mod number;
 /// # use ry_lexer::Lexer;
 /// # use ry_ast::token::{Token, RawToken::EndOfFile};
 /// # use ry_interner::IdentifierInterner;
-/// # use ry_filesystem::location::{Location, ByteOffset};
+/// # use ry_filesystem::location::{Location, ByteOffsetOffset};
 /// # use ry_interner::DUMMY_PATH_ID;
 /// let mut identifier_interner = IdentifierInterner::default();
 /// let mut lexer = Lexer::new(DUMMY_PATH_ID, "", &mut identifier_interner);
@@ -91,8 +91,8 @@ mod number;
 ///         raw: EndOfFile,
 ///         location: Location {
 ///             file_path_id: DUMMY_PATH_ID,
-///             start: ByteOffset(0),
-///             end: ByteOffset(1)
+///             start: ByteOffsetOffset(0),
+///             end: ByteOffsetOffset(1)
 ///         }
 ///     }
 /// );
@@ -231,7 +231,7 @@ impl<'s, 'i> Lexer<'s, 'i> {
         token
     }
 
-    /// Returns a location with given start and end byte offsets
+    /// Returns a location with given start and end [`ByteOffset`] offsets
     /// and with the lexer's currently processed file path id.
     const fn make_location(&self, start: ByteOffset, end: ByteOffset) -> Location {
         Location {
@@ -720,12 +720,14 @@ impl<'s, 'i> Lexer<'s, 'i> {
 
             ('.', '.') => self.advance_twice_with(Punctuator::DoubleDot),
 
-            (c, n) => {
-                if number::decimal(c) || (c == '.' && number::decimal(n)) {
+            _ => {
+                if self.current.is_ascii_digit()
+                    || (self.current == '.' && self.next.is_ascii_digit())
+                {
                     return self.eat_number();
-                } else if is_id_start(c) {
+                } else if is_id_start(self.current) {
                     return self.tokenize_identifier_or_keyword();
-                } else if c == '.' {
+                } else if self.current == '.' {
                     return self.advance_with(Punctuator::Dot);
                 }
 

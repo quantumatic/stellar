@@ -67,6 +67,7 @@
 pub mod diagnostics;
 mod expression;
 mod items;
+mod list;
 mod literal;
 mod path;
 mod pattern;
@@ -93,9 +94,6 @@ use tracing::trace;
 
 use crate::diagnostics::UnexpectedTokenDiagnostic;
 
-#[macro_use]
-mod macros;
-
 /// Represents a parse state.
 #[derive(Debug)]
 pub struct ParseState<'s, 'd, 'i> {
@@ -112,10 +110,7 @@ pub struct ParseState<'s, 'd, 'i> {
 }
 
 /// Represents AST node that can be parsed.
-pub trait Parse
-where
-    Self: Sized,
-{
+pub trait Parse: Sized {
     /// Output AST node type.
     type Output;
 
@@ -133,10 +128,7 @@ where
 /// in the syntax definition of every item in the Ry programming language.
 /// To avoid copying the behaviour described below, this trait must
 /// be implemented.
-pub trait OptionallyParse
-where
-    Self: Sized,
-{
+pub trait OptionallyParse: Sized {
     /// Output AST node type.
     type Output;
 
@@ -386,7 +378,7 @@ impl<'s, 'd, 'i> ParseState<'s, 'd, 'i> {
     }
 
     /// Checks if the next token is [`expected`].
-    fn expect(&mut self, expected: RawToken, node: impl ToString) -> Option<()> {
+    fn expect(&mut self, expected: RawToken, node: &'static str) -> Option<()> {
         trace!(
             "excepted {} to be {} at: {}",
             self.next_token.raw,
@@ -408,7 +400,7 @@ impl<'s, 'd, 'i> ParseState<'s, 'd, 'i> {
     }
 
     /// Checks if the next token is [`expected`] and advances the parse state.
-    fn consume(&mut self, expected: impl Into<RawToken>, node: impl ToString) -> Option<()> {
+    fn consume(&mut self, expected: impl Into<RawToken>, node: &'static str) -> Option<()> {
         self.expect(expected.into(), node)?;
         self.advance();
         Some(())
@@ -428,13 +420,13 @@ impl<'s, 'd, 'i> ParseState<'s, 'd, 'i> {
     /// Creates a new location with the state's file id and
     /// ending with a current token location's end byte location.
     #[inline]
-    pub(crate) const fn location_from(&self, start: ByteOffset) -> Location {
-        self.make_location(start, self.current_token.location.end)
+    pub(crate) const fn location_from(&self, start_offset: ByteOffset) -> Location {
+        self.make_location(start_offset, self.current_token.location.end)
     }
 
     /// Checks if the next token is identifiers, advances the parse state and if
     /// everything is ok, returns the identifier symbol.
-    fn consume_identifier(&mut self, node: impl ToString) -> Option<IdentifierAST> {
+    fn consume_identifier(&mut self, node: &'static str) -> Option<IdentifierAST> {
         trace!(
             "expected next_token {} to be an identifier at: {}",
             self.next_token.raw,

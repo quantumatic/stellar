@@ -4,7 +4,7 @@ use ry_ast::{
 };
 
 use crate::{
-    diagnostics::UnexpectedTokenDiagnostic, expected, macros::parse_list, path::PathParser,
+    diagnostics::UnexpectedTokenDiagnostic, expected, list::ListParser, path::PathParser,
     OptionallyParse, Parse, ParseState,
 };
 
@@ -78,12 +78,12 @@ impl Parse for ParenthesizedTupleOrFunctionTypeParser {
         let start = state.next_token.location.start;
         state.advance(); // `(`
 
-        let element_types = parse_list!(
-            state,
-            node_name: "parenthesized or tuple type",
-            closing_token: Punctuator::CloseParent,
-            parse_element_expr: TypeParser.parse(state)
-        );
+        let element_types = ListParser::new(
+            "parenthesized or tuple type",
+            &[RawToken::from(Punctuator::CloseParent)],
+            |state| TypeParser.parse(state),
+        )
+        .parse(state);
 
         state.advance(); // `)`
 
@@ -153,11 +153,10 @@ impl OptionallyParse for GenericParametersParser {
 
         state.advance();
 
-        let result = parse_list!(
-            state,
-            node_name: "generic parameters",
-            closing_token: Punctuator::CloseBracket,
-            parse_element_expr: {
+        let result = ListParser::new(
+            "generic parameters",
+            &[RawToken::from(Punctuator::CloseBracket)],
+            |state| {
                 Some(GenericParameter {
                     name: state.consume_identifier("generic parameter name")?,
                     bounds: if state.next_token.raw == Punctuator::Colon {
@@ -175,8 +174,9 @@ impl OptionallyParse for GenericParametersParser {
                         None
                     },
                 })
-            }
-        );
+            },
+        )
+        .parse(state);
 
         state.advance();
 
@@ -220,12 +220,12 @@ impl Parse for TypeArgumentsParser {
     fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
         state.advance();
 
-        let result = parse_list!(
-            state,
-            node_name: "type arguments",
-            closing_token: Punctuator::CloseBracket,
-            parse_element_expr: TypeParser.parse(state)
-        );
+        let result = ListParser::new(
+            "type arguments",
+            &[RawToken::from(Punctuator::CloseBracket)],
+            |state| TypeParser.parse(state),
+        )
+        .parse(state);
 
         state.advance();
 
@@ -245,17 +245,25 @@ impl OptionallyParse for WherePredicatesParser {
 
         state.advance();
 
-        Some(Some(parse_list!(
-            state,
-            node_name: "where clause",
-            closing_token: one_of(Punctuator::CloseBrace, Punctuator::Semicolon),
-            parse_element_expr: {
-                let left = TypeParser.parse(state)?;
+        Some(Some(
+            ListParser::new(
+                "where clause",
+                &[
+                    RawToken::from(Punctuator::CloseBrace),
+                    RawToken::from(Punctuator::Semicolon),
+                ],
+                |state| {
+                    let left = TypeParser.parse(state)?;
 
-                state.consume(Punctuator::Colon, "where predicate")?;
+                    state.consume(Punctuator::Colon, "where predicate")?;
 
-                Some(WherePredicate { ty: left, bounds: BoundsParser.parse(state)? })
-            }
-        )))
+                    Some(WherePredicate {
+                        ty: left,
+                        bounds: BoundsParser.parse(state)?,
+                    })
+                },
+            )
+            .parse(state),
+        ))
     }
 }
