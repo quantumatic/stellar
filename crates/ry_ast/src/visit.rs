@@ -249,7 +249,7 @@ where
             generic_parameters,
             where_predicates,
             methods: _,
-            implements,
+            inherits: implements,
             docstring,
         } => {
             visitor.visit_local_docstring(docstring.as_deref());

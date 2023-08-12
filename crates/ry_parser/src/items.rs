@@ -420,7 +420,7 @@ impl Parse for InterfaceParser {
 
         let generic_parameters = GenericParametersParser.optionally_parse(state)?;
 
-        let implements = if state.next_token.raw == Keyword::Implements {
+        let inherits = if state.next_token.raw == Punctuator::Colon {
             state.advance();
 
             Some(BoundsParser.parse(state)?)
@@ -432,29 +432,30 @@ impl Parse for InterfaceParser {
 
         state.consume(Punctuator::OpenBrace, "interface declaration")?;
 
-        let methods = ListParser::new(
-            "interface methods",
-            &[RawToken::from(Punctuator::CloseBrace)],
-            |state| {
-                let method = FunctionParser {
-                    docstring: state.consume_local_docstring(),
-                    visibility: VisibilityParser.parse(state),
-                }
-                .parse(state)?;
+        let mut methods = vec![];
 
-                if let Visibility::Public(location) = method.signature.visibility {
-                    state.add_diagnostic(UnnecessaryVisibilityQualifierDiagnostic {
-                        location,
-                        context: UnnecessaryVisibilityQualifierContext::InterfaceMethod {
-                            name_location: method.signature.name.location,
-                        },
-                    });
-                }
+        loop {
+            if state.next_token.raw == Punctuator::CloseBrace {
+                break;
+            }
 
-                Some(method)
-            },
-        )
-        .parse(state);
+            let method = FunctionParser {
+                docstring: state.consume_local_docstring(),
+                visibility: VisibilityParser.parse(state),
+            }
+            .parse(state)?;
+
+            if let Visibility::Public(location) = method.signature.visibility {
+                state.add_diagnostic(UnnecessaryVisibilityQualifierDiagnostic {
+                    location,
+                    context: UnnecessaryVisibilityQualifierContext::InterfaceMethod {
+                        name_location: method.signature.name.location,
+                    },
+                });
+            }
+
+            methods.push(method);
+        }
 
         state.advance();
 
@@ -464,7 +465,7 @@ impl Parse for InterfaceParser {
             generic_parameters,
             where_predicates,
             methods,
-            implements,
+            inherits,
             docstring: self.docstring,
         })
     }

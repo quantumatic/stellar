@@ -131,7 +131,7 @@ impl<'d> LoweringContext<'d> {
                 generic_parameters,
                 where_predicates,
                 methods,
-                implements,
+                inherits: implements,
                 docstring,
             } => ry_hir::ModuleItem::Interface {
                 visibility,

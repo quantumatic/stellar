@@ -827,7 +827,7 @@ pub enum ModuleItem {
         generic_parameters: Option<Vec<GenericParameter>>,
         where_predicates: Option<Vec<WherePredicate>>,
         methods: Vec<Function>,
-        implements: Option<Bounds>,
+        inherits: Option<Bounds>,
         docstring: Option<String>,
     },
 

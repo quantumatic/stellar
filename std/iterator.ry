@@ -1,0 +1,7 @@
+pub interface Iterator[T] {
+    fun next(): T;
+
+    fun size_hint(self): (usize, Option[usize]) {
+        (0, None)
+    }
+}
