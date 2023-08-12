@@ -1,3 +1,5 @@
+![roadmap](https://github.com/quantumatic/ry/assets/68709264/21e8b205-57b2-46d9-b82f-c3a0be30a55a)
+
 # Ry programming language
 
 <p align="center">
