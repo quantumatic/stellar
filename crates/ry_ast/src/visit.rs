@@ -587,7 +587,7 @@ where
         Expression::Lambda {
             parameters,
             return_type,
-            block,
+            value,
             ..
         } => {
             visitor.visit_lambda_function_parameters(parameters);
@@ -596,7 +596,7 @@ where
                 visitor.visit_type(return_type);
             }
 
-            visitor.visit_statements_block(block);
+            visitor.visit_expression(value);
         }
         Expression::TypeArguments {
             left,

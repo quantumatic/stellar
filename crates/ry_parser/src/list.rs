@@ -67,7 +67,7 @@ where
                         self.closing_tokens
                             .iter()
                             .map(ToString::to_string)
-                            .chain(iter::once(";".to_owned()))
+                            .chain(iter::once("`,`".to_owned()))
                             .collect(),
                     ),
                     self.node_name,

@@ -1,0 +1,47 @@
+pub enum Option[T] implements Iterator[T] {
+    Some(T),
+    None,
+
+    fun next(self): Option[T] {
+        self.take()
+    }
+
+    fun size_hint(self): (usize, Option[usize]) {
+        match self {
+            Some(..) => (1, Some(1)),
+            None => (0, Some(0)),
+        }
+    }
+
+    fun unwrap(self): T {
+        self.unwrap_or_else(|| panic("unwrap on `None` value"))
+    }
+
+    fun unwrap_or_else(self, f: (): ()): T {
+        match self {
+            Some(t) => t,
+            None => f(),
+        }
+    }
+
+    fun unwrap_or_default(self): T
+    where
+        T: Default
+    {
+        match self {
+            Some(t) => t,
+            None => T.default(),
+        }
+    }
+
+    fun is_some(self): bool {
+        match self {
+            Some(..) => true,
+            None => false,
+        }
+    }
+
+    fun is_none(self): bool {
+        !self.is_some()
+    }
+}

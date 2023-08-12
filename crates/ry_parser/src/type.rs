@@ -184,7 +184,7 @@ impl OptionallyParse for GenericParametersParser {
     }
 }
 
-struct TypeConstructorParser;
+pub(crate) struct TypeConstructorParser;
 
 impl Parse for TypeConstructorParser {
     type Output = Option<TypeConstructor>;
@@ -249,7 +249,7 @@ impl OptionallyParse for WherePredicatesParser {
             ListParser::new(
                 "where clause",
                 &[
-                    RawToken::from(Punctuator::CloseBrace),
+                    RawToken::from(Punctuator::OpenBrace),
                     RawToken::from(Punctuator::Semicolon),
                 ],
                 |state| {

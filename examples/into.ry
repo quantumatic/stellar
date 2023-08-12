@@ -1,3 +1,0 @@
-interface Into[T] {
-    fun into(self): T;
-}

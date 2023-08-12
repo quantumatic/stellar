@@ -1,8 +1,0 @@
-pub struct MyStringWrapper(String) implements ToString {
-    fun to_string(self): String {
-        let Self(value) = self;
-        value
-    }
-}
-
-pub fun main() {}

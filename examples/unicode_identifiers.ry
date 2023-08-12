@@ -1,7 +1,0 @@
-pub fun 春节() {
-    println("hello!");
-}
-
-pub fun main() {
-    春节();
-}

@@ -1,0 +1,44 @@
+pub enum Result[T, E] {
+    Ok(T),
+    Err(E),
+
+    fun unwrap(self): T {
+        self.unwrap_or_else(|| panic("unwrap on `Err` value"))
+    }
+
+    fun unwrap_or_else(self, f: (): ()): T {
+        self.ok().unwrap_or_else()
+    }
+
+    fun unwrap_or_default(self): T
+    where
+        T: Default
+    {
+        self.ok().unwrap_or_default()
+    }
+
+    fun is_ok(self): bool {
+        match self {
+            Ok(..) => true,
+            Err(..) => false,
+        }
+    }
+
+    fun is_err(self): bool {
+        !self.is_ok()
+    }
+
+    fun ok(self): Option[T] {
+        match self {
+            Ok(ok) => Some(ok),
+            Err(..) => None,
+        }
+    }
+
+    fun err(self): Option[T] {
+        match self {
+            Ok(..) => None,
+            Err(err) => Some(err),
+        }
+    }
+}

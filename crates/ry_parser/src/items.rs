@@ -14,7 +14,10 @@ use crate::{
     expected,
     list::ListParser,
     path::ImportPathParser,
-    r#type::{BoundsParser, GenericParametersParser, TypeParser, WherePredicatesParser},
+    r#type::{
+        BoundsParser, GenericParametersParser, TypeConstructorParser, TypeParser,
+        WherePredicatesParser,
+    },
     statement::StatementsBlockParser,
     OptionallyParse, Parse, ParseState, VisibilityParser,
 };
@@ -115,13 +118,48 @@ impl Parse for StructParser {
 
         let generic_parameters = GenericParametersParser.optionally_parse(state)?;
 
-        if state.next_token.raw == Punctuator::OpenParent {
+        let implements = if state.next_token.raw == Keyword::Implements {
+            state.advance();
+
+            Some(
+                ListParser::new(
+                    "implemented interfaces",
+                    &[
+                        RawToken::from(Keyword::Where),
+                        RawToken::from(Punctuator::Semicolon),
+                        RawToken::from(Punctuator::OpenBrace),
+                    ],
+                    |state| TypeConstructorParser.parse(state),
+                )
+                .parse(state),
+            )
+        } else {
+            None
+        };
+
+        let where_predicates = WherePredicatesParser.optionally_parse(state)?;
+
+        if state.next_token.raw == Punctuator::OpenParent
+            && where_predicates.is_none()
+            && implements.is_none()
+        {
             let fields = TupleFieldsParser.parse(state)?;
 
             let implements = if state.next_token.raw == Keyword::Implements {
                 state.advance();
 
-                Some(BoundsParser.parse(state)?)
+                Some(
+                    ListParser::new(
+                        "implemented interfaces",
+                        &[
+                            RawToken::from(Keyword::Where),
+                            RawToken::from(Punctuator::Semicolon),
+                            RawToken::from(Punctuator::OpenBrace),
+                        ],
+                        |state| TypeConstructorParser.parse(state),
+                    )
+                    .parse(state),
+                )
             } else {
                 None
             };
@@ -163,15 +201,7 @@ impl Parse for StructParser {
                 docstring: self.docstring,
             })
         } else if state.next_token.raw == Punctuator::OpenBrace {
-            let implements = if state.next_token.raw == Keyword::Implements {
-                state.advance();
-
-                Some(BoundsParser.parse(state)?)
-            } else {
-                None
-            };
-
-            let where_predicates = WherePredicatesParser.optionally_parse(state)?;
+            state.advance();
 
             let fields = ListParser::new(
                 "struct fields",
@@ -195,7 +225,7 @@ impl Parse for StructParser {
 
             let mut methods = vec![];
 
-            if state.next_token.raw == Keyword::Fun {
+            if state.next_token.raw == Keyword::Fun || state.next_token.raw == Keyword::Pub {
                 loop {
                     if state.next_token.raw == Punctuator::CloseBrace {
                         break;
@@ -214,6 +244,8 @@ impl Parse for StructParser {
                 }
             }
 
+            state.advance();
+
             Some(ModuleItem::Struct {
                 visibility: self.visibility,
                 name,
@@ -226,8 +258,12 @@ impl Parse for StructParser {
             })
         } else {
             state.add_diagnostic(UnexpectedTokenDiagnostic::new(
-                state.current_token,
-                expected!(Punctuator::Semicolon, Punctuator::OpenParent),
+                state.next_token,
+                expected!(
+                    Punctuator::Semicolon,
+                    Punctuator::OpenParent,
+                    Punctuator::OpenBrace
+                ),
                 "item",
             ));
 
@@ -452,7 +488,17 @@ impl Parse for EnumParser {
         let implements = if state.next_token.raw == Keyword::Implements {
             state.advance();
 
-            Some(BoundsParser.parse(state)?)
+            Some(
+                ListParser::new(
+                    "implemented interfaces",
+                    &[
+                        RawToken::from(Keyword::Where),
+                        RawToken::from(Punctuator::OpenBrace),
+                    ],
+                    |state| TypeConstructorParser.parse(state),
+                )
+                .parse(state),
+            )
         } else {
             None
         };
@@ -554,7 +600,7 @@ impl Parse for TupleFieldsParser {
     type Output = Option<Vec<TupleField>>;
 
     fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
-        state.advance();
+        state.advance(); // `(`
 
         let fields = ListParser::new(
             "item tuple",

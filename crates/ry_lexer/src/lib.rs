@@ -549,7 +549,7 @@ impl<'s, 'i> Lexer<'s, 'i> {
         self.advance();
 
         let name = &self.advance_while(start_location, |current, _| {
-            current.is_alphanumeric() || current == '_'
+            current != '\n' && current != '`'
         })[1..];
 
         if self.current != '`' {

@@ -86,13 +86,24 @@ macro_rules! define_keywords {
     {$($value:tt => $keyword:ident),*} => {
         /// This enum represents a set of keywords used in the Ry programming language.
         /// Each variant of the enum corresponds to a specific keyword.
-        #[derive(Debug, PartialEq, Eq, Clone, Copy, Display)]
+        #[derive(Debug, PartialEq, Eq, Clone, Copy)]
         pub enum Keyword {
             $(
-                #[display(fmt = $value)]
                 #[doc = concat!("Keyword `", $value, "`.")]
                 $keyword,
             )*
+        }
+
+        use std::fmt::Display;
+
+        impl Display for Keyword {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                match self {
+                    $(
+                        Self::$keyword => write!(f, "`{}`", $value),
+                    )*
+                }
+            }
         }
 
         /// Convert a string into a keyword.
@@ -102,6 +113,43 @@ macro_rules! define_keywords {
                     $value => Some(Keyword::$keyword),
                 )*
                 _ => None,
+            }
+        }
+    };
+}
+
+macro_rules! define_punctuators {
+    ($(
+        $(#[$($doc:tt)*])*
+        $punctuator:ident => $value:tt
+    ),*) => {
+        /// Represents a punctuator.
+        #[derive(Debug, Clone, PartialEq, Copy, Eq, Hash)]
+        pub enum Punctuator {
+            $(
+                $(#[$($doc)*])*
+                $punctuator,
+            )*
+        }
+
+        impl Display for Punctuator {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                match self {
+                    $(
+                        Self::$punctuator => write!(f, "`{}`", $value),
+                    )*
+                }
+            }
+        }
+
+        impl From<&str> for Punctuator {
+            fn from(value: &str) -> Self {
+                match value {
+                    $(
+                        $value => Self::$punctuator,
+                    )*
+                    _ => unreachable!(),
+                }
             }
         }
     };
@@ -118,196 +166,147 @@ define_keywords! {
     "implements" => Implements
 }
 
-/// Represents a punctuator.
-#[derive(Debug, Clone, PartialEq, Copy, Eq, Hash, Display)]
-pub enum Punctuator {
+define_punctuators! {
     /// Arrow (`=>`).
-    #[display(fmt = "=>")]
-    Arrow,
+    Arrow => "=>",
 
     /// Ampersand (`&`).
-    #[display(fmt = "&")]
-    Ampersand,
+    Ampersand => "&",
 
     /// Ampersand Equal (`&=`).
-    #[display(fmt = "&=")]
-    AmpersandEq,
+    AmpersandEq => "&=",
 
     /// Double Ampersand (`&&`).
-    #[display(fmt = "&&")]
-    DoubleAmpersand,
+    DoubleAmpersand => "&&",
 
     /// Asterisk (`*`).
-    #[display(fmt = "*")]
-    Asterisk,
+    Asterisk => "*",
 
     /// Double Asterisk (`**`).
-    #[display(fmt = "**")]
-    DoubleAsterisk,
+    DoubleAsterisk => "**",
 
     /// Asterisk Equal (`*=`).
-    #[display(fmt = "*=")]
-    AsteriskEq,
+    AsteriskEq => "*=",
 
     /// At Sign (`@`).
-    #[display(fmt = "@")]
-    At,
+    At => "@",
 
     /// Bang (`!`).
-    #[display(fmt = "!")]
-    Bang,
+    Bang => "!",
 
     /// Close Brace (`}`).
-    #[display(fmt = "}}")]
-    CloseBrace,
+    CloseBrace => "}",
 
     /// Close Bracket (`]`).
-    #[display(fmt = "]")]
-    CloseBracket,
+    CloseBracket => "]",
 
     /// Close Parenthesis (`)`).
-    #[display(fmt = ")")]
-    CloseParent,
+    CloseParent => ")",
 
     /// Colon (`:`).
-    #[display(fmt = ":")]
-    Colon,
+    Colon => ":",
 
     /// Comma (`,`).
-    #[display(fmt = ",")]
-    Comma,
+    Comma => ",",
 
     /// Dot (`.`).
-    #[display(fmt = ".")]
-    Dot,
+    Dot => ".",
 
     /// Dot Dot (`..`).
-    #[display(fmt = "..")]
-    DoubleDot,
+    DoubleDot => "..",
 
     /// Equal (`=`).
-    #[display(fmt = "=")]
-    Eq,
+    Eq => "=",
 
     /// Double Equal (`==`).
-    #[display(fmt = "==")]
-    DoubleEq,
+    DoubleEq => "==",
 
     /// Greater (`>`).
-    #[display(fmt = ">")]
-    Greater,
+    Greater => ">",
 
     /// Greater Or Equal (`>=`).
-    #[display(fmt = ">=")]
-    GreaterEq,
+    GreaterEq => ">=",
 
     /// Left Shift (`<<`).
-    #[display(fmt = "<<")]
-    LeftShift,
+    LeftShift => "<<",
 
     /// Less (`<`).
-    #[display(fmt = "<")]
-    Less,
+    Less => "<",
 
     /// Less or Equal (`<=`).
-    #[display(fmt = "<=")]
-    LessEq,
+    LessEq => "<=",
 
     /// Minus (`-`).
-    #[display(fmt = "-")]
-    Minus,
+    Minus => "-",
 
     /// Minus Equal (`-=`).
-    #[display(fmt = "-=")]
-    MinusEq,
+    MinusEq => "-=",
 
     /// Double Minus (`--`).
-    #[display(fmt = "--")]
-    DoubleMinus,
+    DoubleMinus => "--",
 
     /// Tilde (`~`).
-    #[display(fmt = "~")]
-    Tilde,
+    Tilde => "~",
 
     /// Bang Equal (`!=`).
-    #[display(fmt = "!=")]
-    BangEq,
+    BangEq => "!=",
 
     /// Open Brace (`{`).
-    #[display(fmt = "{{")]
-    OpenBrace,
+    OpenBrace => "{",
 
     /// Open Bracket (`[`).
-    #[display(fmt = "[")]
-    OpenBracket,
+    OpenBracket => "[",
 
     /// Open Parenthesis (`(`).
-    #[display(fmt = "(")]
-    OpenParent,
+    OpenParent => "(",
 
     /// Or (`|`).
-    #[display(fmt = "|")]
-    Or,
+    Or => "|",
 
     /// Or Equal (`|=`).
-    #[display(fmt = "|=")]
-    OrEq,
+    OrEq => "|=",
 
     /// Logical Or (`||`).
-    #[display(fmt = "||")]
-    DoubleOr,
+    DoubleOr => "||",
 
     /// Percent (`%`).
-    #[display(fmt = "%")]
-    Percent,
+    Percent => "%",
 
     /// Percent Equal (`%=`).
-    #[display(fmt = "%=")]
-    PercentEq,
+    PercentEq => "%=",
 
     /// Plus (`+`).
-    #[display(fmt = "+")]
-    Plus,
+    Plus => "+",
 
     /// Plus Equal (`+=`).
-    #[display(fmt = "+=")]
-    PlusEq,
+    PlusEq => "+=",
 
     /// Double Plus (`++`).
-    #[display(fmt = "++")]
-    DoublePlus,
+    DoublePlus => "++",
 
     /// Question Mark (`?`).
-    #[display(fmt = "?")]
-    QuestionMark,
+    QuestionMark => "?",
 
     /// Right Shift (`>>`).
-    #[display(fmt = ">>")]
-    RightShift,
+    RightShift => ">>",
 
     /// Semicolon (`;`).
-    #[display(fmt = ";")]
-    Semicolon,
+    Semicolon => ";",
 
     /// Slash (`/`).
-    #[display(fmt = "/")]
-    Slash,
+    Slash => "/",
 
     /// Slash Equal (`/=`).
-    #[display(fmt = "/=")]
-    SlashEq,
+    SlashEq => "/=",
 
     /// Caret (`^`).
-    #[display(fmt = "^")]
-    Caret,
+    Caret => "^",
 
     /// Caret Equal (`^=`).
-    #[display(fmt = "^=")]
-    CaretEq,
+    CaretEq => "^=",
 
     /// Hash Tag (`#`).
-    #[display(fmt = "#")]
-    HashTag,
+    HashTag => "#"
 }
 
 /// Represents token without a specific location in source text.
@@ -348,10 +347,10 @@ pub enum RawToken {
     #[display(fmt = "{_0}")]
     Error(RawLexError),
     /// Keyword.
-    #[display(fmt = "`{_0}`")]
+    #[display(fmt = "{_0}")]
     Keyword(Keyword),
     /// Punctuator.
-    #[display(fmt = "`{_0}`")]
+    #[display(fmt = "{_0}")]
     Punctuator(Punctuator),
     /// String literal.
     #[display(fmt = "string literal")]

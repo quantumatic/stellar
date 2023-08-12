@@ -339,7 +339,7 @@ impl<'d> LoweringContext<'d> {
                 location,
                 parameters,
                 return_type,
-                block,
+                value,
             } => ry_hir::Expression::Lambda {
                 location,
                 parameters: parameters
@@ -347,7 +347,7 @@ impl<'d> LoweringContext<'d> {
                     .map(|parameter| self.lower_lambda_function_parameter(parameter))
                     .collect(),
                 return_type: return_type.map(|ty| self.lower_type(ty)),
-                block: self.lower_statements_block(block),
+                value: Box::new(self.lower_expression(*value)),
             },
             ry_ast::Expression::Match {
                 location,

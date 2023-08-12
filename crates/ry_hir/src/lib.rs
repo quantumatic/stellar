@@ -340,7 +340,7 @@ pub enum Expression {
         location: Location,
         parameters: Vec<LambdaFunctionParameter>,
         return_type: Option<Type>,
-        block: Vec<Statement>,
+        value: Box<Self>,
     },
 }
 

@@ -213,7 +213,9 @@ impl Parse for PrimaryExpressionParser {
             RawToken::Punctuator(Punctuator::OpenBrace) => {
                 StatementsBlockExpressionParser.parse(state)
             }
-            RawToken::Punctuator(Punctuator::Or) => LambdaExpressionParser.parse(state),
+            RawToken::Punctuator(Punctuator::Or) | RawToken::Punctuator(Punctuator::DoubleOr) => {
+                LambdaExpressionParser.parse(state)
+            }
             RawToken::Keyword(Keyword::If) => IfExpressionParser.parse(state),
             RawToken::Keyword(Keyword::Match) => MatchExpressionParser.parse(state),
             RawToken::Keyword(Keyword::While) => WhileExpressionParser.parse(state),
@@ -623,26 +625,31 @@ impl Parse for LambdaExpressionParser {
 
     fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
         let start = state.next_token.location.start;
-        state.advance(); // `|`
 
-        let parameters = ListParser::new(
-            "function expression parameters",
-            &[RawToken::from(Punctuator::Or)],
-            |state| {
-                let name = state.consume_identifier("function parameter name")?;
+        state.advance(); // `|` or `||`
 
-                let ty = if state.next_token.raw == Punctuator::Colon {
-                    state.advance();
+        let parameters = if state.current_token.raw == Punctuator::Or {
+            ListParser::new(
+                "function expression parameters",
+                &[RawToken::from(Punctuator::Or)],
+                |state| {
+                    let name = state.consume_identifier("function parameter name")?;
 
-                    Some(TypeParser.parse(state)?)
-                } else {
-                    None
-                };
+                    let ty = if state.next_token.raw == Punctuator::Colon {
+                        state.advance();
 
-                Some(LambdaFunctionParameter { name, ty })
-            },
-        )
-        .parse(state);
+                        Some(TypeParser.parse(state)?)
+                    } else {
+                        None
+                    };
+
+                    Some(LambdaFunctionParameter { name, ty })
+                },
+            )
+            .parse(state)
+        } else {
+            vec![]
+        };
 
         state.advance();
 
@@ -654,13 +661,13 @@ impl Parse for LambdaExpressionParser {
             None
         };
 
-        let block = StatementsBlockParser.parse(state)?;
+        let value = ExpressionParser::default().parse(state)?;
 
         Some(Expression::Lambda {
             location: state.location_from(start),
             parameters,
             return_type,
-            block,
+            value: Box::new(value),
         })
     }
 }

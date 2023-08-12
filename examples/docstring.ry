@@ -1,5 +1,0 @@
-//! Module-level docstring
-
-
-/// Docstring for item
-pub struct Foo {}
