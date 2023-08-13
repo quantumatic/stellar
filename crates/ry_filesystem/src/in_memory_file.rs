@@ -103,20 +103,24 @@ impl InMemoryFile {
     ///
     /// # Examples
     ///
-    /// ```ignore
+    /// ```
     /// # use std::path::Path;
     /// # use ry_filesystem::in_memory_file::InMemoryFile;
-    /// let file = InMemoryFile::new(
+    /// let file = InMemoryFile::new_from_source(
     ///     Path::new("test.ry"),
     ///     "fun main() {
     ///     println(\"Hello, world!\");
-    /// }",
+    /// }".to_owned(),
     /// );
     ///
-    /// assert_eq!(file.get_line_start_by_index(0), 0);
-    /// assert_eq!(file.get_line_start_by_index(1), 13);
+    /// assert_eq!(file.get_line_start_by_index(0).unwrap(), 0);
+    /// assert_eq!(file.get_line_start_by_index(1).unwrap(), 13);
+    /// assert!(file.get_line_start_by_index(5).is_err());
     /// ```
-    pub(crate) fn get_line_start_by_index(&self, line_index: usize) -> Result<usize, Error> {
+    ///
+    /// # Errors
+    /// When line index is out of bounds.
+    pub fn get_line_start_by_index(&self, line_index: usize) -> Result<usize, Error> {
         match line_index.cmp(&self.line_starts.len()) {
             Ordering::Less => Ok(self
                 .line_starts

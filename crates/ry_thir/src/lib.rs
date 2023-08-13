@@ -501,7 +501,7 @@ pub enum ModuleItemSignature<'g> {
     Type(TypeSignature<'g>),
     TypeAlias(TypeAliasSignature<'g>),
     Interface(InterfaceSignature<'g>),
-    Function(FunctionSignature<'g>),
+    Function(Vec<FunctionSignature<'g>>),
 }
 
 #[derive(Debug, PartialEq, Clone)]

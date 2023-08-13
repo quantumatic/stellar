@@ -41,9 +41,9 @@ impl<'p> GenericParameterScope<'p> {
     }
 
     #[must_use]
-    pub fn exists(&self, parameter_name: IdentifierID) -> bool {
+    pub fn contains(&self, parameter_name: IdentifierID) -> bool {
         let exists_in_parent_scope = if let Some(parent_scope) = self.parent_scope {
-            parent_scope.exists(parameter_name)
+            parent_scope.contains(parameter_name)
         } else {
             false
         };

@@ -357,6 +357,14 @@ pub enum RawToken {
     StringLiteral,
 }
 
+impl RawToken {
+    #[inline]
+    #[must_use]
+    pub const fn is_error(&self) -> bool {
+        matches!(self, Self::Error(_))
+    }
+}
+
 impl PartialEq<Punctuator> for RawToken {
     fn eq(&self, other: &Punctuator) -> bool {
         matches!(self, Self::Punctuator(punctuator) if punctuator == other)
@@ -409,11 +417,11 @@ pub struct Token {
 }
 
 macro_rules! map_precedences {
-    { $($($punctuators:ident),* => $precedence:ident,)* } => {
+    { $($($punctuator:ident),* => $precedence:ident,)* } => {
         impl From<Punctuator> for Precedence {
             fn from(value: Punctuator) -> Self {
                 match value {
-                    $($(| Punctuator::$punctuators)* => Precedence::$precedence,)*
+                    $($(| Punctuator::$punctuator)* => Precedence::$precedence,)*
                     _ => Precedence::Lowest
                 }
             }

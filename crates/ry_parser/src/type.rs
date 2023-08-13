@@ -196,7 +196,7 @@ impl Parse for TypeConstructorParser {
         Some(TypeConstructor {
             location: state.location_from(path.location.start),
             path,
-            type_arguments,
+            arguments: type_arguments,
         })
     }
 }

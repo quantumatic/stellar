@@ -124,25 +124,28 @@ t!(string, STRING);
 
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
 pub struct TypeConstructor {
-    pub left: Path,
-    pub right: Vec<Type>,
+    pub path: Path,
+    pub arguments: Vec<Type>,
 }
 
 impl TypeConstructor {
     #[inline]
     #[must_use]
     pub const fn new(left: Path, right: Vec<Type>) -> Self {
-        Self { left, right }
+        Self {
+            path: left,
+            arguments: right,
+        }
     }
 
     #[inline]
     #[must_use]
     pub fn primitive(identifier_id: IdentifierID) -> Self {
         Self {
-            left: Path {
+            path: Path {
                 identifiers: vec![identifier_id],
             },
-            right: vec![],
+            arguments: vec![],
         }
     }
 }
@@ -158,10 +161,10 @@ impl Type {
     #[must_use]
     pub fn list_type(self) -> Self {
         Self::Constructor(TypeConstructor {
-            left: Path {
+            path: Path {
                 identifiers: vec![builtin_identifiers::LIST],
             },
-            right: vec![self],
+            arguments: vec![self],
         })
     }
 }
@@ -171,9 +174,9 @@ impl Type {
 #[must_use]
 pub fn list_of(element_type: Type) -> Type {
     Type::Constructor(TypeConstructor {
-        left: Path {
+        path: Path {
             identifiers: vec![builtin_identifiers::LIST],
         },
-        right: vec![element_type],
+        arguments: vec![element_type],
     })
 }

@@ -1,6 +1,6 @@
 pub enum Option[T] implements Iterator[T] {
     Some(T),
-    None,
+    None
 
     pub fun next(self): Option[T] {
         self.take()

@@ -476,6 +476,29 @@ struct EnumParser {
     docstring: Option<String>,
 }
 
+macro_rules! possibly_recover {
+    ($state:ident, $item:expr) => {
+        if let Some(item) = $item {
+            item
+        } else {
+            loop {
+                match $state.next_token.raw {
+                    RawToken::Keyword(
+                        Keyword::Enum
+                        | Keyword::Import
+                        | Keyword::Struct
+                        | Keyword::Type
+                        | Keyword::Interface,
+                    )
+                    | RawToken::EndOfFile => break,
+                    _ => $state.advance(),
+                }
+            }
+            return None;
+        }
+    };
+}
+
 impl Parse for EnumParser {
     type Output = Option<ModuleItem>;
 
@@ -513,6 +536,7 @@ impl Parse for EnumParser {
             &[
                 RawToken::from(Punctuator::CloseBrace),
                 RawToken::from(Keyword::Fun),
+                RawToken::from(Keyword::Pub),
             ],
             |state| EnumItemParser.parse(state),
         )
@@ -528,13 +552,14 @@ impl Parse for EnumParser {
             let docstring = state.consume_local_docstring();
             let visibility = VisibilityParser.parse(state);
 
-            methods.push(
+            methods.push(possibly_recover!(
+                state,
                 FunctionParser {
                     visibility,
                     docstring,
                 }
-                .parse(state)?,
-            );
+                .parse(state)
+            ));
         }
 
         state.advance(); // `}`
@@ -647,7 +672,6 @@ impl ItemParser {
                     Keyword::Enum
                     | Keyword::Import
                     | Keyword::Struct
-                    | Keyword::Fun
                     | Keyword::Type
                     | Keyword::Interface,
                 )
@@ -656,17 +680,6 @@ impl ItemParser {
             }
         }
     }
-}
-
-macro_rules! possibly_recover {
-    ($state:ident, $item:expr) => {
-        if let Some(item) = $item {
-            item
-        } else {
-            Self::goto_next_valid_item($state);
-            return None;
-        }
-    };
 }
 
 pub(crate) struct ItemParser;

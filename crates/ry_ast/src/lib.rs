@@ -83,6 +83,7 @@
 
 use std::fmt::Display;
 
+use derive_more::Display;
 use ry_filesystem::location::Location;
 use ry_interner::IdentifierID;
 use token::{Punctuator, RawToken};
@@ -151,7 +152,7 @@ pub struct ImportPath {
 pub struct TypeConstructor {
     pub location: Location,
     pub path: Path,
-    pub type_arguments: Option<Vec<Type>>,
+    pub arguments: Option<Vec<Type>>,
 }
 
 /// A pattern, e.g. `Some(x)`, `None`, `a @ [3, ..]`, `[1, .., 3]`, `(1, \"hello\")`, `3.2`.
@@ -991,35 +992,28 @@ impl ModuleItem {
 }
 
 /// A kind of module item.
-#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Display)]
 pub enum ModuleItemKind {
+    #[display(fmt = "enum")]
     Enum,
+
+    #[display(fmt = "function")]
     Function,
+
+    #[display(fmt = "import")]
     Import,
+
+    #[display(fmt = "interface")]
     Interface,
+
+    #[display(fmt = "struct")]
     Struct,
+
+    #[display(fmt = "tuple-like struct")]
     TupleLikeStruct,
+
+    #[display(fmt = "type alias")]
     TypeAlias,
-}
-
-impl AsRef<str> for ModuleItemKind {
-    fn as_ref(&self) -> &str {
-        match self {
-            Self::Enum => "enum",
-            Self::Function => "function",
-            Self::Import => "import",
-            Self::Interface => "interface",
-            Self::Struct => "struct",
-            Self::TupleLikeStruct => "tuple-like struct",
-            Self::TypeAlias => "type alias",
-        }
-    }
-}
-
-impl Display for ModuleItemKind {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        self.as_ref().fmt(f)
-    }
 }
 
 /// An enum item, e.g. `None`, `Ok(T)`, `A { b: T }`.

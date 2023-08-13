@@ -4,6 +4,8 @@ use ry_filesystem::location::Location;
 use ry_interner::PathID;
 use ry_name_resolution::NameBindingKind;
 
+use crate::BindingKind;
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct DuplicateTraitBoundDiagnostic {
     pub first_bound_location: Location,
@@ -51,21 +53,21 @@ impl BuildDiagnostic for UnnecessaryEqualityPredicateDiagnostic {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ExpectedType {
     pub location: Location,
-    pub name_binding_kind: NameBindingKind,
+    pub type_binding_kind: BindingKind,
 }
 
 impl BuildDiagnostic for ExpectedType {
     fn build(&self) -> Diagnostic<PathID> {
         Diagnostic::error()
             .with_code("E009")
-            .with_message(format!("expected type, got {}", self.name_binding_kind))
+            .with_message(format!("expected type, got {}", self.type_binding_kind))
             .with_labels(vec![self.location.to_primary_label()])
     }
 }
 
 pub struct ExpectedInterface {
     pub location: Location,
-    pub name_binding_kind: NameBindingKind,
+    pub type_binding_kind: BindingKind,
 }
 
 impl BuildDiagnostic for ExpectedInterface {
@@ -74,8 +76,30 @@ impl BuildDiagnostic for ExpectedInterface {
             .with_code("E009")
             .with_message(format!(
                 "expected interface, got {}",
-                self.name_binding_kind
+                self.type_binding_kind
             ))
             .with_labels(vec![self.location.to_primary_label()])
+    }
+}
+
+pub struct BoundsInTypeAliasDiagnostic {
+    pub alias_name_location: Location,
+    pub bounds_location: Location,
+}
+
+impl BuildDiagnostic for BoundsInTypeAliasDiagnostic {
+    fn build(&self) -> Diagnostic<PathID> {
+        Diagnostic::error()
+            .with_code("E010")
+            .with_message("found type bounds in type alias definition")
+            .with_labels(vec![
+                self.alias_name_location
+                    .to_primary_label()
+                    .with_message("happened when processing this type alias"),
+                self.bounds_location
+                    .to_primary_label()
+                    .with_message("consider removing all the bounds"),
+            ])
+            .with_notes(vec!["note: type aliases can't have bounds".to_owned()])
     }
 }

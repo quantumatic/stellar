@@ -482,7 +482,7 @@ where
 {
     visitor.visit_path(&path.path);
 
-    if let Some(arguments) = &path.type_arguments {
+    if let Some(arguments) = &path.arguments {
         walk_list!(visitor, visit_type, arguments);
     }
 }

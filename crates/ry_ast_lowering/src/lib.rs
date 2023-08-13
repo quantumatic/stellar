@@ -63,7 +63,12 @@ impl<'d> LoweringContext<'d> {
                     .into_iter()
                     .map(|method| self.lower_function(method))
                     .collect(),
-                implements,
+                implements: implements.map(|implements| {
+                    implements
+                        .into_iter()
+                        .map(|interface| self.lower_type_constructor(interface))
+                        .collect()
+                }),
                 docstring,
             },
             ry_ast::ModuleItem::Struct {
@@ -88,7 +93,12 @@ impl<'d> LoweringContext<'d> {
                     .into_iter()
                     .map(|method| self.lower_function(method))
                     .collect(),
-                implements,
+                implements: implements.map(|implements| {
+                    implements
+                        .into_iter()
+                        .map(|interface| self.lower_type_constructor(interface))
+                        .collect()
+                }),
                 docstring,
             },
             ry_ast::ModuleItem::Function(function) => {
@@ -122,7 +132,12 @@ impl<'d> LoweringContext<'d> {
                     .into_iter()
                     .map(|method| self.lower_function(method))
                     .collect(),
-                implements,
+                implements: implements.map(|implements| {
+                    implements
+                        .into_iter()
+                        .map(|interface| self.lower_type_constructor(interface))
+                        .collect()
+                }),
                 docstring,
             },
             ry_ast::ModuleItem::Interface {
@@ -142,7 +157,12 @@ impl<'d> LoweringContext<'d> {
                     .into_iter()
                     .map(|method| self.lower_function(method))
                     .collect(),
-                implements,
+                implements: implements.map(|implements| {
+                    implements
+                        .into_iter()
+                        .map(|interface| self.lower_type_constructor(interface))
+                        .collect()
+                }),
                 docstring,
             },
         }
@@ -661,7 +681,12 @@ impl<'d> LoweringContext<'d> {
     ) -> ry_hir::GenericParameter {
         ry_hir::GenericParameter {
             name: ast.name,
-            bounds: ast.bounds,
+            bounds: ast.bounds.map(|bounds| {
+                bounds
+                    .into_iter()
+                    .map(|interface| self.lower_type_constructor(interface))
+                    .collect()
+            }),
             default_value: ast.default_value.map(|ty| self.lower_type(ty)),
         }
     }
@@ -683,7 +708,24 @@ impl<'d> LoweringContext<'d> {
     fn lower_where_predicate(&mut self, ast: ry_ast::WherePredicate) -> ry_hir::WherePredicate {
         ry_hir::WherePredicate {
             ty: self.lower_type(ast.ty),
-            bounds: ast.bounds,
+            bounds: ast
+                .bounds
+                .into_iter()
+                .map(|bound| self.lower_type_constructor(bound))
+                .collect(),
+        }
+    }
+
+    fn lower_type_constructor(&mut self, ast: ry_ast::TypeConstructor) -> ry_hir::TypeConstructor {
+        ry_hir::TypeConstructor {
+            arguments: ast.arguments.map(|arguments| {
+                arguments
+                    .into_iter()
+                    .map(|ty| self.lower_type(ty))
+                    .collect()
+            }),
+            location: ast.location,
+            path: ast.path,
         }
     }
 
@@ -709,9 +751,13 @@ impl<'d> LoweringContext<'d> {
 
                 self.lower_type(*inner)
             }
-            ry_ast::Type::InterfaceObject { location, bounds } => {
-                ry_hir::Type::InterfaceObject { location, bounds }
-            }
+            ry_ast::Type::InterfaceObject { location, bounds } => ry_hir::Type::InterfaceObject {
+                location,
+                bounds: bounds
+                    .into_iter()
+                    .map(|interface| self.lower_type_constructor(interface))
+                    .collect(),
+            },
             ry_ast::Type::Tuple {
                 location,
                 element_types,

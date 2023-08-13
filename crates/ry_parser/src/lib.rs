@@ -89,6 +89,7 @@ use ry_diagnostics::{BuildDiagnostic, GlobalDiagnostics};
 use ry_filesystem::location::{ByteOffset, Location, LocationIndex};
 use ry_interner::{IdentifierInterner, PathID, PathInterner};
 use ry_lexer::Lexer;
+use ry_stable_likely::unlikely;
 use statement::StatementParser;
 use tracing::trace;
 
@@ -365,6 +366,8 @@ impl<'s, 'd, 'i> ParseState<'s, 'd, 'i> {
 
     /// Advances the iter to the next token (skips comment tokens).
     fn advance(&mut self) {
+        self.check_next_token();
+
         self.current_token = self.next_token;
         self.next_token = self.lexer.next_no_comments();
 
@@ -373,8 +376,6 @@ impl<'s, 'd, 'i> ParseState<'s, 'd, 'i> {
             self.next_token.raw,
             self.next_token.location
         );
-
-        self.check_next_token();
     }
 
     /// Checks if the next token is [`expected`].
@@ -385,6 +386,10 @@ impl<'s, 'd, 'i> ParseState<'s, 'd, 'i> {
             expected,
             self.next_token.location
         );
+
+        if unlikely(self.next_token.raw.is_error()) {
+            return None;
+        }
 
         if self.next_token.raw == expected {
             Some(())

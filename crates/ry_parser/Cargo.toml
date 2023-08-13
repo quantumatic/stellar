@@ -15,4 +15,5 @@ ry_diagnostics = { path = "../ry_diagnostics" }
 ry_filesystem = { path = "../ry_filesystem" }
 ry_interner = { path = "../ry_interner" }
 ry_lexer = { path = "../ry_lexer" }
+ry_stable_likely = { path = "../ry_stable_likely" }
 tracing = "0.1.29"

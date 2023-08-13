@@ -61,12 +61,21 @@
     clippy::unnested_or_patterns
 )]
 
-use std::fmt::Display;
-
-use ry_ast::Bounds;
-pub use ry_ast::{IdentifierAST, ImportPath, Literal, Path, TypeConstructor, Visibility};
+use ry_ast::ModuleItemKind;
+pub use ry_ast::{IdentifierAST, ImportPath, Literal, Path, Visibility};
 use ry_filesystem::location::Location;
 use ry_interner::IdentifierID;
+
+/// Bounds, e.g. `Iterator[T] + Default + ToString`.
+pub type Bounds = Vec<TypeConstructor>;
+
+/// A type constructor, e.g. `Option[T]`.
+#[derive(Debug, PartialEq, Eq, Clone, Hash)]
+pub struct TypeConstructor {
+    pub location: Location,
+    pub path: Path,
+    pub arguments: Option<Vec<Type>>,
+}
 
 /// A pattern, e.g. `Some(x)`, `None`, `a @ [3, ..]`, `[1, .., 3]`, `(1, \"hello\")`, `3.2`.
 #[derive(Debug, PartialEq, Clone)]
@@ -161,7 +170,7 @@ pub enum StructFieldPattern {
 }
 
 /// A type, e.g. `int32`, `(char): bool`, `(char, char)`.
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone, Hash)]
 pub enum Type {
     /// A type constructor, e.g. `char`, `List[int32]`.
     Constructor(ry_ast::TypeConstructor),
@@ -180,10 +189,7 @@ pub enum Type {
     },
 
     /// An interface object type, e.g. `dyn Iterator[Item = uint32]`, `dyn Debug + Clone`.
-    InterfaceObject {
-        location: Location,
-        bounds: ry_ast::Bounds,
-    },
+    InterfaceObject { location: Location, bounds: Bounds },
 }
 
 impl Type {
@@ -201,15 +207,15 @@ impl Type {
 }
 
 /// A generic parameter, e.g. `T` in `fun into[T](a: T);`.
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct GenericParameter {
     pub name: IdentifierAST,
-    pub bounds: Option<ry_ast::Bounds>,
+    pub bounds: Option<Bounds>,
     pub default_value: Option<Type>,
 }
 
 /// A type alias, e.g. `type MyResult = Result[String, MyError]`.
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct TypeAlias {
     pub visibility: Visibility,
     pub name: IdentifierAST,
@@ -219,10 +225,10 @@ pub struct TypeAlias {
 }
 
 /// A where clause item, e.g. `T: ToString`.
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct WherePredicate {
     pub ty: Type,
-    pub bounds: ry_ast::Bounds,
+    pub bounds: Bounds,
 }
 
 /// An expression.
@@ -345,11 +351,12 @@ pub enum Expression {
 }
 
 /// A lambda function parameter, e.g. `x` in `|x| { x + 1 }`.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct LambdaFunctionParameter {
     pub name: IdentifierAST,
     pub ty: Option<Type>,
 }
+
 impl Expression {
     /// Returns the location of the expression.
     #[inline]
@@ -447,7 +454,7 @@ pub struct Function {
 }
 
 /// A function signature - information about function except a block.
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct FunctionSignature {
     pub visibility: Visibility,
     pub name: IdentifierAST,
@@ -644,40 +651,8 @@ impl ModuleItem {
     }
 }
 
-/// A kind of module item.
-#[derive(Debug, PartialEq, Eq, Clone, Copy)]
-pub enum ModuleItemKind {
-    Enum,
-    Function,
-    Import,
-    Interface,
-    Struct,
-    TupleLikeStruct,
-    TypeAlias,
-}
-
-impl AsRef<str> for ModuleItemKind {
-    fn as_ref(&self) -> &str {
-        match self {
-            Self::Enum => "enum",
-            Self::Function => "function",
-            Self::Import => "import",
-            Self::Interface => "interface",
-            Self::Struct => "struct",
-            Self::TupleLikeStruct => "tuple-like struct",
-            Self::TypeAlias => "type alias",
-        }
-    }
-}
-
-impl Display for ModuleItemKind {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        self.as_ref().fmt(f)
-    }
-}
-
 /// An enum item, e.g. `None`, `Ok(T)`, `A { b: T }`.
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub enum EnumItem {
     /// Just an identifier, e.g. `None` in `enum Option[T] { Some(T), None }`.
     Just {
@@ -717,14 +692,14 @@ impl EnumItem {
 }
 
 /// A tuple field, e.g. `pub String` in `pub struct Wrapper(pub String);`.
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct TupleField {
     pub visibility: Visibility,
     pub ty: Type,
 }
 
 /// A struct field, e.g. `name: String`, `pub age: uint32`.
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct StructField {
     pub visibility: Visibility,
     pub name: IdentifierAST,
@@ -733,7 +708,7 @@ pub struct StructField {
 }
 
 /// A function parameter, e.g. `self`, `self: Self`, `a: uint32`.
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub enum FunctionParameter {
     /// A function parameter that is not `self`.
     NotSelfParameter(NotSelfFunctionParameter),
@@ -743,14 +718,14 @@ pub enum FunctionParameter {
 }
 
 /// A self parameter, e.g. `self`, `self: Self`.
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct SelfFunctionParameter {
     pub self_location: Location,
     pub ty: Option<Type>,
 }
 
 /// A function parameter that is not `self`, e.g. `a: uint32`.
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct NotSelfFunctionParameter {
     pub name: IdentifierAST,
     pub ty: Type,
