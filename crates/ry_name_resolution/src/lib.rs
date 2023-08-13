@@ -92,7 +92,7 @@ pub struct ModuleID(pub PathID);
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
 pub struct DefinitionID {
     /// Interned name of the definition.
-    pub name: IdentifierID,
+    pub name_id: IdentifierID,
 
     /// ID of the module that contains the definition.
     pub module_id: ModuleID,
@@ -254,7 +254,7 @@ impl ResolveFullPath for DefinitionID {
                     .clone()
                     .identifiers
                     .into_iter()
-                    .chain(iter::once(self.name))
+                    .chain(iter::once(self.name_id))
                     .collect(),
             })
     }
@@ -443,7 +443,7 @@ fn resolve_path_segment(
                 .module_scopes
                 .get(&definition_id.module_id)?
                 .enums
-                .get(&definition_id.name)
+                .get(&definition_id.name_id)
             {
                 enum_scope
                     .items

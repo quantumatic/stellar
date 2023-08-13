@@ -1,10 +1,10 @@
 #![allow(warnings)]
 
-use std::sync::Arc;
+use std::{ops::ControlFlow, sync::Arc};
 
 use derive_more::Display;
 use diagnostics::ExpectedInterface;
-use ry_ast::ImportPath;
+use ry_ast::{IdentifierAST, ImportPath, Visibility};
 use ry_diagnostics::{BuildDiagnostic, GlobalDiagnostics};
 use ry_filesystem::location::Location;
 use ry_fx_hash::FxHashMap;
@@ -136,7 +136,7 @@ impl<'i, 'p, 'g> TypeCheckingContext<'i, 'p, 'g> {
         }
     }
 
-    pub fn add_module(
+    pub fn add_module_hir(
         &mut self,
         module_id: ModuleID,
         path: Path,
@@ -148,67 +148,14 @@ impl<'i, 'p, 'g> TypeCheckingContext<'i, 'p, 'g> {
         let mut enums = FxHashMap::default();
 
         for (idx, item) in hir.items.into_iter().enumerate() {
-            match item {
-                ry_hir::ModuleItem::Import {
-                    location,
-                    path: ImportPath { path, r#as },
-                } => {
-                    let name = if let Some(r#as) = r#as {
-                        r#as
-                    } else {
-                        *path.identifiers.last().unwrap()
-                    };
-
-                    let Some(binding) = self.resolution_environment.resolve_path(
-                        path,
-                        self.identifier_interner,
-                        diagnostics,
-                    ) else {
-                        continue;
-                    };
-
-                    imports.insert(name, binding);
-                }
-                ry_hir::ModuleItem::Enum {
-                    visibility,
-                    name,
-                    items,
-                    ..
-                } => {
-                    let definition_id = DefinitionID {
-                        name: name.id,
-                        module_id,
-                    };
-
-                    let mut items_data = FxHashMap::default();
-
-                    for item in items {
-                        items_data.insert(
-                            item.symbol(),
-                            EnumItemID {
-                                enum_definition_id: definition_id,
-                                item_id: item.symbol(),
-                            },
-                        );
-                    }
-
-                    self.resolution_environment
-                        .visibilities
-                        .insert(definition_id, visibility);
-                    enums.insert(name, EnumData { items: items_data });
-                }
-                _ => {
-                    let definition_id = DefinitionID {
-                        name: item.name().unwrap(),
-                        module_id,
-                    };
-
-                    self.resolution_environment
-                        .visibilities
-                        .insert(definition_id, item.visibility());
-                    hir_storage.items.insert(definition_id, item);
-                }
-            }
+            self.add_item_hir(
+                module_id,
+                item,
+                &mut imports,
+                &mut enums,
+                hir_storage,
+                diagnostics,
+            );
         }
 
         self.resolution_environment
@@ -216,15 +163,106 @@ impl<'i, 'p, 'g> TypeCheckingContext<'i, 'p, 'g> {
             .insert(module_id, path);
     }
 
+    pub fn add_item_hir(
+        &mut self,
+        module_id: ModuleID,
+        item: ry_hir::ModuleItem,
+        imports: &mut FxHashMap<IdentifierID, NameBinding>,
+        enums: &mut FxHashMap<DefinitionID, EnumData>,
+        hir_storage: &mut HIRStorage,
+        diagnostics: &mut GlobalDiagnostics,
+    ) {
+        match item {
+            ry_hir::ModuleItem::Import { path, .. } => {
+                self.add_import_hir(path, hir_storage, imports, diagnostics);
+            }
+            ry_hir::ModuleItem::Enum {
+                visibility,
+                name: IdentifierAST { id: name_id, .. },
+                items,
+                ..
+            } => {
+                self.add_enum_hir(module_id, visibility, name_id, items, hir_storage, enums);
+            }
+            _ => {
+                let definition_id = DefinitionID {
+                    name_id: item.name().unwrap(),
+                    module_id,
+                };
+
+                self.resolution_environment
+                    .visibilities
+                    .insert(definition_id, item.visibility());
+                hir_storage.items.insert(definition_id, item);
+            }
+        }
+    }
+
+    fn add_import_hir(
+        &mut self,
+        path: ry_hir::ImportPath,
+        hir_storage: &mut HIRStorage,
+        imports: &mut FxHashMap<IdentifierID, NameBinding>,
+        diagnostics: &mut GlobalDiagnostics,
+    ) {
+        let ImportPath { path, r#as } = path;
+
+        let name_id = if let Some(r#as) = r#as {
+            r#as
+        } else {
+            *path.identifiers.last().unwrap()
+        }
+        .id;
+
+        let Some(binding) = self.resolution_environment.resolve_path(
+            path.clone(),
+            self.identifier_interner,
+            diagnostics,
+        ) else {
+            return;
+        };
+
+        imports.insert(name_id, binding);
+    }
+
+    fn add_enum_hir(
+        &mut self,
+        module_id: ModuleID,
+        visibility: Visibility,
+        name_id: IdentifierID,
+        items: Vec<ry_hir::EnumItem>,
+        hir_storage: &mut HIRStorage,
+        enums: &mut FxHashMap<DefinitionID, EnumData>,
+    ) {
+        let definition_id = DefinitionID { name_id, module_id };
+
+        let mut items_data = FxHashMap::default();
+
+        for item in items {
+            items_data.insert(
+                item.symbol(),
+                EnumItemID {
+                    enum_definition_id: definition_id,
+                    item_id: item.symbol(),
+                },
+            );
+        }
+
+        self.resolution_environment
+            .visibilities
+            .insert(definition_id, visibility);
+        enums.insert(definition_id, EnumData { items: items_data });
+    }
+
     #[inline]
-    pub fn resolve_imports(&mut self, diagnostics: &mut GlobalDiagnostics) {
+    pub fn process_imports(&mut self, diagnostics: &mut GlobalDiagnostics) {
         self.resolution_environment
             .resolve_imports(self.identifier_interner, diagnostics);
     }
 
     pub fn resolve_type(
         &mut self,
-        ty: ry_hir::Type,
+        ty: &ry_hir::Type,
         generic_parameter_scope: Option<&GenericParameterScope>,
         module_scope: &ModuleScope,
         hir_storage: &HIRStorage,
@@ -273,7 +311,7 @@ impl<'i, 'p, 'g> TypeCheckingContext<'i, 'p, 'g> {
                     })
                     .collect::<Option<_>>()?,
                 return_type: Box::new(self.resolve_type(
-                    *return_type,
+                    return_type,
                     generic_parameter_scope,
                     module_scope,
                     hir_storage,
@@ -295,7 +333,7 @@ impl<'i, 'p, 'g> TypeCheckingContext<'i, 'p, 'g> {
 
     fn resolve_type_constructor(
         &mut self,
-        ty: ry_ast::TypeConstructor,
+        ty: &ry_ast::TypeConstructor,
         generic_parameter_scope: Option<&GenericParameterScope>,
         module_scope: &ModuleScope,
         diagnostics: &mut GlobalDiagnostics,
@@ -318,7 +356,7 @@ impl<'i, 'p, 'g> TypeCheckingContext<'i, 'p, 'g> {
         }
 
         let Some(name_binding) = module_scope.resolve_path(
-            ty.path,
+            ty.path.clone(),
             self.identifier_interner,
             diagnostics,
             &self.resolution_environment,
@@ -351,7 +389,7 @@ impl<'i, 'p, 'g> TypeCheckingContext<'i, 'p, 'g> {
 
     fn resolve_type_arguments(
         &mut self,
-        hir: Option<Vec<ry_hir::Type>>,
+        hir: Option<&[ry_hir::Type]>,
         generic_parameter_scope: Option<&GenericParameterScope>,
         module_scope: &ModuleScope,
         hir_storage: &HIRStorage,
@@ -419,7 +457,10 @@ impl<'i, 'p, 'g> TypeCheckingContext<'i, 'p, 'g> {
                                 .collect(),
                         },
                         arguments: self.resolve_type_arguments(
-                            interface.arguments,
+                            interface
+                                .arguments
+                                .as_ref()
+                                .map(|arguments| arguments.as_slice()),
                             generic_parameter_scope,
                             module_scope,
                             hir_storage,
@@ -570,7 +611,7 @@ impl<'i, 'p, 'g> TypeCheckingContext<'i, 'p, 'g> {
 
             let default_value = if let Some(default_value_hir) = &parameter_hir.default_value {
                 if let Some(ty) = self.resolve_type(
-                    default_value_hir.clone(),
+                    default_value_hir,
                     Some(&generic_parameter_scope),
                     module_scope,
                     hir_storage,
@@ -633,7 +674,7 @@ impl<'i, 'p, 'g> TypeCheckingContext<'i, 'p, 'g> {
 
         for where_predicate_hir in where_predicates_hir {
             let ty = self.resolve_type(
-                where_predicate_hir.ty.clone(),
+                &where_predicate_hir.ty,
                 Some(&generic_parameter_scope),
                 module_scope,
                 hir_storage,
