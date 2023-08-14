@@ -53,31 +53,28 @@ impl BuildDiagnostic for UnnecessaryEqualityPredicateDiagnostic {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ExpectedType {
     pub location: Location,
-    pub type_binding_kind: BindingKind,
+    pub binding_kind: BindingKind,
 }
 
 impl BuildDiagnostic for ExpectedType {
     fn build(&self) -> Diagnostic<PathID> {
         Diagnostic::error()
             .with_code("E009")
-            .with_message(format!("expected type, got {}", self.type_binding_kind))
+            .with_message(format!("expected type, got {}", self.binding_kind))
             .with_labels(vec![self.location.to_primary_label()])
     }
 }
 
 pub struct ExpectedInterface {
     pub location: Location,
-    pub type_binding_kind: BindingKind,
+    pub binding_kind: BindingKind,
 }
 
 impl BuildDiagnostic for ExpectedInterface {
     fn build(&self) -> Diagnostic<PathID> {
         Diagnostic::error()
             .with_code("E009")
-            .with_message(format!(
-                "expected interface, got {}",
-                self.type_binding_kind
-            ))
+            .with_message(format!("expected interface, got {}", self.binding_kind))
             .with_labels(vec![self.location.to_primary_label()])
     }
 }

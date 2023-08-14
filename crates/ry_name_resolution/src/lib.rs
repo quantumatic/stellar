@@ -74,7 +74,7 @@ use diagnostics::{
 };
 use itertools::Itertools;
 use ry_ast::{IdentifierAST, Visibility};
-use ry_diagnostics::{BuildDiagnostic, GlobalDiagnostics};
+use ry_diagnostics::{BuildDiagnostic, Diagnostics};
 use ry_fx_hash::FxHashMap;
 use ry_interner::{IdentifierID, IdentifierInterner, PathID};
 
@@ -144,7 +144,7 @@ impl ResolutionEnvironment {
     pub fn resolve_imports(
         &mut self,
         identifier_interner: &IdentifierInterner,
-        diagnostics: &mut GlobalDiagnostics,
+        diagnostics: &mut Diagnostics,
     ) {
         for (module_path_id, module_scope) in &self.module_scopes {
             let mut imports = FxHashMap::default();
@@ -174,7 +174,7 @@ impl ResolutionEnvironment {
         &self,
         path: ry_ast::Path,
         identifier_interner: &IdentifierInterner,
-        diagnostics: &mut GlobalDiagnostics,
+        diagnostics: &mut Diagnostics,
     ) -> Option<NameBinding> {
         let mut identifiers = path.identifiers.into_iter();
         let first_identifier = identifiers.next().unwrap();
@@ -343,7 +343,7 @@ impl NameBinding {
         first_identifier: IdentifierAST,
         other_identifiers: impl IntoIterator<Item = IdentifierAST>,
         identifier_interner: &IdentifierInterner,
-        diagnostics: &mut GlobalDiagnostics,
+        diagnostics: &mut Diagnostics,
         environment: &ResolutionEnvironment,
     ) -> Option<Self> {
         iter::once(first_identifier)
@@ -378,7 +378,7 @@ fn resolve_path_segment(
     previous_identifier: IdentifierAST,
     current_identifier: IdentifierAST,
     identifier_interner: &IdentifierInterner,
-    diagnostics: &mut GlobalDiagnostics,
+    diagnostics: &mut Diagnostics,
     environment: &ResolutionEnvironment,
 ) -> Option<NameBinding> {
     match binding {
@@ -574,7 +574,7 @@ impl ModuleScope {
         &self,
         path: ry_ast::Path,
         identifier_interner: &IdentifierInterner,
-        diagnostics: &mut GlobalDiagnostics,
+        diagnostics: &mut Diagnostics,
         environment: &ResolutionEnvironment,
     ) -> Option<NameBinding> {
         let mut identifiers = path.identifiers.into_iter();
@@ -605,7 +605,7 @@ impl ModuleScope {
         &self,
         identifier: IdentifierAST,
         identifier_interner: &IdentifierInterner,
-        diagnostics: &mut GlobalDiagnostics,
+        diagnostics: &mut Diagnostics,
         environment: &ResolutionEnvironment,
     ) -> Option<NameBinding> {
         if let Some(binding) = self.bindings.get(&identifier.id).copied().or_else(|| {

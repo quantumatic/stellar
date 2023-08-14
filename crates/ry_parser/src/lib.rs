@@ -85,7 +85,7 @@ use ry_ast::{
     token::{Keyword, LexError, RawToken, Token},
     Expression, IdentifierAST, Module, ModuleItem, Pattern, Statement, Type, Visibility,
 };
-use ry_diagnostics::{BuildDiagnostic, GlobalDiagnostics};
+use ry_diagnostics::{BuildDiagnostic, Diagnostics};
 use ry_filesystem::location::{ByteOffset, Location, LocationIndex};
 use ry_interner::{IdentifierInterner, PathID, PathInterner};
 use ry_lexer::Lexer;
@@ -107,7 +107,7 @@ pub struct ParseState<'s, 'd, 'i> {
     next_token: Token,
 
     /// Diagnostics that is emitted during parsing.
-    diagnostics: &'d mut GlobalDiagnostics,
+    diagnostics: &'d mut Diagnostics,
 }
 
 /// Represents AST node that can be parsed.
@@ -150,7 +150,7 @@ pub trait OptionallyParse: Sized {
 pub fn read_and_parse_module(
     path_identifier_interner: &PathInterner,
     file_path_id: PathID,
-    diagnostics: &mut GlobalDiagnostics,
+    diagnostics: &mut Diagnostics,
     identifier_interner: &mut IdentifierInterner,
 ) -> Result<Module, io::Error> {
     Ok(parse_module_using(ParseState::new(
@@ -167,7 +167,7 @@ pub fn read_and_parse_module(
 pub fn parse_module(
     file_path_id: PathID,
     source: &str,
-    diagnostics: &mut GlobalDiagnostics,
+    diagnostics: &mut Diagnostics,
     identifier_interner: &mut IdentifierInterner,
 ) -> Module {
     parse_module_using(ParseState::new(
@@ -194,7 +194,7 @@ pub fn parse_module_using(mut state: ParseState<'_, '_, '_>) -> Module {
 pub fn parse_item(
     file_path_id: PathID,
     source: impl AsRef<str>,
-    diagnostics: &mut GlobalDiagnostics,
+    diagnostics: &mut Diagnostics,
     identifier_interner: &mut IdentifierInterner,
 ) -> Option<ModuleItem> {
     parse_item_using(&mut ParseState::new(
@@ -218,7 +218,7 @@ pub fn parse_item_using(state: &mut ParseState<'_, '_, '_>) -> Option<ModuleItem
 pub fn parse_expression(
     file_path_id: PathID,
     source: impl AsRef<str>,
-    diagnostics: &mut GlobalDiagnostics,
+    diagnostics: &mut Diagnostics,
     identifier_interner: &mut IdentifierInterner,
 ) -> Option<Expression> {
     parse_expression_using(&mut ParseState::new(
@@ -242,7 +242,7 @@ pub fn parse_expression_using(state: &mut ParseState<'_, '_, '_>) -> Option<Expr
 pub fn parse_statement(
     file_path_id: PathID,
     source: impl AsRef<str>,
-    diagnostics: &mut GlobalDiagnostics,
+    diagnostics: &mut Diagnostics,
     identifier_interner: &mut IdentifierInterner,
 ) -> Option<Statement> {
     parse_statement_using(&mut ParseState::new(
@@ -266,7 +266,7 @@ pub fn parse_statement_using(state: &mut ParseState<'_, '_, '_>) -> Option<State
 pub fn parse_type(
     file_path_id: PathID,
     source: impl AsRef<str>,
-    diagnostics: &mut GlobalDiagnostics,
+    diagnostics: &mut Diagnostics,
     identifier_interner: &mut IdentifierInterner,
 ) -> Option<Type> {
     parse_type_using(&mut ParseState::new(
@@ -290,7 +290,7 @@ pub fn parse_type_using(state: &mut ParseState<'_, '_, '_>) -> Option<Type> {
 pub fn parse_pattern(
     file_path_id: PathID,
     source: impl AsRef<str>,
-    diagnostics: &mut GlobalDiagnostics,
+    diagnostics: &mut Diagnostics,
     identifier_interner: &mut IdentifierInterner,
 ) -> Option<Pattern> {
     parse_pattern_using(&mut ParseState::new(
@@ -314,7 +314,7 @@ impl<'s, 'd, 'i> ParseState<'s, 'd, 'i> {
     pub fn new(
         file_path_id: PathID,
         source: &'s str,
-        diagnostics: &'d mut GlobalDiagnostics,
+        diagnostics: &'d mut Diagnostics,
         identifier_interner: &'i mut IdentifierInterner,
     ) -> Self {
         let mut lexer = Lexer::new(file_path_id, source, identifier_interner);

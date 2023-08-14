@@ -98,7 +98,7 @@ pub struct MultiFileDiagnostic {
 
 /// Global diagnostics.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct GlobalDiagnostics {
+pub struct Diagnostics {
     /// Files that are involved in the diagnostics.
     pub files_involved: FxHashSet<PathID>,
 
@@ -109,14 +109,14 @@ pub struct GlobalDiagnostics {
     pub context_free_diagnostics: Vec<Diagnostic<()>>,
 }
 
-impl Default for GlobalDiagnostics {
+impl Default for Diagnostics {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl GlobalDiagnostics {
-    /// Creates a new instance of [`GlobalDiagnostics`].
+impl Diagnostics {
+    /// Creates a new instance of [`Diagnostics`].
     #[inline]
     #[must_use]
     pub fn new() -> Self {
@@ -332,7 +332,7 @@ impl<'p> DiagnosticsEmitter<'p> {
 
     /// Emit global diagnostics.
     #[inline]
-    pub fn emit_global_diagnostics(&mut self, global_diagnostics: &GlobalDiagnostics) {
+    pub fn emit_global_diagnostics(&mut self, global_diagnostics: &Diagnostics) {
         self.initialize_file_storage(&global_diagnostics.files_involved);
         self.emit_context_free_diagnostics(&global_diagnostics.context_free_diagnostics);
         self.emit_file_diagnostics(&global_diagnostics.file_diagnostics);

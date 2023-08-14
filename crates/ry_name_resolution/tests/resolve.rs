@@ -1,5 +1,5 @@
 use ry_ast::{IdentifierAST, Path};
-use ry_diagnostics::GlobalDiagnostics;
+use ry_diagnostics::Diagnostics;
 use ry_filesystem::location::DUMMY_LOCATION;
 use ry_fx_hash::FxHashMap;
 use ry_interner::{IdentifierInterner, PathInterner};
@@ -36,7 +36,7 @@ fn resolve_module() {
     let child_module_id = ModuleID(child_module_path_id);
 
     let mut environment = ResolutionEnvironment::new();
-    let mut diagnostics = GlobalDiagnostics::new();
+    let mut diagnostics = Diagnostics::new();
 
     let mut package_root_module_scope = ModuleScope {
         name: a,
@@ -118,7 +118,7 @@ fn import() {
     let child_module_id = ModuleID(child_module_path_id);
 
     let mut environment = ResolutionEnvironment::new();
-    let mut diagnostics = GlobalDiagnostics::new();
+    let mut diagnostics = Diagnostics::new();
 
     let mut package_root_module_scope = ModuleScope {
         name: a,

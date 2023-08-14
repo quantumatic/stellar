@@ -530,7 +530,7 @@ impl IdentifierInterner {
 }
 
 /// Storage for file paths (to avoid copying and fast comparing, basically the same
-/// movitation as with [`Interner`]).
+/// movitation as with [`IdentifierInterner`]).
 ///
 /// The ID-s that correspond to file paths have a type of [`PathID`].
 #[derive(Debug, Clone)]

@@ -1,18 +1,18 @@
 use diagnostics::{UnnecessaryParenthesesInPatternDiagnostic, UnnecessaryParenthesizedExpression};
-use ry_diagnostics::{BuildDiagnostic, GlobalDiagnostics};
+use ry_diagnostics::{BuildDiagnostic, Diagnostics};
 use ry_interner::PathID;
 
 mod diagnostics;
 
 pub struct LoweringContext<'d> {
     file_path_id: PathID,
-    diagnostics: &'d mut GlobalDiagnostics,
+    diagnostics: &'d mut Diagnostics,
 }
 
 impl<'d> LoweringContext<'d> {
     #[inline]
     #[must_use]
-    pub fn new(file_path_id: PathID, diagnostics: &'d mut GlobalDiagnostics) -> Self {
+    pub fn new(file_path_id: PathID, diagnostics: &'d mut Diagnostics) -> Self {
         Self {
             file_path_id,
             diagnostics,

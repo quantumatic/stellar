@@ -2,7 +2,7 @@ use std::{io::Write, path::PathBuf, time::Instant};
 
 use codespan_reporting::diagnostic::Diagnostic;
 use ry_ast::serialize::serialize_ast;
-use ry_diagnostics::{DiagnosticsEmitter, GlobalDiagnostics};
+use ry_diagnostics::{Diagnostics, DiagnosticsEmitter};
 use ry_interner::{IdentifierInterner, PathInterner};
 use ry_parser::read_and_parse_module;
 
@@ -14,7 +14,7 @@ pub fn command(path_str: &str) {
 
     let file_path_id = path_interner.get_or_intern(PathBuf::from(path_str));
 
-    let mut diagnostics = GlobalDiagnostics::new();
+    let mut diagnostics = Diagnostics::new();
     let mut diagnostics_emitter = DiagnosticsEmitter::new(&path_interner);
 
     let now = Instant::now();
