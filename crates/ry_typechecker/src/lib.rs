@@ -61,10 +61,9 @@ impl From<NameBindingKind> for BindingKind {
 }
 
 #[derive(Debug)]
-pub struct TypeCheckingContext<'i, 'p, 'g> {
+pub struct TypeCheckingContext<'p, 'g> {
     pub resolution_environment: ResolutionEnvironment,
 
-    identifier_interner: &'i mut IdentifierInterner,
     path_interner: &'p PathInterner,
     type_variable_factory: TypeVariableFactory,
     signatures: FxHashMap<DefinitionID, Arc<ModuleItemSignature<'g>>>,
@@ -121,13 +120,9 @@ impl<'g> THIRStorage<'g> {
     }
 }
 
-impl<'i, 'p, 'g> TypeCheckingContext<'i, 'p, 'g> {
-    pub fn new(
-        identifier_interner: &'i mut IdentifierInterner,
-        path_interner: &'p PathInterner,
-    ) -> Self {
+impl<'p, 'g> TypeCheckingContext<'p, 'g> {
+    pub fn new(path_interner: &'p PathInterner) -> Self {
         Self {
-            identifier_interner,
             path_interner,
             resolution_environment: ResolutionEnvironment::new(),
             type_variable_factory: TypeVariableFactory::new(),
@@ -142,6 +137,7 @@ impl<'i, 'p, 'g> TypeCheckingContext<'i, 'p, 'g> {
         path: Path,
         hir: Module,
         hir_storage: &mut HIRStorage,
+        identifier_interner: &mut IdentifierInterner,
         diagnostics: &mut GlobalDiagnostics,
     ) {
         let mut imports = FxHashMap::default();
@@ -154,6 +150,7 @@ impl<'i, 'p, 'g> TypeCheckingContext<'i, 'p, 'g> {
                 &mut imports,
                 &mut enums,
                 hir_storage,
+                identifier_interner,
                 diagnostics,
             );
         }
@@ -170,11 +167,12 @@ impl<'i, 'p, 'g> TypeCheckingContext<'i, 'p, 'g> {
         imports: &mut FxHashMap<IdentifierID, NameBinding>,
         enums: &mut FxHashMap<DefinitionID, EnumData>,
         hir_storage: &mut HIRStorage,
+        identifier_interner: &mut IdentifierInterner,
         diagnostics: &mut GlobalDiagnostics,
     ) {
         match item {
             ry_hir::ModuleItem::Import { path, .. } => {
-                self.add_import_hir(path, hir_storage, imports, diagnostics);
+                self.add_import_hir(path, imports, identifier_interner, diagnostics);
             }
             ry_hir::ModuleItem::Enum {
                 visibility,
@@ -182,7 +180,7 @@ impl<'i, 'p, 'g> TypeCheckingContext<'i, 'p, 'g> {
                 items,
                 ..
             } => {
-                self.add_enum_hir(module_id, visibility, name_id, items, hir_storage, enums);
+                self.add_enum_hir(module_id, visibility, name_id, items, enums);
             }
             _ => {
                 let definition_id = DefinitionID {
@@ -201,8 +199,8 @@ impl<'i, 'p, 'g> TypeCheckingContext<'i, 'p, 'g> {
     fn add_import_hir(
         &mut self,
         path: ry_hir::ImportPath,
-        hir_storage: &mut HIRStorage,
         imports: &mut FxHashMap<IdentifierID, NameBinding>,
+        identifier_interner: &mut IdentifierInterner,
         diagnostics: &mut GlobalDiagnostics,
     ) {
         let ImportPath { path, r#as } = path;
@@ -216,7 +214,7 @@ impl<'i, 'p, 'g> TypeCheckingContext<'i, 'p, 'g> {
 
         let Some(binding) = self.resolution_environment.resolve_path(
             path.clone(),
-            self.identifier_interner,
+            identifier_interner,
             diagnostics,
         ) else {
             return;
@@ -231,7 +229,6 @@ impl<'i, 'p, 'g> TypeCheckingContext<'i, 'p, 'g> {
         visibility: Visibility,
         name_id: IdentifierID,
         items: Vec<ry_hir::EnumItem>,
-        hir_storage: &mut HIRStorage,
         enums: &mut FxHashMap<DefinitionID, EnumData>,
     ) {
         let definition_id = DefinitionID { name_id, module_id };
@@ -255,9 +252,13 @@ impl<'i, 'p, 'g> TypeCheckingContext<'i, 'p, 'g> {
     }
 
     #[inline]
-    pub fn process_imports(&mut self, diagnostics: &mut GlobalDiagnostics) {
+    pub fn process_imports(
+        &mut self,
+        identifier_interner: &mut IdentifierInterner,
+        diagnostics: &mut GlobalDiagnostics,
+    ) {
         self.resolution_environment
-            .resolve_imports(self.identifier_interner, diagnostics);
+            .resolve_imports(identifier_interner, diagnostics);
     }
 
     pub fn resolve_type(
@@ -267,6 +268,7 @@ impl<'i, 'p, 'g> TypeCheckingContext<'i, 'p, 'g> {
         module_scope: &ModuleScope,
         hir_storage: &HIRStorage,
         thir_storage: &mut THIRStorage,
+        identifier_interner: &mut IdentifierInterner,
         diagnostics: &mut GlobalDiagnostics,
     ) -> Option<Type> {
         match ty {
@@ -275,6 +277,7 @@ impl<'i, 'p, 'g> TypeCheckingContext<'i, 'p, 'g> {
                     constructor,
                     generic_parameter_scope,
                     module_scope,
+                    identifier_interner,
                     diagnostics,
                 )
                 .map(Type::Constructor),
@@ -287,6 +290,7 @@ impl<'i, 'p, 'g> TypeCheckingContext<'i, 'p, 'g> {
                         module_scope,
                         hir_storage,
                         thir_storage,
+                        identifier_interner,
                         diagnostics,
                     )
                 })
@@ -306,6 +310,7 @@ impl<'i, 'p, 'g> TypeCheckingContext<'i, 'p, 'g> {
                             module_scope,
                             hir_storage,
                             thir_storage,
+                            identifier_interner,
                             diagnostics,
                         )
                     })
@@ -316,6 +321,7 @@ impl<'i, 'p, 'g> TypeCheckingContext<'i, 'p, 'g> {
                     module_scope,
                     hir_storage,
                     thir_storage,
+                    identifier_interner,
                     diagnostics,
                 )?),
             }),
@@ -325,6 +331,7 @@ impl<'i, 'p, 'g> TypeCheckingContext<'i, 'p, 'g> {
                     module_scope,
                     hir_storage,
                     thir_storage,
+                    identifier_interner,
                     diagnostics,
                 )
                 .map(|bounds| Type::InterfaceObject { bounds }),
@@ -336,6 +343,7 @@ impl<'i, 'p, 'g> TypeCheckingContext<'i, 'p, 'g> {
         ty: &ry_ast::TypeConstructor,
         generic_parameter_scope: Option<&GenericParameterScope>,
         module_scope: &ModuleScope,
+        identifier_interner: &mut IdentifierInterner,
         diagnostics: &mut GlobalDiagnostics,
     ) -> Option<TypeConstructor> {
         if let Some(generic_parameter_scope) = generic_parameter_scope {
@@ -344,7 +352,6 @@ impl<'i, 'p, 'g> TypeCheckingContext<'i, 'p, 'g> {
 
             if identifiers_iter.next().is_none() {
                 if generic_parameter_scope.contains(possible_generic_parameter_name.id) {
-                    // generic parameters: [T], type: T
                     return Some(TypeConstructor {
                         path: Path {
                             identifiers: vec![possible_generic_parameter_name.id],
@@ -357,7 +364,7 @@ impl<'i, 'p, 'g> TypeCheckingContext<'i, 'p, 'g> {
 
         let Some(name_binding) = module_scope.resolve_path(
             ty.path.clone(),
-            self.identifier_interner,
+            identifier_interner,
             diagnostics,
             &self.resolution_environment,
         ) else {
@@ -394,6 +401,7 @@ impl<'i, 'p, 'g> TypeCheckingContext<'i, 'p, 'g> {
         module_scope: &ModuleScope,
         hir_storage: &HIRStorage,
         thir_storage: &mut THIRStorage,
+        identifier_interner: &mut IdentifierInterner,
         diagnostics: &mut GlobalDiagnostics,
     ) -> Option<Vec<Type>> {
         if let Some(hir) = hir {
@@ -409,6 +417,7 @@ impl<'i, 'p, 'g> TypeCheckingContext<'i, 'p, 'g> {
                         module_scope,
                         hir_storage,
                         thir_storage,
+                        identifier_interner,
                         diagnostics,
                     )
                 })
@@ -425,74 +434,78 @@ impl<'i, 'p, 'g> TypeCheckingContext<'i, 'p, 'g> {
         module_scope: &ModuleScope,
         hir_storage: &HIRStorage,
         thir_storage: &mut THIRStorage,
+        identifier_interner: &mut IdentifierInterner,
         diagnostics: &mut GlobalDiagnostics,
     ) -> Option<TypeConstructor> {
         let Some(name_binding) = module_scope.resolve_path(
             interface.path.clone(),
-            self.identifier_interner,
+            identifier_interner,
             diagnostics,
             &self.resolution_environment,
         ) else {
             return None;
         };
 
-        match name_binding {
-            NameBinding::ModuleItem(definition_id) => {
-                let signature = self.resolve_signature(
-                    definition_id,
-                    module_scope,
-                    hir_storage,
-                    thir_storage,
-                    diagnostics,
-                )?;
-
-                match signature.as_ref() {
-                    ModuleItemSignature::Interface(_) => Some(TypeConstructor {
-                        path: Path {
-                            identifiers: interface
-                                .path
-                                .identifiers
-                                .iter()
-                                .map(|identifier| identifier.id)
-                                .collect(),
-                        },
-                        arguments: self.resolve_type_arguments(
-                            interface
-                                .arguments
-                                .as_ref()
-                                .map(|arguments| arguments.as_slice()),
-                            generic_parameter_scope,
-                            module_scope,
-                            hir_storage,
-                            thir_storage,
-                            diagnostics,
-                        )?,
-                    }),
-                    _ => {
-                        diagnostics.add_single_file_diagnostic(
-                            interface.location.file_path_id,
-                            ExpectedInterface {
-                                location: interface.location,
-                                type_binding_kind: match signature.as_ref() {
-                                    ModuleItemSignature::Type(_)
-                                    | ModuleItemSignature::TypeAlias(_) => BindingKind::Type,
-                                    ModuleItemSignature::Function(_) => BindingKind::Function,
-                                    _ => unreachable!(),
-                                },
-                            }
-                            .build(),
-                        );
-
-                        None
-                    }
-                }
-            }
+        let definition_id = match name_binding {
+            NameBinding::ModuleItem(definition_id) => definition_id,
             _ => {
                 diagnostics.add_single_file_diagnostic(
                     interface.location.file_path_id,
                     ExpectedInterface {
                         location: interface.location,
                         type_binding_kind: name_binding.kind().into(),
+                    }
+                    .build(),
+                );
+
+                return None;
+            }
+        };
+
+        let signature = self.resolve_signature(
+            definition_id,
+            module_scope,
+            hir_storage,
+            thir_storage,
+            identifier_interner,
+            diagnostics,
+        )?;
+
+        match signature.as_ref() {
+            ModuleItemSignature::Interface(_) => Some(TypeConstructor {
+                path: Path {
+                    identifiers: interface
+                        .path
+                        .identifiers
+                        .iter()
+                        .map(|identifier| identifier.id)
+                        .collect(),
+                },
+                arguments: self.resolve_type_arguments(
+                    interface
+                        .arguments
+                        .as_ref()
+                        .map(|arguments| arguments.as_slice()),
+                    generic_parameter_scope,
+                    module_scope,
+                    hir_storage,
+                    thir_storage,
+                    identifier_interner,
+                    diagnostics,
+                )?,
+            }),
+            _ => {
+                diagnostics.add_single_file_diagnostic(
+                    interface.location.file_path_id,
+                    ExpectedInterface {
+                        location: interface.location,
+                        type_binding_kind: match signature.as_ref() {
+                            ModuleItemSignature::Type(_) | ModuleItemSignature::TypeAlias(_) => {
+                                BindingKind::Type
+                            }
+                            ModuleItemSignature::Function(_) => BindingKind::Function,
+                            _ => unreachable!(),
+                        },
                     }
                     .build(),
                 );
@@ -508,6 +521,7 @@ impl<'i, 'p, 'g> TypeCheckingContext<'i, 'p, 'g> {
         module_scope: &ModuleScope,
         hir_storage: &HIRStorage,
         thir_storage: &mut THIRStorage,
+        identifier_interner: &mut IdentifierInterner,
         diagnostics: &mut GlobalDiagnostics,
     ) -> Option<Vec<TypeConstructor>> {
         bounds
@@ -519,6 +533,7 @@ impl<'i, 'p, 'g> TypeCheckingContext<'i, 'p, 'g> {
                     module_scope,
                     hir_storage,
                     thir_storage,
+                    identifier_interner,
                     diagnostics,
                 )
             })
@@ -531,6 +546,7 @@ impl<'i, 'p, 'g> TypeCheckingContext<'i, 'p, 'g> {
         module_scope: &ModuleScope,
         hir_storage: &HIRStorage,
         thir_storage: &mut THIRStorage,
+        identifier_interner: &mut IdentifierInterner,
         diagnostics: &mut GlobalDiagnostics,
     ) -> Option<Arc<ModuleItemSignature>> {
         if let Some(signature) = self.signatures.get(&definition_id).cloned() {
@@ -542,6 +558,7 @@ impl<'i, 'p, 'g> TypeCheckingContext<'i, 'p, 'g> {
             module_scope,
             hir_storage,
             thir_storage,
+            identifier_interner,
             diagnostics,
         )
     }
@@ -552,6 +569,7 @@ impl<'i, 'p, 'g> TypeCheckingContext<'i, 'p, 'g> {
         module_scope: &ModuleScope,
         hir_storage: &HIRStorage,
         thir_storage: &mut THIRStorage,
+        identifier_interner: &mut IdentifierInterner,
         diagnostics: &mut GlobalDiagnostics,
     ) -> Option<Arc<ModuleItemSignature>> {
         match hir_storage.resolve_or_panic(definition_id) {
@@ -560,6 +578,7 @@ impl<'i, 'p, 'g> TypeCheckingContext<'i, 'p, 'g> {
                 module_scope,
                 hir_storage,
                 thir_storage,
+                identifier_interner,
                 diagnostics,
             ),
             _ => todo!(),
@@ -572,6 +591,7 @@ impl<'i, 'p, 'g> TypeCheckingContext<'i, 'p, 'g> {
         module_scope: &ModuleScope,
         hir_storage: &HIRStorage,
         thir_storage: &mut THIRStorage,
+        identifier_interner: &mut IdentifierInterner,
         diagnostics: &mut GlobalDiagnostics,
     ) -> Option<Arc<ModuleItemSignature>> {
         let (generic_parameter_scope, _) = self.analyze_generic_parameters_and_bounds(
@@ -583,6 +603,7 @@ impl<'i, 'p, 'g> TypeCheckingContext<'i, 'p, 'g> {
             module_scope,
             hir_storage,
             thir_storage,
+            identifier_interner,
             diagnostics,
         )?;
         let generic_parameter_scope = Some(&generic_parameter_scope);
@@ -600,6 +621,7 @@ impl<'i, 'p, 'g> TypeCheckingContext<'i, 'p, 'g> {
         module_scope: &ModuleScope,
         hir_storage: &HIRStorage,
         thir_storage: &mut THIRStorage,
+        identifier_interner: &mut IdentifierInterner,
         diagnostics: &mut GlobalDiagnostics,
     ) -> Option<(GenericParameterScope, Vec<Predicate>)> {
         let mut generic_parameter_scope =
@@ -616,6 +638,7 @@ impl<'i, 'p, 'g> TypeCheckingContext<'i, 'p, 'g> {
                     module_scope,
                     hir_storage,
                     thir_storage,
+                    identifier_interner,
                     diagnostics,
                 ) {
                     Some(ty)
@@ -653,6 +676,7 @@ impl<'i, 'p, 'g> TypeCheckingContext<'i, 'p, 'g> {
                         module_scope,
                         hir_storage,
                         thir_storage,
+                        identifier_interner,
                         diagnostics,
                     )?);
                 }
@@ -679,6 +703,7 @@ impl<'i, 'p, 'g> TypeCheckingContext<'i, 'p, 'g> {
                 module_scope,
                 hir_storage,
                 thir_storage,
+                identifier_interner,
                 diagnostics,
             )?;
         }
