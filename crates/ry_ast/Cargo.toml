@@ -9,11 +9,11 @@ readme = "../../README.md"
 description = "Defines AST for the Ry programming language."
 
 [dependencies]
+colorize = "0.1.0"
 derive_more = "0.99.17"
 phf = { version = "0.11.1", features = ["macros"] }
 ry_filesystem = { path = "../ry_filesystem" }
 ry_interner = { path = "../ry_interner" }
-colorize = "0.1.0"
 serde = { version = "1.0.183", features = ["derive"], optional = true }
 
 [features]

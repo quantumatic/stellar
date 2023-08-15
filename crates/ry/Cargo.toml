@@ -14,9 +14,9 @@ codespan-reporting = "0.11.1"
 leftpad-str = "9.9.9"
 ry_ast = { path = "../ry_ast", features = ["serde"] }
 ry_ast_lowering = { path = "../ry_ast_lowering" }
-ry_hir = { path = "../ry_hir", features = ["serde"] }
 ry_diagnostics = { path = "../ry_diagnostics" }
 ry_filesystem = { path = "../ry_filesystem" }
+ry_hir = { path = "../ry_hir", features = ["serde"] }
 ry_interner = { path = "../ry_interner" }
 ry_lexer = { path = "../ry_lexer" }
 ry_manifest = { path = "../ry_manifest" }
