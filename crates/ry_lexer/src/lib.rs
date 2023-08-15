@@ -665,6 +665,7 @@ impl<'s, 'i> Lexer<'s, 'i> {
             ('+', '=') => self.advance_twice_with(Punctuator::PlusEq),
             ('+', _) => self.advance_with(Punctuator::Plus),
 
+            ('-', '>') => self.advance_twice_with(Punctuator::Arrow),
             ('-', '-') => self.advance_twice_with(Punctuator::DoubleMinus),
             ('-', '=') => self.advance_twice_with(Punctuator::MinusEq),
             ('-', _) => self.advance_with(Punctuator::Minus),
@@ -696,7 +697,6 @@ impl<'s, 'i> Lexer<'s, 'i> {
             ('<', '=') => self.advance_twice_with(Punctuator::LessEq),
             ('<', _) => self.advance_with(Punctuator::Less),
             ('=', '=') => self.advance_twice_with(Punctuator::DoubleEq),
-            ('=', '>') => self.advance_twice_with(Punctuator::Arrow),
             ('=', _) => self.advance_with(Punctuator::Eq),
             ('|', '=') => self.advance_twice_with(Punctuator::OrEq),
             ('|', '|') => self.advance_twice_with(Punctuator::DoubleOr),

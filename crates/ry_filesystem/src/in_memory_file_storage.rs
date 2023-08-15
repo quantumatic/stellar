@@ -2,7 +2,6 @@
 
 use std::io;
 
-use codespan_reporting::files::{self, Files};
 use ry_fx_hash::FxHashMap;
 use ry_interner::{PathID, PathInterner};
 
@@ -93,44 +92,5 @@ impl<'p> InMemoryFileStorage<'p> {
     #[must_use]
     pub fn resolve_file(&self, path_id: PathID) -> Option<&InMemoryFile> {
         self.storage.get(&path_id)
-    }
-}
-
-impl<'a> Files<'a> for InMemoryFileStorage<'a> {
-    type FileId = PathID;
-
-    type Name = String;
-    type Source = &'a str;
-
-    #[inline]
-    fn name(&'a self, id: PathID) -> Result<Self::Name, files::Error> {
-        self.resolve_file(id)
-            .map(|file| file.path.display().to_string())
-            .ok_or(files::Error::FileMissing)
-    }
-
-    #[inline]
-    fn source(&'a self, id: PathID) -> Result<Self::Source, files::Error> {
-        self.resolve_file(id)
-            .map(|file| file.source.as_str())
-            .ok_or(files::Error::FileMissing)
-    }
-
-    #[inline]
-    fn line_index(&'a self, id: PathID, byte_index: usize) -> Result<usize, files::Error> {
-        self.resolve_file(id)
-            .ok_or(files::Error::FileMissing)
-            .and_then(|file| file.line_index((), byte_index))
-    }
-
-    #[inline]
-    fn line_range(
-        &'a self,
-        id: PathID,
-        line_index: usize,
-    ) -> Result<std::ops::Range<usize>, files::Error> {
-        self.resolve_file(id)
-            .ok_or(files::Error::FileMissing)
-            .and_then(|file| file.line_range((), line_index))
     }
 }

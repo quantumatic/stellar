@@ -167,8 +167,8 @@ define_keywords! {
 }
 
 define_punctuators! {
-    /// Arrow (`=>`).
-    Arrow => "=>",
+    /// Arrow (`->`).
+    Arrow => "->",
 
     /// Ampersand (`&`).
     Ampersand => "&",

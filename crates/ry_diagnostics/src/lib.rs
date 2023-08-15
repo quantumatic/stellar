@@ -54,26 +54,36 @@
 #![allow(
     clippy::module_name_repetitions,
     clippy::too_many_lines,
-    clippy::option_if_let_else
+    clippy::option_if_let_else,
+    clippy::redundant_pub_crate,
+    clippy::too_many_arguments,
+    clippy::needless_pass_by_value,
+    clippy::similar_names
 )]
+
+pub mod diagnostic;
+pub mod files;
+pub mod term;
 
 use core::fmt;
 use std::fmt::Display;
 
-use codespan_reporting::{
+use ry_filesystem::in_memory_file_storage::InMemoryFileStorage;
+use ry_filesystem::location::Location;
+use ry_fx_hash::FxHashSet;
+use ry_interner::{PathID, PathInterner};
+
+use crate::diagnostic::Label;
+use crate::{
     diagnostic::{Diagnostic, Severity},
-    files::{self, Files},
+    files::Files,
     term::{
-        self,
         termcolor::{ColorChoice, StandardStream},
         Config,
     },
 };
-use ry_filesystem::in_memory_file_storage::InMemoryFileStorage;
-use ry_fx_hash::FxHashSet;
-use ry_interner::{PathID, PathInterner};
 
-/// Stores basic [`codespan_reporting`] structs for reporting diagnostics.
+/// Stores basic information for reporting diagnostics.
 #[derive(Debug)]
 pub struct DiagnosticsEmitter<'p> {
     /// The stream in which diagnostics is reported into.
@@ -361,4 +371,28 @@ pub trait BuildDiagnostic {
     /// Convert [`self`] into [`Diagnostic`].
     #[must_use]
     fn build(&self) -> Diagnostic<PathID>;
+}
+
+/// Extends [`Location`] with methods for converting into primary and secondary
+/// diagnostics labels.
+pub trait LocationExt {
+    /// Gets primary diagnostics label in the location.
+    #[must_use]
+    fn to_primary_label(self) -> Label<PathID>;
+
+    /// Gets secondary diagnostics label in the location.
+    #[must_use]
+    fn to_secondary_label(self) -> Label<PathID>;
+}
+
+impl LocationExt for Location {
+    #[inline]
+    fn to_primary_label(self) -> Label<PathID> {
+        Label::primary(self.file_path_id, self)
+    }
+
+    #[inline]
+    fn to_secondary_label(self) -> Label<PathID> {
+        Label::secondary(self.file_path_id, self)
+    }
 }

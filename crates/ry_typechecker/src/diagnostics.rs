@@ -1,8 +1,7 @@
-use codespan_reporting::diagnostic::Diagnostic;
-use ry_diagnostics::BuildDiagnostic;
+use ry_diagnostics::diagnostic::Diagnostic;
+use ry_diagnostics::{BuildDiagnostic, LocationExt};
 use ry_filesystem::location::Location;
 use ry_interner::PathID;
-use ry_name_resolution::NameBindingKind;
 
 use crate::BindingKind;
 

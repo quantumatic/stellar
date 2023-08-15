@@ -1,6 +1,6 @@
 use std::fs;
 
-use codespan_reporting::diagnostic::Diagnostic;
+use ry_diagnostics::diagnostic::Diagnostic;
 use ry_diagnostics::DiagnosticsEmitter;
 use ry_interner::PathInterner;
 use ry_manifest::parse_manifest;

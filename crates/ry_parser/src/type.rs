@@ -46,6 +46,7 @@ impl Parse for TypeParser {
             RawToken::Keyword(Keyword::Dyn) => InterfaceObjectTypeParser.parse(state),
             _ => {
                 state.add_diagnostic(UnexpectedTokenDiagnostic::new(
+                    None,
                     state.next_token,
                     expected!("identifier", Punctuator::OpenParent, Keyword::Dyn),
                     "type",
@@ -88,7 +89,7 @@ impl Parse for ParenthesizedTupleOrFunctionTypeParser {
             &[RawToken::from(Punctuator::CloseParent)],
             |state| TypeParser.parse(state),
         )
-        .parse(state);
+        .parse(state)?;
 
         state.advance(); // `)`
 
@@ -181,7 +182,7 @@ impl OptionallyParse for GenericParametersParser {
                 })
             },
         )
-        .parse(state);
+        .parse(state)?;
 
         state.advance();
 
@@ -231,7 +232,7 @@ impl Parse for TypeArgumentsParser {
             &[RawToken::from(Punctuator::CloseBracket)],
             |state| TypeParser.parse(state),
         )
-        .parse(state);
+        .parse(state)?;
 
         state.advance();
 
@@ -251,25 +252,23 @@ impl OptionallyParse for WherePredicatesParser {
 
         state.advance();
 
-        Some(
-            ListParser::new(
-                "where clause",
-                &[
-                    RawToken::from(Punctuator::OpenBrace),
-                    RawToken::from(Punctuator::Semicolon),
-                ],
-                |state| {
-                    let left = TypeParser.parse(state)?;
+        ListParser::new(
+            "where clause",
+            &[
+                RawToken::from(Punctuator::OpenBrace),
+                RawToken::from(Punctuator::Semicolon),
+            ],
+            |state| {
+                let left = TypeParser.parse(state)?;
 
-                    state.consume(Punctuator::Colon, "where predicate")?;
+                state.consume(Punctuator::Colon, "where predicate")?;
 
-                    Some(WherePredicate {
-                        ty: left,
-                        bounds: BoundsParser.parse(state),
-                    })
-                },
-            )
-            .parse(state),
+                Some(WherePredicate {
+                    ty: left,
+                    bounds: BoundsParser.parse(state),
+                })
+            },
         )
+        .parse(state)
     }
 }

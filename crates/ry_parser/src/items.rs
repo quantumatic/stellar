@@ -95,7 +95,7 @@ impl Parse for StructFieldsParser {
                 .parse(state)
             },
         )
-        .parse(state);
+        .parse(state)?;
 
         state.advance(); // `}`
 
@@ -131,7 +131,7 @@ impl Parse for StructParser {
                     ],
                     |state| TypeConstructorParser.parse(state),
                 )
-                .parse(state),
+                .parse(state)?,
             )
         } else {
             None
@@ -158,7 +158,7 @@ impl Parse for StructParser {
                         ],
                         |state| TypeConstructorParser.parse(state),
                     )
-                    .parse(state),
+                    .parse(state)?,
                 )
             } else {
                 None
@@ -221,7 +221,7 @@ impl Parse for StructParser {
                     .parse(state)
                 },
             )
-            .parse(state);
+            .parse(state)?;
 
             let mut methods = vec![];
 
@@ -258,6 +258,7 @@ impl Parse for StructParser {
             })
         } else {
             state.add_diagnostic(UnexpectedTokenDiagnostic::new(
+                Some(state.current_token.location.end),
                 state.next_token,
                 expected!(
                     Punctuator::Semicolon,
@@ -329,7 +330,7 @@ impl Parse for FunctionParser {
                 }
             },
         )
-        .parse(state);
+        .parse(state)?;
 
         state.advance();
 
@@ -358,12 +359,15 @@ impl Parse for FunctionParser {
 
                     None
                 }
-                RawToken::Punctuator(Punctuator::OpenBrace) => StatementsBlockParser.parse(state),
+                RawToken::Punctuator(Punctuator::OpenBrace) => {
+                    Some(StatementsBlockParser.parse(state)?)
+                }
                 _ => {
                     state.advance();
 
                     state.add_diagnostic(UnexpectedTokenDiagnostic::new(
-                        state.current_token,
+                        Some(state.current_token.location.end),
+                        state.next_token,
                         expected!(Punctuator::Semicolon, Punctuator::OpenParent),
                         "function",
                     ));
@@ -521,7 +525,7 @@ impl Parse for EnumParser {
                     ],
                     |state| TypeConstructorParser.parse(state),
                 )
-                .parse(state),
+                .parse(state)?,
             )
         } else {
             None
@@ -540,7 +544,7 @@ impl Parse for EnumParser {
             ],
             |state| EnumItemParser.parse(state),
         )
-        .parse(state);
+        .parse(state)?;
 
         let mut methods = vec![];
 
@@ -638,7 +642,7 @@ impl Parse for TupleFieldsParser {
                 })
             },
         )
-        .parse(state);
+        .parse(state)?;
 
         state.advance(); // `)`
 
@@ -743,6 +747,7 @@ impl Parse for ItemParser {
             )),
             _ => {
                 state.add_diagnostic(UnexpectedTokenDiagnostic::new(
+                    None,
                     state.next_token,
                     expected!(
                         Keyword::Enum,

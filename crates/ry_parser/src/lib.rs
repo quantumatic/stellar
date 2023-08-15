@@ -395,6 +395,7 @@ impl<'s, 'd, 'i> ParseState<'s, 'd, 'i> {
             Some(())
         } else {
             self.add_diagnostic(UnexpectedTokenDiagnostic::new(
+                Some(self.current_token.location.end),
                 self.next_token,
                 expected!(expected),
                 node,
@@ -445,6 +446,7 @@ impl<'s, 'd, 'i> ParseState<'s, 'd, 'i> {
             }
         } else {
             self.add_diagnostic(UnexpectedTokenDiagnostic::new(
+                None,
                 self.next_token,
                 expected!("identifier"),
                 node,

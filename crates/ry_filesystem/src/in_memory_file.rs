@@ -4,7 +4,6 @@ use std::io;
 use std::ops::Range;
 use std::{cmp::Ordering, path::PathBuf};
 
-use codespan_reporting::files::{Error, Files};
 use ry_interner::{PathID, PathInterner};
 
 use crate::location::{Location, LocationIndex};
@@ -96,6 +95,30 @@ impl InMemoryFile {
         self.source.index(location)
     }
 
+    /// Returns the line starting byte index of the given byte index.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use std::path::Path;
+    /// # use ry_filesystem::in_memory_file::InMemoryFile;
+    /// let file = InMemoryFile::new_from_source(
+    ///     Path::new("test.ry"),
+    ///     "fun main() {
+    ///     println(\"Hello, world!\");
+    /// }".to_owned(),
+    /// );
+    ///
+    /// assert_eq!(file.get_line_index_by_byte_index(0), 0);
+    /// assert_eq!(file.get_line_index_by_byte_index(13), 1);
+    /// ```
+    #[must_use]
+    pub fn get_line_index_by_byte_index(&self, byte_index: usize) -> usize {
+        self.line_starts
+            .binary_search(&byte_index)
+            .unwrap_or_else(|next_line| next_line - 1)
+    }
+
     /// Returns the line starting byte index of the given line index.
     ///
     /// # Panics
@@ -120,7 +143,7 @@ impl InMemoryFile {
     ///
     /// # Errors
     /// When line index is out of bounds.
-    pub fn get_line_start_by_index(&self, line_index: usize) -> Result<usize, Error> {
+    pub fn get_line_start_by_index(&self, line_index: usize) -> Result<usize, LineTooLargeError> {
         match line_index.cmp(&self.line_starts.len()) {
             Ordering::Less => Ok(self
                 .line_starts
@@ -128,35 +151,11 @@ impl InMemoryFile {
                 .copied()
                 .expect("failed despite previous check")),
             Ordering::Equal => Ok(self.source.len()),
-            Ordering::Greater => Err(Error::LineTooLarge {
+            Ordering::Greater => Err(LineTooLargeError {
                 given: line_index,
                 max: self.line_starts.len() - 1,
             }),
         }
-    }
-
-    /// Returns the line starting byte index of the given byte index.
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// # use std::path::Path;
-    /// # use ry_filesystem::in_memory_file::InMemoryFile;
-    /// let file = InMemoryFile::new_from_source(
-    ///     Path::new("test.ry"),
-    ///     "fun main() {
-    ///     println(\"Hello, world!\");
-    /// }".to_owned(),
-    /// );
-    ///
-    /// assert_eq!(file.get_line_index_by_byte_index(0), 0);
-    /// assert_eq!(file.get_line_index_by_byte_index(13), 1);
-    /// ```
-    #[must_use]
-    pub fn get_line_index_by_byte_index(&self, byte_index: usize) -> usize {
-        self.line_starts
-            .binary_search(&byte_index)
-            .unwrap_or_else(|next_line| next_line - 1)
     }
 
     /// Returns the line range of the given line index.
@@ -186,34 +185,12 @@ impl InMemoryFile {
     }
 }
 
-// For proper error reporting
-impl<'a> Files<'a> for InMemoryFile {
-    // we don't care about file IDs, because we have only one individual file here
-    type FileId = ();
+/// Error returned by [`InMemoryFile::get_line_start_by_index`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct LineTooLargeError {
+    /// The given line index.
+    pub given: usize,
 
-    type Name = String;
-    type Source = &'a str;
-
-    #[inline]
-    fn name(&self, _: ()) -> Result<Self::Name, Error> {
-        Ok(format!("{}", self.path.display()))
-    }
-
-    #[inline]
-    fn source(&'a self, _: ()) -> Result<Self::Source, Error> {
-        Ok(&self.source)
-    }
-
-    #[inline]
-    fn line_index(&self, _: (), byte_index: usize) -> Result<usize, Error> {
-        Ok(self.get_line_index_by_byte_index(byte_index))
-    }
-
-    #[inline]
-    fn line_range(&self, _: (), line_index: usize) -> Result<Range<usize>, Error> {
-        let line_start = self.get_line_start_by_index(line_index)?;
-        let next_line_start = self.get_line_start_by_index(line_index + 1)?;
-
-        Ok(line_start..next_line_start)
-    }
+    /// The maximum line index.
+    pub max: usize,
 }

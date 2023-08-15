@@ -38,20 +38,22 @@ impl<P, E> Parse for ListParser<'_, P, E>
 where
     P: for<'s, 'd, 'i> Fn(&mut ParseState<'s, 'd, 'i>) -> Option<E>,
 {
-    type Output = Vec<E>;
+    type Output = Option<Vec<E>>;
 
     fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
         let mut result = vec![];
 
         // For instance: `(` `)` - empty list.
         if self.closing_tokens.contains(&state.next_token.raw) {
-            return result;
+            return Some(result);
         }
 
         loop {
             // `(` element
             if let Some(element) = (self.parse_element_fn)(state) {
                 result.push(element);
+            } else {
+                return None;
             }
 
             // `(` element `)`
@@ -62,6 +64,7 @@ where
             // `(` element `?` (invalid token)
             if state.next_token.raw != Punctuator::Comma {
                 state.add_diagnostic(UnexpectedTokenDiagnostic::new(
+                    Some(state.current_token.location.end),
                     state.next_token,
                     Expected(
                         self.closing_tokens
@@ -73,7 +76,7 @@ where
                     self.node_name,
                 ));
 
-                break;
+                return None;
             }
 
             // `(` element `,`
@@ -86,6 +89,6 @@ where
             }
         }
 
-        result
+        Some(result)
     }
 }

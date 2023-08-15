@@ -5,7 +5,6 @@ use std::{
     ops::{Add, AddAssign, Range, Sub, SubAssign},
 };
 
-use codespan_reporting::diagnostic::Label;
 use ry_interner::PathID;
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
@@ -194,22 +193,6 @@ impl Location {
     #[must_use]
     pub const fn end_byte_location(self) -> Self {
         self.end.previous_byte_location_at(self.file_path_id)
-    }
-
-    /// Gets primary diagnostics label ([`Label`] from [`codespan_reporting`])
-    /// in the location.
-    #[inline]
-    #[must_use]
-    pub fn to_primary_label(self) -> Label<PathID> {
-        Label::primary(self.file_path_id, self)
-    }
-
-    /// Gets secondary diagnostics label ([`Label`] from [`codespan_reporting`])
-    /// in the location.
-    #[inline]
-    #[must_use]
-    pub fn to_secondary_label(self) -> Label<PathID> {
-        Label::secondary(self.file_path_id, self)
     }
 }
 

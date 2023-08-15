@@ -9,7 +9,6 @@ readme = "../../README.md"
 description = "Crates, responsible for desugaring AST and instantiating types."
 
 [dependencies]
-codespan-reporting = "0.11.1"
 phf = { version = "0.11.1", features = ["macros"] }
 ry_ast = { path = "../ry_ast" }
 ry_diagnostics = { path = "../ry_diagnostics" }

@@ -1,7 +1,7 @@
 use std::{io::Write, path::PathBuf, time::Instant};
 
-use codespan_reporting::diagnostic::Diagnostic;
 use ry_ast_lowering::LoweringContext;
+use ry_diagnostics::diagnostic::Diagnostic;
 use ry_diagnostics::{Diagnostics, DiagnosticsEmitter};
 use ry_interner::{IdentifierInterner, PathInterner};
 use ry_parser::read_and_parse_module;

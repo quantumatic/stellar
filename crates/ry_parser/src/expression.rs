@@ -158,7 +158,7 @@ impl Parse for MatchExpressionBlockParser {
             &[RawToken::from(Punctuator::CloseBrace)],
             |state| MatchExpressionUnitParser.parse(state),
         )
-        .parse(state);
+        .parse(state)?;
 
         state.advance(); // `}`
 
@@ -228,6 +228,7 @@ impl Parse for PrimaryExpressionParser {
                     .parse(state);
                 }
                 state.add_diagnostic(UnexpectedTokenDiagnostic::new(
+                    None,
                     state.next_token,
                     expected!(
                         "integer literal",
@@ -355,7 +356,7 @@ impl Parse for ParenthesizedOrTupleExpressionParser {
             &[RawToken::from(Punctuator::CloseParent)],
             |state| ExpressionParser::default().parse(state),
         )
-        .parse(state);
+        .parse(state)?;
 
         state.advance(); // `)`
 
@@ -485,7 +486,7 @@ impl Parse for CallExpressionParser {
             &[RawToken::from(Punctuator::CloseParent)],
             |state| ExpressionParser::default().parse(state),
         )
-        .parse(state);
+        .parse(state)?;
 
         state.advance();
 
@@ -545,7 +546,7 @@ impl Parse for ListExpressionParser {
             &[RawToken::from(Punctuator::CloseBracket)],
             |state| ExpressionParser::default().parse(state),
         )
-        .parse(state);
+        .parse(state)?;
 
         state.advance();
 
@@ -571,7 +572,7 @@ impl Parse for StructExpressionParser {
             &[RawToken::from(Punctuator::CloseBrace)],
             |state| StructFieldExpressionParser.parse(state),
         )
-        .parse(state);
+        .parse(state)?;
 
         state.advance(); // `}`
 
@@ -646,7 +647,7 @@ impl Parse for LambdaExpressionParser {
                     Some(LambdaFunctionParameter { name, ty })
                 },
             )
-            .parse(state)
+            .parse(state)?
         } else {
             vec![]
         };

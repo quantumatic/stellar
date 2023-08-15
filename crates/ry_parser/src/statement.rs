@@ -78,37 +78,44 @@ impl Parse for StatementParser {
                 }
             }
             _ => {
-                let expression = possibly_recover!(state, ExpressionParser::default().parse(state));
+                let expression = ExpressionParser::default().parse(state);
 
-                must_have_semicolon_at_the_end = !expression.with_block();
+                if let Some(expression) = expression {
+                    must_have_semicolon_at_the_end = !expression.with_block();
 
-                match state.next_token.raw {
-                    RawToken::Punctuator(Punctuator::Semicolon) => {}
-                    RawToken::Punctuator(Punctuator::CloseBrace) => {
-                        if must_have_semicolon_at_the_end {
-                            last_statement_in_block = true;
+                    match state.current_token.raw {
+                        RawToken::Punctuator(Punctuator::Semicolon) => {}
+                        RawToken::Punctuator(Punctuator::CloseBrace) => {
+                            if must_have_semicolon_at_the_end {
+                                last_statement_in_block = true;
+                            }
+                        }
+                        _ => {
+                            state.add_diagnostic(UnexpectedTokenDiagnostic::new(
+                                Some(state.current_token.location.end),
+                                state.next_token,
+                                expected!(Punctuator::Semicolon),
+                                "expression statement",
+                            ));
+                            return None;
                         }
                     }
-                    _ => {
-                        state.add_diagnostic(UnexpectedTokenDiagnostic::new(
-                            state.next_token,
-                            expected!(";"),
-                            "expression statement",
-                        ));
-                        return None;
-                    }
-                }
 
-                if last_statement_in_block || !must_have_semicolon_at_the_end {
-                    Statement::Expression {
-                        has_semicolon: false,
-                        expression,
+                    if last_statement_in_block || !must_have_semicolon_at_the_end {
+                        Statement::Expression {
+                            has_semicolon: false,
+                            expression,
+                        }
+                    } else {
+                        Statement::Expression {
+                            has_semicolon: true,
+                            expression,
+                        }
                     }
                 } else {
-                    Statement::Expression {
-                        has_semicolon: true,
-                        expression,
-                    }
+                    possibly_recover!(state, None);
+
+                    return None;
                 }
             }
         };
@@ -136,8 +143,9 @@ impl Parse for StatementsBlockParser {
                 RawToken::Punctuator(Punctuator::CloseBrace) => break,
                 RawToken::EndOfFile => {
                     state.add_diagnostic(UnexpectedTokenDiagnostic::new(
+                        Some(state.current_token.location.end),
                         state.next_token,
-                        expected!("}"),
+                        expected!(Punctuator::CloseBrace),
                         "statements block",
                     ));
 

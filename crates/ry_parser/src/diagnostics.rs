@@ -4,13 +4,13 @@
 
 use std::fmt::Display;
 
-use codespan_reporting::diagnostic::Diagnostic;
 use ry_ast::{
     token::{LexError, Token},
     ModuleItemKind,
 };
-use ry_diagnostics::BuildDiagnostic;
-use ry_filesystem::location::Location;
+use ry_diagnostics::diagnostic::Diagnostic;
+use ry_diagnostics::{BuildDiagnostic, LocationExt};
+use ry_filesystem::location::{ByteOffset, Location};
 use ry_interner::PathID;
 
 /// Represents list of expected tokens.
@@ -27,7 +27,7 @@ pub struct Expected(pub Vec<String>);
 #[macro_export]
 macro_rules! expected {
     ($($e:expr),*) => {{
-        $crate::diagnostics::Expected(vec![$($e.to_string()),*])
+        $crate::diagnostics::Expected(vec![$(format!("{}", $e)),*])
     }};
 }
 
@@ -69,6 +69,9 @@ impl BuildDiagnostic for LexErrorDiagnostic {
 /// Diagnostic related to an unexpected token error.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct UnexpectedTokenDiagnostic {
+    /// End byte offset of the token before unexpected one.
+    pub offset: Option<ByteOffset>,
+
     /// The token that was not expected.
     pub got: Token,
 
@@ -83,8 +86,14 @@ impl UnexpectedTokenDiagnostic {
     /// Creates a new instance of [`UnexpectedTokenDiagnostic`].
     #[inline]
     #[must_use]
-    pub fn new(got: Token, expected: Expected, node: impl ToString) -> Self {
+    pub fn new(
+        offset: Option<ByteOffset>,
+        got: Token,
+        expected: Expected,
+        node: impl ToString,
+    ) -> Self {
         Self {
+            offset,
             got,
             expected,
             node: node.to_string(),
@@ -96,11 +105,29 @@ impl BuildDiagnostic for UnexpectedTokenDiagnostic {
     #[inline]
     fn build(&self) -> Diagnostic<PathID> {
         Diagnostic::error()
-            .with_message(format!("unexpected {}", self.got.raw))
+            .with_message(format!(
+                "expected {}, found {}",
+                self.expected, self.got.raw
+            ))
             .with_code("E001")
-            .with_labels(vec![self.got.location.to_primary_label().with_message(
-                format!("expected {} for {}", self.expected, self.node),
-            )])
+            .with_labels(if let Some(offset) = self.offset {
+                vec![
+                    offset
+                        .next_byte_location_at(self.got.location.file_path_id)
+                        .to_secondary_label()
+                        .with_message(format!("expected {}", self.expected)),
+                    self.got
+                        .location
+                        .to_primary_label()
+                        .with_message(format!("found {}", self.got.raw)),
+                ]
+            } else {
+                vec![self
+                    .got
+                    .location
+                    .to_primary_label()
+                    .with_message(format!("expected {} for {}", self.expected, self.node))]
+            })
     }
 }
 

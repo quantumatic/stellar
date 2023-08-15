@@ -99,6 +99,7 @@ impl Parse for PatternExceptOrParser {
             }
             _ => {
                 state.add_diagnostic(UnexpectedTokenDiagnostic::new(
+                    None,
                     state.next_token,
                     expected!(
                         "integer literal",
@@ -158,7 +159,7 @@ impl Parse for StructPatternParser {
                 }
             },
         )
-        .parse(state);
+        .parse(state)?;
 
         state.advance();
 
@@ -184,7 +185,7 @@ impl Parse for ListPatternParser {
             &[RawToken::from(Punctuator::CloseBracket)],
             |state| PatternParser.parse(state),
         )
-        .parse(state);
+        .parse(state)?;
 
         state.advance();
 
@@ -210,7 +211,7 @@ impl Parse for TupleLikePatternParser {
             &[RawToken::from(Punctuator::CloseParent)],
             |state| PatternParser.parse(state),
         )
-        .parse(state);
+        .parse(state)?;
 
         state.advance(); // `)`
 
@@ -236,7 +237,7 @@ impl Parse for GroupedOrTuplePatternParser {
             &[RawToken::from(Punctuator::CloseParent)],
             |state| PatternParser.parse(state),
         )
-        .parse(state);
+        .parse(state)?;
 
         state.advance();
 
