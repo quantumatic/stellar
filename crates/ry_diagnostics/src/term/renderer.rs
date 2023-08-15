@@ -449,7 +449,7 @@ impl<'writer, 'config> Renderer<'writer, 'config> {
                 };
                 if let Some(caret_ch) = caret_ch {
                     // FIXME: improve rendering of carets between character boundaries
-                    (0..metrics.unicode_width).try_for_each(|_| write!(self, "{}", caret_ch))?;
+                    (0..metrics.unicode_width).try_for_each(|_| write!(self, "{caret_ch}"))?;
                 }
 
                 previous_label_style = current_label_style;
