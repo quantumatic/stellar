@@ -1,7 +1,7 @@
 use ry_filesystem::location::Location;
 use ry_interner::IdentifierID;
 use ry_name_resolution::Path;
-use ry_thir::ty::{Type, TypeVariable};
+use ry_thir::ty::{Type, TypeVariable, TypeVariableID};
 
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct TypeVariableFactory {
@@ -16,9 +16,9 @@ impl TypeVariableFactory {
     }
 
     #[inline]
-    fn advance(&mut self) -> usize {
+    fn advance(&mut self) -> TypeVariableID {
         self.last_type_variable_id += 1;
-        self.last_type_variable_id
+        TypeVariableID(self.last_type_variable_id)
     }
 
     #[inline]
@@ -34,21 +34,6 @@ impl TypeVariableFactory {
     #[must_use]
     pub fn make_expression_type_placeholder(&mut self, location: Location) -> Type {
         Type::Variable(self.make_variable_for_expression_type(location))
-    }
-
-    #[inline]
-    #[must_use]
-    pub fn make_variable_for_unknown_type(&mut self, location: Location) -> TypeVariable {
-        TypeVariable::InvalidType {
-            location,
-            id: self.advance(),
-        }
-    }
-
-    #[inline]
-    #[must_use]
-    pub fn make_unknown_type_placeholder(&mut self, location: Location) -> Type {
-        Type::Variable(self.make_variable_for_unknown_type(location))
     }
 
     #[inline]

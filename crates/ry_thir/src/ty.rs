@@ -5,26 +5,24 @@ use ry_interner::{builtin_identifiers, IdentifierID};
 use ry_name_resolution::Path;
 
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", serde(tag = "kind"))]
 pub enum Type {
+    #[cfg_attr(feature = "serde", serde(rename = "unit_type"))]
     Unit,
-    Invalid,
+    #[cfg_attr(feature = "serde", serde(rename = "constructor_type"))]
     Constructor(TypeConstructor),
-    Tuple {
-        element_types: Vec<Self>,
-    },
+    #[cfg_attr(feature = "serde", serde(rename = "tuple_type"))]
+    Tuple { element_types: Vec<Self> },
+    #[cfg_attr(feature = "serde", serde(rename = "function_type"))]
     Function {
         parameter_types: Vec<Self>,
         return_type: Box<Self>,
     },
+    #[cfg_attr(feature = "serde", serde(rename = "type_variable"))]
     Variable(TypeVariable),
-    InterfaceObject {
-        bounds: Vec<TypeConstructor>,
-    },
-    WithQualifiedPath {
-        left: Box<Self>,
-        right: TypeConstructor,
-        segments: Vec<TypeConstructor>,
-    },
+    #[cfg_attr(feature = "serde", serde(rename = "interface_object_type"))]
+    InterfaceObject { bounds: Vec<TypeConstructor> },
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
@@ -35,8 +33,7 @@ pub enum TypeKind {
     Tuple,
     Function,
     Variable,
-    TraitObject,
-    WithQualifiedPath,
+    InterfaceObject,
 }
 
 impl Type {
@@ -44,59 +41,61 @@ impl Type {
     #[must_use]
     pub const fn kind(&self) -> TypeKind {
         match self {
-            Self::Invalid => TypeKind::Invalid,
             Self::Constructor(..) => TypeKind::Constructor,
             Self::Tuple { .. } => TypeKind::Tuple,
             Self::Function { .. } => TypeKind::Function,
             Self::Variable(..) => TypeKind::Variable,
-            Self::InterfaceObject { .. } => TypeKind::TraitObject,
-            Self::WithQualifiedPath { .. } => TypeKind::WithQualifiedPath,
+            Self::InterfaceObject { .. } => TypeKind::InterfaceObject,
             Self::Unit => TypeKind::Unit,
         }
     }
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", serde(tag = "kind"))]
 pub enum TypeVariable {
+    #[cfg_attr(feature = "serde", serde(rename = "type_argument_variable"))]
     TypeArgument {
         /// Interned name of the corresponding generic parameter.
         symbol: IdentifierID,
+
         /// Location of the type argument itself (if exists), e.g. location `_` in `HashMap[_, int32]`.
+        #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
         location: Option<Location>,
+
         /// Path to the type that contains the correspoding generic parameter.
         origin_type_path: Path,
         /// Location of the corresponding generic parameter name.
         origin_location: Location,
+
+        /// Type variable ID.
         id: TypeVariableID,
     },
-    InvalidType {
-        location: Location,
-        id: TypeVariableID,
-    },
+    #[cfg_attr(feature = "serde", serde(rename = "expression_type_variable"))]
     Expression {
+        /// Location of the expression.
         location: Location,
+
+        /// Type variable ID.
         id: TypeVariableID,
     },
 }
 
 impl TypeVariable {
+    /// Returns ID of the type variable.
     #[inline]
     #[must_use]
     pub const fn id(&self) -> TypeVariableID {
         match self {
-            Self::TypeArgument { id, .. }
-            | Self::InvalidType { id, .. }
-            | Self::Expression { id, .. } => *id,
+            Self::TypeArgument { id, .. } | Self::Expression { id, .. } => *id,
         }
     }
 }
 
-pub type TypeVariableID = usize;
-
-pub trait Typed {
-    #[must_use]
-    fn ty(&self) -> Type;
-}
+/// A type variable ID.
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
+pub struct TypeVariableID(pub usize);
 
 macro_rules! t {
     ($name:ident, $symbol:ident) => {

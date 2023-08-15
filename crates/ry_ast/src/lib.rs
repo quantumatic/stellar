@@ -90,6 +90,7 @@ use ry_filesystem::location::Location;
 use ry_interner::IdentifierID;
 #[cfg(feature = "serde")]
 use serde::Deserializer;
+#[cfg(feature = "serde")]
 use serde::Serializer;
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
@@ -384,6 +385,7 @@ pub struct TypeAlias {
 pub struct WherePredicate {
     #[cfg_attr(feature = "serde", serde(rename = "type"))]
     pub ty: Type,
+
     pub bounds: Vec<TypeConstructor>,
 }
 
@@ -1253,7 +1255,9 @@ pub enum FunctionParameter {
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct SelfFunctionParameter {
     pub self_location: Location,
+
     #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
+    #[cfg_attr(feature = "serde", serde(rename = "type"))]
     pub ty: Option<Type>,
 }
 
@@ -1262,6 +1266,8 @@ pub struct SelfFunctionParameter {
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct NotSelfFunctionParameter {
     pub name: IdentifierAST,
+
+    #[cfg_attr(feature = "serde", serde(rename = "type"))]
     pub ty: Type,
 }
 
@@ -1270,6 +1276,7 @@ pub struct NotSelfFunctionParameter {
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct Module {
     pub items: Vec<ModuleItem>,
+
     #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub docstring: Option<String>,
 }

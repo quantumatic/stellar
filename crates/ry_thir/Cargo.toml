@@ -14,4 +14,7 @@ ry_filesystem = { path = "../ry_filesystem" }
 ry_fx_hash = { path = "../ry_fx_hash" }
 ry_interner = { path = "../ry_interner" }
 ry_name_resolution = { path = "../ry_name_resolution" }
+serde = { version = "1.0.183", features = ["derive"], optional = true }
 
+[features]
+serde = ["dep:serde", "ry_ast/serde"]
