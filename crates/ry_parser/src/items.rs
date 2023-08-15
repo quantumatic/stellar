@@ -140,7 +140,7 @@ impl Parse for StructParser {
         let where_predicates = WherePredicatesParser.optionally_parse(state)?;
 
         if state.next_token.raw == Punctuator::OpenParent
-            && where_predicates.is_none()
+            && where_predicates.is_empty()
             && implements.is_none()
         {
             let fields = TupleFieldsParser.parse(state)?;
@@ -423,7 +423,7 @@ impl Parse for InterfaceParser {
         let inherits = if state.next_token.raw == Punctuator::Colon {
             state.advance();
 
-            Some(BoundsParser.parse(state)?)
+            Some(BoundsParser.parse(state))
         } else {
             None
         };

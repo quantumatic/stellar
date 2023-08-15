@@ -12,7 +12,9 @@ description = "Implements CLI for the Ry programming language."
 clap = { version = "4.1.4", features = ["derive"] }
 codespan-reporting = "0.11.1"
 leftpad-str = "9.9.9"
-ry_ast = { path = "../ry_ast" }
+ry_ast = { path = "../ry_ast", features = ["serde"] }
+ry_ast_lowering = { path = "../ry_ast_lowering" }
+ry_hir = { path = "../ry_hir", features = ["serde"] }
 ry_diagnostics = { path = "../ry_diagnostics" }
 ry_filesystem = { path = "../ry_filesystem" }
 ry_interner = { path = "../ry_interner" }

@@ -1,6 +1,7 @@
 use std::{io::Write, path::PathBuf, time::Instant};
 
 use codespan_reporting::diagnostic::Diagnostic;
+use ry_ast_lowering::LoweringContext;
 use ry_diagnostics::{Diagnostics, DiagnosticsEmitter};
 use ry_interner::{IdentifierInterner, PathInterner};
 use ry_parser::read_and_parse_module;
@@ -16,7 +17,7 @@ pub fn command(path_str: &str) {
     let mut diagnostics = Diagnostics::new();
     let mut diagnostics_emitter = DiagnosticsEmitter::new(&path_interner);
 
-    let now = Instant::now();
+    let mut now = Instant::now();
 
     match read_and_parse_module(
         &path_interner,
@@ -30,22 +31,32 @@ pub fn command(path_str: &str) {
             );
         }
         Ok(ast) => {
-            let parsing_time = now.elapsed().as_secs_f64();
-            log_with_left_padded_prefix("Parsed", format!("in {parsing_time}s"));
+            log_with_left_padded_prefix(
+                "Parsed",
+                format!("in {}s", now.elapsed().as_secs_f64()),
+            );
+
+            now = Instant::now();
+
+            let mut lowering_context = LoweringContext::new(file_path_id, &mut diagnostics);
+            let hir = lowering_context.lower(ast);
+
+            log_with_left_padded_prefix("Lowered", format!("in {}s", now.elapsed().as_secs_f64()));
 
             diagnostics_emitter.emit_global_diagnostics(&diagnostics);
 
             if diagnostics.is_ok() {
-                let now = Instant::now();
-                let ast_string = serde_json::to_string(&ast).unwrap();
+                now = Instant::now();
+
+                let hir_string = serde_json::to_string(&hir).unwrap();
 
                 log_with_left_padded_prefix(
                     "Serialized",
                     format!("in {}s", now.elapsed().as_secs_f64()),
                 );
 
-                let (filename, mut file) = create_unique_file("ast", "json");
-                file.write_all(ast_string.as_bytes())
+                let (filename, mut file) = create_unique_file("hir", "json");
+                file.write_all(hir_string.as_bytes())
                     .unwrap_or_else(|_| panic!("Cannot write to file {filename}"));
 
                 log_with_left_padded_prefix("Emitted", format!("AST in `{filename}`"));

@@ -1,6 +1,6 @@
 use ry_ast::{
     token::{Keyword, Punctuator, RawToken},
-    Statement, StatementsBlock,
+    Statement,
 };
 
 use crate::{

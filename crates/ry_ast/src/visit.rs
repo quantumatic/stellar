@@ -7,7 +7,7 @@ use crate::{
     StructFieldPattern, TupleField, Type, TypeAlias, TypeConstructor, Visibility, WherePredicate,
 };
 
-#[allow(unused_variables)]
+#[allow(unused_variables, clippy::too_many_arguments)]
 pub trait Visitor {
     fn visit_module(&mut self, module: &Module) {
         for item in &module.items {
@@ -411,7 +411,7 @@ pub trait Visitor {
                 self.visit_interface_object_type(*location, bounds);
             }
             Type::Parenthesized { location, inner } => {
-                self.visit_parenthesized_type(*location, inner)
+                self.visit_parenthesized_type(*location, inner);
             }
             Type::Tuple {
                 location,
@@ -664,7 +664,7 @@ pub trait Visitor {
         }
     }
 
-    fn visit_loop_expression(&mut self, location: Location, statements_block: &Vec<Statement>) {
+    fn visit_loop_expression(&mut self, location: Location, statements_block: &[Statement]) {
         self.visit_statements_block(statements_block);
     }
 
@@ -744,7 +744,7 @@ pub trait Visitor {
         &mut self,
         location: Location,
         condition: &Expression,
-        statements_block: &Vec<Statement>,
+        statements_block: &[Statement],
     ) {
         self.visit_expression(condition);
 

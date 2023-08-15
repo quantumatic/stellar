@@ -82,33 +82,46 @@
 )]
 
 use std::fmt::Display;
+#[cfg(feature = "serde")]
+use std::str::FromStr;
 
 use derive_more::Display;
 use ry_filesystem::location::Location;
 use ry_interner::IdentifierID;
+#[cfg(feature = "serde")]
+use serde::Deserializer;
+use serde::Serializer;
+#[cfg(feature = "serde")]
+use serde::{Deserialize, Serialize};
 use token::{Punctuator, RawToken};
 
 pub mod precedence;
-pub mod printer;
 pub mod token;
 pub mod visit;
 
 /// A literal, e.g. `true`, `3`, `\"hello\"`.
 #[derive(Debug, PartialEq, Clone)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", serde(tag = "literal_kind"))]
 pub enum Literal {
     /// Boolean literal, e.g. `true` or `false`.
+    #[cfg_attr(feature = "serde", serde(rename = "boolean"))]
     Boolean { value: bool, location: Location },
 
     /// Character literal, e.g. `'a'`, `'\u{1234}'`.
+    #[cfg_attr(feature = "serde", serde(rename = "character"))]
     Character { value: char, location: Location },
 
     /// String literal, e.g. `"hello"`.
+    #[cfg_attr(feature = "serde", serde(rename = "string"))]
     String { value: String, location: Location },
 
     /// Integer literal, e.g. `123`,
+    #[cfg_attr(feature = "serde", serde(rename = "integer"))]
     Integer { value: u64, location: Location },
 
     /// Float literal, e.g. `3.14`.
+    #[cfg_attr(feature = "serde", serde(rename = "float"))]
     Float { value: f64, location: Location },
 }
 
@@ -128,6 +141,7 @@ impl Literal {
 
 /// An identifier with a specified location, e.g. `foo`, `std`.
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct IdentifierAST {
     pub location: Location,
     pub id: IdentifierID,
@@ -135,6 +149,7 @@ pub struct IdentifierAST {
 
 /// A sequence of identifiers separated by `.`, e.g. `std.io`, `foo`.
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct Path {
     pub location: Location,
     pub identifiers: Vec<IdentifierAST>,
@@ -142,13 +157,17 @@ pub struct Path {
 
 /// An import path, e.g. `std.io`, `std.io as myio`.
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct ImportPath {
     pub path: Path,
+
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub r#as: Option<IdentifierAST>,
 }
 
 /// A type constructor, e.g. `Option[T]`.
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct TypeConstructor {
     pub location: Location,
     pub path: Path,
@@ -157,18 +176,25 @@ pub struct TypeConstructor {
 
 /// A pattern, e.g. `Some(x)`, `None`, `a @ [3, ..]`, `[1, .., 3]`, `(1, \"hello\")`, `3.2`.
 #[derive(Debug, PartialEq, Clone)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", serde(tag = "kind"))]
 pub enum Pattern {
     /// A literal pattern, e.g. `3.14`, `'a'`, `true`.
+    #[cfg_attr(feature = "serde", serde(rename = "literal_pattern"))]
     Literal(Literal),
 
     /// An identifier pattern, e.g. `f`, `list @ [3, ..]`.
+    #[cfg_attr(feature = "serde", serde(rename = "identifier_pattern"))]
     Identifier {
         location: Location,
         identifier: IdentifierAST,
+
+        #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
         pattern: Option<Box<Self>>,
     },
 
     /// A struct pattern, e.g. `Person { name, age, .. }`.
+    #[cfg_attr(feature = "serde", serde(rename = "struct_pattern"))]
     Struct {
         location: Location,
         path: Path,
@@ -177,6 +203,7 @@ pub enum Pattern {
 
     /// A tuple-like pattern - used to match a tuple-like structs and enum tuple-like items,
     /// e.g. `Some(x)`, `A()`.
+    #[cfg_attr(feature = "serde", serde(rename = "tuple_like_pattern"))]
     TupleLike {
         location: Location,
         path: Path,
@@ -184,27 +211,32 @@ pub enum Pattern {
     },
 
     /// A tuple pattern, e.g. `(a, "hello", ..)`.
+    #[cfg_attr(feature = "serde", serde(rename = "tuple_pattern"))]
     Tuple {
         location: Location,
         elements: Vec<Self>,
     },
 
     /// A path pattern.
+    #[cfg_attr(feature = "serde", serde(rename = "path_pattern"))]
     Path { path: Path },
 
     /// A list pattern, e.g. `[1, .., 10]`.
+    #[cfg_attr(feature = "serde", serde(rename = "list_pattern"))]
     List {
         location: Location,
         inner_patterns: Vec<Self>,
     },
 
     /// A grouped pattern - surrounded by parentheses, e.g. `(a)`, `([1, .., 9])`.
+    #[cfg_attr(feature = "serde", serde(rename = "grouped_pattern"))]
     Grouped {
         location: Location,
         inner: Box<Self>,
     },
 
     /// An or pattern, e.g. `Some(..) | None`.
+    #[cfg_attr(feature = "serde", serde(rename = "or_pattern"))]
     Or {
         location: Location,
         left: Box<Self>,
@@ -212,6 +244,7 @@ pub enum Pattern {
     },
 
     /// A rest pattern - `..`.
+    #[cfg_attr(feature = "serde", serde(rename = "rest_pattern"))]
     Rest { location: Location },
 }
 
@@ -246,12 +279,16 @@ impl Pattern {
 /// A pattern used to match a struct field, e.g. `citizenship: "USA"`, `name` and `..` in
 /// `Person { citizenship: "USA", name, .. }`
 #[derive(Debug, PartialEq, Clone)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", serde(untagged))]
 pub enum StructFieldPattern {
     /// A pattern used to match a struct field, which is not rest pattern (`..`),
     /// e.g. `citizen: "USA"` and `name` in `Person { citizen: "USA", name, .. }`.
     NotRest {
         location: Location,
         field_name: IdentifierAST,
+
+        #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
         value_pattern: Option<Pattern>,
     },
     /// A rest pattern, e.g. `..`.
@@ -260,17 +297,22 @@ pub enum StructFieldPattern {
 
 /// A type, e.g. `int32`, `(char): bool`, `(char, char)`.
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", serde(tag = "kind"))]
 pub enum Type {
     /// A type path, e.g. `char`, `Option[T]`.
+    #[cfg_attr(feature = "serde", serde(rename = "type_constructor"))]
     Constructor(TypeConstructor),
 
     /// A tuple type, e.g. `(int32, String, char)`.
+    #[cfg_attr(feature = "serde", serde(rename = "tuple_type"))]
     Tuple {
         location: Location,
         element_types: Vec<Self>,
     },
 
     /// A function type (return type is required for consistency), e.g. `(char): bool`.
+    #[cfg_attr(feature = "serde", serde(rename = "function_type"))]
     Function {
         location: Location,
         parameter_types: Vec<Self>,
@@ -281,12 +323,14 @@ pub enum Type {
     ///
     /// **Note**: parenthesized type is not a single element tuple type, because
     /// its syntax is: `(T,)`!
+    #[cfg_attr(feature = "serde", serde(rename = "parenthesized_type"))]
     Parenthesized {
         location: Location,
         inner: Box<Self>,
     },
 
     /// An interface object type, e.g. `dyn Iterator[Item = uint32]`, `dyn Debug + Clone`.
+    #[cfg_attr(feature = "serde", serde(rename = "interface_object_type"))]
     InterfaceObject {
         location: Location,
         bounds: Vec<TypeConstructor>,
@@ -310,39 +354,53 @@ impl Type {
 
 /// A type parameter, e.g. `T` in `fun into[T](a: T);`.
 #[derive(Debug, PartialEq, Eq, Clone)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct GenericParameter {
     pub name: IdentifierAST,
+
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub bounds: Option<Vec<TypeConstructor>>,
+
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub default_value: Option<Type>,
 }
 
 /// A type alias, e.g. `type MyResult = Result[String, MyError];`.
 #[derive(Debug, PartialEq, Eq, Clone)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct TypeAlias {
     pub visibility: Visibility,
     pub name: IdentifierAST,
     pub generic_parameters: Vec<GenericParameter>,
     pub value: Type,
+
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub docstring: Option<String>,
 }
 
 /// A where clause predicate, e.g. `T: ToString`.
 #[derive(Debug, PartialEq, Eq, Clone)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct WherePredicate {
+    #[cfg_attr(feature = "serde", serde(rename = "type"))]
     pub ty: Type,
     pub bounds: Vec<TypeConstructor>,
 }
 
 /// An expression.
 #[derive(Debug, PartialEq, Clone)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", serde(tag = "kind"))]
 pub enum Expression {
     /// List expression, e.g. `[1, 2, 3]`.
+    #[cfg_attr(feature = "serde", serde(rename = "list_expression"))]
     List {
         location: Location,
         elements: Vec<Self>,
     },
 
     /// As expression, e.g. `a as float32`.
+    #[cfg_attr(feature = "serde", serde(rename = "as_expression"))]
     As {
         location: Location,
         left: Box<Self>,
@@ -350,12 +408,14 @@ pub enum Expression {
     },
 
     /// Loop expression, e.g. `loop { ... }`
+    #[cfg_attr(feature = "serde", serde(rename = "loop_expression"))]
     Loop {
         location: Location,
         statements_block: Vec<Statement>,
     },
 
     /// Binary expression, e.g. `1 + 2`.
+    #[cfg_attr(feature = "serde", serde(rename = "binary_expression"))]
     Binary {
         location: Location,
         left: Box<Self>,
@@ -364,24 +424,29 @@ pub enum Expression {
     },
 
     /// Block expression, e.g. `{ let b = 1; b }`.
+    #[cfg_attr(feature = "serde", serde(rename = "statements_block_expression"))]
     StatementsBlock {
         location: Location,
         block: Vec<Statement>,
     },
 
     /// Literal expression, e.g. `true`, `\"hello\"`, `1.2`.
+    #[cfg_attr(feature = "serde", serde(rename = "literal_expression"))]
     Literal(Literal),
 
     /// Identifier expression, e.g. `foo`.
+    #[cfg_attr(feature = "serde", serde(rename = "identifier_expression"))]
     Identifier(IdentifierAST),
 
     /// Parenthesized expression, e.g. `(1 + 2)`.
+    #[cfg_attr(feature = "serde", serde(rename = "parenthesized_expression"))]
     Parenthesized {
         location: Location,
         inner: Box<Self>,
     },
 
     /// If expression, e.g. `if x { ... } else { ... }`.
+    #[cfg_attr(feature = "serde", serde(rename = "if_expression"))]
     If {
         location: Location,
         if_blocks: Vec<(Self, Vec<Statement>)>,
@@ -389,6 +454,7 @@ pub enum Expression {
     },
 
     /// Field access expression, e.g. `x.y`.
+    #[cfg_attr(feature = "serde", serde(rename = "field_access_expression"))]
     FieldAccess {
         location: Location,
         left: Box<Self>,
@@ -396,6 +462,7 @@ pub enum Expression {
     },
 
     /// Prefix expression, e.g. `!false`, `++a`.
+    #[cfg_attr(feature = "serde", serde(rename = "prefix_expression"))]
     Prefix {
         location: Location,
         inner: Box<Self>,
@@ -403,6 +470,7 @@ pub enum Expression {
     },
 
     /// Postfix expression, e.g. `safe_div(1, 0)?`, `a++`.
+    #[cfg_attr(feature = "serde", serde(rename = "postfix_expression"))]
     Postfix {
         location: Location,
         inner: Box<Self>,
@@ -410,6 +478,7 @@ pub enum Expression {
     },
 
     /// While expression, e.g. `while x != 0 {}`.
+    #[cfg_attr(feature = "serde", serde(rename = "while_expression"))]
     While {
         location: Location,
         condition: Box<Self>,
@@ -417,6 +486,7 @@ pub enum Expression {
     },
 
     /// Call expression, e.g. `s.to_string()`.
+    #[cfg_attr(feature = "serde", serde(rename = "call_expression"))]
     Call {
         location: Location,
         callee: Box<Self>,
@@ -424,6 +494,7 @@ pub enum Expression {
     },
 
     /// Type arguments expression, e.g. `sizeof[uint32]`.
+    #[cfg_attr(feature = "serde", serde(rename = "type_arguments_expression"))]
     TypeArguments {
         location: Location,
         left: Box<Self>,
@@ -431,12 +502,14 @@ pub enum Expression {
     },
 
     /// Tuple expression, e.g. `(a, 32, \"hello\")`.
+    #[cfg_attr(feature = "serde", serde(rename = "tuple_expression"))]
     Tuple {
         location: Location,
         elements: Vec<Self>,
     },
 
     /// Struct expression, e.g. `Person { name: \"John\", age: 25 }`.
+    #[cfg_attr(feature = "serde", serde(rename = "struct_expression"))]
     Struct {
         location: Location,
         left: Box<Self>,
@@ -444,6 +517,7 @@ pub enum Expression {
     },
 
     /// Match expression (`match fs.read_file(...) { ... }`).
+    #[cfg_attr(feature = "serde", serde(rename = "match_expression"))]
     Match {
         location: Location,
         expression: Box<Self>,
@@ -451,18 +525,26 @@ pub enum Expression {
     },
 
     /// Lambda expression (`|x| { x + 1 }`).
+    #[cfg_attr(feature = "serde", serde(rename = "lambda_expression"))]
     Lambda {
         location: Location,
         parameters: Vec<LambdaFunctionParameter>,
+
+        #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
         return_type: Option<Type>,
+
         value: Box<Self>,
     },
 }
 
 /// A lambda function parameter, e.g. `x` in `|x| { x + 1 }`.
 #[derive(Debug, PartialEq, Eq, Clone)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct LambdaFunctionParameter {
     pub name: IdentifierAST,
+
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
+    #[cfg_attr(feature = "serde", serde(rename = "type"))]
     pub ty: Option<Type>,
 }
 
@@ -514,12 +596,15 @@ macro_rules! operator_type {
 
         $(
             $(#[$($doc:tt)*])*
-            $name:ident
+            $str:literal => $name:ident
         ),*
     } => {
         $(#[$($operator_type_doc)*])*
         #[derive(Debug, PartialEq, Copy, Clone, Eq, Hash)]
+        #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
         pub struct $operator_type_name {
+            #[cfg_attr(feature = "serde", serde(serialize_with = "use_display"))]
+            #[cfg_attr(feature = "serde", serde(deserialize_with = "from_display"))]
             pub raw: $raw_operator_type_name,
             pub location: Location,
         }
@@ -531,6 +616,25 @@ macro_rules! operator_type {
                 $(#[$($doc)*])*
                 $name,
             )*
+        }
+
+        impl Display for $raw_operator_type_name {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                write!(f, "{}", match self {
+                    $(Self::$name => $str,)*
+                })
+            }
+        }
+
+        impl FromStr for $raw_operator_type_name {
+            type Err = String;
+
+            fn from_str(s: &str) -> Result<Self, Self::Err> {
+                match s {
+                    $(stringify!($name) => Ok(Self::$name),)*
+                    _ => Err("unexpected operator type".to_string()),
+                }
+            }
         }
 
         impl RawToken {
@@ -580,12 +684,6 @@ macro_rules! operator_type {
                 RawToken::Punctuator(value.into()).into()
             }
         }
-
-        impl Display for $raw_operator_type_name {
-            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-                RawToken::from(*self).fmt(f)
-            }
-        }
     };
 }
 
@@ -602,82 +700,82 @@ operator_type! {
     is_binary_operator,
 
     /// Plus Equal (`+=`).
-    PlusEq,
+    "+=" => PlusEq,
 
     /// Plus (`+`).
-    Plus,
+    "+" => Plus,
 
     /// Minus Equal (`-=`).
-    MinusEq,
+    "-=" => MinusEq,
 
     /// Minus (`-`).
-    Minus,
+    "-" => Minus,
 
     /// Asterisk Equal (`*=`).
-    AsteriskEq,
+    "*=" => AsteriskEq,
 
     /// Asterisk (`*`).
-    Asterisk,
+    "*" => Asterisk,
 
     /// Double Asterisk (`**`).
-    DoubleAsterisk,
+    "**" => DoubleAsterisk,
 
     /// Slash Equal (`/=`).
-    SlashEq,
+    "/=" => SlashEq,
 
     /// Slash (`/`).
-    Slash,
+    "/" => Slash,
 
     /// Bang Equal (`!=`).
-    BangEq,
+    "!=" => BangEq,
 
     /// Right Shift (`>>`).
-    RightShift,
+    ">>" => RightShift,
 
     /// Left Shift (`<<`).
-    LeftShift,
+    "<<" => LeftShift,
 
     /// Less Or Equal (`<=`).
-    LessEq,
+    "<=" => LessEq,
 
     /// Less (`<`).
-    Less,
+    "<" => Less,
 
     /// Greater Or Equal (`>=`).
-    GreaterEq,
+    ">=" => GreaterEq,
 
     /// Greater (`>`).
-    Greater,
+    ">" => Greater,
 
     /// Double Equal (`==`).
-    DoubleEq,
+    "==" => DoubleEq,
 
     /// Equal (`=`).
-    Eq,
+    "=" => Eq,
 
     /// Or (`|`).
-    Or,
+    "|" => Or,
 
     /// Ampersand (`&`).
-    Ampersand,
+    "&" => Ampersand,
 
     /// Double Or (`||`).
-    DoubleOr,
+    "||" => DoubleOr,
 
     /// Double Ampersand (`&&`).
-    DoubleAmpersand,
+    "&&" => DoubleAmpersand,
 
     /// Or Equal (`|=`).
-    OrEq,
+    "|=" => OrEq,
 
     /// Ampersand Equal (`&=`).
-    AmpersandEq,
+    "&=" => AmpersandEq,
 
     /// Percent (`%`).
-    Percent,
+    "%" => Percent,
 
     /// Percent Equal (`%=`).
-    PercentEq
+    "%=" => PercentEq
 }
 
 operator_type! {
@@ -693,22 +791,22 @@ operator_type! {
     is_prefix_operator,
 
     /// Bang (`!`).
-    Bang,
+    "!" => Bang,
 
     /// Not (`~`).
-    Tilde,
+    "~" => Tilde,
 
     /// Double Plus (`++`).
-    DoublePlus,
+    "++" => DoublePlus,
 
     /// Double Minus (`--`).
-    DoubleMinus,
+    "--" => DoubleMinus,
 
     /// Plus (`+`).
-    Plus,
+    "+" => Plus,
 
     /// Minus (`-`).
-    Minus
+    "-" => Minus
 }
 
 operator_type! {
@@ -724,17 +822,18 @@ operator_type! {
     is_postfix_operator,
 
     /// Question Mark (`?`).
-    QuestionMark,
+    "?" => QuestionMark,
 
     /// Double Plus (`++`).
-    DoublePlus,
+    "++" => DoublePlus,
 
     /// Double Minus (`--`).
-    DoubleMinus
+    "--" => DoubleMinus
 }
 
 /// A match expression item - `pattern` `=>` `expression`.
 #[derive(Debug, PartialEq, Clone)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct MatchExpressionItem {
     pub left: Pattern,
     pub right: Expression,
@@ -743,8 +842,11 @@ pub struct MatchExpressionItem {
 /// A field item in a struct expression (`identifier` and optionally `:` `expression`),
 /// e.g. `name: "John"` and `age` in `Person { name: "John", age }`.
 #[derive(Debug, PartialEq, Clone)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct StructFieldExpression {
     pub name: IdentifierAST,
+
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub value: Option<Expression>,
 }
 
@@ -764,37 +866,51 @@ impl Expression {
 
 /// A statement, e.g. `defer file.close()`, `return Some("hello");`, `break;`.
 #[derive(Debug, PartialEq, Clone)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", serde(tag = "kind"))]
 pub enum Statement {
     /// Defer statement - `defer <expr>;`, e.g. `defer file.close()`.
+    #[cfg_attr(feature = "serde", serde(rename = "defer_statement"))]
     Defer { call: Expression },
 
     /// Expression statement, e.g. `call();`.
+    #[cfg_attr(feature = "serde", serde(rename = "expression_statement"))]
     Expression {
         expression: Expression,
         has_semicolon: bool,
     },
 
     /// Break statement - `break;`.
+    #[cfg_attr(feature = "serde", serde(rename = "break_statement"))]
     Break { location: Location },
 
     /// Continue statement - `continue`;
+    #[cfg_attr(feature = "serde", serde(rename = "continue_statement"))]
     Continue { location: Location },
 
     /// Return statement - `return <expr>;`, e.g. `return 42;`.
+    #[cfg_attr(feature = "serde", serde(rename = "return_statement"))]
     Return { expression: Expression },
 
     /// Let statement - `let <pattern> = <expr>;`, e.g. `let x = 1`.
+    #[cfg_attr(feature = "serde", serde(rename = "let_statement"))]
     Let {
         pattern: Pattern,
         value: Expression,
+
+        #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
+        #[cfg_attr(feature = "serde", serde(rename = "type"))]
         ty: Option<Type>,
     },
 }
 
 /// A module item.
 #[derive(Debug, PartialEq, Clone)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", serde(tag = "kind"))]
 pub enum ModuleItem {
     /// Enum item.
+    #[cfg_attr(feature = "serde", serde(rename = "enum_item"))]
     Enum {
         visibility: Visibility,
         name: IdentifierAST,
@@ -802,16 +918,20 @@ pub enum ModuleItem {
         where_predicates: Vec<WherePredicate>,
         items: Vec<EnumItem>,
         methods: Vec<Function>,
+
+        #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
         implements: Option<Vec<TypeConstructor>>,
+
+        #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
         docstring: Option<String>,
     },
 
     /// Function item.
-    ///
+    #[cfg_attr(feature = "serde", serde(rename = "function_item"))]
     Function(Function),
 
     /// Import item.
-    ///
+    #[cfg_attr(feature = "serde", serde(rename = "import_item"))]
     Import {
         /// Location of the entire import item.
         location: Location,
@@ -819,17 +939,23 @@ pub enum ModuleItem {
     },
 
     /// Interface item.
+    #[cfg_attr(feature = "serde", serde(rename = "interface_item"))]
     Interface {
         visibility: Visibility,
         name: IdentifierAST,
         generic_parameters: Vec<GenericParameter>,
         where_predicates: Vec<WherePredicate>,
         methods: Vec<Function>,
+
+        #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
         inherits: Option<Vec<TypeConstructor>>,
+
+        #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
         docstring: Option<String>,
     },
 
     /// Struct item.
+    #[cfg_attr(feature = "serde", serde(rename = "struct_item"))]
     Struct {
         visibility: Visibility,
         name: IdentifierAST,
@@ -837,11 +963,16 @@ pub enum ModuleItem {
         where_predicates: Vec<WherePredicate>,
         fields: Vec<StructField>,
         methods: Vec<Function>,
+
+        #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
         implements: Option<Vec<TypeConstructor>>,
+
+        #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
         docstring: Option<String>,
     },
 
     /// Tuple-like struct item.
+    #[cfg_attr(feature = "serde", serde(rename = "tuple_like_struct_item"))]
     TupleLikeStruct {
         visibility: Visibility,
         name: IdentifierAST,
@@ -849,11 +980,16 @@ pub enum ModuleItem {
         where_predicates: Vec<WherePredicate>,
         fields: Vec<TupleField>,
         methods: Vec<Function>,
+
+        #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
         implements: Option<Vec<TypeConstructor>>,
+
+        #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
         docstring: Option<String>,
     },
 
     /// Type alias item.
+    #[cfg_attr(feature = "serde", serde(rename = "type_alias_item"))]
     TypeAlias(TypeAlias),
 }
 
@@ -1015,80 +1151,115 @@ pub enum ModuleItemKind {
 
 /// An enum item, e.g. `None`, `Ok(T)`, `A { b: T }`.
 #[derive(Debug, PartialEq, Eq, Clone)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", serde(tag = "kind"))]
 pub enum EnumItem {
     /// Just an identifier, e.g. `None` in `enum Option[T] { Some(T), None }`.
+    #[cfg_attr(feature = "serde", serde(rename = "identifier_item"))]
     Just {
         name: IdentifierAST,
+
+        #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
         docstring: Option<String>,
     },
     /// A tuple-like enum item, e.g. `None` in `enum Option<T> { Some(T), None }`.
+    #[cfg_attr(feature = "serde", serde(rename = "tuple_like_item"))]
     TupleLike {
         name: IdentifierAST,
         fields: Vec<TupleField>,
+
+        #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
         docstring: Option<String>,
     },
     /// A struct item, e.g. `A { b: T }` in `enum B { A { b: T } }`.
+    #[cfg_attr(feature = "serde", serde(rename = "struct_item"))]
     Struct {
         name: IdentifierAST,
         fields: Vec<StructField>,
+
+        #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
         docstring: Option<String>,
     },
 }
 
 /// A tuple field, e.g. `pub String` in `pub struct Wrapper(pub String);`.
 #[derive(Debug, PartialEq, Eq, Clone)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct TupleField {
     pub visibility: Visibility,
+
+    #[cfg_attr(feature = "serde", serde(rename = "type"))]
     pub ty: Type,
 }
 
 /// A struct field, e.g. `name: String`, `pub age: uint32`.
 #[derive(Debug, PartialEq, Eq, Clone)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct StructField {
     pub visibility: Visibility,
     pub name: IdentifierAST,
+
+    #[cfg_attr(feature = "serde", serde(rename = "type"))]
     pub ty: Type,
+
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub docstring: Option<String>,
 }
 
 /// A function.
 #[derive(Debug, PartialEq, Clone)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct Function {
     pub signature: FunctionSignature,
+
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub body: Option<Vec<Statement>>,
 }
 
 /// A function signature - information about function except a block.
 #[derive(Debug, PartialEq, Eq, Clone)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct FunctionSignature {
     pub visibility: Visibility,
     pub name: IdentifierAST,
     pub generic_parameters: Vec<GenericParameter>,
     pub parameters: Vec<FunctionParameter>,
+
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub return_type: Option<Type>,
+
     pub where_predicates: Vec<WherePredicate>,
+
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub docstring: Option<String>,
 }
 
 /// A function parameter, e.g. `self`, `self: Self`, `a: uint32`.
 #[derive(Debug, PartialEq, Eq, Clone)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", serde(tag = "kind"))]
 pub enum FunctionParameter {
     /// A function parameter that is not `self`.
+    #[cfg_attr(feature = "serde", serde(rename = "not_self"))]
     NotSelfParameter(NotSelfFunctionParameter),
 
     /// A self parameter.
+    #[cfg_attr(feature = "serde", serde(rename = "self"))]
     SelfParameter(SelfFunctionParameter),
 }
 
 /// A self parameter, e.g. `self`, `self: Self`.
 #[derive(Debug, PartialEq, Eq, Clone)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct SelfFunctionParameter {
     pub self_location: Location,
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub ty: Option<Type>,
 }
 
 /// A function parameter that is not `self`, e.g. `a: uint32`.
 #[derive(Debug, PartialEq, Eq, Clone)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct NotSelfFunctionParameter {
     pub name: IdentifierAST,
     pub ty: Type,
@@ -1096,15 +1267,42 @@ pub struct NotSelfFunctionParameter {
 
 /// A Ry module.
 #[derive(Debug, PartialEq, Clone)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct Module {
     pub items: Vec<ModuleItem>,
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub docstring: Option<String>,
 }
 
 /// A visibility qualifier - `pub` or nothing (private visibility).
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, Default)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", serde(tag = "kind"))]
 pub enum Visibility {
     #[default]
+    #[cfg_attr(feature = "serde", serde(rename = "private"))]
     Private,
-    Public(Location),
+
+    #[cfg_attr(feature = "serde", serde(rename = "public"))]
+    Public(#[cfg_attr(feature = "serde", serde(rename = "location"))] Location),
+}
+
+#[cfg(feature = "serde")]
+fn use_display<T, S>(value: &T, serializer: S) -> Result<S::Ok, S::Error>
+where
+    T: Display,
+    S: Serializer,
+{
+    serializer.collect_str(value)
+}
+
+#[cfg(feature = "serde")]
+fn from_display<'de, D, T>(deserializer: D) -> Result<T, D::Error>
+where
+    D: Deserializer<'de>,
+    T: FromStr,
+    <T as FromStr>::Err: Display,
+{
+    let s = String::deserialize(deserializer)?;
+    T::from_str(&s).map_err(serde::de::Error::custom)
 }

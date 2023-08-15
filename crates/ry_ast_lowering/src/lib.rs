@@ -206,7 +206,7 @@ impl<'d> LoweringContext<'d> {
             },
         }
     }
-    fn lower_statements_block(&mut self, ast: ry_ast::StatementsBlock) -> ry_hir::StatementsBlock {
+    fn lower_statements_block(&mut self, ast: Vec<ry_ast::Statement>) -> Vec<ry_hir::Statement> {
         ast.into_iter()
             .map(|statement| self.lower_statement(statement))
             .collect()
@@ -550,8 +550,8 @@ impl<'d> LoweringContext<'d> {
 
     fn lower_if_blocks(
         &mut self,
-        if_blocks: Vec<(ry_ast::Expression, ry_ast::StatementsBlock)>,
-    ) -> Vec<(ry_hir::Expression, ry_hir::StatementsBlock)> {
+        if_blocks: Vec<(ry_ast::Expression, Vec<ry_ast::Statement>)>,
+    ) -> Vec<(ry_hir::Expression, Vec<ry_hir::Statement>)> {
         if_blocks
             .into_iter()
             .map(|if_block| self.lower_if_block(if_block))
@@ -560,8 +560,8 @@ impl<'d> LoweringContext<'d> {
 
     fn lower_if_block(
         &mut self,
-        if_block: (ry_ast::Expression, ry_ast::StatementsBlock),
-    ) -> (ry_hir::Expression, ry_hir::StatementsBlock) {
+        if_block: (ry_ast::Expression, Vec<ry_ast::Statement>),
+    ) -> (ry_hir::Expression, Vec<ry_hir::Statement>) {
         if let ry_ast::Expression::Parenthesized { location, .. } = if_block.0 {
             self.add_diagnostic(UnnecessaryParenthesizedExpression { location });
         }
@@ -665,14 +665,9 @@ impl<'d> LoweringContext<'d> {
         &mut self,
         ast: Vec<ry_ast::GenericParameter>,
     ) -> Vec<ry_hir::GenericParameter> {
-        ast.unwrap_or_else(|| {
-            // todo: emit some diagnostics here
-
-            vec![]
-        })
-        .into_iter()
-        .map(|parameter| self.lower_generic_parameter(parameter))
-        .collect()
+        ast.into_iter()
+            .map(|parameter| self.lower_generic_parameter(parameter))
+            .collect()
     }
 
     fn lower_generic_parameter(
@@ -695,14 +690,9 @@ impl<'d> LoweringContext<'d> {
         &mut self,
         ast: Vec<ry_ast::WherePredicate>,
     ) -> Vec<ry_hir::WherePredicate> {
-        ast.unwrap_or_else(|| {
-            // todo: emit some diagnostics here
-
-            vec![]
-        })
-        .into_iter()
-        .map(|item| self.lower_where_predicate(item))
-        .collect()
+        ast.into_iter()
+            .map(|item| self.lower_where_predicate(item))
+            .collect()
     }
 
     fn lower_where_predicate(&mut self, ast: ry_ast::WherePredicate) -> ry_hir::WherePredicate {
@@ -718,12 +708,11 @@ impl<'d> LoweringContext<'d> {
 
     fn lower_type_constructor(&mut self, ast: ry_ast::TypeConstructor) -> ry_hir::TypeConstructor {
         ry_hir::TypeConstructor {
-            arguments: ast.arguments.map(|arguments| {
-                arguments
-                    .into_iter()
-                    .map(|ty| self.lower_type(ty))
-                    .collect()
-            }),
+            arguments: ast
+                .arguments
+                .into_iter()
+                .map(|ty| self.lower_type(ty))
+                .collect(),
             location: ast.location,
             path: ast.path,
         }
@@ -743,7 +732,9 @@ impl<'d> LoweringContext<'d> {
                     .collect(),
                 return_type: Box::new(self.lower_type(*return_type)),
             },
-            ry_ast::Type::Constructor(constructor) => ry_hir::Type::Constructor(constructor),
+            ry_ast::Type::Constructor(constructor) => {
+                ry_hir::Type::Constructor(self.lower_type_constructor(constructor))
+            }
             ry_ast::Type::Parenthesized { inner, .. } => {
                 if let ry_ast::Type::Parenthesized { location, .. } = *inner {
                     self.add_diagnostic(UnnecessaryParenthesizedExpression { location });

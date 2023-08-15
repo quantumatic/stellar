@@ -3,7 +3,7 @@ use ry_ast::{
     token::{Keyword, Punctuator, RawToken},
     BinaryOperator, Expression, IdentifierAST, LambdaFunctionParameter, MatchExpressionItem,
     PostfixOperator, PrefixOperator, RawBinaryOperator, RawPostfixOperator, RawPrefixOperator,
-    StructExpressionItem,
+    StructFieldExpression,
 };
 
 use crate::{
@@ -569,7 +569,7 @@ impl Parse for StructExpressionParser {
         let fields = ListParser::new(
             "struct expression",
             &[RawToken::from(Punctuator::CloseBrace)],
-            |state| StructExpressionUnitParser.parse(state),
+            |state| StructFieldExpressionParser.parse(state),
         )
         .parse(state);
 
@@ -583,10 +583,10 @@ impl Parse for StructExpressionParser {
     }
 }
 
-struct StructExpressionUnitParser;
+struct StructFieldExpressionParser;
 
-impl Parse for StructExpressionUnitParser {
-    type Output = Option<StructExpressionItem>;
+impl Parse for StructFieldExpressionParser {
+    type Output = Option<StructFieldExpression>;
 
     fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
         let name = state.consume_identifier("struct field")?;
@@ -598,7 +598,7 @@ impl Parse for StructExpressionUnitParser {
             None
         };
 
-        Some(StructExpressionItem { name, value })
+        Some(StructFieldExpression { name, value })
     }
 }
 

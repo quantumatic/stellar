@@ -303,7 +303,7 @@ impl<'i, 'p, 'g, 'd> TypeCheckingContext<'i, 'p, 'g, 'd> {
     /// Converts a type constructor from HIR into [`TypeConstructor`].
     fn resolve_type_constructor(
         &mut self,
-        ty: &ry_ast::TypeConstructor,
+        ty: &ry_hir::TypeConstructor,
         generic_parameter_scope: Option<&GenericParameterScope>,
         module_scope: &ModuleScope,
     ) -> Option<TypeConstructor> {
@@ -311,7 +311,7 @@ impl<'i, 'p, 'g, 'd> TypeCheckingContext<'i, 'p, 'g, 'd> {
             let mut identifiers_iter = ty.path.identifiers.iter();
             let possible_generic_parameter_name = identifiers_iter.next().unwrap();
 
-            if identifiers_iter.next().is_none() && ty.arguments.is_none() {
+            if identifiers_iter.next().is_none() && ty.arguments.is_empty() {
                 if generic_parameter_scope.contains(possible_generic_parameter_name.id) {
                     return Some(TypeConstructor {
                         path: Path {
@@ -358,17 +358,13 @@ impl<'i, 'p, 'g, 'd> TypeCheckingContext<'i, 'p, 'g, 'd> {
     /// Resolves type arguments.
     fn resolve_type_arguments(
         &mut self,
-        hir: Option<&[ry_hir::Type]>,
+        hir: &[ry_hir::Type],
         generic_parameter_scope: Option<&GenericParameterScope>,
         module_scope: &ModuleScope,
     ) -> Option<Vec<Type>> {
-        if let Some(hir) = hir {
-            hir.into_iter()
-                .map(|ty| self.resolve_type(ty, generic_parameter_scope, module_scope))
-                .collect::<Option<_>>()
-        } else {
-            Some(vec![])
-        }
+        hir.into_iter()
+            .map(|ty| self.resolve_type(ty, generic_parameter_scope, module_scope))
+            .collect::<Option<_>>()
     }
 
     fn unwrap_type_alias(&mut self, path: Path) -> Type {
@@ -436,10 +432,7 @@ impl<'i, 'p, 'g, 'd> TypeCheckingContext<'i, 'p, 'g, 'd> {
                         .collect(),
                 },
                 arguments: self.resolve_type_arguments(
-                    interface
-                        .arguments
-                        .as_ref()
-                        .map(|arguments| arguments.as_slice()),
+                    &interface.arguments,
                     generic_parameter_scope,
                     module_scope,
                 )?,
@@ -469,7 +462,7 @@ impl<'i, 'p, 'g, 'd> TypeCheckingContext<'i, 'p, 'g, 'd> {
 
     fn resolve_bounds(
         &mut self,
-        bounds: &ry_hir::Bounds,
+        bounds: &[ry_hir::TypeConstructor],
         module_scope: &ModuleScope,
     ) -> Option<Vec<TypeConstructor>> {
         bounds

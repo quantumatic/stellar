@@ -60,6 +60,7 @@ use std::env;
 use clap::{Parser, Subcommand};
 
 mod lex;
+mod lower;
 mod new;
 mod parse;
 mod parse_manifest;
@@ -82,8 +83,10 @@ enum Commands {
         #[arg(long)]
         show_locations: bool,
     },
-    #[command(about = "Parse Ry source file")]
-    Parse { filepath: String },
+    #[command(about = "Parse Ry source file and get its AST")]
+    Ast { filepath: String },
+    #[command(about = "Parse Ry source file, lower its AST and return output HIR")]
+    Hir { filepath: String },
     #[command(about = "Parse Ry manifest file")]
     ParseManifest { filepath: String },
     #[command(about = "Create a new Ry package")]
@@ -103,8 +106,11 @@ fn main() {
             filepath,
             show_locations,
         } => lex::command(&filepath, show_locations),
-        Commands::Parse { filepath } => {
+        Commands::Ast { filepath } => {
             parse::command(&filepath);
+        }
+        Commands::Hir { filepath } => {
+            lower::command(&filepath);
         }
         Commands::ParseManifest { filepath } => {
             parse_manifest::command(&filepath);

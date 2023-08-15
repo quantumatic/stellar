@@ -1,6 +1,6 @@
 use ry_ast::{
     token::{Keyword, Punctuator, RawToken},
-    Bounds, GenericParameter, Type, TypeConstructor, WherePredicate,
+    GenericParameter, Type, TypeConstructor, WherePredicate,
 };
 
 use crate::{
@@ -15,12 +15,17 @@ impl Parse for BoundsParser {
 
     fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
         let mut bounds = vec![];
-        bounds.push(TypeConstructorParser.parse(state)?);
+
+        if let Some(b) = TypeConstructorParser.parse(state) {
+            bounds.push(b);
+        }
 
         while state.next_token.raw == Punctuator::Plus {
             state.advance();
 
-            bounds.push(TypeConstructorParser.parse(state)?);
+            if let Some(bound) = TypeConstructorParser.parse(state) {
+                bounds.push(bound);
+            }
         }
 
         bounds
@@ -63,7 +68,7 @@ impl Parse for InterfaceObjectTypeParser {
         state.advance(); // `dyn`
 
         Some(Type::InterfaceObject {
-            bounds: BoundsParser.parse(state)?,
+            bounds: BoundsParser.parse(state),
             location: state.location_from(start),
         })
     }
@@ -144,11 +149,11 @@ impl Parse for ParenthesizedTupleOrFunctionTypeParser {
 pub(crate) struct GenericParametersParser;
 
 impl OptionallyParse for GenericParametersParser {
-    type Output = Option<Option<Vec<GenericParameter>>>;
+    type Output = Option<Vec<GenericParameter>>;
 
     fn optionally_parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
         if state.next_token.raw != Punctuator::OpenBracket {
-            return Some(None);
+            return Some(vec![]);
         }
 
         state.advance();
@@ -162,7 +167,7 @@ impl OptionallyParse for GenericParametersParser {
                     bounds: if state.next_token.raw == Punctuator::Colon {
                         state.advance();
 
-                        Some(BoundsParser.parse(state)?)
+                        Some(BoundsParser.parse(state))
                     } else {
                         None
                     },
@@ -180,7 +185,7 @@ impl OptionallyParse for GenericParametersParser {
 
         state.advance();
 
-        Some(Some(result))
+        Some(result)
     }
 }
 
@@ -191,12 +196,12 @@ impl Parse for TypeConstructorParser {
 
     fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
         let path = PathParser.parse(state)?;
-        let type_arguments = TypeArgumentsParser.optionally_parse(state)?;
+        let arguments = TypeArgumentsParser.optionally_parse(state)?;
 
         Some(TypeConstructor {
             location: state.location_from(path.location.start),
             path,
-            arguments: type_arguments,
+            arguments,
         })
     }
 }
@@ -204,16 +209,17 @@ impl Parse for TypeConstructorParser {
 pub(crate) struct TypeArgumentsParser;
 
 impl OptionallyParse for TypeArgumentsParser {
-    type Output = Option<Option<Vec<Type>>>;
+    type Output = Option<Vec<Type>>;
 
     fn optionally_parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
         if state.next_token.raw != Punctuator::OpenBracket {
-            return Some(None);
+            return Some(vec![]);
         }
 
-        Some(self.parse(state))
+        self.parse(state)
     }
 }
+
 impl Parse for TypeArgumentsParser {
     type Output = Option<Vec<Type>>;
 
@@ -236,16 +242,16 @@ impl Parse for TypeArgumentsParser {
 pub(crate) struct WherePredicatesParser;
 
 impl OptionallyParse for WherePredicatesParser {
-    type Output = Option<Option<Vec<WherePredicate>>>;
+    type Output = Option<Vec<WherePredicate>>;
 
     fn optionally_parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
         if state.next_token.raw != Keyword::Where {
-            return Some(None);
+            return Some(vec![]);
         }
 
         state.advance();
 
-        Some(Some(
+        Some(
             ListParser::new(
                 "where clause",
                 &[
@@ -259,11 +265,11 @@ impl OptionallyParse for WherePredicatesParser {
 
                     Some(WherePredicate {
                         ty: left,
-                        bounds: BoundsParser.parse(state)?,
+                        bounds: BoundsParser.parse(state),
                     })
                 },
             )
             .parse(state),
-        ))
+        )
     }
 }

@@ -12,3 +12,7 @@ description = "Defines HIR for the Ry programming language."
 ry_ast = { path = "../ry_ast" }
 ry_filesystem = { path = "../ry_filesystem" }
 ry_interner = { path = "../ry_interner" }
+serde = { version = "1.0.183", features = ["derive"], optional = true }
+
+[features]
+serde = ["dep:serde", "ry_ast/serde"]

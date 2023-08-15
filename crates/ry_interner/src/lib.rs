@@ -71,6 +71,9 @@ use std::{
     path::{Path, PathBuf},
 };
 
+#[cfg(feature = "serde")]
+use serde::{Deserialize, Serialize};
+
 extern crate alloc;
 
 use alloc::{string::String, vec::Vec};
@@ -80,6 +83,7 @@ use ry_fx_hash::FxHasher;
 
 /// Represents unique symbol corresponding to some interned identifier.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct IdentifierID(pub usize);
 
 impl SymbolID for IdentifierID {
@@ -538,6 +542,7 @@ pub struct PathInterner(Interner<PathID>);
 
 /// ID of a path in the [`PathInterner`].
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct PathID(pub usize);
 
 impl SymbolID for PathID {

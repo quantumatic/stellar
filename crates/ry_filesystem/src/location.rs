@@ -7,9 +7,12 @@ use std::{
 
 use codespan_reporting::diagnostic::Label;
 use ry_interner::PathID;
+#[cfg(feature = "serde")]
+use serde::{Deserialize, Serialize};
 
 /// Represents location in the source text.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct Location {
     /// ID of the source file.
     pub file_path_id: PathID,
@@ -23,6 +26,7 @@ pub struct Location {
 
 /// Offset of a byte in a source text.
 #[derive(Debug, Copy, Clone, Default, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct ByteOffset(pub usize);
 
 impl Display for ByteOffset {
