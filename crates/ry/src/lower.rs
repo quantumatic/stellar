@@ -31,10 +31,7 @@ pub fn command(path_str: &str) {
             );
         }
         Ok(ast) => {
-            log_with_left_padded_prefix(
-                "Parsed",
-                format!("in {}s", now.elapsed().as_secs_f64()),
-            );
+            log_with_left_padded_prefix("Parsed", format!("in {}s", now.elapsed().as_secs_f64()));
 
             now = Instant::now();
 
