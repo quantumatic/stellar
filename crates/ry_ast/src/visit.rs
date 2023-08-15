@@ -1,842 +1,763 @@
-//! AST walker. Each overridden visit method has full control over what
-//! happens with its node, it can do its own traversal of the node's children,
-//! call `visit::walk_*` to apply the default traversal algorithm, or prevent
-//! deeper traversal by doing nothing.
+use ry_filesystem::location::Location;
 
 use crate::{
-    BinaryOperator, Bounds, EnumItem, Expression, Function, FunctionParameter, FunctionSignature,
-    GenericParameter, IdentifierAST, ImportPath, LambdaFunctionParameter, Literal,
-    MatchExpressionItem, Module, ModuleItem, NotSelfFunctionParameter, Path, Pattern,
-    PostfixOperator, PrefixOperator, SelfFunctionParameter, Statement, StatementsBlock,
-    StructExpressionItem, StructField, StructFieldPattern, TupleField, Type, TypeAlias,
-    TypeConstructor, Visibility, WherePredicate,
+    BinaryOperator, EnumItem, Expression, Function, GenericParameter, IdentifierAST, ImportPath,
+    LambdaFunctionParameter, Literal, MatchExpressionItem, Module, ModuleItem, Path, Pattern,
+    PostfixOperator, PrefixOperator, Statement, StructField, StructFieldExpression,
+    StructFieldPattern, TupleField, Type, TypeAlias, TypeConstructor, Visibility, WherePredicate,
 };
 
-pub trait Visitor<'ast>: Sized {
-    fn visit_identifier(&mut self, _identifier: IdentifierAST) {}
-
-    fn visit_path(&mut self, path: &'ast Path) {
-        walk_path(self, path);
-    }
-
-    fn visit_import_path(&mut self, _path: &'ast ImportPath) {}
-
-    fn visit_module(&mut self, module: &'ast Module) {
-        walk_module(self, module);
-    }
-
-    fn visit_module_docstring(&mut self, _docstring: Option<&'ast str>) {}
-
-    fn visit_module_item(&mut self, item: &'ast ModuleItem) {
-        walk_module_item(self, item);
-    }
-
-    fn visit_local_docstring(&mut self, _docstring: Option<&'ast str>) {}
-
-    fn visit_function(&mut self, function: &'ast Function) {
-        walk_function(self, function);
-    }
-
-    fn visit_function_signature(&mut self, signature: &'ast FunctionSignature) {
-        walk_function_signature(self, signature);
-    }
-
-    fn visit_visibility(&mut self, _visibility: Visibility) {}
-
-    fn visit_where_predicates(&mut self, items: Option<&'ast [WherePredicate]>) {
-        walk_where_predicates(self, items);
-    }
-
-    fn visit_where_predicate(&mut self, item: &'ast WherePredicate) {
-        walk_there_predicate(self, item);
-    }
-
-    fn visit_enum_items(&mut self, items: &'ast [EnumItem]) {
-        walk_enum_items(self, items);
-    }
-
-    fn visit_enum_item(&mut self, item: &'ast EnumItem) {
-        walk_enum_item(self, item);
-    }
-
-    fn visit_struct_fields(&mut self, field: &'ast [StructField]) {
-        walk_struct_fields(self, field);
-    }
-
-    fn visit_struct_field(&mut self, field: &'ast StructField) {
-        walk_struct_field(self, field);
-    }
-
-    fn visit_generic_parameters(&mut self, parameters: Option<&'ast [GenericParameter]>) {
-        walk_generic_parameters(self, parameters);
-    }
-
-    fn visit_generic_parameter(&mut self, parameter: &'ast GenericParameter) {
-        walk_generic_parameter(self, parameter);
-    }
-
-    fn visit_type_alias(&mut self, alias: &'ast TypeAlias) {
-        walk_type_alias(self, alias);
-    }
-
-    fn visit_tuple_fields(&mut self, fields: &'ast [TupleField]) {
-        walk_tuple_fields(self, fields);
-    }
-
-    fn visit_tuple_field(&mut self, field: &'ast TupleField) {
-        walk_tuple_field(self, field);
-    }
-
-    fn visit_type(&mut self, ty: &'ast Type) {
-        walk_type(self, ty);
-    }
-
-    fn visit_type_constructor(&mut self, path: &'ast TypeConstructor) {
-        walk_type_constructor(self, path);
-    }
-
-    fn visit_implements(&mut self, implements: Option<&'ast Bounds>) {
-        walk_implements(self, implements);
-    }
-
-    fn visit_bounds(&mut self, bounds: &'ast Bounds) {
-        walk_bounds(self, bounds);
-    }
-
-    fn visit_if_blocks(&mut self, blocks: &'ast [(Expression, StatementsBlock)]) {
-        walk_if_blocks(self, blocks);
-    }
-
-    fn visit_if_block(&mut self, block: &'ast (Expression, StatementsBlock)) {
-        walk_if_block(self, block);
-    }
-
-    fn visit_statements_block(&mut self, block: &'ast StatementsBlock) {
-        walk_statements_block(self, block);
-    }
-
-    fn visit_statement(&mut self, statement: &'ast Statement) {
-        walk_statement(self, statement);
-    }
-
-    fn visit_expression(&mut self, expression: &'ast Expression) {
-        walk_expression(self, expression);
-    }
-
-    fn visit_lambda_function_parameters(&mut self, parameters: &'ast [LambdaFunctionParameter]) {
-        walk_lambda_function_parameters(self, parameters);
-    }
-
-    fn visit_lambda_function_parameter(&mut self, parameter: &'ast LambdaFunctionParameter) {
-        walk_lambda_function_parameter(self, parameter);
-    }
-
-    fn visit_function_parameters(&mut self, parameters: &'ast [FunctionParameter]) {
-        walk_function_parameters(self, parameters);
-    }
-
-    fn visit_function_parameter(&mut self, parameter: &'ast FunctionParameter) {
-        walk_function_parameter(self, parameter);
-    }
-
-    fn visit_self_function_parameter(&mut self, parameter: &'ast SelfFunctionParameter) {
-        walk_self_function_parameter(self, parameter);
-    }
-
-    fn visit_not_self_function_parameter(&mut self, parameter: &'ast NotSelfFunctionParameter) {
-        walk_not_self_function_parameter(self, parameter);
-    }
-
-    fn visit_match_expression_items(&mut self, items: &'ast [MatchExpressionItem]) {
-        walk_match_expression_items(self, items);
-    }
-
-    fn visit_match_expression_item(&mut self, item: &'ast MatchExpressionItem) {
-        walk_match_expression_item(self, item);
-    }
-
-    fn visit_struct_expression_items(&mut self, items: &'ast [StructExpressionItem]) {
-        walk_struct_expression_items(self, items);
-    }
-
-    fn visit_struct_expression_item(&mut self, item: &'ast StructExpressionItem) {
-        walk_struct_expression_item(self, item);
-    }
-
-    fn visit_binary_operator(&mut self, _operator: BinaryOperator) {}
-
-    fn visit_postfix_operator(&mut self, _operator: PostfixOperator) {}
-
-    fn visit_prefix_operator(&mut self, _operator: PrefixOperator) {}
-
-    fn visit_pattern(&mut self, pattern: &'ast Pattern) {
-        walk_pattern(self, pattern);
-    }
-
-    fn visit_literal(&mut self, _literal: &'ast Literal) {}
-
-    fn visit_struct_field_patterns(&mut self, patterns: &'ast [StructFieldPattern]) {
-        walk_struct_field_patterns(self, patterns);
-    }
-
-    fn visit_struct_field_pattern(&mut self, pattern: &'ast StructFieldPattern) {
-        walk_struct_field_pattern(self, pattern);
-    }
-}
-
-#[macro_export]
-macro_rules! walk_list {
-    ($visitor:expr, $method:ident, $list:expr$(, $($extra_args:expr),* )?) => {
-        #[allow(for_loops_over_fallibles)]
-        for elem in $list {
-            $visitor.$method(elem $(, $($extra_args,)* )?)
-        }
-    };
-}
-
-pub fn walk_path<'ast, V>(visitor: &mut V, path: &'ast Path)
-where
-    V: Visitor<'ast>,
-{
-    for identifier in &path.identifiers {
-        visitor.visit_identifier(*identifier);
-    }
-}
-
-pub fn walk_module<'ast, V>(visitor: &mut V, module: &'ast Module)
-where
-    V: Visitor<'ast>,
-{
-    visitor.visit_module_docstring(module.docstring.as_deref());
-
-    for item in &module.items {
-        visitor.visit_module_item(item);
-    }
-}
-
-pub fn walk_module_item<'ast, V>(visitor: &mut V, item: &'ast ModuleItem)
-where
-    V: Visitor<'ast>,
-{
-    match item {
-        ModuleItem::Enum {
-            visibility,
-            name,
-            generic_parameters,
-            where_predicates,
-            items,
-            methods: _,
-            implements,
-            docstring,
-        } => {
-            visitor.visit_local_docstring(docstring.as_deref());
-            visitor.visit_visibility(*visibility);
-            visitor.visit_identifier(*name);
-            visitor.visit_generic_parameters(generic_parameters.as_deref());
-            visitor.visit_where_predicates(where_predicates.as_deref());
-            visitor.visit_implements(implements.as_ref());
-            visitor.visit_enum_items(items);
-        }
-        ModuleItem::Function(function) => {
-            visitor.visit_function(function);
-        }
-        ModuleItem::Import { path, .. } => {
-            visitor.visit_import_path(path);
-        }
-        ModuleItem::Interface {
-            visibility,
-            name,
-            generic_parameters,
-            where_predicates,
-            methods: _,
-            inherits: implements,
-            docstring,
-        } => {
-            visitor.visit_local_docstring(docstring.as_deref());
-            visitor.visit_visibility(*visibility);
-            visitor.visit_identifier(*name);
-            visitor.visit_generic_parameters(generic_parameters.as_deref());
-            visitor.visit_implements(implements.as_ref());
-            visitor.visit_where_predicates(where_predicates.as_deref());
-        }
-        ModuleItem::TupleLikeStruct {
-            visibility,
-            name,
-            generic_parameters,
-            where_predicates,
-            fields,
-            methods: _,
-            implements,
-            docstring,
-        } => {
-            visitor.visit_local_docstring(docstring.as_deref());
-            visitor.visit_visibility(*visibility);
-            visitor.visit_identifier(*name);
-            visitor.visit_generic_parameters(generic_parameters.as_deref());
-            visitor.visit_where_predicates(where_predicates.as_deref());
-            visitor.visit_implements(implements.as_ref());
-            visitor.visit_tuple_fields(fields);
-        }
-        ModuleItem::Struct {
-            visibility,
-            name,
-            generic_parameters,
-            where_predicates,
-            fields,
-            methods: _,
-            implements,
-            docstring,
-        } => {
-            visitor.visit_visibility(*visibility);
-            visitor.visit_identifier(*name);
-            visitor.visit_generic_parameters(generic_parameters.as_deref());
-            visitor.visit_where_predicates(where_predicates.as_deref());
-            visitor.visit_struct_fields(fields);
-            visitor.visit_implements(implements.as_ref());
-            visitor.visit_local_docstring(docstring.as_deref());
-        }
-        ModuleItem::TypeAlias(alias) => visitor.visit_type_alias(alias),
-    }
-}
-pub fn walk_function<'ast, V>(visitor: &mut V, function: &'ast Function)
-where
-    V: Visitor<'ast>,
-{
-    visitor.visit_function_signature(&function.signature);
-
-    if let Some(body) = &function.body {
-        visitor.visit_statements_block(body);
-    }
-}
-
-pub fn walk_function_signature<'ast, V>(visitor: &mut V, signature: &'ast FunctionSignature)
-where
-    V: Visitor<'ast>,
-{
-    visitor.visit_visibility(signature.visibility);
-    visitor.visit_identifier(signature.name);
-    visitor.visit_generic_parameters(signature.generic_parameters.as_deref());
-    visitor.visit_function_parameters(&signature.parameters);
-}
-
-pub fn walk_where_predicates<'ast, V>(visitor: &mut V, items: Option<&'ast [WherePredicate]>)
-where
-    V: Visitor<'ast>,
-{
-    if let Some(items) = items {
-        for item in items {
-            visitor.visit_where_predicate(item);
+#[allow(unused_variables)]
+pub trait Visitor {
+    fn visit_module(&mut self, module: &Module) {
+        for item in &module.items {
+            self.visit_module_item(item);
         }
     }
-}
 
-pub fn walk_there_predicate<'ast, V>(visitor: &mut V, predicate: &'ast WherePredicate)
-where
-    V: Visitor<'ast>,
-{
-    visitor.visit_type(&predicate.ty);
-    visitor.visit_bounds(&predicate.bounds);
-}
-
-pub fn walk_enum_items<'ast, V>(visitor: &mut V, items: &'ast [EnumItem])
-where
-    V: Visitor<'ast>,
-{
-    for item in items {
-        visitor.visit_enum_item(item);
-    }
-}
-
-pub fn walk_enum_item<'ast, V>(visitor: &mut V, item: &'ast EnumItem)
-where
-    V: Visitor<'ast>,
-{
-    match item {
-        EnumItem::Just { name, docstring } => {
-            visitor.visit_local_docstring(docstring.as_deref());
-            visitor.visit_identifier(*name);
-        }
-        EnumItem::Struct {
-            name,
-            fields,
-            docstring,
-        } => {
-            visitor.visit_local_docstring(docstring.as_deref());
-            visitor.visit_identifier(*name);
-            visitor.visit_struct_fields(fields);
-        }
-        EnumItem::TupleLike {
-            name,
-            fields,
-            docstring,
-        } => {
-            visitor.visit_local_docstring(docstring.as_deref());
-            visitor.visit_identifier(*name);
-            visitor.visit_tuple_fields(fields);
-        }
-    }
-}
-
-pub fn walk_struct_fields<'ast, V>(visitor: &mut V, fields: &'ast [StructField])
-where
-    V: Visitor<'ast>,
-{
-    for field in fields {
-        visitor.visit_struct_field(field);
-    }
-}
-
-pub fn walk_struct_field<'ast, V>(visitor: &mut V, field: &'ast StructField)
-where
-    V: Visitor<'ast>,
-{
-    visitor.visit_visibility(field.visibility);
-    visitor.visit_identifier(field.name);
-    visitor.visit_type(&field.ty);
-}
-
-pub fn walk_type_alias<'ast, V>(visitor: &mut V, alias: &'ast TypeAlias)
-where
-    V: Visitor<'ast>,
-{
-    visitor.visit_visibility(alias.visibility);
-    visitor.visit_identifier(alias.name);
-    visitor.visit_generic_parameters(alias.generic_parameters.as_deref());
-
-    visitor.visit_type(&alias.value);
-}
-
-pub fn walk_tuple_fields<'ast, V>(visitor: &mut V, fields: &'ast [TupleField])
-where
-    V: Visitor<'ast>,
-{
-    for field in fields {
-        visitor.visit_tuple_field(field);
-    }
-}
-
-pub fn walk_tuple_field<'ast, V>(visitor: &mut V, field: &'ast TupleField)
-where
-    V: Visitor<'ast>,
-{
-    visitor.visit_visibility(field.visibility);
-    visitor.visit_type(&field.ty);
-}
-
-pub fn walk_generic_parameters<'ast, V>(
-    visitor: &mut V,
-    parameters: Option<&'ast [GenericParameter]>,
-) where
-    V: Visitor<'ast>,
-{
-    if let Some(parameters) = parameters {
-        walk_list!(visitor, visit_generic_parameter, parameters);
-    }
-}
-
-pub fn walk_generic_parameter<'ast, V>(visitor: &mut V, parameter: &'ast GenericParameter)
-where
-    V: Visitor<'ast>,
-{
-    visitor.visit_identifier(parameter.name);
-
-    if let Some(bounds) = &parameter.bounds {
-        visitor.visit_bounds(bounds);
-    }
-
-    if let Some(default_value) = &parameter.default_value {
-        visitor.visit_type(default_value);
-    }
-}
-
-pub fn walk_type<'ast, V>(visitor: &mut V, ty: &'ast Type)
-where
-    V: Visitor<'ast>,
-{
-    match ty {
-        Type::Constructor(path) => visitor.visit_type_constructor(path),
-        Type::Tuple { element_types, .. } => {
-            walk_list!(visitor, visit_type, element_types);
-        }
-        Type::Function {
-            parameter_types,
-            return_type,
-            ..
-        } => {
-            walk_list!(visitor, visit_type, parameter_types);
-
-            visitor.visit_type(return_type);
-        }
-        Type::Parenthesized { inner, .. } => {
-            visitor.visit_type(inner);
-        }
-        Type::InterfaceObject { bounds, .. } => {
-            visitor.visit_bounds(bounds);
+    fn visit_module_item(&mut self, module_item: &ModuleItem) {
+        match module_item {
+            ModuleItem::Enum {
+                visibility,
+                name,
+                generic_parameters,
+                where_predicates,
+                items,
+                methods,
+                implements,
+                docstring,
+            } => self.visit_enum(
+                *visibility,
+                *name,
+                generic_parameters,
+                where_predicates,
+                items,
+                methods,
+                implements.as_deref(),
+                docstring.as_deref(),
+            ),
+            ModuleItem::Interface {
+                visibility,
+                name,
+                generic_parameters,
+                where_predicates,
+                methods,
+                inherits,
+                docstring,
+            } => self.visit_interface(
+                *visibility,
+                *name,
+                generic_parameters,
+                where_predicates,
+                methods,
+                inherits.as_deref(),
+                docstring.as_deref(),
+            ),
+            ModuleItem::Function(function) => self.visit_function(function),
+            ModuleItem::Import { location, path } => self.visit_import(*location, path),
+            ModuleItem::Struct {
+                visibility,
+                name,
+                generic_parameters,
+                where_predicates,
+                fields,
+                methods,
+                implements,
+                docstring,
+            } => self.visit_struct(
+                *visibility,
+                *name,
+                generic_parameters,
+                where_predicates,
+                fields,
+                methods,
+                implements.as_deref(),
+                docstring.as_deref(),
+            ),
+            ModuleItem::TupleLikeStruct {
+                visibility,
+                name,
+                generic_parameters,
+                where_predicates,
+                fields,
+                methods,
+                implements,
+                docstring,
+            } => self.visit_tuple_like_struct(
+                *visibility,
+                *name,
+                generic_parameters,
+                where_predicates,
+                fields,
+                methods,
+                implements.as_deref(),
+                docstring.as_deref(),
+            ),
+            ModuleItem::TypeAlias(alias) => self.visit_type_alias(alias),
         }
     }
-}
 
-pub fn walk_type_constructor<'ast, V>(visitor: &mut V, path: &'ast TypeConstructor)
-where
-    V: Visitor<'ast>,
-{
-    visitor.visit_path(&path.path);
-
-    if let Some(arguments) = &path.arguments {
-        walk_list!(visitor, visit_type, arguments);
+    fn visit_import(&mut self, location: Location, path: &ImportPath) {
+        self.visit_import_path(path);
     }
-}
 
-pub fn walk_implements<'ast, V>(visitor: &mut V, implements: Option<&'ast Bounds>)
-where
-    V: Visitor<'ast>,
-{
-    if let Some(bounds) = implements {
-        visitor.visit_bounds(bounds);
+    fn visit_import_path(&mut self, path: &ImportPath) {}
+
+    fn visit_enum(
+        &mut self,
+        visibility: Visibility,
+        name: IdentifierAST,
+        generic_parameters: &[GenericParameter],
+        where_predicates: &[WherePredicate],
+        items: &[EnumItem],
+        methods: &[Function],
+        implements: Option<&[TypeConstructor]>,
+        docstring: Option<&str>,
+    ) {
+        self.visit_generic_parameters(generic_parameters);
+        self.visit_where_predicates(where_predicates);
+        self.visit_methods(methods);
+        self.visit_implements(implements);
     }
-}
 
-pub fn walk_bounds<'ast, V>(visitor: &mut V, bounds: &'ast Bounds)
-where
-    V: Visitor<'ast>,
-{
-    walk_list!(visitor, visit_type_constructor, bounds);
-}
-
-pub fn walk_if_blocks<'ast, V>(visitor: &mut V, blocks: &'ast [(Expression, StatementsBlock)])
-where
-    V: Visitor<'ast>,
-{
-    for block in blocks {
-        visitor.visit_if_block(block);
+    fn visit_interface(
+        &mut self,
+        visibility: Visibility,
+        name: IdentifierAST,
+        generic_parameters: &[GenericParameter],
+        where_predicates: &[WherePredicate],
+        methods: &[Function],
+        inherits: Option<&[TypeConstructor]>,
+        docstring: Option<&str>,
+    ) {
+        self.visit_generic_parameters(generic_parameters);
+        self.visit_where_predicates(where_predicates);
+        self.visit_methods(methods);
+        self.visit_inherits(inherits);
     }
-}
 
-pub fn walk_if_block<'ast, V>(visitor: &mut V, block: &'ast (Expression, StatementsBlock))
-where
-    V: Visitor<'ast>,
-{
-    visitor.visit_expression(&block.0);
-    visitor.visit_statements_block(&block.1);
-}
-
-pub fn walk_statements_block<'ast, V>(visitor: &mut V, block: &'ast StatementsBlock)
-where
-    V: Visitor<'ast>,
-{
-    for statement in block {
-        visitor.visit_statement(statement);
+    fn visit_struct(
+        &mut self,
+        visibility: Visibility,
+        name: IdentifierAST,
+        generic_parameters: &[GenericParameter],
+        where_predicates: &[WherePredicate],
+        fields: &[StructField],
+        methods: &[Function],
+        implements: Option<&[TypeConstructor]>,
+        docstring: Option<&str>,
+    ) {
+        self.visit_generic_parameters(generic_parameters);
+        self.visit_where_predicates(where_predicates);
+        self.visit_struct_fields(fields);
+        self.visit_methods(methods);
+        self.visit_implements(implements);
     }
-}
 
-pub fn walk_statement<'ast, V>(visitor: &mut V, statement: &'ast Statement)
-where
-    V: Visitor<'ast>,
-{
-    match statement {
-        Statement::Defer { call } => {
-            visitor.visit_expression(call);
+    fn visit_tuple_like_struct(
+        &mut self,
+        visibility: Visibility,
+        name: IdentifierAST,
+        generic_parameters: &[GenericParameter],
+        where_predicates: &[WherePredicate],
+        fields: &[TupleField],
+        methods: &[Function],
+        implements: Option<&[TypeConstructor]>,
+        docstring: Option<&str>,
+    ) {
+        self.visit_generic_parameters(generic_parameters);
+        self.visit_where_predicates(where_predicates);
+        self.visit_tuple_fields(fields);
+        self.visit_methods(methods);
+        self.visit_implements(implements);
+    }
+
+    fn visit_type_alias(&mut self, alias: &TypeAlias) {
+        self.visit_generic_parameters(&alias.generic_parameters);
+        self.visit_type(&alias.value);
+    }
+
+    fn visit_tuple_fields(&mut self, fields: &[TupleField]) {
+        for field in fields {
+            self.visit_tuple_field(field);
         }
-        Statement::Expression { expression, .. } | Statement::Return { expression } => {
-            visitor.visit_expression(expression);
+    }
+
+    fn visit_tuple_field(&mut self, field: &TupleField) {
+        self.visit_type(&field.ty);
+    }
+
+    fn visit_struct_fields(&mut self, fields: &[StructField]) {
+        for field in fields {
+            self.visit_struct_field(field);
         }
-        Statement::Let { pattern, value, ty } => {
-            visitor.visit_pattern(pattern);
+    }
 
-            visitor.visit_expression(value);
+    fn visit_struct_field(&mut self, field: &StructField) {
+        self.visit_type(&field.ty);
+    }
 
-            if let Some(ty) = ty {
-                visitor.visit_type(ty);
+    fn visit_generic_parameters(&mut self, generic_parameters: &[GenericParameter]) {
+        for generic_parameter in generic_parameters {
+            self.visit_generic_parameter(generic_parameter);
+        }
+    }
+
+    fn visit_generic_parameter(&mut self, generic_parameter: &GenericParameter) {
+        if let Some(default_value) = &generic_parameter.default_value {
+            self.visit_type(default_value);
+        }
+
+        if let Some(bounds) = &generic_parameter.bounds {
+            self.visit_bounds(bounds);
+        }
+    }
+
+    fn visit_where_predicates(&mut self, predicates: &[WherePredicate]) {
+        for predicate in predicates {
+            self.visit_where_predicate(predicate);
+        }
+    }
+
+    fn visit_where_predicate(&mut self, predicate: &WherePredicate) {
+        self.visit_type(&predicate.ty);
+        self.visit_bounds(&predicate.bounds);
+    }
+
+    fn visit_function(&mut self, function: &Function) {
+        if let Some(body) = &function.body {
+            self.visit_statements_block(body);
+        }
+    }
+
+    fn visit_method(&mut self, method: &Function) {
+        self.visit_function(method);
+    }
+
+    fn visit_methods(&mut self, methods: &[Function]) {
+        for method in methods {
+            self.visit_method(method);
+        }
+    }
+
+    fn visit_implements(&mut self, implements: Option<&[TypeConstructor]>) {
+        if let Some(implements) = implements {
+            for interface in implements {
+                self.visit_type_constructor(interface);
             }
         }
-        Statement::Break { .. } | Statement::Continue { .. } => {}
     }
-}
 
-pub fn walk_expression<'ast, V>(visitor: &mut V, expression: &'ast Expression)
-where
-    V: Visitor<'ast>,
-{
-    match expression {
-        Expression::As { left, right, .. } => {
-            visitor.visit_expression(left);
-            visitor.visit_type(right);
-        }
-        Expression::Binary {
-            left,
-            operator,
-            right,
-            ..
-        } => {
-            visitor.visit_expression(left);
-            visitor.visit_binary_operator(*operator);
-            visitor.visit_expression(right);
-        }
-        Expression::Call {
-            callee: left,
-            arguments,
-            ..
-        } => {
-            visitor.visit_expression(left);
-            walk_list!(visitor, visit_expression, arguments);
-        }
-        Expression::FieldAccess { left, right, .. } => {
-            visitor.visit_expression(left);
-            visitor.visit_identifier(*right);
-        }
-        Expression::Lambda {
-            parameters,
-            return_type,
-            value,
-            ..
-        } => {
-            visitor.visit_lambda_function_parameters(parameters);
-
-            if let Some(return_type) = return_type {
-                visitor.visit_type(return_type);
-            }
-
-            visitor.visit_expression(value);
-        }
-        Expression::TypeArguments {
-            left,
-            type_arguments,
-            ..
-        } => {
-            visitor.visit_expression(left);
-
-            for argument in type_arguments {
-                visitor.visit_type(argument);
+    fn visit_inherits(&mut self, inherits: Option<&[TypeConstructor]>) {
+        if let Some(inherits) = inherits {
+            for interface in inherits {
+                self.visit_type_constructor(interface);
             }
         }
-        Expression::Identifier(identifier) => visitor.visit_identifier(*identifier),
-        Expression::If {
-            if_blocks, r#else, ..
-        } => {
-            visitor.visit_if_blocks(if_blocks);
+    }
 
-            if let Some(r#else) = r#else {
-                visitor.visit_statements_block(r#else);
+    fn visit_statements_block(&mut self, statements: &[Statement]) {
+        for statement in statements {
+            self.visit_statement(statement);
+        }
+    }
+
+    fn visit_statement(&mut self, statement: &Statement) {
+        match statement {
+            Statement::Break { location } => self.visit_break_statement(*location),
+            Statement::Continue { location } => self.visit_continue_statement(*location),
+            Statement::Defer { call } => self.visit_defer_expression(call),
+            Statement::Expression {
+                expression,
+                has_semicolon,
+            } => self.visit_expression_statement(expression, *has_semicolon),
+            Statement::Let { pattern, value, ty } => {
+                self.visit_let_statement(pattern, value, ty.as_ref());
+            }
+            Statement::Return { expression } => self.visit_return_statement(expression),
+        }
+    }
+
+    fn visit_break_statement(&mut self, location: Location) {}
+
+    fn visit_continue_statement(&mut self, location: Location) {}
+
+    fn visit_defer_expression(&mut self, call: &Expression) {}
+
+    fn visit_expression_statement(&mut self, expression: &Expression, has_semicolon: bool) {}
+
+    fn visit_let_statement(&mut self, pattern: &Pattern, value: &Expression, ty: Option<&Type>) {
+        self.visit_pattern(pattern);
+        self.visit_expression(value);
+
+        if let Some(ty) = ty {
+            self.visit_type(ty);
+        }
+    }
+
+    fn visit_return_statement(&mut self, expression: &Expression) {
+        self.visit_expression(expression);
+    }
+
+    fn visit_pattern(&mut self, pattern: &Pattern) {
+        match pattern {
+            Pattern::Grouped { location, inner } => self.visit_grouped_pattern(*location, inner),
+            Pattern::Identifier {
+                location,
+                identifier,
+                pattern,
+            } => self.visit_identifier_pattern(*location, *identifier, pattern),
+            Pattern::List {
+                location,
+                inner_patterns,
+            } => {
+                self.visit_list_pattern(*location, inner_patterns);
+            }
+            Pattern::Literal(literal) => self.visit_literal_pattern(literal),
+            Pattern::Or {
+                location,
+                left,
+                right,
+            } => self.visit_or_pattern(left, right),
+            Pattern::Path { path } => self.visit_path_pattern(path),
+            Pattern::Rest { location } => self.visit_rest_pattern(*location),
+            Pattern::Struct {
+                location,
+                path,
+                fields,
+            } => {
+                self.visit_struct_pattern(*location, path, fields);
+            }
+            Pattern::Tuple { location, elements } => {
+                self.visit_tuple_pattern(*location, elements);
+            }
+            Pattern::TupleLike {
+                location,
+                path,
+                inner_patterns,
+            } => {
+                self.visit_tuple_like_pattern(*location, path, inner_patterns);
             }
         }
-        Expression::List { elements, .. } | Expression::Tuple { elements, .. } => {
-            walk_list!(visitor, visit_expression, elements);
-        }
-        Expression::Literal(literal) => visitor.visit_literal(literal),
-        Expression::Match {
-            expression, block, ..
-        } => {
-            visitor.visit_expression(expression);
-            visitor.visit_match_expression_items(block);
-        }
-        Expression::Parenthesized { inner, .. } => {
-            visitor.visit_expression(inner);
-        }
-        Expression::Postfix {
-            inner, operator, ..
-        } => {
-            visitor.visit_expression(inner);
-            visitor.visit_postfix_operator(*operator);
-        }
-        Expression::Prefix {
-            inner, operator, ..
-        } => {
-            visitor.visit_expression(inner);
-            visitor.visit_prefix_operator(*operator);
-        }
-        Expression::StatementsBlock { block, .. } => {
-            visitor.visit_statements_block(block);
-        }
-        Expression::Struct { left, fields, .. } => {
-            visitor.visit_expression(left);
-            visitor.visit_struct_expression_items(fields);
-        }
-        Expression::While {
-            condition,
-            statements_block: body,
-            ..
-        } => {
-            visitor.visit_expression(condition);
-            visitor.visit_statements_block(body);
-        }
-        Expression::Loop {
-            statements_block, ..
-        } => {
-            visitor.visit_statements_block(statements_block);
+    }
+
+    fn visit_grouped_pattern(&mut self, location: Location, inner: &Pattern) {
+        self.visit_pattern(inner);
+    }
+
+    fn visit_identifier_pattern(
+        &mut self,
+        location: Location,
+        identifier: IdentifierAST,
+        pattern: &Option<Box<Pattern>>,
+    ) {
+        if let Some(pattern) = pattern {
+            self.visit_pattern(pattern);
         }
     }
-}
 
-pub fn walk_lambda_function_parameter<'ast, V>(
-    visitor: &mut V,
-    parameter: &'ast LambdaFunctionParameter,
-) where
-    V: Visitor<'ast>,
-{
-    visitor.visit_identifier(parameter.name);
-
-    if let Some(ty) = &parameter.ty {
-        visitor.visit_type(ty);
-    }
-}
-
-pub fn walk_lambda_function_parameters<'ast, V>(
-    visitor: &mut V,
-    parameters: &'ast [LambdaFunctionParameter],
-) where
-    V: Visitor<'ast>,
-{
-    walk_list!(visitor, visit_lambda_function_parameter, parameters);
-}
-
-pub fn walk_function_parameters<'ast, V>(visitor: &mut V, parameters: &'ast [FunctionParameter])
-where
-    V: Visitor<'ast>,
-{
-    walk_list!(visitor, visit_function_parameter, parameters);
-}
-
-pub fn walk_function_parameter<'ast, V>(visitor: &mut V, parameter: &'ast FunctionParameter)
-where
-    V: Visitor<'ast>,
-{
-    match parameter {
-        FunctionParameter::NotSelfParameter(parameter) => {
-            visitor.visit_not_self_function_parameter(parameter);
-        }
-        FunctionParameter::SelfParameter(parameter) => {
-            visitor.visit_self_function_parameter(parameter);
+    fn visit_list_pattern(&mut self, location: Location, inner_patterns: &[Pattern]) {
+        for pattern in inner_patterns {
+            self.visit_pattern(pattern);
         }
     }
-}
 
-pub fn walk_self_function_parameter<'ast, V>(
-    visitor: &mut V,
-    parameter: &'ast SelfFunctionParameter,
-) where
-    V: Visitor<'ast>,
-{
-    if let Some(ty) = &parameter.ty {
-        visitor.visit_type(ty);
+    fn visit_literal_pattern(&mut self, literal: &Literal) {}
+
+    fn visit_or_pattern(&mut self, left: &Pattern, right: &Pattern) {
+        self.visit_pattern(left);
+        self.visit_pattern(right);
     }
-}
 
-pub fn walk_not_self_function_parameter<'ast, V>(
-    visitor: &mut V,
-    parameter: &'ast NotSelfFunctionParameter,
-) where
-    V: Visitor<'ast>,
-{
-    visitor.visit_identifier(parameter.name);
-    // visitor.visit_type(&parameter.ty);
-}
+    fn visit_path_pattern(&mut self, path: &Path) {}
 
-pub fn walk_match_expression_item<'ast, V>(visitor: &mut V, item: &'ast MatchExpressionItem)
-where
-    V: Visitor<'ast>,
-{
-    visitor.visit_pattern(&item.left);
-    visitor.visit_expression(&item.right);
-}
+    fn visit_rest_pattern(&mut self, location: Location) {}
 
-pub fn walk_match_expression_items<'ast, V>(visitor: &mut V, items: &'ast [MatchExpressionItem])
-where
-    V: Visitor<'ast>,
-{
-    walk_list!(visitor, visit_match_expression_item, items);
-}
-
-pub fn walk_struct_expression_item<'ast, V>(visitor: &mut V, item: &'ast StructExpressionItem)
-where
-    V: Visitor<'ast>,
-{
-    visitor.visit_identifier(item.name);
-
-    if let Some(value) = &item.value {
-        visitor.visit_expression(value);
-    }
-}
-
-pub fn walk_struct_expression_items<'ast, V>(visitor: &mut V, items: &'ast [StructExpressionItem])
-where
-    V: Visitor<'ast>,
-{
-    walk_list!(visitor, visit_struct_expression_item, items);
-}
-
-pub fn walk_pattern<'ast, V>(visitor: &mut V, pattern: &'ast Pattern)
-where
-    V: Visitor<'ast>,
-{
-    match pattern {
-        Pattern::Grouped { inner, .. } => {
-            visitor.visit_pattern(inner);
+    fn visit_struct_pattern(
+        &mut self,
+        location: Location,
+        path: &Path,
+        field_patterns: &[StructFieldPattern],
+    ) {
+        for field_pattern in field_patterns {
+            self.visit_struct_field_pattern(field_pattern);
         }
-        Pattern::Identifier {
-            identifier,
-            pattern,
-            ..
-        } => {
-            visitor.visit_identifier(*identifier);
+    }
 
-            if let Some(pattern) = pattern {
-                visitor.visit_pattern(pattern);
+    fn visit_struct_field_pattern(&mut self, field: &StructFieldPattern) {}
+
+    fn visit_tuple_pattern(&mut self, location: Location, elements: &[Pattern]) {}
+
+    fn visit_tuple_like_pattern(
+        &mut self,
+        location: Location,
+        path: &Path,
+        inner_patterns: &[Pattern],
+    ) {
+        for pattern in inner_patterns {
+            self.visit_pattern(pattern);
+        }
+    }
+
+    fn visit_type(&mut self, ty: &Type) {
+        match ty {
+            Type::Constructor(constructor) => self.visit_type_constructor(constructor),
+            Type::Function {
+                location,
+                parameter_types,
+                return_type,
+            } => self.visit_function_type(*location, parameter_types, return_type),
+            Type::InterfaceObject { location, bounds } => {
+                self.visit_interface_object_type(*location, bounds);
+            }
+            Type::Parenthesized { location, inner } => {
+                self.visit_parenthesized_type(*location, inner)
+            }
+            Type::Tuple {
+                location,
+                element_types,
+            } => {
+                self.visit_tuple_type(*location, element_types);
             }
         }
-        Pattern::List { inner_patterns, .. } => {
-            walk_list!(visitor, visit_pattern, inner_patterns);
-        }
-        Pattern::Literal(literal) => visitor.visit_literal(literal),
-        Pattern::Or { left, right, .. } => {
-            visitor.visit_pattern(left);
-            visitor.visit_pattern(right);
-        }
-        Pattern::Path { path, .. } => {
-            visitor.visit_path(path);
-        }
-        Pattern::Rest { .. } => {}
+    }
 
-        Pattern::Struct { path, fields, .. } => {
-            visitor.visit_path(path);
-            visitor.visit_struct_field_patterns(fields);
-        }
-        Pattern::Tuple { elements, .. } => {
-            walk_list!(visitor, visit_pattern, elements);
-        }
-        Pattern::TupleLike {
-            path,
-            inner_patterns,
-            ..
-        } => {
-            visitor.visit_path(path);
-            walk_list!(visitor, visit_pattern, inner_patterns);
+    fn visit_type_arguments(&mut self, arguments: &[Type]) {
+        for argument in arguments {
+            self.visit_type(argument);
         }
     }
-}
 
-pub fn walk_struct_field_patterns<'ast, V>(visitor: &mut V, patterns: &'ast [StructFieldPattern])
-where
-    V: Visitor<'ast>,
-{
-    walk_list!(visitor, visit_struct_field_pattern, patterns);
-}
+    fn visit_type_constructor(&mut self, constructor: &TypeConstructor) {
+        self.visit_type_arguments(&constructor.arguments);
+    }
 
-pub fn walk_struct_field_pattern<'ast, V>(visitor: &mut V, pattern: &'ast StructFieldPattern)
-where
-    V: Visitor<'ast>,
-{
-    match pattern {
-        StructFieldPattern::NotRest {
-            field_name,
-            value_pattern,
-            ..
-        } => {
-            visitor.visit_identifier(*field_name);
+    fn visit_function_type(
+        &mut self,
+        location: Location,
+        parameter_types: &[Type],
+        return_type: &Type,
+    ) {
+        for parameter_type in parameter_types {
+            self.visit_type(parameter_type);
+        }
 
-            if let Some(value_pattern) = value_pattern {
-                visitor.visit_pattern(value_pattern);
+        self.visit_type(return_type);
+    }
+
+    fn visit_interface_object_type(&mut self, location: Location, bounds: &[TypeConstructor]) {
+        self.visit_bounds(bounds);
+    }
+
+    fn visit_bounds(&mut self, bounds: &[TypeConstructor]) {
+        for bound in bounds {
+            self.visit_type_constructor(bound);
+        }
+    }
+
+    fn visit_parenthesized_type(&mut self, location: Location, inner: &Type) {
+        self.visit_type(inner);
+    }
+
+    fn visit_tuple_type(&mut self, location: Location, element_types: &[Type]) {
+        for element_type in element_types {
+            self.visit_type(element_type);
+        }
+    }
+
+    fn visit_expression(&mut self, expression: &Expression) {
+        match expression {
+            Expression::As {
+                location,
+                left,
+                right,
+            } => {
+                self.visit_as_expression(*location, left, right);
+            }
+            Expression::Binary {
+                location,
+                left,
+                operator,
+                right,
+            } => {
+                self.visit_binary_expression(*location, left, *operator, right);
+            }
+            Expression::Call {
+                location,
+                callee,
+                arguments,
+            } => {
+                self.visit_call_expression(*location, callee, arguments);
+            }
+            Expression::FieldAccess {
+                location,
+                left,
+                right,
+            } => {
+                self.visit_field_access_expression(*location, left, *right);
+            }
+            Expression::Identifier(identifier) => self.visit_identifier_expression(*identifier),
+            Expression::List { location, elements } => {
+                self.visit_list_expression(*location, elements);
+            }
+            Expression::Literal(literal) => self.visit_literal_expression(literal),
+            Expression::If {
+                location,
+                if_blocks,
+                r#else,
+            } => {
+                self.visit_if_expression(*location, if_blocks, r#else.as_deref());
+            }
+            Expression::Lambda {
+                location,
+                parameters,
+                return_type,
+                value,
+            } => {
+                self.visit_lambda_expression(*location, parameters, return_type.as_ref(), value);
+            }
+            Expression::Loop {
+                location,
+                statements_block,
+            } => {
+                self.visit_loop_expression(*location, statements_block);
+            }
+            Expression::Match {
+                location,
+                expression,
+                block,
+            } => {
+                self.visit_match_expression(*location, expression, block);
+            }
+            Expression::Parenthesized { location, inner } => {
+                self.visit_parenthesized_expression(*location, inner);
+            }
+            Expression::Postfix {
+                location,
+                inner,
+                operator,
+            } => {
+                self.visit_postfix_expression(*location, inner, *operator);
+            }
+            Expression::Prefix {
+                location,
+                inner,
+                operator,
+            } => {
+                self.visit_prefix_expression(*location, inner, *operator);
+            }
+            Expression::StatementsBlock { location, block } => {
+                self.visit_statements_block_expression(*location, block);
+            }
+            Expression::Struct {
+                location,
+                left,
+                fields,
+            } => {
+                self.visit_struct_expression(*location, left, fields);
+            }
+            Expression::Tuple { location, elements } => {
+                self.visit_tuple_expression(*location, elements);
+            }
+            Expression::While {
+                location,
+                condition,
+                statements_block,
+            } => {
+                self.visit_while_expression(*location, condition, statements_block);
+            }
+            Expression::TypeArguments {
+                location,
+                left,
+                arguments,
+            } => {
+                self.visit_type_arguments_expression(*location, left, arguments);
             }
         }
-        StructFieldPattern::Rest { .. } => {}
+    }
+
+    fn visit_as_expression(&mut self, location: Location, left: &Expression, right: &Type) {
+        self.visit_expression(left);
+        self.visit_type(right);
+    }
+
+    fn visit_binary_expression(
+        &mut self,
+        location: Location,
+        left: &Expression,
+        operator: BinaryOperator,
+        right: &Expression,
+    ) {
+        self.visit_expression(left);
+        self.visit_expression(right);
+    }
+
+    fn visit_call_expression(
+        &mut self,
+        location: Location,
+        callee: &Expression,
+        arguments: &[Expression],
+    ) {
+        self.visit_expression(callee);
+
+        for argument in arguments {
+            self.visit_expression(argument);
+        }
+    }
+
+    fn visit_field_access_expression(
+        &mut self,
+        location: Location,
+        left: &Expression,
+        right: IdentifierAST,
+    ) {
+        self.visit_expression(left);
+    }
+
+    fn visit_identifier_expression(&mut self, identifier: IdentifierAST) {}
+
+    fn visit_list_expression(&mut self, location: Location, elements: &[Expression]) {
+        for element in elements {
+            self.visit_expression(element);
+        }
+    }
+
+    fn visit_literal_expression(&mut self, literal: &Literal) {}
+
+    fn visit_if_expression(
+        &mut self,
+        location: Location,
+        if_blocks: &[(Expression, Vec<Statement>)],
+        r#else: Option<&[Statement]>,
+    ) {
+        for (condition, block) in if_blocks {
+            self.visit_expression(condition);
+            self.visit_statements_block(block);
+        }
+
+        if let Some(r#else) = r#else {
+            self.visit_statements_block(r#else);
+        }
+    }
+
+    fn visit_lambda_expression(
+        &mut self,
+        location: Location,
+        parameters: &[LambdaFunctionParameter],
+        return_type: Option<&Type>,
+        value: &Expression,
+    ) {
+        for parameter in parameters {
+            self.visit_lambda_function_parameter(parameter);
+        }
+
+        if let Some(return_type) = return_type {
+            self.visit_type(return_type);
+        }
+
+        self.visit_expression(value);
+    }
+
+    fn visit_lambda_function_parameter(&mut self, parameter: &LambdaFunctionParameter) {
+        if let Some(ty) = &parameter.ty {
+            self.visit_type(ty);
+        }
+    }
+
+    fn visit_loop_expression(&mut self, location: Location, statements_block: &Vec<Statement>) {
+        self.visit_statements_block(statements_block);
+    }
+
+    fn visit_match_expression(
+        &mut self,
+        location: Location,
+        expression: &Expression,
+        block: &[MatchExpressionItem],
+    ) {
+        self.visit_expression(expression);
+
+        for item in block {
+            self.visit_match_expression_item(item);
+        }
+    }
+
+    fn visit_match_expression_item(&mut self, item: &MatchExpressionItem) {
+        self.visit_pattern(&item.left);
+        self.visit_expression(&item.right);
+    }
+
+    fn visit_parenthesized_expression(&mut self, location: Location, inner: &Expression) {
+        self.visit_expression(inner);
+    }
+
+    fn visit_postfix_expression(
+        &mut self,
+        location: Location,
+        inner: &Expression,
+        operator: PostfixOperator,
+    ) {
+        self.visit_expression(inner);
+    }
+
+    fn visit_prefix_expression(
+        &mut self,
+        location: Location,
+        inner: &Expression,
+        operator: PrefixOperator,
+    ) {
+        self.visit_expression(inner);
+    }
+
+    fn visit_statements_block_expression(&mut self, location: Location, block: &[Statement]) {
+        self.visit_statements_block(block);
+    }
+
+    fn visit_struct_expression(
+        &mut self,
+        location: Location,
+        left: &Expression,
+        fields: &[StructFieldExpression],
+    ) {
+        self.visit_expression(left);
+        self.visit_struct_field_expressions(fields);
+    }
+
+    fn visit_struct_field_expressions(&mut self, fields: &[StructFieldExpression]) {
+        for field in fields {
+            self.visit_struct_field_expression(field);
+        }
+    }
+
+    fn visit_struct_field_expression(&mut self, field: &StructFieldExpression) {
+        if let Some(value) = &field.value {
+            self.visit_expression(value);
+        }
+    }
+
+    fn visit_tuple_expression(&mut self, location: Location, elements: &[Expression]) {
+        for element in elements {
+            self.visit_expression(element);
+        }
+    }
+
+    fn visit_while_expression(
+        &mut self,
+        location: Location,
+        condition: &Expression,
+        statements_block: &Vec<Statement>,
+    ) {
+        self.visit_expression(condition);
+
+        self.visit_statements_block(statements_block);
+    }
+
+    fn visit_type_arguments_expression(
+        &mut self,
+        location: Location,
+        left: &Expression,
+        arguments: &[Type],
+    ) {
+        self.visit_expression(left);
+        self.visit_type_arguments(arguments);
     }
 }

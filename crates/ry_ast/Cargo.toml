@@ -13,3 +13,4 @@ derive_more = "0.99.17"
 phf = { version = "0.11.1", features = ["macros"] }
 ry_filesystem = { path = "../ry_filesystem" }
 ry_interner = { path = "../ry_interner" }
+termion = "2.0.1"

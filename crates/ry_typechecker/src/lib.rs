@@ -152,7 +152,7 @@ impl<'i, 'p, 'g, 'd> TypeCheckingContext<'i, 'p, 'g, 'd> {
         let mut imports = FxHashMap::default();
         let mut enums = FxHashMap::default();
 
-        for (idx, item) in hir.items.into_iter().enumerate() {
+        for item in hir.items {
             self.add_item_hir(module_id, item, &mut imports, &mut enums);
         }
 
@@ -311,7 +311,7 @@ impl<'i, 'p, 'g, 'd> TypeCheckingContext<'i, 'p, 'g, 'd> {
             let mut identifiers_iter = ty.path.identifiers.iter();
             let possible_generic_parameter_name = identifiers_iter.next().unwrap();
 
-            if identifiers_iter.next().is_none() {
+            if identifiers_iter.next().is_none() && ty.arguments.is_none() {
                 if generic_parameter_scope.contains(possible_generic_parameter_name.id) {
                     return Some(TypeConstructor {
                         path: Path {

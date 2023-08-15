@@ -124,7 +124,7 @@ impl Parse for StatementParser {
 pub(crate) struct StatementsBlockParser;
 
 impl Parse for StatementsBlockParser {
-    type Output = Option<StatementsBlock>;
+    type Output = Option<Vec<Statement>>;
 
     fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
         state.consume(Punctuator::OpenBrace, "statements block")?;

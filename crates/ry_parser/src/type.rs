@@ -11,7 +11,7 @@ use crate::{
 pub(crate) struct BoundsParser;
 
 impl Parse for BoundsParser {
-    type Output = Option<Bounds>;
+    type Output = Vec<TypeConstructor>;
 
     fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
         let mut bounds = vec![];
@@ -23,7 +23,7 @@ impl Parse for BoundsParser {
             bounds.push(TypeConstructorParser.parse(state)?);
         }
 
-        Some(bounds)
+        bounds
     }
 }
 

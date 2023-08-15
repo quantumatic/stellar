@@ -89,7 +89,7 @@ use ry_interner::IdentifierID;
 use token::{Punctuator, RawToken};
 
 pub mod precedence;
-pub mod serialize;
+pub mod printer;
 pub mod token;
 pub mod visit;
 
@@ -152,7 +152,7 @@ pub struct ImportPath {
 pub struct TypeConstructor {
     pub location: Location,
     pub path: Path,
-    pub arguments: Option<Vec<Type>>,
+    pub arguments: Vec<Type>,
 }
 
 /// A pattern, e.g. `Some(x)`, `None`, `a @ [3, ..]`, `[1, .., 3]`, `(1, \"hello\")`, `3.2`.
@@ -258,9 +258,6 @@ pub enum StructFieldPattern {
     Rest { location: Location },
 }
 
-/// A list of bounds (which are basically type constructors), e.g. `Debug + Into[T]`.
-pub type Bounds = Vec<TypeConstructor>;
-
 /// A type, e.g. `int32`, `(char): bool`, `(char, char)`.
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
 pub enum Type {
@@ -290,7 +287,10 @@ pub enum Type {
     },
 
     /// An interface object type, e.g. `dyn Iterator[Item = uint32]`, `dyn Debug + Clone`.
-    InterfaceObject { location: Location, bounds: Bounds },
+    InterfaceObject {
+        location: Location,
+        bounds: Vec<TypeConstructor>,
+    },
 }
 
 impl Type {
@@ -312,7 +312,7 @@ impl Type {
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct GenericParameter {
     pub name: IdentifierAST,
-    pub bounds: Option<Bounds>,
+    pub bounds: Option<Vec<TypeConstructor>>,
     pub default_value: Option<Type>,
 }
 
@@ -321,7 +321,7 @@ pub struct GenericParameter {
 pub struct TypeAlias {
     pub visibility: Visibility,
     pub name: IdentifierAST,
-    pub generic_parameters: Option<Vec<GenericParameter>>,
+    pub generic_parameters: Vec<GenericParameter>,
     pub value: Type,
     pub docstring: Option<String>,
 }
@@ -330,7 +330,7 @@ pub struct TypeAlias {
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct WherePredicate {
     pub ty: Type,
-    pub bounds: Bounds,
+    pub bounds: Vec<TypeConstructor>,
 }
 
 /// An expression.
@@ -352,7 +352,7 @@ pub enum Expression {
     /// Loop expression, e.g. `loop { ... }`
     Loop {
         location: Location,
-        statements_block: StatementsBlock,
+        statements_block: Vec<Statement>,
     },
 
     /// Binary expression, e.g. `1 + 2`.
@@ -427,7 +427,7 @@ pub enum Expression {
     TypeArguments {
         location: Location,
         left: Box<Self>,
-        type_arguments: Vec<Type>,
+        arguments: Vec<Type>,
     },
 
     /// Tuple expression, e.g. `(a, 32, \"hello\")`.
@@ -440,7 +440,7 @@ pub enum Expression {
     Struct {
         location: Location,
         left: Box<Self>,
-        fields: Vec<StructExpressionItem>,
+        fields: Vec<StructFieldExpression>,
     },
 
     /// Match expression (`match fs.read_file(...) { ... }`).
@@ -743,7 +743,7 @@ pub struct MatchExpressionItem {
 /// A field item in a struct expression (`identifier` and optionally `:` `expression`),
 /// e.g. `name: "John"` and `age` in `Person { name: "John", age }`.
 #[derive(Debug, PartialEq, Clone)]
-pub struct StructExpressionItem {
+pub struct StructFieldExpression {
     pub name: IdentifierAST,
     pub value: Option<Expression>,
 }
@@ -791,9 +791,6 @@ pub enum Statement {
     },
 }
 
-/// A block of statements - `{ <stmt>* }`.
-pub type StatementsBlock = Vec<Statement>;
-
 /// A module item.
 #[derive(Debug, PartialEq, Clone)]
 pub enum ModuleItem {
@@ -801,11 +798,11 @@ pub enum ModuleItem {
     Enum {
         visibility: Visibility,
         name: IdentifierAST,
-        generic_parameters: Option<Vec<GenericParameter>>,
-        where_predicates: Option<Vec<WherePredicate>>,
+        generic_parameters: Vec<GenericParameter>,
+        where_predicates: Vec<WherePredicate>,
         items: Vec<EnumItem>,
         methods: Vec<Function>,
-        implements: Option<Bounds>,
+        implements: Option<Vec<TypeConstructor>>,
         docstring: Option<String>,
     },
 
@@ -825,10 +822,10 @@ pub enum ModuleItem {
     Interface {
         visibility: Visibility,
         name: IdentifierAST,
-        generic_parameters: Option<Vec<GenericParameter>>,
-        where_predicates: Option<Vec<WherePredicate>>,
+        generic_parameters: Vec<GenericParameter>,
+        where_predicates: Vec<WherePredicate>,
         methods: Vec<Function>,
-        inherits: Option<Bounds>,
+        inherits: Option<Vec<TypeConstructor>>,
         docstring: Option<String>,
     },
 
@@ -836,11 +833,11 @@ pub enum ModuleItem {
     Struct {
         visibility: Visibility,
         name: IdentifierAST,
-        generic_parameters: Option<Vec<GenericParameter>>,
-        where_predicates: Option<Vec<WherePredicate>>,
+        generic_parameters: Vec<GenericParameter>,
+        where_predicates: Vec<WherePredicate>,
         fields: Vec<StructField>,
         methods: Vec<Function>,
-        implements: Option<Bounds>,
+        implements: Option<Vec<TypeConstructor>>,
         docstring: Option<String>,
     },
 
@@ -848,11 +845,11 @@ pub enum ModuleItem {
     TupleLikeStruct {
         visibility: Visibility,
         name: IdentifierAST,
-        generic_parameters: Option<Vec<GenericParameter>>,
-        where_predicates: Option<Vec<WherePredicate>>,
+        generic_parameters: Vec<GenericParameter>,
+        where_predicates: Vec<WherePredicate>,
         fields: Vec<TupleField>,
         methods: Vec<Function>,
-        implements: Option<Bounds>,
+        implements: Option<Vec<TypeConstructor>>,
         docstring: Option<String>,
     },
 
@@ -1058,7 +1055,7 @@ pub struct StructField {
 #[derive(Debug, PartialEq, Clone)]
 pub struct Function {
     pub signature: FunctionSignature,
-    pub body: Option<StatementsBlock>,
+    pub body: Option<Vec<Statement>>,
 }
 
 /// A function signature - information about function except a block.
@@ -1066,10 +1063,10 @@ pub struct Function {
 pub struct FunctionSignature {
     pub visibility: Visibility,
     pub name: IdentifierAST,
-    pub generic_parameters: Option<Vec<GenericParameter>>,
+    pub generic_parameters: Vec<GenericParameter>,
     pub parameters: Vec<FunctionParameter>,
     pub return_type: Option<Type>,
-    pub where_predicates: Option<Vec<WherePredicate>>,
+    pub where_predicates: Vec<WherePredicate>,
     pub docstring: Option<String>,
 }
 

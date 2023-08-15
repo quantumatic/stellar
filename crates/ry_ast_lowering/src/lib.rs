@@ -396,7 +396,7 @@ impl<'d> LoweringContext<'d> {
                 left: Box::new(self.lower_expression(*left)),
                 fields: fields
                     .into_iter()
-                    .map(|field| self.lower_struct_expression_item(field))
+                    .map(|field| self.lower_struct_field_expression(field))
                     .collect(),
             },
             ry_ast::Expression::While {
@@ -499,11 +499,11 @@ impl<'d> LoweringContext<'d> {
             ry_ast::Expression::TypeArguments {
                 location,
                 left,
-                type_arguments,
+                arguments,
             } => ry_hir::Expression::TypeArguments {
                 location,
                 left: Box::new(self.lower_expression(*left)),
-                type_arguments: self.lower_type_arguments(type_arguments),
+                type_arguments: self.lower_type_arguments(arguments),
             },
             ry_ast::Expression::StatementsBlock { location, block } => {
                 ry_hir::Expression::StatementsBlock {
@@ -528,9 +528,9 @@ impl<'d> LoweringContext<'d> {
         }
     }
 
-    fn lower_struct_expression_item(
+    fn lower_struct_field_expression(
         &mut self,
-        ast: ry_ast::StructExpressionItem,
+        ast: ry_ast::StructFieldExpression,
     ) -> ry_hir::StructExpressionItem {
         ry_hir::StructExpressionItem {
             name: ast.name,
@@ -663,7 +663,7 @@ impl<'d> LoweringContext<'d> {
 
     fn lower_generic_parameters(
         &mut self,
-        ast: Option<Vec<ry_ast::GenericParameter>>,
+        ast: Vec<ry_ast::GenericParameter>,
     ) -> Vec<ry_hir::GenericParameter> {
         ast.unwrap_or_else(|| {
             // todo: emit some diagnostics here
@@ -693,7 +693,7 @@ impl<'d> LoweringContext<'d> {
 
     fn lower_where_predicates(
         &mut self,
-        ast: Option<Vec<ry_ast::WherePredicate>>,
+        ast: Vec<ry_ast::WherePredicate>,
     ) -> Vec<ry_hir::WherePredicate> {
         ast.unwrap_or_else(|| {
             // todo: emit some diagnostics here

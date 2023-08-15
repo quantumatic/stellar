@@ -260,12 +260,12 @@ impl Parse for GenericArgumentsExpressionParser {
     type Output = Option<Expression>;
 
     fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
-        let type_arguments = TypeArgumentsParser.parse(state)?;
+        let arguments = TypeArgumentsParser.parse(state)?;
 
         Some(Expression::TypeArguments {
             location: state.location_from(self.left.location().start),
             left: Box::new(self.left),
-            type_arguments,
+            arguments,
         })
     }
 }
