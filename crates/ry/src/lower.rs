@@ -56,7 +56,7 @@ pub fn command(path_str: &str) {
                 file.write_all(hir_string.as_bytes())
                     .unwrap_or_else(|_| panic!("Cannot write to file {filename}"));
 
-                log_with_left_padded_prefix("Emitted", format!("AST in `{filename}`"));
+                log_with_left_padded_prefix("Emitted", format!("HIR in `{filename}`"));
             }
         }
     };
