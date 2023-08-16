@@ -1,6 +1,8 @@
-![roadmap](https://github.com/quantumatic/ry/assets/68709264/21e8b205-57b2-46d9-b82f-c3a0be30a55a)
+<p align="center">
+<img width="60%" src="https://github.com/quantumatic/ry/assets/68709264/27e70246-1271-492f-aee9-36bfd00eb215">
+</p>
 
-# Ry programming language
+Ry is an attempt of a [teenager](https://github.com/abs0luty) to create his own programming language and write its compiler in Rust. You can view it as a toy project. I view it as a showcase of what can a single young developer achieve if he is passionate about it!
 
 <p align="center">
 <details>
@@ -9,13 +11,19 @@
 </details>
 </p>
 
-## Table of contents
+Table of contents
+=================
 
-- [Introduction](#Introduction)
-- [Installation](#Installation)
-- [Overview](#Overview)
+<!--ts-->
+- [Introduction](#introduction)
+- [Installation](#installation)
+- [Overview](#overview)
+- [Roadmap](#roadmap)
+<!--te-->
 
-# Introduction
+
+Introduction
+=================
 
 Ry is an open source programming language for web development with expressive type system and easy-to-learn syntax that makes it easy to build reliable and efficient software.
 
@@ -27,7 +35,8 @@ pub fun main() {
 }
 ```
 
-# Installation
+Installation
+=================
 
 ## Compiling from source code
 
@@ -37,9 +46,10 @@ You need to have Rust installed on your system. Then run:
 cargo install --path crates/ry
 ```
 
-# Overview
+Overview
+=================
 
-# Pattern matching
+## Pattern matching
 
 Ry supports matching patterns by having a `match` expression:
 
@@ -69,7 +79,7 @@ let Person {
 } = get_person();
 ```
 
-# Everything is expression
+## Everything is expression
 
 Ry follows "everything is expression" philosophy. So `if`, `match`, `while`, etc. are expressions:
 
@@ -130,9 +140,9 @@ If you want to have to deal with dynamic dispatch, you can use `dyn` type:
 
 ```
 fun main() {
-    let iter = [1, 2, 3].into_iter() as dyn Iterator[uint32];
+    let to_string = 3 as dyn ToString;
 
-    assert(iter.next() == Some(1));
+    assert(to_string.to_string() == "3");
 }
 ```
 
@@ -148,4 +158,53 @@ You can access their inner values using pattern matching:
 let MyStringWrapper(str) = wrapper;
 println(str);
 ```
+
+
+Roadmap
+=================
+
+![roadmap](https://github.com/quantumatic/ry/assets/68709264/21e8b205-57b2-46d9-b82f-c3a0be30a55a)
+
+## 0.1.0
+
+* No runtime yet (no gc and async)
+* Simple Cranelift codegen
+* No standard library
+* No package managment
+* No documentation generation
+
+## 0.2.0
+
+* Official website
+* Package manager backend
+* Package manager website
+* Package manager client in the compiler
+* Caching results of type checking and compilation in a compiler
+* Documentation generation
+* GC
+
+## 0.3.0
+
+* LLVM codegen
+
+## 0.4.0
+
+* Official docker image
+* Start of the Standard library
+* LSP server written in Rust
+* LSP client for neovim and vscode (for a while)
+
+## 0.5.0
+
+* Async runtime and more builtin types into a compiler
+* More improvements into standart library
+
+## 0.6.0 - 0.29.9
+
+Small pathway into the release stage! A lot of stuff like metaprogramming, optimizations to std and compiler
+
+## 1.0.0
+
+Release (4-5 are required years to achieve that!)
+
 
