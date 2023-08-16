@@ -140,9 +140,9 @@ If you want to have to deal with dynamic dispatch, you can use `dyn` type:
 
 ```
 fun main() {
-    let iter = [1, 2, 3].into_iter() as dyn Iterator[uint32];
+    let to_string = 3 as dyn ToString;
 
-    assert(iter.next() == Some(1));
+    assert(to_string.to_string() == "3");
 }
 ```
 
