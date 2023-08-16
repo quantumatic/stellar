@@ -163,7 +163,10 @@ where
                 }
             }
 
-            if start_line_index == end_line_index {
+            if start_line_index == end_line_index
+                || (label.range.end == end_line_range.start
+                    && end_line_index - start_line_index == 1)
+            {
                 // Single line
                 //
                 // ```text
