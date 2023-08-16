@@ -191,6 +191,7 @@ pub enum StructFieldPattern {
 /// A type, e.g. `int32`, `(char): bool`, `(char, char)`.
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", serde(tag = "kind"))]
 pub enum Type {
     /// A type constructor, e.g. `char`, `List[int32]`.
     #[cfg_attr(feature = "serde", serde(rename = "type_constructor"))]
@@ -401,6 +402,9 @@ pub enum Expression {
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct LambdaFunctionParameter {
     pub name: IdentifierAST,
+
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
+    #[cfg_attr(feature = "serde", serde(rename = "type"))]
     pub ty: Option<Type>,
 }
 
@@ -497,6 +501,9 @@ pub enum Statement {
     Let {
         pattern: Pattern,
         value: Expression,
+
+        #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
+        #[cfg_attr(feature = "serde", serde(rename = "type"))]
         ty: Option<Type>,
     },
 }
