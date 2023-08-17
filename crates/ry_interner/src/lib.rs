@@ -593,7 +593,14 @@ impl PathInterner {
     /// Resolves a path stored in the storage.
     #[inline]
     #[must_use]
-    pub fn resolve(&self, id: PathID) -> Option<PathBuf> {
+    pub fn resolve(&self, id: PathID) -> Option<&Path> {
+        self.0.resolve(id).map(Path::new)
+    }
+
+    /// Resolves an owned path stored in the storage.
+    #[inline]
+    #[must_use]
+    pub fn resolve_owned(&self, id: PathID) -> Option<PathBuf> {
         self.0.resolve(id).map(PathBuf::from)
     }
 
@@ -602,8 +609,19 @@ impl PathInterner {
     #[inline]
     #[must_use]
     #[allow(clippy::missing_panics_doc)]
-    pub fn resolve_or_panic(&self, id: PathID) -> PathBuf {
+    pub fn resolve_or_panic(&self, id: PathID) -> &Path {
         self.resolve(id)
             .unwrap_or_else(|| panic!("Path with id: {} is not found", id.0))
+    }
+
+    /// Resolves an owned path stored in the storage (same as `resolve_path()`),
+    /// but panics if the path is not found.
+    #[inline]
+    #[must_use]
+    #[allow(clippy::missing_panics_doc)]
+    pub fn resolve_owned_or_panic(&self, id: PathID) -> PathBuf {
+        self.resolve(id)
+            .unwrap_or_else(|| panic!("Path with id: {} is not found", id.0))
+            .to_owned()
     }
 }
