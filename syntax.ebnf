@@ -1,11 +1,11 @@
 module      ::= { module-item }
 module-item ::= type-alias
-             | enum
-             | struct
-             | tuple-like-struct
-             | interface
-             | function
-             | import
+             |  enum
+             |  struct
+             |  tuple-like-struct
+             |  interface
+             |  function
+             |  import
 
 ; Module Items
 import                 ::= "import" import-path ";"
