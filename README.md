@@ -55,16 +55,16 @@ Ry supports matching patterns by having a `match` expression:
 
 ```
 match tuple {
-    (1, ..) => {
+    (1, ..) -> {
         println("First element is 1");
     }
-    (.., 'b', true) | (.., 'a', true) => {
+    (.., 'b', true) | (.., 'a', true) -> {
         println("Second element is 'b' or 'a', and third element is true");
     }
-    (.., false) => {
+    (.., false) -> {
         println("Third element is false");
     }
-    .. => {
+    .. -> {
         println("Default case");
     }
 }
@@ -110,8 +110,8 @@ enum Result[T, E] {
 
     fun ok(self): Option[T] {
         match self {
-            Self.Ok(t) => Option.Some(t),
-            .. => Option.None,
+            Self.Ok(t) -> Option.Some(t),
+            .. -> Option.None,
         }
     }
 }
