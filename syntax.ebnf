@@ -1,3 +1,67 @@
+(*
+    =====================================================================================
+
+    MIT License
+
+    Copyright (c) 2023 Adi Salimgereyev
+
+    Permission is hereby granted, free of charge, to any person obtaining a copy
+    of this software and associated documentation files (the "Software"), to deal
+    in the Software without restriction, including without limitation the rights
+    to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+    copies of the Software, and to permit persons to whom the Software is
+    furnished to do so, subject to the following conditions:
+
+    The above copyright notice and this permission notice shall be included in all
+    copies or substantial portions of the Software.
+
+    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+    IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+    FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+    AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+    LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+    OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+    SOFTWARE.
+
+    =====================================================================================
+
+    DESCRIPTION
+
+    The file contains a syntax of Ry 0.1.0 programming language written in a form of EBNF
+    with comments, but without precedence built into the grammar. You can checkout precedence
+    table down below:
+
+    =====================================================================================
+
+    PRECEDENCE TABLE
+
+    Assignment                   (1) - corresponds to assignment operators: `-`, `+=`, `-=`,
+                                        `*=`, `/=`, `^=` and `|=`.
+    Logic OR                     (2) - corresponds to logic or operator: `||`.
+    Logic AND                    (3) - corresponds to logic and operator: `&&`.
+    Bitwise OR                   (4) - corresponds to bitwise or operator: `|`.
+    Bitwise XOR                  (5) - corresponds to bitwise xor operator: `^`.
+    Bitwise AND                  (6) - corresponds to bitwise and operator: `&`.
+    Comparison                   (7) - corresponds to comparison operators: `<`, `<=`, `>`,
+                                        `>=`, `==` and `!=`.
+    Bitwise Shift                (8) - corresponds to bitwise shift operators: `<<`, `>>`.
+    Addition and subtraction     (9) - corresponds to `+` and `-` operators.
+    Multiplication and division (10) - corresponds to `*` and `/` operators.
+    Power                       (11) - corresponds to power operator: `**`.
+    Remainder                   (12) - corresponds to remainder operator: `%`.
+    As                          (12) - corresponds to `as` keyword in the cast expression.
+    Unary                       (12) - corresponds to both prefix and postfix operations
+                                        (to avoid confusion like in C++, where their precedences
+                                        aren't equal): `?`, `!`, `++`, `~`, `--`, etc.
+    Call                        (13) - corresponds to function call, e.g. `println("hello")`.
+    Struct                      (14) - corresponds to struct expression, e.g. `Person { name, age: 14 }`.
+    Field Access                (15) - corresponds to field access expression, e.g. `fs.read_to_string`.
+    Generic Argument Annotation (16) - corresponds to generic argument annotation expression, e.g.
+                                        `max[uint32]`.
+
+    =====================================================================================
+*)
+
 (* Module *)
 module      ::= { module-item } ;
 
@@ -10,11 +74,11 @@ module-item ::= type-alias
              |  function
              |  import ;
 
-(* Import *)
+(* Import Module Item *)
 import                 ::= "import" import-path ";" ;
 import-path            ::= path [ "as" IDENTIFIER ] ;
 
-(* Type alias *)
+(* Type Alias Module Item *)
 type-alias             ::= "type" IDENTIFIER "[" generic-parameter-list "]" "=" type ";" ;
 
 (* Function *)
@@ -28,22 +92,26 @@ function-parameter          ::= self-function-parameter
 self-function-parameter     ::= "self" [ ":" type ] ;
 not-self-function-parameter ::= IDENTIFIER ":" type ;
 
+(* Interface Module Item *)
 interface               ::= [ "pub" ] "interface" IDENTIFIER "[" generic-parameter-list "]"
                             [ ":" bounds ] [ where-clause ] "{" { method } "}" ;
 method                  ::= function ;
 
+(* Struct Module Item *)
 struct                  ::= [ "pub" ] "struct" IDENTIFIER "[" generic-parameter-list "]"
                             [ implements ] [ where-clause ] "{" struct-field-list { method } "}" ;
 implements              ::= "implements" type-constructor { "," type-constructor } [ "," ] ;
 struct-field-list       ::= [ struct-field { "," struct-field } [ "," ] ] ;
 struct-field            ::= [ "pub" ] IDENTIFIER ":" type ;
 
+(* Tuple-like Struct Module Item *)
 tuple-like-struct       ::= [ "pub" ] "struct" IDENTIFIER "[" generic-parameter-list "]"
                             "(" tuple-field-list ")" [ implements ] [ where-clause ]
                             "{" { method } "}" ;
 tuple-field-list        ::= [ tuple-field { "," tuple-field } [ "," ] ] ;
 tuple-field             ::= [ "pub" ] type ;
 
+(* Enum Module Item *)
 enum                    ::= [ "pub" ] "enum" IDENTIFIER "[" generic-parameter-list "]"
                             [ where-clause ] "{" enum-item-list { method } "}" ;
 enum-item-list          ::= [ enum-item { "," enum-item } [ "," ] ] ;
@@ -51,8 +119,10 @@ enum-item               ::= IDENTIFIER
                          |  IDENTIFIER "{" struct-field-list "}"
                          |  IDENTIFIER "(" tuple-field-list ")" ;
 
-(* Statement *)
+(* Statements Block *)
 block                 ::= "{" { statement } [ expression ] "}" ;
+
+(* Statement *)
 statement             ::= expression-statement
                        | return-statement
                        | defer-statement
