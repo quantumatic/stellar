@@ -77,11 +77,21 @@ expression-with-block   ::= match-expression
                          |  while-expression
                          |  loop-expression
                          |  if-expression
-expression-with-block   ::= literal-expression
-                         |  identifier-expression
-                         |  field-access-expression
-                         |  call-expression
-                         |  lambda-expression
+                         |  block
+
+expression-without-block   ::= literal-expression
+                            |  identifier-expression
+                            |  field-access-expression
+                            |  call-expression
+                            |  lambda-expression
+                            |  cast-expression
+                            |  binary-expression
+                            |  prefix-expression
+                            |  postfix-expression
+                            |  struct-expression
+                            |  generic-arguments-expression
+                            |  parenthesized-expression
+                            |  tuple-expression
 
 literal-expression   ::= literal
 literal              ::= STRING_LITERAL
@@ -107,6 +117,58 @@ match-expression        ::= "match" expression "{" match-item-list "}"
 match-item-list         ::= [ match-item { "," match-item } [ match-item ] ]
 match-item              ::= pattern "->" expression
 
+binary-expression       ::= expression binary-operator expression
+binary-operator         ::= "+="
+                         |  "+"
+                         |  "-="
+                         |  "-"
+                         |  "*="
+                         |  "*"
+                         |  "**"
+                         |  "/="
+                         |  "/"
+                         |  "!="
+                         |  ">>"
+                         |  "<<"
+                         |  "<="
+                         |  "<"
+                         |  ">="
+                         |  ">"
+                         |  "=="
+                         |  "="
+                         |  "|"
+                         |  "&"
+                         |  "||"
+                         |  "&&"
+                         |  "|="
+                         |  "&="
+                         |  "%"
+                         |  "%="
+
+prefix-expression       ::= prefix-operator expression
+prefix-operator         ::= "!"
+                         |  "~"
+                         |  "++"
+                         |  "--"
+                         |  "+"
+                         |  "-"
+
+postfix-expression      ::= expression postfix-operator
+postfix-operator        ::= "?"
+                         |  "++"
+                         |  "--"
+
+cast-expression         ::= expression "as" type
+
+struct-expression            ::= path "{" struct-field-expression-list "}"
+struct-field-expression-list ::= struct-field-expression { "," struct-field-expression } [ "," ]
+struct-field-expression      ::= IDENTIFIER [ ":" expression ]
+
+parenthesized-expression     ::= "(" expression ")"
+tuple-expression             ::= "(" [ expression "," { expression "," } [ expression ] ] ")"
+
+generic-arguments-expression ::= expression "[" generic-argument-list "]"
+
 ; Patterns
 pattern                 ::= path-pattern
                          |  tuple-pattern
@@ -119,7 +181,7 @@ pattern                 ::= path-pattern
 path-pattern            ::= path
 identifier-pattern      ::= IDENTIFIER [ "@" pattern ]
 literal-pattern         ::= literal
-tuple-pattern           ::= "(" pattern "," { pattern "," } [ pattern ] ")"
+tuple-pattern           ::= "(" [ pattern "," { pattern "," } [ pattern ] ] ")"
 grouped-pattern         ::= "(" pattern ")"
 struct-pattern          ::= path "{" struct-field-patterns "}"
 struct-field-patterns   ::= [ struct-field-pattern { "," struct-field-pattern } [ "," ] ]
@@ -138,6 +200,5 @@ generic-argument-list ::= [ type { "," type } [ "," ] ]
 path                  ::= IDENTIFIER
                        | path "." IDENTIFIER
 interface-object-type ::= "dyn" bounds
-tuple-type            ::= "(" type "," { type "," } [ type ] ")"
-                       |  "(" ")"
+tuple-type            ::= "(" [ type "," { type "," } [ type ] ] ")"
 parenthesized-type    ::= "(" type ")"
