@@ -8,8 +8,8 @@ pub enum Option[T] implements Iterator[T] {
 
     pub fun size_hint(self): (usize, Option[usize]) {
         match self {
-            Some(..) => (1, Some(1)),
-            None => (0, Some(0)),
+            Some(..) -> (1, Some(1)),
+            None -> (0, Some(0)),
         }
     }
 
@@ -19,8 +19,8 @@ pub enum Option[T] implements Iterator[T] {
 
     pub fun unwrap_or_else(self, f: (): ()): T {
         match self {
-            Some(t) => t,
-            None => f(),
+            Some(t) -> t,
+            None -> f(),
         }
     }
 
@@ -29,15 +29,15 @@ pub enum Option[T] implements Iterator[T] {
         T: Default
     {
         match self {
-            Some(t) => t,
-            None => T.default(),
+            Some(t) -> t,
+            None -> T.default(),
         }
     }
 
     pub fun is_some(self): bool {
         match self {
-            Some(..) => true,
-            None => false,
+            Some(..) -> true,
+            None -> false,
         }
     }
 

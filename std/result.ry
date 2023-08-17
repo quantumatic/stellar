@@ -19,8 +19,8 @@ pub enum Result[T, E] {
 
     pub fun is_ok(self): bool {
         match self {
-            Ok(..) => true,
-            Err(..) => false,
+            Ok(..) -> true,
+            Err(..) -> false,
         }
     }
 
@@ -30,15 +30,15 @@ pub enum Result[T, E] {
 
     pub fun ok(self): Option[T] {
         match self {
-            Ok(ok) => Some(ok),
-            Err(..) => None,
+            Ok(ok) -> Some(ok),
+            Err(..) -> None,
         }
     }
 
     pub fun err(self): Option[T] {
         match self {
-            Ok(..) => None,
-            Err(err) => Some(err),
+            Ok(..) -> None,
+            Err(err) -> Some(err),
         }
     }
 }

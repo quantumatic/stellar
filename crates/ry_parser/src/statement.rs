@@ -83,7 +83,7 @@ impl Parse for StatementParser {
                 if let Some(expression) = expression {
                     must_have_semicolon_at_the_end = !expression.with_block();
 
-                    match state.current_token.raw {
+                    match state.next_token.raw {
                         RawToken::Punctuator(Punctuator::Semicolon) => {}
                         RawToken::Punctuator(Punctuator::CloseBrace) => {
                             if must_have_semicolon_at_the_end {
