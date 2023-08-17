@@ -1,5 +1,5 @@
 (* Module *)
-module      ::= { module-item }
+module      ::= { module-item } ;
 
 (* Module Item *)
 module-item ::= type-alias
@@ -8,73 +8,73 @@ module-item ::= type-alias
              |  tuple-like-struct
              |  interface
              |  function
-             |  import
+             |  import ;
 
 (* Import *)
-import                 ::= "import" import-path ";"
-import-path            ::= path [ "as" IDENTIFIER ]
+import                 ::= "import" import-path ";" ;
+import-path            ::= path [ "as" IDENTIFIER ] ;
 
 (* Type alias *)
-type-alias             ::= "type" IDENTIFIER "[" generic-parameter-list "]" "=" type ";"
+type-alias             ::= "type" IDENTIFIER "[" generic-parameter-list "]" "=" type ";" ;
 
 (* Function *)
 function               ::= [ "pub" ] "fun" IDENTIFIER "[" generic-parameter-list "]"
                            "(" function-parameter-list ")" [ where-clause ] block
                         |  [ "pub" ] "fun" IDENTIFIER "[" generic-parameter-list "]"
-                           "(" function-parameter-list ")" [ where-clause ] ";"
-function-parameter-list     ::= [ function-parameter { "," function-parameter } [ "," ] ]
+                           "(" function-parameter-list ")" [ where-clause ] ";" ;
+function-parameter-list     ::= [ function-parameter { "," function-parameter } [ "," ] ] ;
 function-parameter          ::= self-function-parameter
-                             |  not-self-function-parameter
-self-function-parameter     ::= "self" [ ":" type ]
-not-self-function-parameter ::= IDENTIFIER ":" type
+                             |  not-self-function-parameter ;
+self-function-parameter     ::= "self" [ ":" type ] ;
+not-self-function-parameter ::= IDENTIFIER ":" type ;
 
 interface               ::= [ "pub" ] "interface" IDENTIFIER "[" generic-parameter-list "]"
-                            [ ":" bounds ] [ where-clause ] "{" { method } "}"
-method                  ::= function
+                            [ ":" bounds ] [ where-clause ] "{" { method } "}" ;
+method                  ::= function ;
 
 struct                  ::= [ "pub" ] "struct" IDENTIFIER "[" generic-parameter-list "]"
-                            [ implements ] [ where-clause ] "{" struct-field-list { method } "}"
-implements              ::= "implements" type-constructor { "," type-constructor } [ "," ]
-struct-field-list       ::= [ struct-field { "," struct-field } [ "," ] ]
-struct-field            ::= [ "pub" ] IDENTIFIER ":" type
+                            [ implements ] [ where-clause ] "{" struct-field-list { method } "}" ;
+implements              ::= "implements" type-constructor { "," type-constructor } [ "," ] ;
+struct-field-list       ::= [ struct-field { "," struct-field } [ "," ] ] ;
+struct-field            ::= [ "pub" ] IDENTIFIER ":" type ;
 
 tuple-like-struct       ::= [ "pub" ] "struct" IDENTIFIER "[" generic-parameter-list "]"
                             "(" tuple-field-list ")" [ implements ] [ where-clause ]
-                            "{" { method } "}"
-tuple-field-list        ::= [ tuple-field { "," tuple-field } [ "," ] ]
-tuple-field             ::= [ "pub" ] type
+                            "{" { method } "}" ;
+tuple-field-list        ::= [ tuple-field { "," tuple-field } [ "," ] ] ;
+tuple-field             ::= [ "pub" ] type ;
 
 enum                    ::= [ "pub" ] "enum" IDENTIFIER "[" generic-parameter-list "]"
-                            [ where-clause ] "{" enum-item-list { method } "}"
-enum-item-list          ::= [ enum-item { "," enum-item } [ "," ] ]
+                            [ where-clause ] "{" enum-item-list { method } "}" ;
+enum-item-list          ::= [ enum-item { "," enum-item } [ "," ] ] ;
 enum-item               ::= IDENTIFIER
                          |  IDENTIFIER "{" struct-field-list "}"
-                         |  IDENTIFIER "(" tuple-field-list ")"
+                         |  IDENTIFIER "(" tuple-field-list ")" ;
 
 (* Statement *)
-block                 ::= "{" { statement } [ expression ] "}"
+block                 ::= "{" { statement } [ expression ] "}" ;
 statement             ::= expression-statement
                        | return-statement
                        | defer-statement
                        | continue-statement
-                       | break-statement
+                       | break-statement ;
 expression-statement  ::= expression-with-block [ ";" ]
-                       | expression-without-block ";"
-return-statement      ::= "return" expression ";"
-defer-statement       ::= "defer" expression ";"
-continue-statement    ::= "continue" ";"
-break-statement       ::= "break" ";"
+                       | expression-without-block ";" ;
+return-statement      ::= "return" expression ";" ;
+defer-statement       ::= "defer" expression ";" ;
+continue-statement    ::= "continue" ";" ;
+break-statement       ::= "break" ";" ;
 
 (* Expression *)
 expression              ::= expression-with-block
-                         |  expression-without-block
+                         |  expression-without-block ;
 
 (* Expression that ends with a block *)
 expression-with-block   ::= match-expression
                          |  while-expression
                          |  loop-expression
                          |  if-expression
-                         |  block
+                         |  block ;
 
 (* Expression that doesn't end with a block *)
 expression-without-block   ::= literal-expression
@@ -89,47 +89,47 @@ expression-without-block   ::= literal-expression
                             |  struct-expression
                             |  generic-arguments-expression
                             |  parenthesized-expression
-                            |  tuple-expression
+                            |  tuple-expression ;
 
 (* Literal Expression *)
-literal-expression   ::= literal
+literal-expression   ::= literal ;
 literal              ::= STRING_LITERAL
                       |  INTEGER_LITERAL
                       |  FLOAT_LITERAL
                       |  "true"
-                      |  "false"
+                      |  "false" ;
 
 (* Identifier Expression, e.g. println *)
-identifier-expression   ::= IDENTIFIER
+identifier-expression   ::= IDENTIFIER ;
 
 (* Field Access Expression, e.g. fs.read_file *)
-field-access-expression ::= expression "." IDENTIFIER
+field-access-expression ::= expression "." IDENTIFIER ;
 
 (* Call Expression, e.g. println("hello") *)
-call-expression         ::= expression "(" expression-list ")"
-expression-list         ::= [ expression { "," expression } [ "," ] ]
+call-expression         ::= expression "(" expression-list ")" ;
+expression-list         ::= [ expression { "," expression } [ "," ] ] ;
 
 (* Lambda Expression, e.g. |n| n + 1 *)
-lambda-expression       ::= "|" lambda-parameter-list "|" expression
-lambda-parameter-list   ::= [ lambda-parameter { "," lambda-parameter } [ "," ] ]
-lambda-parameter        ::= IDENTIIFER [ ":" type ]
+lambda-expression       ::= "|" lambda-parameter-list "|" expression ;
+lambda-parameter-list   ::= [ lambda-parameter { "," lambda-parameter } [ "," ] ] ;
+lambda-parameter        ::= IDENTIIFER [ ":" type ] ;
 
 (* Loop Expression, e.g. loop { do_something(); } *)
-loop-expression         ::= "loop" block
+loop-expression         ::= "loop" block ;
 
 (* While Expression, e.g. while true { do_something(); } *)
-while-expression        ::= "while" expression block
+while-expression        ::= "while" expression block ;
 
 (* If Expression, e.g. if n < 2 { 1 } else { factorial(n - 1) * n } *)
-if-expression           ::= "if" expression block { "else" "if" expression block } [ "else" block ]
+if-expression           ::= "if" expression block { "else" "if" expression block } [ "else" block ] ;
 
 (* Match Expression, e.g. match do_something() { Ok(..) -> {}, .. -> {} } *)
-match-expression        ::= "match" expression "{" match-item-list "}"
-match-item-list         ::= [ match-item { "," match-item } [ match-item ] ]
-match-item              ::= pattern "->" expression
+match-expression        ::= "match" expression "{" match-item-list "}" ;
+match-item-list         ::= [ match-item { "," match-item } [ match-item ] ] ;
+match-item              ::= pattern "->" expression ;
 
 (* Binary Expression, e.g. a + 3 *)
-binary-expression       ::= expression binary-operator expression
+binary-expression       ::= expression binary-operator expression ;
 binary-operator         ::= "+="
                          |  "+"
                          |  "-="
@@ -155,40 +155,40 @@ binary-operator         ::= "+="
                          |  "|="
                          |  "&="
                          |  "%"
-                         |  "%="
+                         |  "%=" ;
 
 (* Prefix Expression, e.g. !a, ~b, -3 *)
-prefix-expression       ::= prefix-operator expression
+prefix-expression       ::= prefix-operator expression ;
 prefix-operator         ::= "!"
                          |  "~"
                          |  "++"
                          |  "--"
                          |  "+"
-                         |  "-"
+                         |  "-" ;
 
 
 (* Postfix Expression, e.g. a++, do_something()? *)
-postfix-expression      ::= expression postfix-operator
+postfix-expression      ::= expression postfix-operator ;
 postfix-operator        ::= "?"
                          |  "++"
-                         |  "--"
+                         |  "--" ;
 
 (* Cast Expression, e.g. 3 as usize *)
-cast-expression         ::= expression "as" type
+cast-expression         ::= expression "as" type ;
 
 (* Struct Expression, e.g. Person { name, age: 13 } *)
-struct-expression            ::= path "{" struct-field-expression-list "}"
-struct-field-expression-list ::= struct-field-expression { "," struct-field-expression } [ "," ]
-struct-field-expression      ::= IDENTIFIER [ ":" expression ]
+struct-expression            ::= path "{" struct-field-expression-list "}" ;
+struct-field-expression-list ::= struct-field-expression { "," struct-field-expression } [ "," ] ;
+struct-field-expression      ::= IDENTIFIER [ ":" expression ] ;
 
 (* Parenthesized Expression, e.g. (1 + 2) *)
-parenthesized-expression     ::= "(" expression ")"
+parenthesized-expression     ::= "(" expression ")" ;
 
 (* Tuple Expression, e.g. (1,), (), (2 + 3, 5) *)
-tuple-expression             ::= "(" [ expression "," { expression "," } [ expression ] ] ")"
+tuple-expression             ::= "(" [ expression "," { expression "," } [ expression ] ] ")" ;
 
 (* Generic Arguments Expression, e.g. max[usize] *)
-generic-arguments-expression ::= expression "[" generic-argument-list "]"
+generic-arguments-expression ::= expression "[" generic-argument-list "]" ;
 
 (* Patterns *)
 pattern                 ::= path-pattern
@@ -198,65 +198,65 @@ pattern                 ::= path-pattern
                          |  grouped-pattern
                          |  struct-pattern
                          |  tuple-like-pattern
-                         |  rest-pattern
+                         |  rest-pattern ;
 
 (* Path Pattern *)
-path-pattern            ::= path
+path-pattern            ::= path ;
 
 (* Identifier Pattern, e.g. a @ [1, ..] *)
-identifier-pattern      ::= IDENTIFIER [ "@" pattern ]
+identifier-pattern      ::= IDENTIFIER [ "@" pattern ] ;
 
 (* Literal Pattern *)
-literal-pattern         ::= literal
+literal-pattern         ::= literal ;
 
 (* Tuple Pattern, e.g. (a,), (a, b, ..), () *)
-tuple-pattern           ::= "(" [ pattern "," { pattern "," } [ pattern ] ] ")"
+tuple-pattern           ::= "(" [ pattern "," { pattern "," } [ pattern ] ] ")" ;
 
 (* Grouped Pattern, e.g. (..) *)
-grouped-pattern         ::= "(" pattern ")"
+grouped-pattern         ::= "(" pattern ")" ;
 
 (* Struct Pattern, e.g. Person { age, .. } *)
-struct-pattern          ::= path "{" struct-field-patterns "}"
-struct-field-patterns   ::= [ struct-field-pattern { "," struct-field-pattern } [ "," ] ]
-struct-field-pattern    ::= IDENTIFIER [ ":" pattern ]
+struct-pattern          ::= path "{" struct-field-patterns "}" ;
+struct-field-patterns   ::= [ struct-field-pattern { "," struct-field-pattern } [ "," ] ] ;
+struct-field-pattern    ::= IDENTIFIER [ ":" pattern ] ;
 
 (* Tuple Like Pattern, e.g. Result.Ok(..) *)
-tuple-like-pattern      ::= path "(" pattern-list ")"
-pattern-list            ::= [ pattern { "," pattern } [ "," ] ]
+tuple-like-pattern      ::= path "(" pattern-list ")" ;
+pattern-list            ::= [ pattern { "," pattern } [ "," ] ] ;
 
 (* Rest Pattern *)
-rest-pattern            ::= ".."
+rest-pattern            ::= ".." ;
 
 (* Type *)
 type                  ::= type-constructor
                        |  interface-object-type
                        |  tuple-type
-                       |  parenthesized-type
+                       |  parenthesized-type ;
 
 (* Type Constructor, e.g. List[uint32] *)
-type-constructor      ::= path "[" generic-argument-list "]"
-generic-argument-list ::= [ type { "," type } [ "," ] ]
+type-constructor      ::= path "[" generic-argument-list "]" ;
+generic-argument-list ::= [ type { "," type } [ "," ] ] ;
 
 (* Interface Object Type, e.g. dyn Iterator[uint32] *)
-interface-object-type ::= "dyn" bounds
+interface-object-type ::= "dyn" bounds ;
 
 (* Tuple Type, e.g. (uint32, String), () *)
-tuple-type            ::= "(" [ type "," { type "," } [ type ] ] ")"
+tuple-type            ::= "(" [ type "," { type "," } [ type ] ] ")" ;
 
 (* Parenthesized Type, e.g. (uint32) *)
-parenthesized-type    ::= "(" type ")"
+parenthesized-type    ::= "(" type ")" ;
 
 (* Generic Parameters *)
-generic-parameter-list ::= generic-parameter { "," generic-parameter } [ "," ] "]"
-generic-parameter      ::= IDENTIFIER [ ":" bounds ]
+generic-parameter-list ::= generic-parameter { "," generic-parameter } [ "," ] "]" ;
+generic-parameter      ::= IDENTIFIER [ ":" bounds ] ;
 
 (* Bounds, e.g. ToString + Iterator[String] *)
-bounds                 ::= type-constructor { "+" type-constructor }
+bounds                 ::= type-constructor { "+" type-constructor } ;
 
 (* Where Clause *)
-where-clause           ::= "where" where-clause-item-list
-where-clause-item-list ::= where-clause-item { "," where-clause-item } [ "," ]
-where-clause-item      ::= type ":" bounds
+where-clause           ::= "where" where-clause-item-list ;
+where-clause-item-list ::= where-clause-item { "," where-clause-item } [ "," ] ;
+where-clause-item      ::= type ":" bounds ;
 
 (* Path, e.g. std.fs.read_file *)
-path                  ::= IDENTIFIER { "." IDENTIFIER }
+path                  ::= IDENTIFIER { "." IDENTIFIER } ;
