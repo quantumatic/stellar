@@ -27,8 +27,8 @@
 
     DESCRIPTION
 
-    The file contains a syntax of Ry 0.1.0 programming language written in a form of EBNF
-    with comments, but without precedence built into the grammar. You can checkout precedence
+    This file contains the syntax of Ry 0.1.0 programming language written in a form of EBNF
+    with comments, but without precedence built into the grammar. You can checkout the precedence
     table down below:
 
     =====================================================================================
