@@ -18,9 +18,9 @@ generic-parameter      ::= IDENTIFIER [ ":" bounds ]
 bounds                 ::= type-constructor { "+" type-constructor }
 
 function               ::= [ "pub" ] "fun" IDENTIFIER "[" generic-parameter-list "]"
-                            "(" function-parameter-list ")" [ where-clause ] block
+                           "(" function-parameter-list ")" [ where-clause ] block
                         |  [ "pub" ] "fun" IDENTIFIER "[" generic-parameter-list "]"
-                              "(" function-parameter-list ")" [ where-clause ] ";"
+                           "(" function-parameter-list ")" [ where-clause ] ";"
 
 function-parameter-list     ::= [ function-parameter { "," function-parameter } [ "," ] ]
 function-parameter          ::= self-function-parameter
@@ -43,13 +43,13 @@ struct-field-list       ::= [ struct-field { "," struct-field } [ "," ] ]
 struct-field            ::= [ "pub" ] IDENTIFIER ":" type
 
 tuple-like-struct       ::= [ "pub" ] "struct" IDENTIFIER "[" generic-parameter-list "]"
-                              "(" tuple-field-list ")" [ implements ] [ where-clause ]
-                              "{" { method } "}"
+                            "(" tuple-field-list ")" [ implements ] [ where-clause ]
+                            "{" { method } "}"
 tuple-field-list        ::= [ tuple-field { "," tuple-field } [ "," ] ]
 tuple-field             ::= [ "pub" ] type
 
 enum                    ::= [ "pub" ] "enum" IDENTIFIER "[" generic-parameter-list "]"
-                              [ where-clause ] "{" enum-item-list { method } "}"
+                            [ where-clause ] "{" enum-item-list { method } "}"
 enum-item-list          ::= [ enum-item { "," enum-item } [ "," ] ]
 enum-item               ::= IDENTIFIER
                          |  IDENTIFIER "{" struct-field-list "}"
@@ -94,10 +94,10 @@ expression-without-block   ::= literal-expression
 
 literal-expression   ::= literal
 literal              ::= STRING_LITERAL
-                       |  INTEGER_LITERAL
-                       |  FLOAT_LITERAL
-                       |  "true"
-                       |  "false"
+                      |  INTEGER_LITERAL
+                      |  FLOAT_LITERAL
+                      |  "true"
+                      |  "false"
 
 identifier-expression   ::= IDENTIFIER
 field-access-expression ::= expression "." IDENTIFIER
@@ -196,8 +196,7 @@ type                  ::= type-constructor
                        |  parenthesized-type
 type-constructor      ::= path "[" generic-argument-list "]"
 generic-argument-list ::= [ type { "," type } [ "," ] ]
-path                  ::= IDENTIFIER
-                       | path "." IDENTIFIER
+path                  ::= IDENTIFIER { "." IDENTIFIER }
 interface-object-type ::= "dyn" bounds
 tuple-type            ::= "(" [ type "," { type "," } [ type ] ] ")"
 parenthesized-type    ::= "(" type ")"
