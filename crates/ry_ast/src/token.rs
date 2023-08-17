@@ -83,7 +83,7 @@ pub enum NumberKind {
 }
 
 macro_rules! define_keywords {
-    {$($value:tt => $keyword:ident),*} => {
+    {$($value:literal => $keyword:ident),*} => {
         /// This enum represents a set of keywords used in the Ry programming language.
         /// Each variant of the enum corresponds to a specific keyword.
         #[derive(Debug, PartialEq, Eq, Clone, Copy)]
@@ -121,7 +121,7 @@ macro_rules! define_keywords {
 macro_rules! define_punctuators {
     ($(
         $(#[$($doc:tt)*])*
-        $punctuator:ident => $value:tt
+        $punctuator:ident => $value:literal
     ),*) => {
         /// Represents a punctuator.
         #[derive(Debug, Clone, PartialEq, Copy, Eq, Hash)]

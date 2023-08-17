@@ -440,7 +440,7 @@ struct Span {
 pub struct IdentifierInterner(Interner<IdentifierID>);
 
 macro_rules! define_builtin_identifiers {
-    ($($id_name:ident = $value:tt => $id:tt),+) => {
+    ($($id_name:ident = $value:literal => $id:literal),+) => {
         /// Defines all builtin identifiers (that are automatically interned by
         /// [`IdentifierInterner`]).
         pub mod builtin_identifiers {
@@ -470,10 +470,14 @@ macro_rules! define_builtin_identifiers {
 
 define_builtin_identifiers! {
     UNDERSCORE = 0 => "_",
+
     INT8 = 1 => "int8", INT16 = 2 => "int16", INT32 = 3 => "int32", INT64 = 4 => "int64",
     UINT8 = 5 => "uint8", UINT16 = 6 => "uint16", UINT32 = 7 => "uint32", UINT64 = 8 => "uint64",
-    FLOAT32 = 9 => "float32", FLOAT64 = 10 => "float64", ISIZE = 11 => "isize",
-    USIZE = 12 => "usize", BOOL = 13 => "bool", STRING = 14 => "String", LIST = 15 => "List",
+    FLOAT32 = 9 => "float32", FLOAT64 = 10 => "float64",
+
+    ISIZE = 11 => "isize", USIZE = 12 => "usize",
+    BOOL = 13 => "bool", STRING = 14 => "String", LIST = 15 => "List",
+
     CHAR = 16 => "char", SMALL_SELF = 17 => "self", BIG_SELF = 18 => "Self",
     SIZE_OF = 19 => "sizeof", STD = 20 => "std"
 }
