@@ -7,7 +7,6 @@ module-item ::= type-alias
              | function
              | import
 
-
 ; Module Items
 import                 ::= "import" import-path ";"
 import-path            ::= path [ "as" IDENTIFIER ]
