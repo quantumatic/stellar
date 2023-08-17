@@ -1,0 +1,142 @@
+module      ::= { module-item }
+module-item ::= type-alias
+             | enum
+             | struct
+             | tuple-like-struct
+             | interface
+             | function
+             | import
+
+
+; Module Items
+import      	    	::= "import" import-path ";"
+import-path 	    	::= path [ "as" IDENTIFIER ]
+
+type-alias  	    	::= "type" IDENTIFIER "[" generic-parameter-list "]" "=" type ";"
+
+generic-parameter-list  ::= generic-parameter { "," generic-parameter } [ "," ] "]"
+generic-parameter   	::= IDENTIFIER [ ":" bounds ]
+bounds 		    		::= type-constructor { "+" type-constructor }
+
+function 	    		::= [ "pub" ] "fun" IDENTIFIER "[" generic-parameter-list "]"
+                            "(" function-parameter-list ")" [ where-clause ] block
+                         |  [ "pub" ] "fun" IDENTIFIER "[" generic-parameter-list "]"
+                              "(" function-parameter-list ")" [ where-clause ] ";"
+
+function-parameter-list     ::= [ function-parameter { "," function-parameter } [ "," ] ]
+function-parameter          ::= self-function-parameter
+                             |  not-self-function-parameter
+self-function-parameter     ::= "self" [ ":" type ]
+not-self-function-parameter ::= IDENTIFIER ":" type
+
+where-clause 	    	::= "where" where-clause-item-list
+where-clause-item-list  ::= where-clause-item { "," where-clause-item } [ "," ]
+where-clause-item   	::= type ":" bounds
+
+interface               ::= [ "pub" ] "interface" IDENTIFIER "[" generic-parameter-list "]"
+                            [ ":" bounds ] [ where-clause ] "{" { method } "}"
+method                  ::= function
+
+struct                  ::= [ "pub" ] "struct" IDENTIFIER "[" generic-parameter-list "]"
+                            [ implements ] [ where-clause ] "{" struct-field-list { method } "}"
+implements 				::= "implements" type-constructor { "," type-constructor } [ "," ]
+struct-field-list       ::= [ struct-field { "," struct-field } [ "," ] ]
+struct-field            ::= [ "pub" ] IDENTIFIER ":" type
+
+tuple-like-struct       ::= [ "pub" ] "struct" IDENTIFIER "[" generic-parameter-list "]"
+                              "(" tuple-field-list ")" [ implements ] [ where-clause ]
+                              "{" { method } "}"
+tuple-field-list        ::= [ tuple-field { "," tuple-field } [ "," ] ]
+tuple-field             ::= [ "pub" ] type
+
+enum					::= [ "pub" ] "enum" IDENTIFIER "[" generic-parameter-list "]"
+                              [ where-clause ] "{" enum-item-list { method } "}"
+enum-item-list          ::= [ enum-item { "," enum-item } [ "," ] ]
+enum-item               ::= IDENTIFIER
+                         |  IDENTIFIER "{" struct-field-list "}"
+                         |  IDENTIFIER "(" tuple-field-list ")"
+
+; Statements
+block     	      	  ::= "{" { statement } [ expression ] "}"
+statement             ::= expression-statement
+                       | return-statement
+                       | defer-statement
+                       | continue-statement
+                       | break-statement
+expression-statement  ::= expression-with-block [ ";" ]
+                          | expression-without-block ";"
+return-statement      ::= "return" expression ";"
+defer-statement       ::= "defer" expression ";"
+continue-statement    ::= "continue" ";"
+break-statement       ::= "break" ";"
+
+; Expressions
+expression	        ::= expression-with-block
+                     |  expression-without-block
+expression-with-block   ::= match-expression
+                         |  while-expression
+                         |  loop-expression
+                         |  if-expression
+expression-with-block   ::= literal-expression
+                         |  identifier-expression
+                         |  field-access-expression
+                         |  call-expression
+                         |  lambda-expression
+literal-expression	::= literal
+literal 	        ::= STRING_LITERAL
+                     |  INTEGER_LITERAL
+                     |  FLOAT_LITERAL
+                     |  "true"
+                     |  "false"
+
+identifier-expression   ::= IDENTIFIER
+field-access-expression ::= expression "." IDENTIFIER
+
+call-expression         ::= expression "(" expression-list ")"
+expression-list			::= [ expression { "," expression } [ "," ] ]
+
+lambda-expression       ::= "|" lambda-parameter-list "|" expression
+lambda-parameter-list   ::= [ lambda-parameter { "," lambda-parameter } [ "," ] ]
+lambda-parameter        ::= IDENTIIFER [ ":" type ]
+
+loop-expression         ::= "loop" block
+while-expression        ::= "while" expression block
+if-expression           ::= "if" expression block { "else" "if" expression block } [ "else" block ]
+match-expression        ::= "match" expression "{" match-item-list "}"
+match-item-list 		::= [ match-item { "," match-item } [ match-item ] ]
+match-item   			::= pattern "->" expression
+
+; Patterns
+pattern                 ::= path-pattern
+                         |  tuple-pattern
+                         |  literal-pattern
+                         |  identifier-pattern
+                         |  grouped-pattern
+                         |  struct-pattern
+                         |  tuple-like-pattern
+                         |  rest-pattern
+path-pattern			::= path
+identifier-pattern		::= IDENTIFIER [ "@" pattern ]
+literal-pattern			::= literal
+tuple-pattern			::= "(" pattern "," { pattern "," } [ pattern ] ")"
+grouped-pattern			::= "(" pattern ")"
+struct-pattern          ::= path "{" struct-field-patterns "}"
+struct-field-patterns   ::= [ struct-field-pattern { "," struct-field-pattern } [ "," ] ]
+struct-field-pattern    ::= IDENTIFIER [ ":" pattern ]
+tuple-like-pattern      ::= path "(" pattern-list ")"
+pattern-list            ::= [ pattern { "," pattern } [ "," ] ]
+rest-pattern            ::= ".."
+
+; Types
+type 		      	  ::= type-constructor
+                       |  interface-object-type
+                       |  tuple-type
+                       |  parenthesized-type
+type-constructor      ::= path "[" generic-argument-list "]"
+generic-argument-list ::= [ type { "," type } [ "," ] ]
+path 		      	  ::= IDENTIFIER
+                       | path "." IDENTIFIER
+interface-object-type ::= "dyn" bounds
+tuple-type            ::= "(" type "," { type "," } [ type ] ")"
+                       |  "(" ")"
+parenthesized-type    ::= "(" type ")"
