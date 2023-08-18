@@ -20,6 +20,7 @@ ry_interner = { path = "../ry_interner" }
 ry_lexer = { path = "../ry_lexer" }
 ry_manifest = { path = "../ry_manifest" }
 ry_parser = { path = "../ry_parser" }
+ry_info = { path = "../ry_info" }
 serde = { version = "1.0.160", features = ["derive"] }
 serde_json = "1.0.96"
 termcolor = "1.2.0"

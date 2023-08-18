@@ -34,7 +34,7 @@ pub struct TypeCheckingContext<'i, 'p, 'g, 'd> {
     resolution_environment: ResolutionEnvironment,
 
     /// Storage of HIR for module items, signature of which haven't yet been analyzed.
-    items_hir: FxHashMap<DefinitionID, ry_hir::ModuleItem>,
+    items_hir: FxHashMap<DefinitionID, Arc<ry_hir::ModuleItem>>,
 
     /// Storage of THIR for module items, that have been fully analyzed.
     items_thir: FxHashMap<DefinitionID, ry_thir::ModuleItem<'g>>,
@@ -124,7 +124,7 @@ impl<'i, 'p, 'g, 'd> TypeCheckingContext<'i, 'p, 'g, 'd> {
                 self.resolution_environment
                     .visibilities
                     .insert(definition_id, item.visibility());
-                self.items_hir.insert(definition_id, item);
+                self.items_hir.insert(definition_id, Arc::new(item));
             }
         }
     }
@@ -415,7 +415,7 @@ impl<'i, 'p, 'g, 'd> TypeCheckingContext<'i, 'p, 'g, 'd> {
     ) -> Option<Arc<ModuleItemSignature>> {
         match name_binding {
             NameBinding::TypeAlias(definition_id) => self.analyze_type_alias_signature(
-                match self.items_hir.remove(&definition_id).unwrap() {
+                match self.items_hir.get(&definition_id).unwrap().clone().as_ref() {
                     ry_hir::ModuleItem::TypeAlias(alias) => alias,
                     _ => unreachable!(),
                 },
@@ -502,7 +502,7 @@ impl<'i, 'p, 'g, 'd> TypeCheckingContext<'i, 'p, 'g, 'd> {
                 }
 
                 predicates.push(Predicate {
-                    ty: Type::primitive(parameter_hir.name.id),
+                    ty: Type::new_primitive(parameter_hir.name.id),
                     bounds,
                 })
             }
