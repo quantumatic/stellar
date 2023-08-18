@@ -4,39 +4,99 @@ use ry_filesystem::location::Location;
 use ry_interner::{builtin_identifiers, IdentifierID};
 use ry_name_resolution::Path;
 
+/// A raw representation of types in the Ry programming language.
+///
+/// Compared to [`ry_hir::Type`] and [`ry_ast::Type`], doesn't store
+/// information about locations and all pathes are fully unwraped.
+/// For example: `Iterator` is converted into `std.iterator.Iterator`.
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "serde", serde(tag = "kind"))]
 pub enum Type {
+    /// A unit type: `()`.
     #[cfg_attr(feature = "serde", serde(rename = "unit_type"))]
     Unit,
+
+    /// A type constructor: `List[uint32]`, `uint32`, `String`.
+    ///
+    /// Anything that has name and optionally have generic arguments.
     #[cfg_attr(feature = "serde", serde(rename = "constructor_type"))]
     Constructor(TypeConstructor),
+
+    /// A tuple type: `(uint32,)`, `(String, uint32)`.
+    ///
+    /// **Note**: `element_types` vector is never empty, because an
+    /// enum variant for unit type already exists: [`Type::Unit`].
     #[cfg_attr(feature = "serde", serde(rename = "tuple_type"))]
-    Tuple { element_types: Vec<Self> },
+    Tuple {
+        /// Types of tuple elements.
+        element_types: Vec<Self>,
+    },
+
+    /// A function type: `(String): bool`, `(): ()`, `(T, M): ()`.
     #[cfg_attr(feature = "serde", serde(rename = "function_type"))]
     Function {
+        /// List of function parameter types.
         parameter_types: Vec<Self>,
+
+        /// Return type.
+        ///
+        /// **Note**: return type is not optional! If function doesn't
+        /// return anything, the return type value is [`Type::Unit`].
         return_type: Box<Self>,
     },
+
+    /// A type variable (placeholder for types, that aren't inferred yet).
     #[cfg_attr(feature = "serde", serde(rename = "type_variable"))]
     Variable(TypeVariable),
+
+    /// An interface object type, e.g. `dyn Iterator[char] + ToString`.
+    ///
+    /// A type of dynamically dispatched objects, that have a vtable of interfaces in
+    /// `bounds`.
     #[cfg_attr(feature = "serde", serde(rename = "interface_object_type"))]
-    InterfaceObject { bounds: Vec<TypeConstructor> },
+    InterfaceObject {
+        /// A list of interfaces, that will be used to construct a vtable.
+        bounds: Vec<TypeConstructor>,
+    },
 }
 
+/// A kind of type.
+///
+/// See [`Type`] for more details.
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
 pub enum TypeKind {
-    Invalid,
+    /// A unit type, e.g. `()`.
     Unit,
+
+    /// A type constructor: `List[uint32]`, `uint32`, `String`.
+    ///
+    /// Anything that has name and optionally have generic arguments.
     Constructor,
+
+    /// A tuple type: `(uint32,)`, `(String, uint32)`.
+    ///
+    /// **Note**: `element_types` vector is never empty, because an
+    /// enum variant for unit type already exists: [`Type::Unit`].
     Tuple,
+
+    /// A function type: `(String): bool`, `(): ()`, `(T, M): ()`.
     Function,
+
+    /// A type variable (placeholder for types, that aren't inferred yet).
     Variable,
+
+    /// An interface object type, e.g. `dyn Iterator[char] + ToString`.
+    ///
+    /// A type of dynamically dispatched objects, that have a vtable of interfaces in
+    /// `bounds`.
     InterfaceObject,
 }
 
 impl Type {
+    /// Returns a type's kind.
+    ///
+    /// See [`TypeKind`] for more details.
     #[inline]
     #[must_use]
     pub const fn kind(&self) -> TypeKind {
@@ -51,6 +111,7 @@ impl Type {
     }
 }
 
+///
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "serde", serde(tag = "kind"))]
@@ -97,26 +158,32 @@ impl TypeVariable {
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
 pub struct TypeVariableID(pub usize);
 
-macro_rules! builtin_types {
+/// The macro, automates the process of generating functions
+/// for getting builtin primitive types.
+macro_rules! generate_builtin_primitive_types {
     ($($name:ident => $symbol:ident),*) => {
         $(
             #[inline]
             #[must_use]
             #[doc = concat!("Returns a `", stringify!($name), "` type.")]
             pub fn $name() -> Type {
-                Type::Constructor(TypeConstructor::primitive(builtin_identifiers::$symbol))
+                Type::new_primitive(builtin_identifiers::$symbol)
             }
         )*
     };
 }
 
-builtin_types! {
+generate_builtin_primitive_types! {
     int8 => INT8, int16 => INT16, int32 => INT32, int64 => INT64,
     uint8 => UINT8, uint16 => UINT16, uint32 => UINT32, uint64 => UINT64,
     float32 => FLOAT32, float64 => FLOAT64,
+
     char => CHAR, string => STRING
 }
 
+/// A type constructor: `List[uint32]`, `uint32`, `String`.
+///
+/// Anything that has name and optionally have generic arguments.
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
 pub struct TypeConstructor {
     pub path: Path,
@@ -135,7 +202,7 @@ impl TypeConstructor {
 
     #[inline]
     #[must_use]
-    pub fn primitive(identifier_id: IdentifierID) -> Self {
+    pub fn new_primitive(identifier_id: IdentifierID) -> Self {
         Self {
             path: Path {
                 identifiers: vec![identifier_id],
@@ -148,19 +215,8 @@ impl TypeConstructor {
 impl Type {
     #[inline]
     #[must_use]
-    pub fn primitive(identifier_id: IdentifierID) -> Self {
-        Self::Constructor(TypeConstructor::primitive(identifier_id))
-    }
-
-    #[inline]
-    #[must_use]
-    pub fn list_type(self) -> Self {
-        Self::Constructor(TypeConstructor {
-            path: Path {
-                identifiers: vec![builtin_identifiers::LIST],
-            },
-            arguments: vec![self],
-        })
+    pub fn new_primitive(identifier_id: IdentifierID) -> Self {
+        Self::Constructor(TypeConstructor::new_primitive(identifier_id))
     }
 }
 

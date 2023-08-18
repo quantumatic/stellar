@@ -115,12 +115,12 @@ pub struct ResolutionEnvironment {
     pub visibilities: FxHashMap<DefinitionID, Visibility>,
 
     /// Resolved imports in all modules.
-    pub resolved_imports: FxHashMap<ModuleID, ResolvedImports>,
+    pub resolved_imports: FxHashMap<ModuleID, ResolvedImportsInModule>,
 }
 
 /// Resolved imports in a particular module.
 #[derive(Debug, PartialEq, Eq, Clone, Default)]
-pub struct ResolvedImports {
+pub struct ResolvedImportsInModule {
     /// List of resolved imports.
     pub imports: FxHashMap<IdentifierID, NameBinding>,
 }
@@ -160,7 +160,7 @@ impl ResolutionEnvironment {
             }
 
             self.resolved_imports
-                .insert(*module_path_id, ResolvedImports { imports });
+                .insert(*module_path_id, ResolvedImportsInModule { imports });
         }
     }
 
@@ -216,8 +216,20 @@ pub enum NameBinding {
     /// A submodule.
     Module(ModuleID),
 
-    /// An item defined in a particular module.
-    ModuleItem(DefinitionID),
+    /// A type alias.
+    TypeAlias(DefinitionID),
+
+    /// A function.
+    Function(DefinitionID),
+
+    /// An interface.
+    Interface(DefinitionID),
+
+    /// A struct.
+    Struct(DefinitionID),
+
+    /// An enum.
+    Enum(DefinitionID),
 
     /// An enum item.
     EnumItem(EnumItemID),
@@ -288,7 +300,11 @@ impl ResolveFullPath for NameBinding {
         match self {
             Self::Package(package_id) => package_id.full_path(environment),
             Self::Module(module_id) => module_id.full_path(environment),
-            Self::ModuleItem(definition_id) => definition_id.full_path(environment),
+            Self::TypeAlias(definition_id)
+            | Self::Function(definition_id)
+            | Self::Interface(definition_id)
+            | Self::Struct(definition_id)
+            | Self::Enum(definition_id) => definition_id.full_path(environment),
             Self::EnumItem(enum_item_id) => enum_item_id.full_path(environment),
         }
     }
@@ -307,16 +323,58 @@ pub enum NameBindingKind {
     #[display(fmt = "module")]
     Module,
 
-    /// A module item.
-    #[display(fmt = "module item")]
-    ModuleItem,
+    /// An enum.
+    #[display(fmt = "enum")]
+    Enum,
+
+    /// A type alias.
+    #[display(fmt = "type alias")]
+    TypeAlias,
+
+    /// A struct.
+    #[display(fmt = "struct")]
+    Struct,
+
+    /// A function.
+    #[display(fmt = "function")]
+    Function,
+
+    /// A interface.
+    #[display(fmt = "interface")]
+    Interface,
 
     /// An enum item.
     #[display(fmt = "enum item")]
     EnumItem,
 }
 
+impl NameBindingKind {
+    /// Returns `true` if the name binding is a module item.
+    #[inline]
+    #[must_use]
+    pub const fn is_module_item(&self) -> bool {
+        matches!(
+            self,
+            Self::Function | Self::Enum | Self::Interface | Self::Struct | Self::TypeAlias
+        )
+    }
+}
+
 impl NameBinding {
+    /// Returns `true` if the name binding is a module item.
+    #[inline]
+    #[must_use]
+    pub const fn is_module_item(&self) -> bool {
+        matches!(
+            self,
+            Self::TypeAlias(_)
+                | Self::Function(_)
+                | Self::Enum(_)
+                | Self::Interface(_)
+                | Self::Struct(_)
+        )
+    }
+
     /// Returns the kind of the name binding.
     ///
     /// See [`NameBindingKind`] for more details.
@@ -326,7 +384,11 @@ impl NameBinding {
         match self {
             Self::Package(..) => NameBindingKind::Package,
             Self::Module(..) => NameBindingKind::Module,
-            Self::ModuleItem(..) => NameBindingKind::ModuleItem,
+            Self::TypeAlias(..) => NameBindingKind::TypeAlias,
+            Self::Function(..) => NameBindingKind::Function,
+            Self::Interface(..) => NameBindingKind::Interface,
+            Self::Struct(..) => NameBindingKind::Struct,
+            Self::Enum(..) => NameBindingKind::Enum,
             Self::EnumItem(..) => NameBindingKind::EnumItem,
         }
     }
@@ -365,6 +427,136 @@ impl NameBinding {
     }
 }
 
+fn resolve_binding_in_module_namespace(
+    module_id: ModuleID,
+    namespace: IdentifierAST,
+    name: IdentifierAST,
+    identifier_interner: &IdentifierInterner,
+    diagnostics: &mut Diagnostics,
+    environment: &ResolutionEnvironment,
+) -> Option<NameBinding> {
+    let Some(binding) = environment
+        .module_scopes
+        .get(&module_id)
+        .unwrap()
+        .bindings
+        .get(&name.id)
+    else {
+        diagnostics.add_single_file_diagnostic(
+            name.location.file_path_id,
+            FailedToResolveModuleItemDiagnostic {
+                item_name: identifier_interner.resolve(name.id).unwrap().to_owned(),
+                item_name_location: name.location,
+                module_name: identifier_interner
+                    .resolve(namespace.id)
+                    .unwrap()
+                    .to_owned(),
+                module_name_location: namespace.location,
+            }
+            .build(),
+        );
+
+        return None;
+    };
+
+    if let NameBinding::Enum(definition_id)
+    | NameBinding::Struct(definition_id)
+    | NameBinding::Interface(definition_id)
+    | NameBinding::Function(definition_id)
+    | NameBinding::TypeAlias(definition_id) = binding
+    {
+        if *environment.visibilities.get(definition_id).unwrap() == Visibility::Private {
+            diagnostics.add_single_file_diagnostic(
+                name.location.file_path_id,
+                FailedToResolvePrivateModuleItemDiagnostic {
+                    item_name: identifier_interner.resolve(name.id).unwrap().to_owned(),
+                    item_name_location: name.location,
+                    module_name: identifier_interner
+                        .resolve(namespace.id)
+                        .unwrap()
+                        .to_owned(),
+                    module_name_location: namespace.location,
+                }
+                .build(),
+            );
+
+            return None;
+        }
+    }
+
+    Some(*binding)
+}
+
+fn resolve_binding_in_module_item_namespace(
+    item_definition_id: DefinitionID,
+    namespace: IdentifierAST,
+    name: IdentifierAST,
+    identifier_interner: &IdentifierInterner,
+    diagnostics: &mut Diagnostics,
+    environment: &ResolutionEnvironment,
+) -> Option<NameBinding> {
+    if let Some(enum_scope) = environment
+        .module_scopes
+        .get(&item_definition_id.module_id)?
+        .enums
+        .get(&item_definition_id.name_id)
+    {
+        enum_scope
+            .items
+            .get(&name.id)
+            .copied()
+            .map(NameBinding::EnumItem)
+    } else {
+        diagnostics.add_single_file_diagnostic(
+            name.location.file_path_id,
+            ModuleItemsExceptEnumsDoNotServeAsNamespacesDiagnostic {
+                name: identifier_interner.resolve(name.id).unwrap().to_owned(),
+                name_location: name.location,
+                module_item_name: identifier_interner
+                    .resolve(namespace.id)
+                    .unwrap()
+                    .to_owned(),
+                module_item_name_location: namespace.location,
+            }
+            .build(),
+        );
+
+        None
+    }
+}
+
+fn resolve_binding_in_package_namespace(
+    package_id: PackageID,
+    name: IdentifierAST,
+    identifier_interner: &IdentifierInterner,
+    diagnostics: &mut Diagnostics,
+    environment: &ResolutionEnvironment,
+) -> Option<NameBinding> {
+    let Some(module) = environment
+        .module_scopes
+        .get(environment.packages_root_modules.get(&package_id).unwrap())
+        // Module must exist at this point, or something went wrong when
+        // building the name resolution environment.
+        .unwrap()
+        .resolve(name, identifier_interner, diagnostics, environment)
+    else {
+        diagnostics.add_single_file_diagnostic(
+            name.location.file_path_id,
+            FailedToResolveModuleDiagnostic {
+                module_name: identifier_interner.resolve(name.id).unwrap().to_owned(),
+                module_name_location: name.location,
+                package_name: identifier_interner.resolve(name.id).unwrap().to_owned(),
+                package_name_location: name.location,
+            }
+            .build(),
+        );
+
+        return None;
+    };
+
+    Some(module)
+}
+
 /// Resolves a path segment. Path segment in this context means a single identifier in the path,
 /// that in this concrete case must be followed by another identifier at the start:
 ///
@@ -375,155 +567,59 @@ impl NameBinding {
 /// ```
 fn resolve_path_segment(
     binding: NameBinding,
-    previous_identifier: IdentifierAST,
-    current_identifier: IdentifierAST,
+    namespace: IdentifierAST,
+    name: IdentifierAST,
     identifier_interner: &IdentifierInterner,
     diagnostics: &mut Diagnostics,
     environment: &ResolutionEnvironment,
 ) -> Option<NameBinding> {
     match binding {
-        NameBinding::Package(package_id) => {
-            let Some(module) = environment
-                .module_scopes
-                .get(environment.packages_root_modules.get(&package_id).unwrap())
-                // Module must exist at this point, or something went wrong when
-                // building the name resolution environment.
-                .unwrap()
-                .resolve(
-                    current_identifier,
-                    identifier_interner,
-                    diagnostics,
-                    environment,
-                )
-            else {
-                diagnostics.add_single_file_diagnostic(
-                    current_identifier.location.file_path_id,
-                    FailedToResolveModuleDiagnostic {
-                        module_name: identifier_interner
-                            .resolve(current_identifier.id)
-                            .unwrap()
-                            .to_owned(),
-                        module_name_location: current_identifier.location,
-                        package_name: identifier_interner
-                            .resolve(previous_identifier.id)
-                            .unwrap()
-                            .to_owned(),
-                        package_name_location: previous_identifier.location,
-                    }
-                    .build(),
-                );
-
-                return None;
-            };
-
-            Some(module)
-        }
+        NameBinding::Package(package_id) => resolve_binding_in_package_namespace(
+            package_id,
+            name,
+            identifier_interner,
+            diagnostics,
+            environment,
+        ),
         NameBinding::EnumItem(_) => {
+            // Enum items are not namespaces!
+
             diagnostics.add_single_file_diagnostic(
-                current_identifier.location.file_path_id,
+                name.location.file_path_id,
                 ModuleItemsExceptEnumsDoNotServeAsNamespacesDiagnostic {
-                    name: identifier_interner
-                        .resolve(current_identifier.id)
-                        .unwrap()
-                        .to_owned(),
-                    name_location: current_identifier.location,
+                    name: identifier_interner.resolve(name.id).unwrap().to_owned(),
+                    name_location: name.location,
                     module_item_name: identifier_interner
-                        .resolve(previous_identifier.id)
+                        .resolve(namespace.id)
                         .unwrap()
                         .to_owned(),
-                    module_item_name_location: previous_identifier.location,
+                    module_item_name_location: namespace.location,
                 }
                 .build(),
             );
 
             None
         }
-        NameBinding::ModuleItem(definition_id) => {
-            if let Some(enum_scope) = environment
-                .module_scopes
-                .get(&definition_id.module_id)?
-                .enums
-                .get(&definition_id.name_id)
-            {
-                enum_scope
-                    .items
-                    .get(&current_identifier.id)
-                    .copied()
-                    .map(NameBinding::EnumItem)
-            } else {
-                diagnostics.add_single_file_diagnostic(
-                    current_identifier.location.file_path_id,
-                    ModuleItemsExceptEnumsDoNotServeAsNamespacesDiagnostic {
-                        name: identifier_interner
-                            .resolve(current_identifier.id)
-                            .unwrap()
-                            .to_owned(),
-                        name_location: current_identifier.location,
-                        module_item_name: identifier_interner
-                            .resolve(previous_identifier.id)
-                            .unwrap()
-                            .to_owned(),
-                        module_item_name_location: previous_identifier.location,
-                    }
-                    .build(),
-                );
-
-                None
-            }
-        }
-        NameBinding::Module(submodule_id) => {
-            let Some(binding) = environment
-                .module_scopes
-                .get(&submodule_id)
-                .unwrap()
-                .bindings
-                .get(&current_identifier.id)
-            else {
-                diagnostics.add_single_file_diagnostic(
-                    current_identifier.location.file_path_id,
-                    FailedToResolveModuleItemDiagnostic {
-                        item_name: identifier_interner
-                            .resolve(current_identifier.id)
-                            .unwrap()
-                            .to_owned(),
-                        item_name_location: current_identifier.location,
-                        module_name: identifier_interner
-                            .resolve(previous_identifier.id)
-                            .unwrap()
-                            .to_owned(),
-                        module_name_location: previous_identifier.location,
-                    }
-                    .build(),
-                );
-
-                return None;
-            };
-
-            if let NameBinding::ModuleItem(definition_id) = binding {
-                if *environment.visibilities.get(definition_id).unwrap() == Visibility::Private {
-                    diagnostics.add_single_file_diagnostic(
-                        current_identifier.location.file_path_id,
-                        FailedToResolvePrivateModuleItemDiagnostic {
-                            item_name: identifier_interner
-                                .resolve(current_identifier.id)
-                                .unwrap()
-                                .to_owned(),
-                            item_name_location: current_identifier.location,
-                            module_name: identifier_interner
-                                .resolve(previous_identifier.id)
-                                .unwrap()
-                                .to_owned(),
-                            module_name_location: previous_identifier.location,
-                        }
-                        .build(),
-                    );
-
-                    return None;
-                }
-            }
-
-            Some(*binding)
-        }
+        NameBinding::Enum(definition_id)
+        | NameBinding::TypeAlias(definition_id)
+        | NameBinding::Struct(definition_id)
+        | NameBinding::Function(definition_id)
+        | NameBinding::Interface(definition_id) => resolve_binding_in_module_item_namespace(
+            definition_id,
+            namespace,
+            name,
+            identifier_interner,
+            diagnostics,
+            environment,
+        ),
+        NameBinding::Module(module_id) => resolve_binding_in_module_namespace(
+            module_id,
+            namespace,
+            name,
+            identifier_interner,
+            diagnostics,
+            environment,
+        ),
     }
 }
 

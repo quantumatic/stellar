@@ -8,7 +8,7 @@ use ry_ast::{IdentifierAST, ImportPath, Visibility};
 use ry_diagnostics::{BuildDiagnostic, Diagnostics};
 use ry_filesystem::location::Location;
 use ry_fx_hash::{FxHashMap, FxHashSet};
-use ry_hir::Module;
+use ry_hir::{Module, TypeAlias};
 use ry_interner::{IdentifierID, IdentifierInterner, PathID, PathInterner};
 use ry_name_resolution::{
     DefinitionID, EnumData, EnumItemID, ModuleID, ModuleScope, NameBinding, NameBindingKind, Path,
@@ -27,47 +27,6 @@ use crate::diagnostics::{BoundsInTypeAliasDiagnostic, ExpectedType};
 pub mod diagnostics;
 pub mod type_variable_factory;
 
-/// The kind of a name binding, but compared to [`NameBindingKind`] it is
-/// more contextual.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Display)]
-pub enum BindingKind {
-    /// A package binding.
-    #[display(fmt = "package")]
-    Package,
-
-    /// A module binding.
-    #[display(fmt = "module")]
-    Module,
-
-    /// A defined type binding: structs and enums.
-    #[display(fmt = "type")]
-    Type,
-
-    /// An interface binding.
-    #[display(fmt = "interface")]
-    Interface,
-
-    /// A function binding.
-    #[display(fmt = "function")]
-    Function,
-
-    /// An enum item binding.
-    #[display(fmt = "enum item")]
-    EnumItem,
-}
-
-impl From<NameBindingKind> for BindingKind {
-    #[inline]
-    fn from(value: NameBindingKind) -> Self {
-        match value {
-            NameBindingKind::Package => Self::Package,
-            NameBindingKind::Module => Self::Module,
-            NameBindingKind::EnumItem => Self::EnumItem,
-            _ => unreachable!(),
-        }
-    }
-}
-
 /// Context for type checking stage of compilation.
 #[derive(Debug)]
 pub struct TypeCheckingContext<'i, 'p, 'g, 'd> {
@@ -76,28 +35,6 @@ pub struct TypeCheckingContext<'i, 'p, 'g, 'd> {
 
     /// Storage of HIR for module items, signature of which haven't yet been analyzed.
     items_hir: FxHashMap<DefinitionID, ry_hir::ModuleItem>,
-
-    /// Storage of HIR for bodies of functions, signature of which have been analyzed, but
-    /// THIR wasn't produced yet (bodies themselves weren't analyzed).
-    function_bodies_hir: FxHashMap<DefinitionID, Vec<ry_hir::Statement>>,
-
-    /// Storage of HIR for bodies of interface methods, signature of which have been analyzed, but
-    /// THIR wasn't produced yet (bodies themselves weren't analyzed).
-    interface_method_bodies_hir:
-        FxHashMap<DefinitionID, FxHashMap<IdentifierID, Option<Vec<ry_hir::Statement>>>>,
-
-    /// Storage of HIR for bodies of user-defined types methods, signature of which have
-    /// been analyzed, but THIR wasn't produced yet (bodies themselves weren't analyzed).
-    type_method_bodies_hir: FxHashMap<
-        DefinitionID,
-        FxHashMap<
-            IdentifierID,
-            Vec<(
-                Option<ry_hir::TypeConstructor>,
-                Option<Vec<ry_hir::Statement>>,
-            )>,
-        >,
-    >,
 
     /// Storage of THIR for module items, that have been fully analyzed.
     items_thir: FxHashMap<DefinitionID, ry_thir::ModuleItem<'g>>,
@@ -133,9 +70,6 @@ impl<'i, 'p, 'g, 'd> TypeCheckingContext<'i, 'p, 'g, 'd> {
         Self {
             path_interner,
             identifier_interner,
-            function_bodies_hir: FxHashMap::default(),
-            interface_method_bodies_hir: FxHashMap::default(),
-            type_method_bodies_hir: FxHashMap::default(),
             diagnostics,
             type_alias_stack: FxHashSet::default(),
             items_hir: FxHashMap::default(),
@@ -334,17 +268,12 @@ impl<'i, 'p, 'g, 'd> TypeCheckingContext<'i, 'p, 'g, 'd> {
 
         let name_binding_kind = name_binding.kind();
 
-        if name_binding_kind != NameBindingKind::ModuleItem {
+        if !name_binding_kind.is_module_item() {
             self.diagnostics.add_single_file_diagnostic(
                 ty.location.file_path_id,
                 ExpectedType {
                     location: ty.location,
-                    binding_kind: match name_binding_kind {
-                        NameBindingKind::Package => BindingKind::Package,
-                        NameBindingKind::Module => BindingKind::Module,
-                        NameBindingKind::EnumItem => BindingKind::EnumItem,
-                        _ => unreachable!(),
-                    },
+                    name_binding_kind,
                 }
                 .build(),
             );
@@ -403,23 +332,7 @@ impl<'i, 'p, 'g, 'd> TypeCheckingContext<'i, 'p, 'g, 'd> {
             return None;
         };
 
-        let definition_id = match name_binding {
-            NameBinding::ModuleItem(definition_id) => definition_id,
-            _ => {
-                self.diagnostics.add_single_file_diagnostic(
-                    interface.location.file_path_id,
-                    ExpectedInterface {
-                        location: interface.location,
-                        binding_kind: name_binding.kind().into(),
-                    }
-                    .build(),
-                );
-
-                return None;
-            }
-        };
-
-        let signature = self.resolve_signature(definition_id, module_scope)?;
+        let signature = self.resolve_signature(name_binding, module_scope)?;
 
         match signature.as_ref() {
             ModuleItemSignature::Interface(_) => Some(TypeConstructor {
@@ -437,26 +350,7 @@ impl<'i, 'p, 'g, 'd> TypeCheckingContext<'i, 'p, 'g, 'd> {
                     module_scope,
                 )?,
             }),
-            _ => {
-                let binding_kind = match signature.as_ref() {
-                    ModuleItemSignature::Type(_) | ModuleItemSignature::TypeAlias(_) => {
-                        BindingKind::Type
-                    }
-                    ModuleItemSignature::Function(_) => BindingKind::Function,
-                    _ => unreachable!(),
-                };
-
-                self.diagnostics.add_single_file_diagnostic(
-                    interface.location.file_path_id,
-                    ExpectedInterface {
-                        location: interface.location,
-                        binding_kind,
-                    }
-                    .build(),
-                );
-
-                None
-            }
+            _ => unreachable!(),
         }
     }
 
@@ -495,32 +389,45 @@ impl<'i, 'p, 'g, 'd> TypeCheckingContext<'i, 'p, 'g, 'd> {
 
     fn resolve_signature(
         &mut self,
-        definition_id: DefinitionID,
+        name_binding: NameBinding,
         module_scope: &ModuleScope,
     ) -> Option<Arc<ModuleItemSignature>> {
-        if let Some(signature) = self.signatures.get(&definition_id).cloned() {
-            Some(signature)
-        } else {
-            self.analyze_signature(definition_id, module_scope)
+        match name_binding {
+            NameBinding::Enum(definition_id)
+            | NameBinding::Interface(definition_id)
+            | NameBinding::Function(definition_id)
+            | NameBinding::TypeAlias(definition_id)
+            | NameBinding::Struct(definition_id) => {
+                if let Some(signature) = self.signatures.get(&definition_id).cloned() {
+                    Some(signature)
+                } else {
+                    self.analyze_signature(name_binding, module_scope)
+                }
+            }
+            _ => unreachable!(),
         }
     }
 
     fn analyze_signature(
         &mut self,
-        definition_id: DefinitionID,
+        name_binding: NameBinding,
         module_scope: &ModuleScope,
     ) -> Option<Arc<ModuleItemSignature>> {
-        match self.items_hir.remove(&definition_id).unwrap() {
-            ry_hir::ModuleItem::TypeAlias(alias) => {
-                self.analyze_type_alias_signature(alias, module_scope)
-            }
-            _ => todo!(),
+        match name_binding {
+            NameBinding::TypeAlias(definition_id) => self.analyze_type_alias_signature(
+                match self.items_hir.remove(&definition_id).unwrap() {
+                    ry_hir::ModuleItem::TypeAlias(alias) => alias,
+                    _ => unreachable!(),
+                },
+                module_scope,
+            ),
+            _ => unreachable!(),
         }
     }
 
     fn analyze_type_alias_signature(
         &mut self,
-        hir: ry_hir::TypeAlias,
+        hir: &ry_hir::TypeAlias,
         module_scope: &ModuleScope,
     ) -> Option<Arc<ModuleItemSignature>> {
         let (generic_parameter_scope, _) = self.analyze_generic_parameters_and_bounds(

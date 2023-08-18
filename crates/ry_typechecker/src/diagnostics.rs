@@ -2,8 +2,7 @@ use ry_diagnostics::diagnostic::Diagnostic;
 use ry_diagnostics::{BuildDiagnostic, LocationExt};
 use ry_filesystem::location::Location;
 use ry_interner::PathID;
-
-use crate::BindingKind;
+use ry_name_resolution::NameBindingKind;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct DuplicateTraitBoundDiagnostic {
@@ -52,28 +51,31 @@ impl BuildDiagnostic for UnnecessaryEqualityPredicateDiagnostic {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ExpectedType {
     pub location: Location,
-    pub binding_kind: BindingKind,
+    pub name_binding_kind: NameBindingKind,
 }
 
 impl BuildDiagnostic for ExpectedType {
     fn build(&self) -> Diagnostic<PathID> {
         Diagnostic::error()
             .with_code("E009")
-            .with_message(format!("expected type, got {}", self.binding_kind))
+            .with_message(format!("expected type, got {}", self.name_binding_kind))
             .with_labels(vec![self.location.to_primary_label()])
     }
 }
 
 pub struct ExpectedInterface {
     pub location: Location,
-    pub binding_kind: BindingKind,
+    pub name_binding_kind: NameBindingKind,
 }
 
 impl BuildDiagnostic for ExpectedInterface {
     fn build(&self) -> Diagnostic<PathID> {
         Diagnostic::error()
             .with_code("E009")
-            .with_message(format!("expected interface, got {}", self.binding_kind))
+            .with_message(format!(
+                "expected interface, got {}",
+                self.name_binding_kind
+            ))
             .with_labels(vec![self.location.to_primary_label()])
     }
 }
