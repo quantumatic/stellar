@@ -52,7 +52,9 @@
     clippy::module_name_repetitions,
     clippy::too_many_lines,
     clippy::option_if_let_else,
-    clippy::unnested_or_patterns
+    clippy::unnested_or_patterns,
+    clippy::explicit_deref_methods,
+    clippy::significant_drop_tightening
 )]
 
 use std::env;

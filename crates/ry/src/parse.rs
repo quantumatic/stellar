@@ -1,5 +1,7 @@
+use std::ops::Deref;
 use std::{io::Write, path::PathBuf, time::Instant};
 
+use parking_lot::RwLock;
 use ry_diagnostics::diagnostic::Diagnostic;
 use ry_diagnostics::{Diagnostics, DiagnosticsEmitter};
 use ry_interner::{IdentifierInterner, PathInterner};
@@ -9,11 +11,11 @@ use crate::{prefix::log_with_left_padded_prefix, unique_file::create_unique_file
 
 pub fn command(path_str: &str) {
     let mut path_interner = PathInterner::new();
-    let mut identifier_interner = IdentifierInterner::new();
+    let identifier_interner = RwLock::new(IdentifierInterner::new());
 
     let file_path_id = path_interner.get_or_intern(PathBuf::from(path_str));
 
-    let mut diagnostics = Diagnostics::new();
+    let diagnostics = RwLock::new(Diagnostics::new());
     let mut diagnostics_emitter = DiagnosticsEmitter::new(&path_interner);
 
     let now = Instant::now();
@@ -21,8 +23,8 @@ pub fn command(path_str: &str) {
     match read_and_parse_module(
         &path_interner,
         file_path_id,
-        &mut diagnostics,
-        &mut identifier_interner,
+        &diagnostics,
+        &identifier_interner,
     ) {
         Err(..) => {
             diagnostics_emitter.emit_context_free_diagnostic(
@@ -33,7 +35,10 @@ pub fn command(path_str: &str) {
             let parsing_time = now.elapsed().as_secs_f64();
             log_with_left_padded_prefix("Parsed", format!("in {parsing_time}s"));
 
-            diagnostics_emitter.emit_global_diagnostics(&diagnostics);
+            let diagnostics_reader = diagnostics.read();
+            let diagnostics = diagnostics_reader.deref();
+
+            diagnostics_emitter.emit_global_diagnostics(diagnostics);
 
             if diagnostics.is_ok() {
                 let now = Instant::now();

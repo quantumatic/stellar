@@ -1,6 +1,8 @@
 //! Defines a [`GenericParameterScope`], to work with generic parameter scopes in
 //! THIR.
 
+use std::sync::Arc;
+
 use ry_filesystem::location::Location;
 use ry_fx_hash::FxHashMap;
 use ry_interner::IdentifierID;
@@ -9,7 +11,7 @@ use crate::ty::Type;
 
 /// A generic parameter scope.
 #[derive(Default, PartialEq, Clone, Debug)]
-pub struct GenericParameterScope<'p> {
+pub struct GenericParameterScope {
     /// A parent scope, for example:
     ///
     /// ```ry
@@ -17,17 +19,17 @@ pub struct GenericParameterScope<'p> {
     ///     fun bar[M]();  // self = Scope { parent: ..., parameters: [M] }
     /// }
     /// ```
-    pub parent_scope: Option<&'p GenericParameterScope<'p>>,
+    pub parent_scope: Option<Arc<Self>>,
 
     /// A map of generic parameters in the scope.
     pub parameters: FxHashMap<IdentifierID, GenericParameterData>,
 }
 
-impl<'p> GenericParameterScope<'p> {
+impl GenericParameterScope {
     /// Creates a new empty generic parameter scope.
     #[inline]
     #[must_use]
-    pub fn new(parent: Option<&'p GenericParameterScope<'p>>) -> Self {
+    pub fn new(parent: Option<Arc<Self>>) -> Self {
         Self {
             parent_scope: parent,
             parameters: FxHashMap::default(),
@@ -54,7 +56,7 @@ impl<'p> GenericParameterScope<'p> {
     pub fn resolve(&self, parameter_name: IdentifierID) -> Option<&GenericParameterData> {
         if let Some(data) = self.parameters.get(&parameter_name) {
             Some(data)
-        } else if let Some(parent_scope) = self.parent_scope {
+        } else if let Some(parent_scope) = &self.parent_scope {
             parent_scope.resolve(parameter_name)
         } else {
             None
@@ -65,7 +67,7 @@ impl<'p> GenericParameterScope<'p> {
     #[must_use]
     pub fn contains(&self, parameter_name: IdentifierID) -> bool {
         self.parameters.contains_key(&parameter_name)
-            || if let Some(parent_scope) = self.parent_scope {
+            || if let Some(parent_scope) = &self.parent_scope {
                 parent_scope.contains(parameter_name)
             } else {
                 false

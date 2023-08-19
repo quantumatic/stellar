@@ -1,17 +1,15 @@
-use std::{fs, path::PathBuf, process::exit};
+use std::{fs, process::exit};
 
-use ry_interner::{IdentifierInterner, PathInterner};
+use parking_lot::RwLock;
+use ry_interner::{IdentifierInterner, PathID};
 use ry_lexer::Lexer;
 
 use crate::prefix::log_with_prefix;
 
 pub fn command(filepath: &str, show_locations: bool) {
     if let Ok(source) = fs::read_to_string(filepath) {
-        let mut identifier_interner = IdentifierInterner::new();
-        let mut path_interner = PathInterner::new();
-        let file_path_id = path_interner.get_or_intern(PathBuf::from(filepath));
-
-        let mut lexer = Lexer::new(file_path_id, &source, &mut identifier_interner);
+        let identifier_interner = RwLock::new(IdentifierInterner::new());
+        let mut lexer = Lexer::new(PathID(1), &source, &identifier_interner);
         let mut current_token_index = 0;
 
         loop {

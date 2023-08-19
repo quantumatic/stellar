@@ -403,15 +403,15 @@ pub struct Predicate {
 }
 
 #[derive(Debug, PartialEq, Clone)]
-pub struct TypeSignature<'g> {
+pub struct TypeSignature {
     pub name: IdentifierAST,
-    pub generic_parameter_scope: GenericParameterScope<'g>,
+    pub generic_parameter_scope: GenericParameterScope,
     pub bounds: Vec<Predicate>,
 }
 
 #[derive(Debug, PartialEq, Clone)]
-pub struct Enum<'g> {
-    pub type_signature: TypeSignature<'g>,
+pub struct Enum {
+    pub type_signature: TypeSignature,
     pub items: FxHashMap<IdentifierID, EnumItem>,
 }
 
@@ -441,8 +441,8 @@ pub struct EnumItemTupleField {
 }
 
 #[derive(Debug, PartialEq, Clone)]
-pub struct Struct<'g> {
-    pub type_signature: TypeSignature<'g>,
+pub struct Struct {
+    pub type_signature: TypeSignature,
     pub fields: FxHashMap<IdentifierID, StructField>,
 }
 
@@ -454,23 +454,23 @@ pub struct StructField {
 }
 
 #[derive(Debug, PartialEq, Clone)]
-pub struct TypeAliasSignature<'g> {
+pub struct TypeAliasSignature {
     pub name: IdentifierAST,
-    pub generic_parameter_scope: GenericParameterScope<'g>,
+    pub generic_parameter_scope: GenericParameterScope,
     pub value: Type,
 }
 
 #[derive(Debug, PartialEq, Clone)]
-pub struct InterfaceSignature<'g> {
+pub struct InterfaceSignature {
     pub name: IdentifierAST,
-    pub generic_parameter_scope: GenericParameterScope<'g>,
+    pub generic_parameter_scope: GenericParameterScope,
     pub bounds: Vec<Predicate>,
 }
 
 #[derive(Debug, PartialEq, Clone)]
-pub struct FunctionSignature<'g> {
+pub struct FunctionSignature {
     pub name: IdentifierAST,
-    pub generic_parameter_scope: GenericParameterScope<'g>,
+    pub generic_parameter_scope: GenericParameterScope,
     pub parameters: FxHashMap<IdentifierID, FunctionParameter>,
     pub return_type: Type,
     pub bounds: Vec<Predicate>,
@@ -483,40 +483,40 @@ pub struct FunctionParameter {
 }
 
 #[derive(Debug, PartialEq, Clone)]
-pub struct Function<'g> {
-    pub signature: FunctionSignature<'g>,
+pub struct Function {
+    pub signature: FunctionSignature,
     pub body: Vec<Statement>,
 }
 
 #[derive(Debug, PartialEq, Clone)]
-pub struct Interface<'g> {
+pub struct Interface {
     pub name: IdentifierAST,
-    pub generic_parameter_scope: GenericParameterScope<'g>,
+    pub generic_parameter_scope: GenericParameterScope,
     pub bounds: Vec<Predicate>,
-    pub methods: Vec<Function<'g>>,
+    pub methods: Vec<Function>,
 }
 
 #[derive(Debug, PartialEq, Clone)]
-pub enum ModuleItemSignature<'g> {
-    Type(TypeSignature<'g>),
-    TypeAlias(TypeAliasSignature<'g>),
-    Interface(InterfaceSignature<'g>),
-    Function(Vec<FunctionSignature<'g>>),
+pub enum ModuleItemSignature {
+    Type(TypeSignature),
+    TypeAlias(TypeAliasSignature),
+    Interface(InterfaceSignature),
+    Function(Vec<FunctionSignature>),
 }
 
 #[derive(Debug, PartialEq, Clone)]
-pub enum ModuleItem<'g> {
+pub enum ModuleItem {
     Enum {
-        signature: TypeSignature<'g>,
+        signature: TypeSignature,
         items: FxHashMap<IdentifierID, EnumItem>,
     },
     Struct {
-        signature: TypeSignature<'g>,
+        signature: TypeSignature,
         fields: FxHashMap<IdentifierID, StructField>,
     },
     Interface {
-        signature: InterfaceSignature<'g>,
-        methods: FxHashMap<IdentifierID, Function<'g>>,
+        signature: InterfaceSignature,
+        methods: FxHashMap<IdentifierID, Function>,
     },
-    Function(Function<'g>),
+    Function(Function),
 }

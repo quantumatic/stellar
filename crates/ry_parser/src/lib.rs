@@ -79,6 +79,7 @@ use std::{fs, io};
 use diagnostics::LexErrorDiagnostic;
 pub use expression::ExpressionParser;
 use items::{ItemParser, ItemsParser};
+use parking_lot::RwLock;
 use pattern::PatternParser;
 use r#type::TypeParser;
 use ry_ast::{
@@ -107,7 +108,7 @@ pub struct ParseState<'s, 'd, 'i> {
     next_token: Token,
 
     /// Diagnostics that is emitted during parsing.
-    diagnostics: &'d mut Diagnostics,
+    diagnostics: &'d RwLock<Diagnostics>,
 }
 
 /// Represents AST node that can be parsed.
@@ -150,8 +151,8 @@ pub trait OptionallyParse: Sized {
 pub fn read_and_parse_module(
     path_identifier_interner: &PathInterner,
     file_path_id: PathID,
-    diagnostics: &mut Diagnostics,
-    identifier_interner: &mut IdentifierInterner,
+    diagnostics: &RwLock<Diagnostics>,
+    identifier_interner: &RwLock<IdentifierInterner>,
 ) -> Result<Module, io::Error> {
     Ok(parse_module_using(ParseState::new(
         file_path_id,
@@ -167,8 +168,8 @@ pub fn read_and_parse_module(
 pub fn parse_module(
     file_path_id: PathID,
     source: &str,
-    diagnostics: &mut Diagnostics,
-    identifier_interner: &mut IdentifierInterner,
+    diagnostics: &RwLock<Diagnostics>,
+    identifier_interner: &RwLock<IdentifierInterner>,
 ) -> Module {
     parse_module_using(ParseState::new(
         file_path_id,
@@ -194,8 +195,8 @@ pub fn parse_module_using(mut state: ParseState<'_, '_, '_>) -> Module {
 pub fn parse_item(
     file_path_id: PathID,
     source: impl AsRef<str>,
-    diagnostics: &mut Diagnostics,
-    identifier_interner: &mut IdentifierInterner,
+    diagnostics: &RwLock<Diagnostics>,
+    identifier_interner: &RwLock<IdentifierInterner>,
 ) -> Option<ModuleItem> {
     parse_item_using(&mut ParseState::new(
         file_path_id,
@@ -218,8 +219,8 @@ pub fn parse_item_using(state: &mut ParseState<'_, '_, '_>) -> Option<ModuleItem
 pub fn parse_expression(
     file_path_id: PathID,
     source: impl AsRef<str>,
-    diagnostics: &mut Diagnostics,
-    identifier_interner: &mut IdentifierInterner,
+    diagnostics: &RwLock<Diagnostics>,
+    identifier_interner: &RwLock<IdentifierInterner>,
 ) -> Option<Expression> {
     parse_expression_using(&mut ParseState::new(
         file_path_id,
@@ -242,8 +243,8 @@ pub fn parse_expression_using(state: &mut ParseState<'_, '_, '_>) -> Option<Expr
 pub fn parse_statement(
     file_path_id: PathID,
     source: impl AsRef<str>,
-    diagnostics: &mut Diagnostics,
-    identifier_interner: &mut IdentifierInterner,
+    diagnostics: &RwLock<Diagnostics>,
+    identifier_interner: &RwLock<IdentifierInterner>,
 ) -> Option<Statement> {
     parse_statement_using(&mut ParseState::new(
         file_path_id,
@@ -266,8 +267,8 @@ pub fn parse_statement_using(state: &mut ParseState<'_, '_, '_>) -> Option<State
 pub fn parse_type(
     file_path_id: PathID,
     source: impl AsRef<str>,
-    diagnostics: &mut Diagnostics,
-    identifier_interner: &mut IdentifierInterner,
+    diagnostics: &RwLock<Diagnostics>,
+    identifier_interner: &RwLock<IdentifierInterner>,
 ) -> Option<Type> {
     parse_type_using(&mut ParseState::new(
         file_path_id,
@@ -290,8 +291,8 @@ pub fn parse_type_using(state: &mut ParseState<'_, '_, '_>) -> Option<Type> {
 pub fn parse_pattern(
     file_path_id: PathID,
     source: impl AsRef<str>,
-    diagnostics: &mut Diagnostics,
-    identifier_interner: &mut IdentifierInterner,
+    diagnostics: &RwLock<Diagnostics>,
+    identifier_interner: &RwLock<IdentifierInterner>,
 ) -> Option<Pattern> {
     parse_pattern_using(&mut ParseState::new(
         file_path_id,
@@ -314,8 +315,8 @@ impl<'s, 'd, 'i> ParseState<'s, 'd, 'i> {
     pub fn new(
         file_path_id: PathID,
         source: &'s str,
-        diagnostics: &'d mut Diagnostics,
-        identifier_interner: &'i mut IdentifierInterner,
+        diagnostics: &'d RwLock<Diagnostics>,
+        identifier_interner: &'i RwLock<IdentifierInterner>,
     ) -> Self {
         let mut lexer = Lexer::new(file_path_id, source, identifier_interner);
 
@@ -502,6 +503,7 @@ impl<'s, 'd, 'i> ParseState<'s, 'd, 'i> {
     #[allow(clippy::needless_pass_by_value)]
     pub(crate) fn add_diagnostic(&mut self, diagnostic: impl BuildDiagnostic) {
         self.diagnostics
+            .write()
             .add_single_file_diagnostic(self.lexer.file_path_id, diagnostic.build());
     }
 }

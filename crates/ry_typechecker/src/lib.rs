@@ -1,9 +1,15 @@
 #![allow(warnings)]
 
-use std::{ops::ControlFlow, sync::Arc};
+use std::{
+    ops::{ControlFlow, Deref},
+    rc::{self, Rc},
+    sync::Arc,
+};
 
 use derive_more::Display;
 use diagnostics::ExpectedInterface;
+use hir_storage::HIRStorage;
+use parking_lot::RwLock;
 use ry_ast::{IdentifierAST, ImportPath, Visibility};
 use ry_diagnostics::{BuildDiagnostic, Diagnostics};
 use ry_filesystem::location::Location;
@@ -20,24 +26,51 @@ use ry_thir::{
     ty::{self, Type, TypeConstructor},
     InterfaceSignature, ModuleItemSignature, Predicate, TypeAliasSignature,
 };
+use thir_storage::THIRStorage;
 use type_variable_factory::TypeVariableFactory;
 
 use crate::diagnostics::{BoundsInTypeAliasDiagnostic, ExpectedType};
 
 pub mod diagnostics;
+pub mod hir_storage;
+pub mod thir_storage;
 pub mod type_variable_factory;
+
+#[derive(Debug)]
+pub enum ModuleItemState {
+    HIR(ry_hir::ModuleItem),
+    THIR(ry_thir::ModuleItem),
+}
+
+impl ModuleItemState {
+    #[inline]
+    #[must_use]
+    pub const fn hir(&self) -> Option<&ry_hir::ModuleItem> {
+        match self {
+            Self::HIR(hir) => Some(hir),
+            _ => None,
+        }
+    }
+
+    #[inline]
+    #[must_use]
+    pub fn hir_or_panic(&self) -> &ry_hir::ModuleItem {
+        self.hir()
+            .unwrap_or_else(|| panic!("expected HIR, found already analyzed THIR"))
+    }
+}
 
 /// Context for type checking stage of compilation.
 #[derive(Debug)]
-pub struct TypeCheckingContext<'i, 'p, 'g, 'd> {
+pub struct TypeCheckingContext<'i, 'p, 'd> {
     /// Global name resolution environment.
     resolution_environment: ResolutionEnvironment,
 
-    /// Storage of HIR for module items, signature of which haven't yet been analyzed.
-    items_hir: FxHashMap<DefinitionID, Arc<ry_hir::ModuleItem>>,
+    /// HIR global storage.
+    hir_storage: RwLock<HIRStorage>,
 
-    /// Storage of THIR for module items, that have been fully analyzed.
-    items_thir: FxHashMap<DefinitionID, ry_thir::ModuleItem<'g>>,
+    /// THIR global storage.
+    thir_storage: RwLock<THIRStorage>,
 
     /// List of type aliases, that have been recursivly analyzed. Used to find
     /// type alias cycles.
@@ -53,27 +86,27 @@ pub struct TypeCheckingContext<'i, 'p, 'g, 'd> {
     type_variable_factory: TypeVariableFactory,
 
     /// Storage of signatures for module items.
-    signatures: FxHashMap<DefinitionID, Arc<ModuleItemSignature<'g>>>,
+    signatures: FxHashMap<DefinitionID, Arc<ModuleItemSignature>>,
     substitutions: FxHashMap<IdentifierID, Type>,
 
     /// Diagnostics.
-    diagnostics: &'d mut Diagnostics,
+    diagnostics: &'d RwLock<Diagnostics>,
 }
 
-impl<'i, 'p, 'g, 'd> TypeCheckingContext<'i, 'p, 'g, 'd> {
+impl<'i, 'p, 'd> TypeCheckingContext<'i, 'p, 'd> {
     /// Creates a new empty type checking context.
     pub fn new(
         path_interner: &'p PathInterner,
         identifier_interner: &'i IdentifierInterner,
-        diagnostics: &'d mut Diagnostics,
+        diagnostics: &'d RwLock<Diagnostics>,
     ) -> Self {
         Self {
             path_interner,
             identifier_interner,
             diagnostics,
             type_alias_stack: FxHashSet::default(),
-            items_hir: FxHashMap::default(),
-            items_thir: FxHashMap::default(),
+            hir_storage: RwLock::new(HIRStorage::new()),
+            thir_storage: RwLock::new(THIRStorage::new()),
             resolution_environment: ResolutionEnvironment::new(),
             type_variable_factory: TypeVariableFactory::new(),
             substitutions: FxHashMap::default(),
@@ -124,14 +157,16 @@ impl<'i, 'p, 'g, 'd> TypeCheckingContext<'i, 'p, 'g, 'd> {
                 self.resolution_environment
                     .visibilities
                     .insert(definition_id, item.visibility());
-                self.items_hir.insert(definition_id, Arc::new(item));
+                self.hir_storage
+                    .write()
+                    .add_module_item(definition_id, item);
             }
         }
     }
 
     /// Adds an import into the context (adds it into its inner name resolution context).
     fn add_import_hir(
-        &mut self,
+        &self,
         path: ry_hir::ImportPath,
         imports: &mut FxHashMap<IdentifierID, NameBinding>,
     ) {
@@ -197,7 +232,7 @@ impl<'i, 'p, 'g, 'd> TypeCheckingContext<'i, 'p, 'g, 'd> {
 
     /// Converts a type representation from HIR into [`Type`].
     pub fn resolve_type(
-        &mut self,
+        &self,
         ty: &ry_hir::Type,
         generic_parameter_scope: Option<&GenericParameterScope>,
         module_scope: &ModuleScope,
@@ -236,7 +271,7 @@ impl<'i, 'p, 'g, 'd> TypeCheckingContext<'i, 'p, 'g, 'd> {
 
     /// Converts a type constructor from HIR into [`TypeConstructor`].
     fn resolve_type_constructor(
-        &mut self,
+        &self,
         ty: &ry_hir::TypeConstructor,
         generic_parameter_scope: Option<&GenericParameterScope>,
         module_scope: &ModuleScope,
@@ -269,7 +304,7 @@ impl<'i, 'p, 'g, 'd> TypeCheckingContext<'i, 'p, 'g, 'd> {
         let name_binding_kind = name_binding.kind();
 
         if !name_binding_kind.is_module_item() {
-            self.diagnostics.add_single_file_diagnostic(
+            self.diagnostics.write().add_single_file_diagnostic(
                 ty.location.file_path_id,
                 ExpectedType {
                     location: ty.location,
@@ -286,7 +321,7 @@ impl<'i, 'p, 'g, 'd> TypeCheckingContext<'i, 'p, 'g, 'd> {
 
     /// Resolves type arguments.
     fn resolve_type_arguments(
-        &mut self,
+        &self,
         hir: &[ry_hir::Type],
         generic_parameter_scope: Option<&GenericParameterScope>,
         module_scope: &ModuleScope,
@@ -296,12 +331,12 @@ impl<'i, 'p, 'g, 'd> TypeCheckingContext<'i, 'p, 'g, 'd> {
             .collect::<Option<_>>()
     }
 
-    fn unwrap_type_alias(&mut self, path: Path) -> Type {
+    fn unwrap_type_alias(&self, path: Path) -> Type {
         let definition_id = self.resolve_type_signature_by_path(path);
         todo!()
     }
 
-    fn implements(&mut self, ty: Type, interface: TypeConstructor) -> bool {
+    fn implements(&self, ty: Type, interface: TypeConstructor) -> bool {
         match ty {
             Type::Constructor(constructor) => {
                 let signature = self.resolve_type_signature_by_path(constructor.path);
@@ -318,7 +353,7 @@ impl<'i, 'p, 'g, 'd> TypeCheckingContext<'i, 'p, 'g, 'd> {
     }
 
     fn resolve_interface(
-        &mut self,
+        &self,
         interface: ry_hir::TypeConstructor,
         generic_parameter_scope: Option<&GenericParameterScope>,
         module_scope: &ModuleScope,
@@ -355,7 +390,7 @@ impl<'i, 'p, 'g, 'd> TypeCheckingContext<'i, 'p, 'g, 'd> {
     }
 
     fn resolve_bounds(
-        &mut self,
+        &self,
         bounds: &[ry_hir::TypeConstructor],
         module_scope: &ModuleScope,
     ) -> Option<Vec<TypeConstructor>> {
@@ -366,29 +401,29 @@ impl<'i, 'p, 'g, 'd> TypeCheckingContext<'i, 'p, 'g, 'd> {
     }
 
     fn resolve_type_signature_by_definition_id(
-        &mut self,
+        &self,
         definition_id: DefinitionID,
     ) -> Arc<ModuleItemSignature> {
         todo!()
     }
 
-    fn resolve_type_signature_by_path(&mut self, path: Path) -> Arc<ModuleItemSignature> {
+    fn resolve_type_signature_by_path(&self, path: Path) -> Arc<ModuleItemSignature> {
         todo!()
     }
 
     fn resolve_interface_signature_by_definition_id(
-        &mut self,
+        &self,
         definition_id: DefinitionID,
     ) -> Arc<ModuleItemSignature> {
         todo!()
     }
 
-    fn resolve_interface_signature_by_path(&mut self, path: Path) -> Arc<ModuleItemSignature> {
+    fn resolve_interface_signature_by_path(&self, path: Path) -> Arc<ModuleItemSignature> {
         todo!()
     }
 
     fn resolve_signature(
-        &mut self,
+        &self,
         name_binding: NameBinding,
         module_scope: &ModuleScope,
     ) -> Option<Arc<ModuleItemSignature>> {
@@ -409,45 +444,46 @@ impl<'i, 'p, 'g, 'd> TypeCheckingContext<'i, 'p, 'g, 'd> {
     }
 
     fn analyze_signature(
-        &mut self,
+        &self,
         name_binding: NameBinding,
         module_scope: &ModuleScope,
     ) -> Option<Arc<ModuleItemSignature>> {
         match name_binding {
-            NameBinding::TypeAlias(definition_id) => self.analyze_type_alias_signature(
-                match self.items_hir.get(&definition_id).unwrap().clone().as_ref() {
-                    ry_hir::ModuleItem::TypeAlias(alias) => alias,
-                    _ => unreachable!(),
-                },
-                module_scope,
-            ),
+            NameBinding::TypeAlias(definition_id) => {
+                self.analyze_type_alias_signature(definition_id, module_scope)
+            }
             _ => unreachable!(),
         }
     }
 
     fn analyze_type_alias_signature(
-        &mut self,
-        hir: &ry_hir::TypeAlias,
+        &self,
+        definition_id: DefinitionID,
         module_scope: &ModuleScope,
     ) -> Option<Arc<ModuleItemSignature>> {
+        let hir_storage_reader = self.hir_storage.read();
+        let alias = hir_storage_reader.resolve_type_alias_hir_or_panic(definition_id);
+
         let (generic_parameter_scope, _) = self.analyze_generic_parameters_and_bounds(
             true,
-            hir.name.location,
+            alias.name.location,
             None,
-            &hir.generic_parameters,
+            &alias.generic_parameters,
             &[],
             module_scope,
         )?;
         let generic_parameter_scope = Some(&generic_parameter_scope);
 
+        let value = self.resolve_type(&alias.value, generic_parameter_scope, module_scope);
+
         todo!()
     }
 
     fn analyze_generic_parameters_and_bounds<'gs>(
-        &'gs mut self,
+        &'gs self,
         is_type_alias: bool,
         module_item_name_location: Location,
-        parent_generic_parameter_scope: Option<&'gs GenericParameterScope>,
+        parent_generic_parameter_scope: Option<Arc<GenericParameterScope>>,
         generic_parameters_hir: &[ry_hir::GenericParameter],
         where_predicates_hir: &[ry_hir::WherePredicate],
         module_scope: &ModuleScope,
@@ -475,7 +511,7 @@ impl<'i, 'p, 'g, 'd> TypeCheckingContext<'i, 'p, 'g, 'd> {
 
             if let Some(bounds_hir) = &parameter_hir.bounds {
                 if unlikely(is_type_alias) {
-                    self.diagnostics.add_single_file_diagnostic(
+                    self.diagnostics.write().add_single_file_diagnostic(
                         module_item_name_location.file_path_id,
                         BoundsInTypeAliasDiagnostic {
                             alias_name_location: module_item_name_location,

@@ -1,5 +1,7 @@
+use std::ops::Deref;
 use std::{io::Write, path::PathBuf, time::Instant};
 
+use parking_lot::RwLock;
 use ry_ast_lowering::LoweringContext;
 use ry_diagnostics::diagnostic::Diagnostic;
 use ry_diagnostics::{Diagnostics, DiagnosticsEmitter};
@@ -10,11 +12,11 @@ use crate::{prefix::log_with_left_padded_prefix, unique_file::create_unique_file
 
 pub fn command(path_str: &str) {
     let mut path_interner = PathInterner::new();
-    let mut identifier_interner = IdentifierInterner::new();
+    let identifier_interner = RwLock::new(IdentifierInterner::new());
 
     let file_path_id = path_interner.get_or_intern(PathBuf::from(path_str));
 
-    let mut diagnostics = Diagnostics::new();
+    let diagnostics = RwLock::new(Diagnostics::new());
     let mut diagnostics_emitter = DiagnosticsEmitter::new(&path_interner);
 
     let mut now = Instant::now();
@@ -22,8 +24,8 @@ pub fn command(path_str: &str) {
     match read_and_parse_module(
         &path_interner,
         file_path_id,
-        &mut diagnostics,
-        &mut identifier_interner,
+        &diagnostics,
+        &identifier_interner,
     ) {
         Err(..) => {
             diagnostics_emitter.emit_context_free_diagnostic(
@@ -35,12 +37,15 @@ pub fn command(path_str: &str) {
 
             now = Instant::now();
 
-            let mut lowering_context = LoweringContext::new(file_path_id, &mut diagnostics);
+            let mut lowering_context = LoweringContext::new(file_path_id, &diagnostics);
             let hir = lowering_context.lower(ast);
 
             log_with_left_padded_prefix("Lowered", format!("in {}s", now.elapsed().as_secs_f64()));
 
-            diagnostics_emitter.emit_global_diagnostics(&diagnostics);
+            let diagnostics_reader = diagnostics.read();
+            let diagnostics = diagnostics_reader.deref();
+
+            diagnostics_emitter.emit_global_diagnostics(diagnostics);
 
             if diagnostics.is_ok() {
                 now = Instant::now();

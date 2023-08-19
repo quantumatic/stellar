@@ -1,3 +1,4 @@
+use parking_lot::RwLock;
 use ry_ast::{IdentifierAST, Path};
 use ry_diagnostics::Diagnostics;
 use ry_filesystem::location::DUMMY_LOCATION;
@@ -36,7 +37,7 @@ fn resolve_module() {
     let child_module_id = ModuleID(child_module_path_id);
 
     let mut environment = ResolutionEnvironment::new();
-    let mut diagnostics = Diagnostics::new();
+    let diagnostics = RwLock::new(Diagnostics::new());
 
     let mut package_root_module_scope = ModuleScope {
         name: a,
@@ -75,7 +76,7 @@ fn resolve_module() {
                 identifiers: vec![dummy_identifier!(a), dummy_identifier!(a)],
             },
             &identifier_interner,
-            &mut diagnostics
+            &diagnostics
         ),
         Some(NameBinding::Module(child_module_id))
     );
@@ -87,7 +88,7 @@ fn resolve_module() {
                 identifiers: vec![dummy_identifier!(b)],
             },
             &identifier_interner,
-            &mut diagnostics
+            &diagnostics
         ),
         None,
     );
@@ -118,7 +119,7 @@ fn import() {
     let child_module_id = ModuleID(child_module_path_id);
 
     let mut environment = ResolutionEnvironment::new();
-    let mut diagnostics = Diagnostics::new();
+    let diagnostics = RwLock::new(Diagnostics::new());
 
     let mut package_root_module_scope = ModuleScope {
         name: a,
@@ -164,7 +165,7 @@ fn import() {
         .module_scopes
         .insert(child_module_id, child_module_scope);
 
-    environment.resolve_imports(&identifier_interner, &mut diagnostics);
+    environment.resolve_imports(&identifier_interner, &diagnostics);
 
     assert_eq!(
         environment
@@ -174,7 +175,7 @@ fn import() {
             .resolve(
                 dummy_identifier!(b),
                 &identifier_interner,
-                &mut diagnostics,
+                &diagnostics,
                 &environment
             ),
         Some(NameBinding::Module(child_module_id))
@@ -187,7 +188,7 @@ fn import() {
             .resolve(
                 dummy_identifier!(c),
                 &identifier_interner,
-                &mut diagnostics,
+                &diagnostics,
                 &environment
             ),
         Some(NameBinding::Module(child_module_id))

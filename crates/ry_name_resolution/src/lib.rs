@@ -73,6 +73,7 @@ use diagnostics::{
     ModuleItemsExceptEnumsDoNotServeAsNamespacesDiagnostic,
 };
 use itertools::Itertools;
+use parking_lot::RwLock;
 use ry_ast::{IdentifierAST, Visibility};
 use ry_diagnostics::{BuildDiagnostic, Diagnostics};
 use ry_fx_hash::FxHashMap;
@@ -80,11 +81,11 @@ use ry_interner::{IdentifierID, IdentifierInterner, PathID};
 
 pub mod diagnostics;
 
-/// An ID assigned for every package in a workspace.
+/// An ID assigned to every package in a workspace.
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
 pub struct PackageID(pub IdentifierID);
 
-/// An ID assigned for every module in a workspace.
+/// An ID assigned to every module in a workspace.
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
 pub struct ModuleID(pub PathID);
 
@@ -144,7 +145,7 @@ impl ResolutionEnvironment {
     pub fn resolve_imports(
         &mut self,
         identifier_interner: &IdentifierInterner,
-        diagnostics: &mut Diagnostics,
+        diagnostics: &RwLock<Diagnostics>,
     ) {
         for (module_path_id, module_scope) in &self.module_scopes {
             let mut imports = FxHashMap::default();
@@ -174,7 +175,7 @@ impl ResolutionEnvironment {
         &self,
         path: ry_ast::Path,
         identifier_interner: &IdentifierInterner,
-        diagnostics: &mut Diagnostics,
+        diagnostics: &RwLock<Diagnostics>,
     ) -> Option<NameBinding> {
         let mut identifiers = path.identifiers.into_iter();
         let first_identifier = identifiers.next().unwrap();
@@ -183,7 +184,7 @@ impl ResolutionEnvironment {
             .packages_root_modules
             .contains_key(&PackageID(first_identifier.id))
         {
-            diagnostics.add_single_file_diagnostic(
+            diagnostics.write().add_single_file_diagnostic(
                 first_identifier.location.file_path_id,
                 FailedToResolvePackageDiagnostic {
                     package_name: identifier_interner
@@ -405,7 +406,7 @@ impl NameBinding {
         first_identifier: IdentifierAST,
         other_identifiers: impl IntoIterator<Item = IdentifierAST>,
         identifier_interner: &IdentifierInterner,
-        diagnostics: &mut Diagnostics,
+        diagnostics: &RwLock<Diagnostics>,
         environment: &ResolutionEnvironment,
     ) -> Option<Self> {
         iter::once(first_identifier)
@@ -432,7 +433,7 @@ fn resolve_binding_in_module_namespace(
     namespace: IdentifierAST,
     name: IdentifierAST,
     identifier_interner: &IdentifierInterner,
-    diagnostics: &mut Diagnostics,
+    diagnostics: &RwLock<Diagnostics>,
     environment: &ResolutionEnvironment,
 ) -> Option<NameBinding> {
     let Some(binding) = environment
@@ -442,7 +443,7 @@ fn resolve_binding_in_module_namespace(
         .bindings
         .get(&name.id)
     else {
-        diagnostics.add_single_file_diagnostic(
+        diagnostics.write().add_single_file_diagnostic(
             name.location.file_path_id,
             FailedToResolveModuleItemDiagnostic {
                 item_name: identifier_interner.resolve(name.id).unwrap().to_owned(),
@@ -466,7 +467,7 @@ fn resolve_binding_in_module_namespace(
     | NameBinding::TypeAlias(definition_id) = binding
     {
         if *environment.visibilities.get(definition_id).unwrap() == Visibility::Private {
-            diagnostics.add_single_file_diagnostic(
+            diagnostics.write().add_single_file_diagnostic(
                 name.location.file_path_id,
                 FailedToResolvePrivateModuleItemDiagnostic {
                     item_name: identifier_interner.resolve(name.id).unwrap().to_owned(),
@@ -492,7 +493,7 @@ fn resolve_binding_in_module_item_namespace(
     namespace: IdentifierAST,
     name: IdentifierAST,
     identifier_interner: &IdentifierInterner,
-    diagnostics: &mut Diagnostics,
+    diagnostics: &RwLock<Diagnostics>,
     environment: &ResolutionEnvironment,
 ) -> Option<NameBinding> {
     if let Some(enum_scope) = environment
@@ -507,7 +508,7 @@ fn resolve_binding_in_module_item_namespace(
             .copied()
             .map(NameBinding::EnumItem)
     } else {
-        diagnostics.add_single_file_diagnostic(
+        diagnostics.write().add_single_file_diagnostic(
             name.location.file_path_id,
             ModuleItemsExceptEnumsDoNotServeAsNamespacesDiagnostic {
                 name: identifier_interner.resolve(name.id).unwrap().to_owned(),
@@ -529,7 +530,7 @@ fn resolve_binding_in_package_namespace(
     package_id: PackageID,
     name: IdentifierAST,
     identifier_interner: &IdentifierInterner,
-    diagnostics: &mut Diagnostics,
+    diagnostics: &RwLock<Diagnostics>,
     environment: &ResolutionEnvironment,
 ) -> Option<NameBinding> {
     let Some(module) = environment
@@ -540,7 +541,7 @@ fn resolve_binding_in_package_namespace(
         .unwrap()
         .resolve(name, identifier_interner, diagnostics, environment)
     else {
-        diagnostics.add_single_file_diagnostic(
+        diagnostics.write().add_single_file_diagnostic(
             name.location.file_path_id,
             FailedToResolveModuleDiagnostic {
                 module_name: identifier_interner.resolve(name.id).unwrap().to_owned(),
@@ -570,7 +571,7 @@ fn resolve_path_segment(
     namespace: IdentifierAST,
     name: IdentifierAST,
     identifier_interner: &IdentifierInterner,
-    diagnostics: &mut Diagnostics,
+    diagnostics: &RwLock<Diagnostics>,
     environment: &ResolutionEnvironment,
 ) -> Option<NameBinding> {
     match binding {
@@ -584,7 +585,7 @@ fn resolve_path_segment(
         NameBinding::EnumItem(_) => {
             // Enum items are not namespaces!
 
-            diagnostics.add_single_file_diagnostic(
+            diagnostics.write().add_single_file_diagnostic(
                 name.location.file_path_id,
                 ModuleItemsExceptEnumsDoNotServeAsNamespacesDiagnostic {
                     name: identifier_interner.resolve(name.id).unwrap().to_owned(),
@@ -670,7 +671,7 @@ impl ModuleScope {
         &self,
         path: ry_ast::Path,
         identifier_interner: &IdentifierInterner,
-        diagnostics: &mut Diagnostics,
+        diagnostics: &RwLock<Diagnostics>,
         environment: &ResolutionEnvironment,
     ) -> Option<NameBinding> {
         let mut identifiers = path.identifiers.into_iter();
@@ -701,7 +702,7 @@ impl ModuleScope {
         &self,
         identifier: IdentifierAST,
         identifier_interner: &IdentifierInterner,
-        diagnostics: &mut Diagnostics,
+        diagnostics: &RwLock<Diagnostics>,
         environment: &ResolutionEnvironment,
     ) -> Option<NameBinding> {
         if let Some(binding) = self.bindings.get(&identifier.id).copied().or_else(|| {
@@ -723,7 +724,7 @@ impl ModuleScope {
             {
                 Some(*binding)
             } else {
-                diagnostics.add_single_file_diagnostic(
+                diagnostics.write().add_single_file_diagnostic(
                     identifier.location.file_path_id,
                     FailedToResolveNameDiagnostic {
                         name: identifier_interner

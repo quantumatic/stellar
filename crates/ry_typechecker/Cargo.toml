@@ -10,6 +10,7 @@ description = "Implements type checking compilation stage for the Ry programming
 
 [dependencies]
 derive_more = "0.99.17"
+parking_lot = "0.12.1"
 ry_ast = { path = "../ry_ast" }
 ry_ast_lowering = { path = "../ry_ast_lowering" }
 ry_diagnostics = { path = "../ry_diagnostics" }
@@ -21,3 +22,4 @@ ry_name_resolution = { path = "../ry_name_resolution" }
 ry_parser = { path = "../ry_parser" }
 ry_stable_likely = { path = "../ry_stable_likely" }
 ry_thir = { path = "../ry_thir" }
+

@@ -1,4 +1,5 @@
 use diagnostics::{UnnecessaryParenthesesInPatternDiagnostic, UnnecessaryParenthesizedExpression};
+use parking_lot::RwLock;
 use ry_diagnostics::{BuildDiagnostic, Diagnostics};
 use ry_interner::PathID;
 
@@ -6,13 +7,13 @@ mod diagnostics;
 
 pub struct LoweringContext<'d> {
     file_path_id: PathID,
-    diagnostics: &'d mut Diagnostics,
+    diagnostics: &'d RwLock<Diagnostics>,
 }
 
 impl<'d> LoweringContext<'d> {
     #[inline]
     #[must_use]
-    pub fn new(file_path_id: PathID, diagnostics: &'d mut Diagnostics) -> Self {
+    pub fn new(file_path_id: PathID, diagnostics: &'d RwLock<Diagnostics>) -> Self {
         Self {
             file_path_id,
             diagnostics,
@@ -22,6 +23,7 @@ impl<'d> LoweringContext<'d> {
     #[inline]
     pub fn add_diagnostic(&mut self, diagnostic: impl BuildDiagnostic) {
         self.diagnostics
+            .write()
             .add_single_file_diagnostic(self.file_path_id, diagnostic.build());
     }
 

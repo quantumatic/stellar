@@ -66,6 +66,7 @@
 
 use std::{mem, str::Chars, string::String};
 
+use parking_lot::RwLock;
 use ry_ast::token::{get_keyword, LexError, Punctuator, RawLexError, RawToken, Token};
 use ry_filesystem::location::{ByteOffset, Location};
 use ry_interner::{IdentifierID, IdentifierInterner, PathID};
@@ -77,13 +78,15 @@ mod number;
 /// Lexer is fairly standart. It returns [`type@Token`] and then advances its state on
 /// each iteration and stops at eof (always returns [`EndOfFile`]).
 /// ```
-/// # use ry_lexer::Lexer;
-/// # use ry_ast::token::{Token, RawToken::EndOfFile};
-/// # use ry_interner::IdentifierInterner;
-/// # use ry_filesystem::location::{Location, ByteOffset};
-/// # use ry_interner::DUMMY_PATH_ID;
-/// let mut identifier_interner = IdentifierInterner::default();
-/// let mut lexer = Lexer::new(DUMMY_PATH_ID, "", &mut identifier_interner);
+/// use ry_lexer::Lexer;
+/// use ry_ast::token::{Token, RawToken::EndOfFile};
+/// use ry_interner::IdentifierInterner;
+/// use ry_filesystem::location::{Location, ByteOffset};
+/// use ry_interner::DUMMY_PATH_ID;
+/// use parking_lot::RwLock;
+///
+/// let mut identifier_interner = RwLock::new(IdentifierInterner::default());
+/// let mut lexer = Lexer::new(DUMMY_PATH_ID, "", &identifier_interner);
 ///
 /// assert_eq!(
 ///     lexer.next_token(),
@@ -101,11 +104,13 @@ mod number;
 /// If error appeared in the process, [`Error`] token will be returned:
 ///
 /// ```
-/// # use ry_lexer::Lexer;
-/// # use ry_ast::token::{RawLexError, RawToken::Error};
-/// # use ry_interner::{IdentifierInterner, DUMMY_PATH_ID};
-/// let mut identifier_interner = IdentifierInterner::default();
-/// let mut lexer = Lexer::new(DUMMY_PATH_ID, "١", &mut identifier_interner);
+/// use ry_lexer::Lexer;
+/// use ry_ast::token::{RawLexError, RawToken::Error};
+/// use ry_interner::{IdentifierInterner, DUMMY_PATH_ID};
+/// use parking_lot::RwLock;
+///
+/// let mut identifier_interner = RwLock::new(IdentifierInterner::default());
+/// let mut lexer = Lexer::new(DUMMY_PATH_ID, "١", &identifier_interner);
 ///
 /// assert_eq!(lexer.next_token().raw, Error(RawLexError::UnexpectedChar));
 /// ```
@@ -126,7 +131,7 @@ pub struct Lexer<'s, 'i> {
     pub source: &'s str,
 
     /// Identifier interner.
-    pub identifier_interner: &'i mut IdentifierInterner,
+    pub identifier_interner: &'i RwLock<IdentifierInterner>,
 
     /// Current character.
     current: char,
@@ -154,7 +159,7 @@ impl<'s, 'i> Lexer<'s, 'i> {
     pub fn new(
         file_path_id: PathID,
         source: &'s str,
-        identifier_interner: &'i mut IdentifierInterner,
+        identifier_interner: &'i RwLock<IdentifierInterner>,
     ) -> Self {
         let mut chars = source.chars();
 
@@ -568,7 +573,7 @@ impl<'s, 'i> Lexer<'s, 'i> {
 
         self.advance();
 
-        self.scanned_identifier = self.identifier_interner.get_or_intern(name);
+        self.scanned_identifier = self.identifier_interner.write().get_or_intern(name);
 
         Token {
             raw: RawToken::Identifier,
@@ -624,7 +629,7 @@ impl<'s, 'i> Lexer<'s, 'i> {
                 location: self.location_from(start_location),
             }
         } else {
-            self.scanned_identifier = self.identifier_interner.get_or_intern(name);
+            self.scanned_identifier = self.identifier_interner.write().get_or_intern(name);
             Token {
                 raw: RawToken::Identifier,
                 location: self.location_from(start_location),

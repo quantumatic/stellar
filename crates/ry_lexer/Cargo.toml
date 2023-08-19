@@ -9,6 +9,7 @@ readme = "../../README.md"
 description = "Lexer for the Ry programming language."
 
 [dependencies]
+parking_lot = "0.12.1"
 ry_ast = { path = "../ry_ast" }
 ry_filesystem = { path = "../ry_filesystem" }
 ry_interner = { path = "../ry_interner" }

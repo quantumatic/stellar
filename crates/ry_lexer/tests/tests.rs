@@ -8,8 +8,10 @@ mod tests {
         ($name:ident, $source:expr, $expected:pat) => {
             #[test]
             fn $name() {
-                let mut identifier_interner = IdentifierInterner::new();
-                let mut lexer = Lexer::new(DUMMY_PATH_ID, $source, &mut identifier_interner);
+                use parking_lot::RwLock;
+
+                let identifier_interner = RwLock::new(IdentifierInterner::new());
+                let mut lexer = Lexer::new(DUMMY_PATH_ID, $source, &identifier_interner);
                 assert!(matches!(lexer.next_token().raw, $expected));
             }
         };

@@ -740,6 +740,27 @@ impl ModuleItem {
             Self::Import { .. } => Visibility::Private,
         }
     }
+
+    /// Returns the type alias variant of the time.
+    #[inline]
+    #[must_use]
+    pub const fn type_alias(&self) -> Option<&TypeAlias> {
+        match self {
+            Self::TypeAlias(alias) => Some(alias),
+            _ => None,
+        }
+    }
+
+    /// Returns the type alias variant of the time.
+    ///
+    /// # Panics
+    /// If the item is not a type alias.
+    #[inline]
+    #[must_use]
+    pub fn type_alias_or_panic(&self) -> &TypeAlias {
+        self.type_alias()
+            .unwrap_or_else(|| panic!("expected type alias, got {}", self.kind()))
+    }
 }
 
 /// An enum item, e.g. `None`, `Ok(T)`, `A { b: T }`.
