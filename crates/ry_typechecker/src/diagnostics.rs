@@ -6,12 +6,23 @@ use ry_name_resolution::NameBindingKind;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct DuplicateTraitBoundDiagnostic {
-    pub first_bound_location: Location,
-    pub second_bound_location: Location,
+    first_bound_location: Location,
+    second_bound_location: Location,
+}
+
+impl DuplicateTraitBoundDiagnostic {
+    #[inline]
+    #[must_use]
+    pub const fn new(first_bound_location: Location, second_bound_location: Location) -> Self {
+        Self {
+            first_bound_location,
+            second_bound_location,
+        }
+    }
 }
 
 impl BuildDiagnostic for DuplicateTraitBoundDiagnostic {
-    fn build(&self) -> Diagnostic<PathID> {
+    fn build(self) -> Diagnostic<PathID> {
         Diagnostic::error()
             .with_code("E007")
             .with_message("duplicate traits bounds found")
@@ -26,17 +37,28 @@ impl BuildDiagnostic for DuplicateTraitBoundDiagnostic {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct UnnecessaryEqualityPredicateDiagnostic {
     pub generic_parameter_location: Location,
     pub type_location: Location,
 }
 
+impl UnnecessaryEqualityPredicateDiagnostic {
+    #[inline]
+    #[must_use]
+    pub const fn new(generic_parameter_location: Location, type_location: Location) -> Self {
+        Self {
+            generic_parameter_location,
+            type_location,
+        }
+    }
+}
+
 impl BuildDiagnostic for UnnecessaryEqualityPredicateDiagnostic {
-    fn build(&self) -> Diagnostic<PathID> {
+    fn build(self) -> Diagnostic<PathID> {
         Diagnostic::error()
             .with_code("E008")
-            .with_message("unneccessary equality where predicate")
+            .with_message("unnecessary equality where predicate")
             .with_labels(vec![
                 self.generic_parameter_location
                     .to_primary_label()
@@ -54,8 +76,19 @@ pub struct ExpectedType {
     pub name_binding_kind: NameBindingKind,
 }
 
+impl ExpectedType {
+    #[inline]
+    #[must_use]
+    pub fn new(location: Location, name_binding_kind: NameBindingKind) -> Self {
+        Self {
+            location,
+            name_binding_kind,
+        }
+    }
+}
+
 impl BuildDiagnostic for ExpectedType {
-    fn build(&self) -> Diagnostic<PathID> {
+    fn build(self) -> Diagnostic<PathID> {
         Diagnostic::error()
             .with_code("E009")
             .with_message(format!("expected type, got {}", self.name_binding_kind))
@@ -63,13 +96,25 @@ impl BuildDiagnostic for ExpectedType {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ExpectedInterface {
-    pub location: Location,
-    pub name_binding_kind: NameBindingKind,
+    location: Location,
+    name_binding_kind: NameBindingKind,
+}
+
+impl ExpectedInterface {
+    #[inline]
+    #[must_use]
+    pub fn new(location: Location, name_binding_kind: NameBindingKind) -> Self {
+        Self {
+            location,
+            name_binding_kind,
+        }
+    }
 }
 
 impl BuildDiagnostic for ExpectedInterface {
-    fn build(&self) -> Diagnostic<PathID> {
+    fn build(self) -> Diagnostic<PathID> {
         Diagnostic::error()
             .with_code("E009")
             .with_message(format!(
@@ -80,13 +125,25 @@ impl BuildDiagnostic for ExpectedInterface {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct BoundsInTypeAliasDiagnostic {
-    pub alias_name_location: Location,
-    pub bounds_location: Location,
+    alias_name_location: Location,
+    bounds_location: Location,
+}
+
+impl BoundsInTypeAliasDiagnostic {
+    #[inline]
+    #[must_use]
+    pub const fn new(alias_name_location: Location, bounds_location: Location) -> Self {
+        Self {
+            alias_name_location,
+            bounds_location,
+        }
+    }
 }
 
 impl BuildDiagnostic for BoundsInTypeAliasDiagnostic {
-    fn build(&self) -> Diagnostic<PathID> {
+    fn build(self) -> Diagnostic<PathID> {
         Diagnostic::error()
             .with_code("E010")
             .with_message("found type bounds in type alias definition")
@@ -99,5 +156,40 @@ impl BuildDiagnostic for BoundsInTypeAliasDiagnostic {
                     .with_message("consider removing all the bounds"),
             ])
             .with_notes(vec!["note: type aliases can't have bounds".to_owned()])
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DuplicateGenericParameterDiagnostic {
+    previous_parameter_location: Location,
+    current_parameter_location: Location,
+    parameter_name: String,
+}
+
+impl DuplicateGenericParameterDiagnostic {
+    #[inline]
+    #[must_use]
+    pub fn new(
+        previous_parameter_location: Location,
+        current_parameter_location: Location,
+        parameter_name: impl ToString,
+    ) -> Self {
+        Self {
+            previous_parameter_location,
+            current_parameter_location,
+            parameter_name: parameter_name.to_string(),
+        }
+    }
+}
+
+impl BuildDiagnostic for DuplicateGenericParameterDiagnostic {
+    fn build(self) -> Diagnostic<PathID> {
+        Diagnostic::error()
+            .with_code("E011")
+            .with_message(format!(
+                "found duplicate generic parameter `{}`",
+                self.parameter_name
+            ))
+            .with_labels(vec![self.previous_parameter_location.to_secondary_label()])
     }
 }

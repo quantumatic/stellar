@@ -504,7 +504,7 @@ impl<'s, 'd, 'i> ParseState<'s, 'd, 'i> {
     pub(crate) fn add_diagnostic(&mut self, diagnostic: impl BuildDiagnostic) {
         self.diagnostics
             .write()
-            .add_single_file_diagnostic(self.lexer.file_path_id, diagnostic.build());
+            .add_single_file_diagnostic(self.lexer.file_path_id, diagnostic);
     }
 }
 

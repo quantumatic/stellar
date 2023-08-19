@@ -24,7 +24,7 @@ impl<'d> LoweringContext<'d> {
     pub fn add_diagnostic(&mut self, diagnostic: impl BuildDiagnostic) {
         self.diagnostics
             .write()
-            .add_single_file_diagnostic(self.file_path_id, diagnostic.build());
+            .add_single_file_diagnostic(self.file_path_id, diagnostic);
     }
 
     #[must_use]

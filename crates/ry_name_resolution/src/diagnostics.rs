@@ -10,7 +10,7 @@ use ry_interner::PathID;
 
 /// An information about an item defined in the module.
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
-pub struct DefinitionInfo {
+pub struct ModuleItemInfo {
     /// Location of the item name.
     pub location: Location,
 
@@ -25,10 +25,10 @@ pub struct ItemDefinedMultipleTimesDiagnostic {
     pub name: String,
 
     /// First item definition.
-    pub first_definition: DefinitionInfo,
+    pub first_definition: ModuleItemInfo,
 
     /// Second item definition.
-    pub second_definition: DefinitionInfo,
+    pub second_definition: ModuleItemInfo,
 }
 
 impl ItemDefinedMultipleTimesDiagnostic {
@@ -37,8 +37,8 @@ impl ItemDefinedMultipleTimesDiagnostic {
     #[must_use]
     pub fn new(
         name: impl ToString,
-        first_definition: DefinitionInfo,
-        second_definition: DefinitionInfo,
+        first_definition: ModuleItemInfo,
+        second_definition: ModuleItemInfo,
     ) -> Self {
         Self {
             name: name.to_string(),
@@ -50,7 +50,7 @@ impl ItemDefinedMultipleTimesDiagnostic {
 
 impl BuildDiagnostic for ItemDefinedMultipleTimesDiagnostic {
     #[inline]
-    fn build(&self) -> Diagnostic<PathID> {
+    fn build(self) -> Diagnostic<PathID> {
         Diagnostic::error()
             .with_code("E005")
             .with_message(format!(
@@ -105,7 +105,7 @@ impl ImportingPackageDiagnostic {
 
 impl BuildDiagnostic for ImportingPackageDiagnostic {
     #[inline]
-    fn build(&self) -> Diagnostic<PathID> {
+    fn build(self) -> Diagnostic<PathID> {
         Diagnostic::error()
             .with_code("E006")
             .with_message("trying to import a package".to_owned())
@@ -145,7 +145,7 @@ pub struct ModuleItemsExceptEnumsDoNotServeAsNamespacesDiagnostic {
 
 impl BuildDiagnostic for ModuleItemsExceptEnumsDoNotServeAsNamespacesDiagnostic {
     #[inline]
-    fn build(&self) -> Diagnostic<PathID> {
+    fn build(self) -> Diagnostic<PathID> {
         Diagnostic::error()
             .with_code("E007")
             .with_message(format!("failed to resolve the name `{}`", self.name))
@@ -185,7 +185,7 @@ pub struct EnumItemsDoNotServeAsNamespacesDiagnostic {
 
 impl BuildDiagnostic for EnumItemsDoNotServeAsNamespacesDiagnostic {
     #[inline]
-    fn build(&self) -> Diagnostic<PathID> {
+    fn build(self) -> Diagnostic<PathID> {
         Diagnostic::error()
             .with_code("E007")
             .with_message(format!("failed to resolve the name `{}`", self.name))
@@ -214,7 +214,7 @@ pub struct FailedToResolvePackageDiagnostic {
 }
 
 impl BuildDiagnostic for FailedToResolvePackageDiagnostic {
-    fn build(&self) -> Diagnostic<PathID> {
+    fn build(self) -> Diagnostic<PathID> {
         Diagnostic::error()
             .with_code("E007")
             .with_message(format!(
@@ -246,7 +246,7 @@ pub struct FailedToResolveModuleDiagnostic {
 }
 
 impl BuildDiagnostic for FailedToResolveModuleDiagnostic {
-    fn build(&self) -> Diagnostic<PathID> {
+    fn build(self) -> Diagnostic<PathID> {
         Diagnostic::error()
             .with_code("E007")
             .with_message(format!(
@@ -279,7 +279,7 @@ pub struct FailedToResolveModuleItemDiagnostic {
 }
 
 impl BuildDiagnostic for FailedToResolveModuleItemDiagnostic {
-    fn build(&self) -> Diagnostic<PathID> {
+    fn build(self) -> Diagnostic<PathID> {
         Diagnostic::error()
             .with_code("E007")
             .with_message(format!(
@@ -312,7 +312,7 @@ pub struct FailedToResolvePrivateModuleItemDiagnostic {
 }
 
 impl BuildDiagnostic for FailedToResolvePrivateModuleItemDiagnostic {
-    fn build(&self) -> Diagnostic<PathID> {
+    fn build(self) -> Diagnostic<PathID> {
         Diagnostic::error()
             .with_code("E007")
             .with_message(format!(
@@ -341,7 +341,7 @@ pub struct FailedToResolveNameDiagnostic {
 }
 
 impl BuildDiagnostic for FailedToResolveNameDiagnostic {
-    fn build(&self) -> Diagnostic<PathID> {
+    fn build(self) -> Diagnostic<PathID> {
         Diagnostic::error()
             .with_code("E007")
             .with_message(format!("failed to resolve `{}`", self.name))

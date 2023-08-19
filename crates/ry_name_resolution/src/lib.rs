@@ -75,7 +75,7 @@ use diagnostics::{
 use itertools::Itertools;
 use parking_lot::RwLock;
 use ry_ast::{IdentifierAST, Visibility};
-use ry_diagnostics::{BuildDiagnostic, Diagnostics};
+use ry_diagnostics::Diagnostics;
 use ry_fx_hash::FxHashMap;
 use ry_interner::{IdentifierID, IdentifierInterner, PathID};
 
@@ -192,8 +192,7 @@ impl ResolutionEnvironment {
                         .unwrap()
                         .to_owned(),
                     location: first_identifier.location,
-                }
-                .build(),
+                },
             );
             return None;
         }
@@ -453,8 +452,7 @@ fn resolve_binding_in_module_namespace(
                     .unwrap()
                     .to_owned(),
                 module_name_location: namespace.location,
-            }
-            .build(),
+            },
         );
 
         return None;
@@ -477,8 +475,7 @@ fn resolve_binding_in_module_namespace(
                         .unwrap()
                         .to_owned(),
                     module_name_location: namespace.location,
-                }
-                .build(),
+                },
             );
 
             return None;
@@ -518,8 +515,7 @@ fn resolve_binding_in_module_item_namespace(
                     .unwrap()
                     .to_owned(),
                 module_item_name_location: namespace.location,
-            }
-            .build(),
+            },
         );
 
         None
@@ -548,8 +544,7 @@ fn resolve_binding_in_package_namespace(
                 module_name_location: name.location,
                 package_name: identifier_interner.resolve(name.id).unwrap().to_owned(),
                 package_name_location: name.location,
-            }
-            .build(),
+            },
         );
 
         return None;
@@ -595,8 +590,7 @@ fn resolve_path_segment(
                         .unwrap()
                         .to_owned(),
                     module_item_name_location: namespace.location,
-                }
-                .build(),
+                },
             );
 
             None
@@ -732,8 +726,7 @@ impl ModuleScope {
                             .unwrap()
                             .to_owned(),
                         location: identifier.location,
-                    }
-                    .build(),
+                    },
                 );
 
                 None

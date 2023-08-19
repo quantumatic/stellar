@@ -142,10 +142,10 @@ impl Diagnostics {
     pub fn add_single_file_diagnostic(
         &mut self,
         file_path_id: PathID,
-        diagnostic: Diagnostic<PathID>,
+        diagnostic: impl BuildDiagnostic,
     ) {
         self.files_involved.insert(file_path_id);
-        self.file_diagnostics.push(diagnostic);
+        self.file_diagnostics.push(diagnostic.build());
     }
 
     /// Adds diagnostics associated with a single file.
@@ -153,10 +153,11 @@ impl Diagnostics {
     pub fn add_single_file_diagnostics(
         &mut self,
         file_path_id: PathID,
-        diagnostic: impl IntoIterator<Item = Diagnostic<PathID>>,
+        diagnostic: impl IntoIterator<Item = impl BuildDiagnostic>,
     ) {
         self.files_involved.insert(file_path_id);
-        self.file_diagnostics.extend(diagnostic);
+        self.file_diagnostics
+            .extend(diagnostic.into_iter().map(BuildDiagnostic::build));
     }
 
     /// Adds a diagnostic associated with some files.
@@ -164,10 +165,10 @@ impl Diagnostics {
     pub fn add_file_diagnostic(
         &mut self,
         files_involved: impl IntoIterator<Item = PathID>,
-        diagnostic: Diagnostic<PathID>,
+        diagnostic: impl BuildDiagnostic,
     ) {
         self.files_involved.extend(files_involved);
-        self.file_diagnostics.push(diagnostic);
+        self.file_diagnostics.push(diagnostic.build());
     }
 
     /// Adds diagnostics associated with some files.
@@ -175,10 +176,11 @@ impl Diagnostics {
     pub fn add_file_diagnostics(
         &mut self,
         files_involved: impl IntoIterator<Item = PathID>,
-        diagnostics: impl IntoIterator<Item = Diagnostic<PathID>>,
+        diagnostics: impl IntoIterator<Item = impl BuildDiagnostic>,
     ) {
         self.files_involved.extend(files_involved);
-        self.file_diagnostics.extend(diagnostics);
+        self.file_diagnostics
+            .extend(diagnostics.into_iter().map(BuildDiagnostic::build));
     }
 
     /// Returns `true` if diagnostics are fatal.
@@ -370,7 +372,14 @@ pub const fn is_fatal_sevirity(severity: Severity) -> bool {
 pub trait BuildDiagnostic {
     /// Convert [`self`] into [`Diagnostic`].
     #[must_use]
-    fn build(&self) -> Diagnostic<PathID>;
+    fn build(self) -> Diagnostic<PathID>;
+}
+
+impl BuildDiagnostic for Diagnostic<PathID> {
+    #[inline]
+    fn build(self) -> Diagnostic<PathID> {
+        self
+    }
 }
 
 /// Extends [`Location`] with methods for converting into primary and secondary

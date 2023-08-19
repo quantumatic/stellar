@@ -9,7 +9,7 @@ pub struct UnnecessaryParenthesesInPatternDiagnostic {
 }
 
 impl BuildDiagnostic for UnnecessaryParenthesesInPatternDiagnostic {
-    fn build(&self) -> Diagnostic<PathID> {
+    fn build(self) -> Diagnostic<PathID> {
         Diagnostic::warning()
             .with_code("W000")
             .with_message("unnecessary parentheses in the pattern")
@@ -29,7 +29,7 @@ pub struct UnnecessaryParenthesizedExpression {
 }
 
 impl BuildDiagnostic for UnnecessaryParenthesizedExpression {
-    fn build(&self) -> Diagnostic<PathID> {
+    fn build(self) -> Diagnostic<PathID> {
         Diagnostic::warning()
             .with_code("W001")
             .with_message("unnecessary parenthesized expression")
@@ -49,7 +49,7 @@ pub struct UnnecessaryParenthesizedType {
 }
 
 impl BuildDiagnostic for UnnecessaryParenthesizedType {
-    fn build(&self) -> Diagnostic<PathID> {
+    fn build(self) -> Diagnostic<PathID> {
         Diagnostic::warning()
             .with_code("W002")
             .with_message("unnecessary parenthesized type")
