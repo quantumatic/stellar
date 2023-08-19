@@ -235,6 +235,32 @@ pub enum NameBinding {
     EnumItem(EnumItemID),
 }
 
+impl NameBinding {
+    /// Returns the definition ID of the name binding, if it is a module item.
+    #[inline]
+    #[must_use]
+    pub const fn definition_id(&self) -> Option<DefinitionID> {
+        match self {
+            Self::Enum(definition_id)
+            | Self::Function(definition_id)
+            | Self::Interface(definition_id)
+            | Self::Struct(definition_id)
+            | Self::TypeAlias(definition_id) => Some(*definition_id),
+            _ => None,
+        }
+    }
+
+    /// Returns the definition ID of the name binding, if it is a module item.
+    ///
+    /// # Panics
+    /// If the name binding is not a module item.
+    #[inline]
+    #[must_use]
+    pub fn definition_id_or_panic(&self) -> DefinitionID {
+        self.definition_id().unwrap()
+    }
+}
+
 /// A trait for getting the full path of a definition.
 pub trait ResolveFullPath: Sized + Debug + Copy {
     /// Returns the full path of the definition.

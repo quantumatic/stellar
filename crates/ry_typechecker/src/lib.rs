@@ -32,8 +32,9 @@ use type_variable_factory::TypeVariableFactory;
 use crate::diagnostics::{BoundsInTypeAliasDiagnostic, ExpectedType};
 
 pub mod diagnostics;
-pub mod generic_parameters;
+mod generic_parameters;
 pub mod hir_storage;
+mod signature_analysis;
 pub mod thir_storage;
 pub mod type_variable_factory;
 
@@ -235,7 +236,7 @@ impl<'i, 'p, 'd> TypeCheckingContext<'i, 'p, 'd> {
     pub fn resolve_type(
         &self,
         ty: &ry_hir::Type,
-        generic_parameter_scope: Option<&GenericParameterScope>,
+        generic_parameter_scope: &GenericParameterScope,
         module_scope: &ModuleScope,
     ) -> Option<Type> {
         match ty {
@@ -264,9 +265,15 @@ impl<'i, 'p, 'd> TypeCheckingContext<'i, 'p, 'd> {
                     module_scope,
                 )?),
             }),
-            ry_hir::Type::InterfaceObject { location, bounds } => self
-                .resolve_bounds(&bounds, module_scope)
-                .map(|bounds| Type::InterfaceObject { bounds }),
+            ry_hir::Type::InterfaceObject { location, bounds } => {
+                let bounds = self.resolve_bounds(generic_parameter_scope, bounds, module_scope);
+
+                if bounds.is_empty() {
+                    return None;
+                } else {
+                    return Some(Type::InterfaceObject { bounds });
+                }
+            }
         }
     }
 
@@ -274,22 +281,20 @@ impl<'i, 'p, 'd> TypeCheckingContext<'i, 'p, 'd> {
     fn resolve_type_constructor(
         &self,
         ty: &ry_hir::TypeConstructor,
-        generic_parameter_scope: Option<&GenericParameterScope>,
+        generic_parameter_scope: &GenericParameterScope,
         module_scope: &ModuleScope,
     ) -> Option<TypeConstructor> {
-        if let Some(generic_parameter_scope) = generic_parameter_scope {
-            let mut identifiers_iter = ty.path.identifiers.iter();
-            let possible_generic_parameter_name = identifiers_iter.next().unwrap();
+        let mut identifiers_iter = ty.path.identifiers.iter();
+        let possible_generic_parameter_name = identifiers_iter.next().unwrap();
 
-            if identifiers_iter.next().is_none() && ty.arguments.is_empty() {
-                if generic_parameter_scope.contains(possible_generic_parameter_name.id) {
-                    return Some(TypeConstructor {
-                        path: Path {
-                            identifiers: vec![possible_generic_parameter_name.id],
-                        },
-                        arguments: vec![],
-                    });
-                }
+        if identifiers_iter.next().is_none() && ty.arguments.is_empty() {
+            if generic_parameter_scope.contains(possible_generic_parameter_name.id) {
+                return Some(TypeConstructor {
+                    path: Path {
+                        identifiers: vec![possible_generic_parameter_name.id],
+                    },
+                    arguments: vec![],
+                });
             }
         }
 
@@ -323,7 +328,7 @@ impl<'i, 'p, 'd> TypeCheckingContext<'i, 'p, 'd> {
     fn resolve_type_arguments(
         &self,
         hir: &[ry_hir::Type],
-        generic_parameter_scope: Option<&GenericParameterScope>,
+        generic_parameter_scope: &GenericParameterScope,
         module_scope: &ModuleScope,
     ) -> Option<Vec<Type>> {
         hir.into_iter()
@@ -355,7 +360,7 @@ impl<'i, 'p, 'd> TypeCheckingContext<'i, 'p, 'd> {
     fn resolve_interface(
         &self,
         interface: ry_hir::TypeConstructor,
-        generic_parameter_scope: Option<&GenericParameterScope>,
+        generic_parameter_scope: &GenericParameterScope,
         module_scope: &ModuleScope,
     ) -> Option<TypeConstructor> {
         let Some(name_binding) = module_scope.resolve_path(
@@ -391,13 +396,16 @@ impl<'i, 'p, 'd> TypeCheckingContext<'i, 'p, 'd> {
 
     fn resolve_bounds(
         &self,
+        generic_parameter_scope: &GenericParameterScope,
         bounds: &[ry_hir::TypeConstructor],
         module_scope: &ModuleScope,
-    ) -> Option<Vec<TypeConstructor>> {
+    ) -> Vec<TypeConstructor> {
         bounds
             .into_iter()
-            .map(|bound| self.resolve_interface(bound.clone(), None, module_scope))
-            .collect::<Option<_>>()
+            .filter_map(|bound| {
+                self.resolve_interface(bound.clone(), generic_parameter_scope, module_scope)
+            })
+            .collect()
     }
 
     fn resolve_type_signature_by_definition_id(
@@ -419,63 +427,6 @@ impl<'i, 'p, 'd> TypeCheckingContext<'i, 'p, 'd> {
     }
 
     fn resolve_interface_signature_by_path(&self, path: Path) -> Arc<ModuleItemSignature> {
-        todo!()
-    }
-
-    fn resolve_signature(
-        &self,
-        name_binding: NameBinding,
-        module_scope: &ModuleScope,
-    ) -> Option<Arc<ModuleItemSignature>> {
-        match name_binding {
-            NameBinding::Enum(definition_id)
-            | NameBinding::Interface(definition_id)
-            | NameBinding::Function(definition_id)
-            | NameBinding::TypeAlias(definition_id)
-            | NameBinding::Struct(definition_id) => {
-                if let Some(signature) = self.signatures.get(&definition_id).cloned() {
-                    Some(signature)
-                } else {
-                    self.analyze_signature(name_binding, module_scope)
-                }
-            }
-            _ => unreachable!(),
-        }
-    }
-
-    fn analyze_signature(
-        &self,
-        name_binding: NameBinding,
-        module_scope: &ModuleScope,
-    ) -> Option<Arc<ModuleItemSignature>> {
-        match name_binding {
-            NameBinding::TypeAlias(definition_id) => {
-                self.analyze_type_alias_signature(definition_id, module_scope)
-            }
-            _ => unreachable!(),
-        }
-    }
-
-    fn analyze_type_alias_signature(
-        &self,
-        definition_id: DefinitionID,
-        module_scope: &ModuleScope,
-    ) -> Option<Arc<ModuleItemSignature>> {
-        let hir_storage_reader = self.hir_storage.read();
-        let alias = hir_storage_reader.resolve_type_alias_hir_or_panic(definition_id);
-
-        let (generic_parameter_scope, _) = self.analyze_generic_parameters_and_bounds(
-            true,
-            alias.name.location,
-            None,
-            &alias.generic_parameters,
-            &[],
-            module_scope,
-        )?;
-        let generic_parameter_scope = Some(&generic_parameter_scope);
-
-        let value = self.resolve_type(&alias.value, generic_parameter_scope, module_scope);
-
         todo!()
     }
 }
