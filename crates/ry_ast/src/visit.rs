@@ -4,6 +4,8 @@
 //! the AST node name.
 //!
 //! ```
+//! use ry_ast::{Expression, visit::Visitor};
+//!
 //! pub struct AllExpressionsPrinter;
 //!
 //! impl Visitor for AllExpressionsPrinter {
@@ -90,37 +92,44 @@ pub trait Visitor {
         self.visit_implements(tl_struct.implements.as_deref());
     }
 
+    /// Visits a type alias module item.
     fn visit_type_alias(&mut self, alias: &TypeAlias) {
         self.visit_generic_parameters(&alias.generic_parameters);
         self.visit_type(&alias.value);
     }
 
+    /// Visits tuple fields.
     fn visit_tuple_fields(&mut self, fields: &[TupleField]) {
         for field in fields {
             self.visit_tuple_field(field);
         }
     }
 
+    /// Visits a tuple field.
     fn visit_tuple_field(&mut self, field: &TupleField) {
         self.visit_type(&field.ty);
     }
 
+    /// Visits struct fields.
     fn visit_struct_fields(&mut self, fields: &[StructField]) {
         for field in fields {
             self.visit_struct_field(field);
         }
     }
 
+    /// Visits a struct field.
     fn visit_struct_field(&mut self, field: &StructField) {
         self.visit_type(&field.ty);
     }
 
+    /// Visits generic parameters.
     fn visit_generic_parameters(&mut self, generic_parameters: &[GenericParameter]) {
         for generic_parameter in generic_parameters {
             self.visit_generic_parameter(generic_parameter);
         }
     }
 
+    /// Visits a generic parameter.
     fn visit_generic_parameter(&mut self, generic_parameter: &GenericParameter) {
         if let Some(default_value) = &generic_parameter.default_value {
             self.visit_type(default_value);
@@ -131,33 +140,39 @@ pub trait Visitor {
         }
     }
 
+    /// Visits where predicates.
     fn visit_where_predicates(&mut self, predicates: &[WherePredicate]) {
         for predicate in predicates {
             self.visit_where_predicate(predicate);
         }
     }
 
+    /// Visits a where predicate.
     fn visit_where_predicate(&mut self, predicate: &WherePredicate) {
         self.visit_type(&predicate.ty);
         self.visit_bounds(&predicate.bounds);
     }
 
+    /// Visits a function.
     fn visit_function(&mut self, function: &Function) {
         if let Some(body) = &function.body {
             self.visit_statements_block(body);
         }
     }
 
+    /// Visits a method.
     fn visit_method(&mut self, method: &Function) {
         self.visit_function(method);
     }
 
+    /// Visits methods.
     fn visit_methods(&mut self, methods: &[Function]) {
         for method in methods {
             self.visit_method(method);
         }
     }
 
+    /// Visits interfaces, that a particular type implements.
     fn visit_implements(&mut self, implements: Option<&[TypeConstructor]>) {
         if let Some(implements) = implements {
             for interface in implements {
@@ -166,6 +181,7 @@ pub trait Visitor {
         }
     }
 
+    /// Visits interfaces, that a particular interface inherits.
     fn visit_inherits(&mut self, inherits: Option<&[TypeConstructor]>) {
         if let Some(inherits) = inherits {
             for interface in inherits {
@@ -174,12 +190,14 @@ pub trait Visitor {
         }
     }
 
+    /// Visits a statements block.
     fn visit_statements_block(&mut self, statements: &[Statement]) {
         for statement in statements {
             self.visit_statement(statement);
         }
     }
 
+    /// Visits a statement.
     fn visit_statement(&mut self, statement: &Statement) {
         match statement {
             Statement::Break { location } => self.visit_break_statement(*location),
@@ -196,16 +214,21 @@ pub trait Visitor {
         }
     }
 
+    /// Visits a break statement.
     fn visit_break_statement(&mut self, location: Location) {}
 
+    /// Visits a continue statement.
     fn visit_continue_statement(&mut self, location: Location) {}
 
+    /// Visits a defer expression.
     fn visit_defer_expression(&mut self, call: &Expression) {}
 
+    /// Visits an expression statement.
     fn visit_expression_statement(&mut self, expression: &Expression, has_semicolon: bool) {
         self.visit_expression(expression);
     }
 
+    /// Visits a let statement.
     fn visit_let_statement(&mut self, pattern: &Pattern, value: &Expression, ty: Option<&Type>) {
         self.visit_pattern(pattern);
         self.visit_expression(value);
@@ -215,10 +238,12 @@ pub trait Visitor {
         }
     }
 
+    /// Visits a return statement.
     fn visit_return_statement(&mut self, expression: &Expression) {
         self.visit_expression(expression);
     }
 
+    /// Visits a pattern.
     fn visit_pattern(&mut self, pattern: &Pattern) {
         match pattern {
             Pattern::Grouped { location, inner } => self.visit_grouped_pattern(*location, inner),
@@ -261,10 +286,12 @@ pub trait Visitor {
         }
     }
 
+    /// Visits a grouped pattern.
     fn visit_grouped_pattern(&mut self, location: Location, inner: &Pattern) {
         self.visit_pattern(inner);
     }
 
+    /// Visits an identifier pattern.
     fn visit_identifier_pattern(
         &mut self,
         location: Location,
@@ -276,23 +303,29 @@ pub trait Visitor {
         }
     }
 
+    /// Visits a list pattern.
     fn visit_list_pattern(&mut self, location: Location, inner_patterns: &[Pattern]) {
         for pattern in inner_patterns {
             self.visit_pattern(pattern);
         }
     }
 
+    /// Visits a literal pattern.
     fn visit_literal_pattern(&mut self, literal: &Literal) {}
 
+    /// Visits an or pattern.
     fn visit_or_pattern(&mut self, left: &Pattern, right: &Pattern) {
         self.visit_pattern(left);
         self.visit_pattern(right);
     }
 
+    /// Visits a path pattern.
     fn visit_path_pattern(&mut self, path: &Path) {}
 
+    /// Visits a rest pattern.
     fn visit_rest_pattern(&mut self, location: Location) {}
 
+    /// Visits a struct pattern.
     fn visit_struct_pattern(
         &mut self,
         location: Location,
@@ -304,10 +337,13 @@ pub trait Visitor {
         }
     }
 
+    /// Visits a struct field pattern.
     fn visit_struct_field_pattern(&mut self, field: &StructFieldPattern) {}
 
+    /// Visits a tuple pattern.
     fn visit_tuple_pattern(&mut self, location: Location, elements: &[Pattern]) {}
 
+    /// Visits a tuple-like pattern.
     fn visit_tuple_like_pattern(
         &mut self,
         location: Location,
@@ -319,6 +355,7 @@ pub trait Visitor {
         }
     }
 
+    /// Visits a type.
     fn visit_type(&mut self, ty: &Type) {
         match ty {
             Type::Constructor(constructor) => self.visit_type_constructor(constructor),
@@ -342,16 +379,19 @@ pub trait Visitor {
         }
     }
 
+    /// Visits arguments in a type constructor.
     fn visit_type_arguments(&mut self, arguments: &[Type]) {
         for argument in arguments {
             self.visit_type(argument);
         }
     }
 
+    /// Visits a type constructor.
     fn visit_type_constructor(&mut self, constructor: &TypeConstructor) {
         self.visit_type_arguments(&constructor.arguments);
     }
 
+    /// Visits a function type.
     fn visit_function_type(
         &mut self,
         location: Location,
@@ -365,26 +405,31 @@ pub trait Visitor {
         self.visit_type(return_type);
     }
 
+    /// Visits an interface object type.
     fn visit_interface_object_type(&mut self, location: Location, bounds: &[TypeConstructor]) {
         self.visit_bounds(bounds);
     }
 
+    /// Visits type bounds.
     fn visit_bounds(&mut self, bounds: &[TypeConstructor]) {
         for bound in bounds {
             self.visit_type_constructor(bound);
         }
     }
 
+    /// Visits a parenthesized type.
     fn visit_parenthesized_type(&mut self, location: Location, inner: &Type) {
         self.visit_type(inner);
     }
 
+    /// Visits a tuple type.
     fn visit_tuple_type(&mut self, location: Location, element_types: &[Type]) {
         for element_type in element_types {
             self.visit_type(element_type);
         }
     }
 
+    /// Visits an expression.
     fn visit_expression(&mut self, expression: &Expression) {
         match expression {
             Expression::As {
@@ -496,11 +541,13 @@ pub trait Visitor {
         }
     }
 
+    /// Visits an as expression.
     fn visit_as_expression(&mut self, location: Location, left: &Expression, right: &Type) {
         self.visit_expression(left);
         self.visit_type(right);
     }
 
+    /// Visits a binary expression.
     fn visit_binary_expression(
         &mut self,
         location: Location,
@@ -512,6 +559,7 @@ pub trait Visitor {
         self.visit_expression(right);
     }
 
+    /// Visits a call expression.
     fn visit_call_expression(
         &mut self,
         location: Location,
@@ -525,6 +573,7 @@ pub trait Visitor {
         }
     }
 
+    /// Visits a field access expression.
     fn visit_field_access_expression(
         &mut self,
         location: Location,
@@ -534,16 +583,20 @@ pub trait Visitor {
         self.visit_expression(left);
     }
 
+    /// Visits an identifier expression.
     fn visit_identifier_expression(&mut self, identifier: IdentifierAST) {}
 
+    /// Visits a list expression.
     fn visit_list_expression(&mut self, location: Location, elements: &[Expression]) {
         for element in elements {
             self.visit_expression(element);
         }
     }
 
+    /// Visits a literal expression.
     fn visit_literal_expression(&mut self, literal: &Literal) {}
 
+    /// Visits an if expression.
     fn visit_if_expression(
         &mut self,
         location: Location,
@@ -560,6 +613,7 @@ pub trait Visitor {
         }
     }
 
+    /// Visits a lambda expression.
     fn visit_lambda_expression(
         &mut self,
         location: Location,
@@ -578,16 +632,19 @@ pub trait Visitor {
         self.visit_expression(value);
     }
 
+    /// Visits a lambda function parameter.
     fn visit_lambda_function_parameter(&mut self, parameter: &LambdaFunctionParameter) {
         if let Some(ty) = &parameter.ty {
             self.visit_type(ty);
         }
     }
 
+    /// Visits a loop expression.
     fn visit_loop_expression(&mut self, location: Location, statements_block: &[Statement]) {
         self.visit_statements_block(statements_block);
     }
 
+    /// Visits a match expression.
     fn visit_match_expression(
         &mut self,
         location: Location,
@@ -601,15 +658,18 @@ pub trait Visitor {
         }
     }
 
+    /// Visits a match expression item.
     fn visit_match_expression_item(&mut self, item: &MatchExpressionItem) {
         self.visit_pattern(&item.left);
         self.visit_expression(&item.right);
     }
 
+    /// Visits a parenthesized expression.
     fn visit_parenthesized_expression(&mut self, location: Location, inner: &Expression) {
         self.visit_expression(inner);
     }
 
+    /// Visits a postfix expression.
     fn visit_postfix_expression(
         &mut self,
         location: Location,
@@ -619,6 +679,7 @@ pub trait Visitor {
         self.visit_expression(inner);
     }
 
+    /// Visits a prefix expression.
     fn visit_prefix_expression(
         &mut self,
         location: Location,
@@ -628,10 +689,12 @@ pub trait Visitor {
         self.visit_expression(inner);
     }
 
+    /// Visits a statements block expression.
     fn visit_statements_block_expression(&mut self, location: Location, block: &[Statement]) {
         self.visit_statements_block(block);
     }
 
+    /// Visits a struct expression.
     fn visit_struct_expression(
         &mut self,
         location: Location,
@@ -642,24 +705,28 @@ pub trait Visitor {
         self.visit_struct_field_expressions(fields);
     }
 
+    /// Visits struct field expressions.
     fn visit_struct_field_expressions(&mut self, fields: &[StructFieldExpression]) {
         for field in fields {
             self.visit_struct_field_expression(field);
         }
     }
 
+    /// Visits a struct field expression.
     fn visit_struct_field_expression(&mut self, field: &StructFieldExpression) {
         if let Some(value) = &field.value {
             self.visit_expression(value);
         }
     }
 
+    /// Visits a tuple expression.
     fn visit_tuple_expression(&mut self, location: Location, elements: &[Expression]) {
         for element in elements {
             self.visit_expression(element);
         }
     }
 
+    /// Visits a while expression.
     fn visit_while_expression(
         &mut self,
         location: Location,
@@ -671,6 +738,7 @@ pub trait Visitor {
         self.visit_statements_block(statements_block);
     }
 
+    /// Visits type arguments expression.
     fn visit_type_arguments_expression(
         &mut self,
         location: Location,

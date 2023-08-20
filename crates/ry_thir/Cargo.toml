@@ -10,9 +10,9 @@ description = "Defines THIR for the Ry programming language."
 
 [dependencies]
 ry_ast = { path = "../ry_ast" }
-ry_hir = { path = "../ry_hir" }
 ry_filesystem = { path = "../ry_filesystem" }
 ry_fx_hash = { path = "../ry_fx_hash" }
+ry_hir = { path = "../ry_hir" }
 ry_interner = { path = "../ry_interner" }
 ry_name_resolution = { path = "../ry_name_resolution" }
 serde = { version = "1.0.183", features = ["derive"], optional = true }
