@@ -228,6 +228,9 @@ pub enum NameBinding {
     /// A struct.
     Struct(DefinitionID),
 
+    /// A tuple-like struct.
+    TupleLikeStruct(DefinitionID),
+
     /// An enum.
     Enum(DefinitionID),
 
@@ -330,7 +333,8 @@ impl ResolveFullPath for NameBinding {
             | Self::Function(definition_id)
             | Self::Interface(definition_id)
             | Self::Struct(definition_id)
-            | Self::Enum(definition_id) => definition_id.full_path(environment),
+            | Self::Enum(definition_id)
+            | Self::TupleLikeStruct(definition_id) => definition_id.full_path(environment),
             Self::EnumItem(enum_item_id) => enum_item_id.full_path(environment),
         }
     }
@@ -360,6 +364,10 @@ pub enum NameBindingKind {
     /// A struct.
     #[display(fmt = "struct")]
     Struct,
+
+    /// A tuple-like struct.
+    #[display(fmt = "tuple-like struct")]
+    TupleLikeStruct,
 
     /// A function.
     #[display(fmt = "function")]
@@ -413,6 +421,7 @@ impl NameBinding {
             Self::TypeAlias(..) => NameBindingKind::TypeAlias,
             Self::Function(..) => NameBindingKind::Function,
             Self::Interface(..) => NameBindingKind::Interface,
+            Self::TupleLikeStruct(..) => NameBindingKind::TupleLikeStruct,
             Self::Struct(..) => NameBindingKind::Struct,
             Self::Enum(..) => NameBindingKind::Enum,
             Self::EnumItem(..) => NameBindingKind::EnumItem,
@@ -625,7 +634,8 @@ fn resolve_path_segment(
         | NameBinding::TypeAlias(definition_id)
         | NameBinding::Struct(definition_id)
         | NameBinding::Function(definition_id)
-        | NameBinding::Interface(definition_id) => resolve_binding_in_module_item_namespace(
+        | NameBinding::Interface(definition_id)
+        | NameBinding::TupleLikeStruct(definition_id) => resolve_binding_in_module_item_namespace(
             definition_id,
             namespace,
             name,

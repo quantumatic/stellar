@@ -1,3 +1,13 @@
+//! # AST Lowering
+//!
+//! AST Lowering is the process of converting AST into HIR. See the [`ry_hir`] crate for more details.
+//!
+//! See:
+//! - [`LoweringContext`] - essential structure, that is used to lower AST to HIR.
+//! - [`LoweringContext::new()`] to create a new lowering context.
+//! - [`LoweringContext::lower()`] to convert the whole module AST into HIR.
+//! - [`LoweringContext::lower_module_item()`] to convert a module item AST into HIR.
+
 use diagnostics::{UnnecessaryParenthesesInPatternDiagnostic, UnnecessaryParenthesizedExpression};
 use parking_lot::RwLock;
 use ry_diagnostics::{BuildDiagnostic, Diagnostics};
@@ -5,12 +15,17 @@ use ry_interner::PathID;
 
 mod diagnostics;
 
+/// Represents a context for AST lowering.
+///
+/// See [crate-level docs](crate) for more details.
+#[derive(Debug, Clone, Copy)]
 pub struct LoweringContext<'d> {
     file_path_id: PathID,
     diagnostics: &'d RwLock<Diagnostics>,
 }
 
 impl<'d> LoweringContext<'d> {
+    /// Creates a new lowering context.
     #[inline]
     #[must_use]
     pub fn new(file_path_id: PathID, diagnostics: &'d RwLock<Diagnostics>) -> Self {
@@ -21,12 +36,13 @@ impl<'d> LoweringContext<'d> {
     }
 
     #[inline]
-    pub fn add_diagnostic(&mut self, diagnostic: impl BuildDiagnostic) {
+    fn add_diagnostic(&mut self, diagnostic: impl BuildDiagnostic) {
         self.diagnostics
             .write()
             .add_single_file_diagnostic(self.file_path_id, diagnostic);
     }
 
+    /// Converts a given AST into HIR.
     #[must_use]
     pub fn lower(&mut self, ast: ry_ast::Module) -> ry_hir::Module {
         let mut lowered = ry_hir::Module {
@@ -41,9 +57,10 @@ impl<'d> LoweringContext<'d> {
         lowered
     }
 
+    /// Converts a given module item AST into HIR.
     pub fn lower_module_item(&mut self, ast: ry_ast::ModuleItem) -> ry_hir::ModuleItem {
         match ast {
-            ry_ast::ModuleItem::Enum {
+            ry_ast::ModuleItem::Enum(ry_ast::Enum {
                 visibility,
                 name,
                 generic_parameters,
@@ -52,7 +69,7 @@ impl<'d> LoweringContext<'d> {
                 methods,
                 implements,
                 docstring,
-            } => ry_hir::ModuleItem::Enum {
+            }) => ry_hir::ModuleItem::Enum(ry_hir::Enum {
                 visibility,
                 name,
                 generic_parameters: self.lower_generic_parameters(generic_parameters),
@@ -72,8 +89,8 @@ impl<'d> LoweringContext<'d> {
                         .collect()
                 }),
                 docstring,
-            },
-            ry_ast::ModuleItem::Struct {
+            }),
+            ry_ast::ModuleItem::Struct(ry_ast::Struct {
                 visibility,
                 name,
                 generic_parameters,
@@ -82,7 +99,7 @@ impl<'d> LoweringContext<'d> {
                 methods,
                 implements,
                 docstring,
-            } => ry_hir::ModuleItem::Struct {
+            }) => ry_hir::ModuleItem::Struct(ry_hir::Struct {
                 visibility,
                 name,
                 generic_parameters: self.lower_generic_parameters(generic_parameters),
@@ -102,7 +119,7 @@ impl<'d> LoweringContext<'d> {
                         .collect()
                 }),
                 docstring,
-            },
+            }),
             ry_ast::ModuleItem::Function(function) => {
                 ry_hir::ModuleItem::Function(self.lower_function(function))
             }
@@ -112,7 +129,7 @@ impl<'d> LoweringContext<'d> {
             ry_ast::ModuleItem::TypeAlias(alias) => {
                 ry_hir::ModuleItem::TypeAlias(self.lower_type_alias(alias))
             }
-            ry_ast::ModuleItem::TupleLikeStruct {
+            ry_ast::ModuleItem::TupleLikeStruct(ry_ast::TupleLikeStruct {
                 visibility,
                 name,
                 generic_parameters,
@@ -121,7 +138,7 @@ impl<'d> LoweringContext<'d> {
                 methods,
                 implements,
                 docstring,
-            } => ry_hir::ModuleItem::TupleLikeStruct {
+            }) => ry_hir::ModuleItem::TupleLikeStruct(ry_hir::TupleLikeStruct {
                 visibility,
                 name,
                 generic_parameters: self.lower_generic_parameters(generic_parameters),
@@ -141,8 +158,8 @@ impl<'d> LoweringContext<'d> {
                         .collect()
                 }),
                 docstring,
-            },
-            ry_ast::ModuleItem::Interface {
+            }),
+            ry_ast::ModuleItem::Interface(ry_ast::Interface {
                 visibility,
                 name,
                 generic_parameters,
@@ -150,7 +167,7 @@ impl<'d> LoweringContext<'d> {
                 methods,
                 inherits: implements,
                 docstring,
-            } => ry_hir::ModuleItem::Interface {
+            }) => ry_hir::ModuleItem::Interface(ry_hir::Interface {
                 visibility,
                 name,
                 generic_parameters: self.lower_generic_parameters(generic_parameters),
@@ -166,7 +183,7 @@ impl<'d> LoweringContext<'d> {
                         .collect()
                 }),
                 docstring,
-            },
+            }),
         }
     }
 

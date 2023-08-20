@@ -1,175 +1,93 @@
+//! Provides a [`Visitor`] trait to traverse AST.
+//!
+//! In the [`Visitor`] trait, every method starts with the `visit_` and then
+//! the AST node name.
+//!
+//! ```
+//! pub struct AllExpressionsPrinter;
+//!
+//! impl Visitor for AllExpressionsPrinter {
+//!     fn visit_expression(&mut self, expression: &Expression) {
+//!         println!("expression found: {:?}", expression);
+//!     }
+//! }
+//! ```
+
 use ry_filesystem::location::Location;
 
 use crate::{
-    BinaryOperator, EnumItem, Expression, Function, GenericParameter, IdentifierAST, ImportPath,
-    LambdaFunctionParameter, Literal, MatchExpressionItem, Module, ModuleItem, Path, Pattern,
-    PostfixOperator, PrefixOperator, Statement, StructField, StructFieldExpression,
-    StructFieldPattern, TupleField, Type, TypeAlias, TypeConstructor, Visibility, WherePredicate,
+    BinaryOperator, Enum, Expression, Function, GenericParameter, IdentifierAST, ImportPath,
+    Interface, LambdaFunctionParameter, Literal, MatchExpressionItem, Module, ModuleItem, Path,
+    Pattern, PostfixOperator, PrefixOperator, Statement, Struct, StructField,
+    StructFieldExpression, StructFieldPattern, TupleField, TupleLikeStruct, Type, TypeAlias,
+    TypeConstructor, WherePredicate,
 };
 
-#[allow(unused_variables, clippy::too_many_arguments)]
+/// Allows to traverse AST.
+///
+/// See [module level docs](crate::visit) for more details.
+#[allow(unused_variables)]
 pub trait Visitor {
+    /// Visits a module.
     fn visit_module(&mut self, module: &Module) {
         for item in &module.items {
             self.visit_module_item(item);
         }
     }
 
+    /// Visits a module item.
     fn visit_module_item(&mut self, module_item: &ModuleItem) {
         match module_item {
-            ModuleItem::Enum {
-                visibility,
-                name,
-                generic_parameters,
-                where_predicates,
-                items,
-                methods,
-                implements,
-                docstring,
-            } => self.visit_enum(
-                *visibility,
-                *name,
-                generic_parameters,
-                where_predicates,
-                items,
-                methods,
-                implements.as_deref(),
-                docstring.as_deref(),
-            ),
-            ModuleItem::Interface {
-                visibility,
-                name,
-                generic_parameters,
-                where_predicates,
-                methods,
-                inherits,
-                docstring,
-            } => self.visit_interface(
-                *visibility,
-                *name,
-                generic_parameters,
-                where_predicates,
-                methods,
-                inherits.as_deref(),
-                docstring.as_deref(),
-            ),
+            ModuleItem::Enum(enum_) => self.visit_enum(enum_),
+            ModuleItem::Interface(interface) => self.visit_interface(interface),
             ModuleItem::Function(function) => self.visit_function(function),
             ModuleItem::Import { location, path } => self.visit_import(*location, path),
-            ModuleItem::Struct {
-                visibility,
-                name,
-                generic_parameters,
-                where_predicates,
-                fields,
-                methods,
-                implements,
-                docstring,
-            } => self.visit_struct(
-                *visibility,
-                *name,
-                generic_parameters,
-                where_predicates,
-                fields,
-                methods,
-                implements.as_deref(),
-                docstring.as_deref(),
-            ),
-            ModuleItem::TupleLikeStruct {
-                visibility,
-                name,
-                generic_parameters,
-                where_predicates,
-                fields,
-                methods,
-                implements,
-                docstring,
-            } => self.visit_tuple_like_struct(
-                *visibility,
-                *name,
-                generic_parameters,
-                where_predicates,
-                fields,
-                methods,
-                implements.as_deref(),
-                docstring.as_deref(),
-            ),
+            ModuleItem::Struct(struct_) => self.visit_struct(struct_),
+            ModuleItem::TupleLikeStruct(tl_struct) => self.visit_tuple_like_struct(tl_struct),
             ModuleItem::TypeAlias(alias) => self.visit_type_alias(alias),
         }
     }
 
+    /// Visits an import.
     fn visit_import(&mut self, location: Location, path: &ImportPath) {
         self.visit_import_path(path);
     }
 
+    /// Visits an import path.
     fn visit_import_path(&mut self, path: &ImportPath) {}
 
-    fn visit_enum(
-        &mut self,
-        visibility: Visibility,
-        name: IdentifierAST,
-        generic_parameters: &[GenericParameter],
-        where_predicates: &[WherePredicate],
-        items: &[EnumItem],
-        methods: &[Function],
-        implements: Option<&[TypeConstructor]>,
-        docstring: Option<&str>,
-    ) {
-        self.visit_generic_parameters(generic_parameters);
-        self.visit_where_predicates(where_predicates);
-        self.visit_methods(methods);
-        self.visit_implements(implements);
+    /// Visits an enum module item.
+    fn visit_enum(&mut self, enum_: &Enum) {
+        self.visit_generic_parameters(&enum_.generic_parameters);
+        self.visit_where_predicates(&enum_.where_predicates);
+        self.visit_methods(&enum_.methods);
+        self.visit_implements(enum_.implements.as_deref());
     }
 
-    fn visit_interface(
-        &mut self,
-        visibility: Visibility,
-        name: IdentifierAST,
-        generic_parameters: &[GenericParameter],
-        where_predicates: &[WherePredicate],
-        methods: &[Function],
-        inherits: Option<&[TypeConstructor]>,
-        docstring: Option<&str>,
-    ) {
-        self.visit_generic_parameters(generic_parameters);
-        self.visit_where_predicates(where_predicates);
-        self.visit_methods(methods);
-        self.visit_inherits(inherits);
+    /// Visits an interface module item.
+    fn visit_interface(&mut self, interface: &Interface) {
+        self.visit_generic_parameters(&interface.generic_parameters);
+        self.visit_where_predicates(&interface.where_predicates);
+        self.visit_methods(&interface.methods);
+        self.visit_inherits(interface.inherits.as_deref());
     }
 
-    fn visit_struct(
-        &mut self,
-        visibility: Visibility,
-        name: IdentifierAST,
-        generic_parameters: &[GenericParameter],
-        where_predicates: &[WherePredicate],
-        fields: &[StructField],
-        methods: &[Function],
-        implements: Option<&[TypeConstructor]>,
-        docstring: Option<&str>,
-    ) {
-        self.visit_generic_parameters(generic_parameters);
-        self.visit_where_predicates(where_predicates);
-        self.visit_struct_fields(fields);
-        self.visit_methods(methods);
-        self.visit_implements(implements);
+    /// Visits a struct module item.
+    fn visit_struct(&mut self, struct_: &Struct) {
+        self.visit_generic_parameters(&struct_.generic_parameters);
+        self.visit_where_predicates(&struct_.where_predicates);
+        self.visit_struct_fields(&struct_.fields);
+        self.visit_methods(&struct_.methods);
+        self.visit_implements(struct_.implements.as_deref());
     }
 
-    fn visit_tuple_like_struct(
-        &mut self,
-        visibility: Visibility,
-        name: IdentifierAST,
-        generic_parameters: &[GenericParameter],
-        where_predicates: &[WherePredicate],
-        fields: &[TupleField],
-        methods: &[Function],
-        implements: Option<&[TypeConstructor]>,
-        docstring: Option<&str>,
-    ) {
-        self.visit_generic_parameters(generic_parameters);
-        self.visit_where_predicates(where_predicates);
-        self.visit_tuple_fields(fields);
-        self.visit_methods(methods);
-        self.visit_implements(implements);
+    /// Visits a tuple-like struct module item.
+    fn visit_tuple_like_struct(&mut self, tl_struct: &TupleLikeStruct) {
+        self.visit_generic_parameters(&tl_struct.generic_parameters);
+        self.visit_where_predicates(&tl_struct.where_predicates);
+        self.visit_tuple_fields(&tl_struct.fields);
+        self.visit_methods(&tl_struct.methods);
+        self.visit_implements(tl_struct.implements.as_deref());
     }
 
     fn visit_type_alias(&mut self, alias: &TypeAlias) {
@@ -284,7 +202,9 @@ pub trait Visitor {
 
     fn visit_defer_expression(&mut self, call: &Expression) {}
 
-    fn visit_expression_statement(&mut self, expression: &Expression, has_semicolon: bool) {}
+    fn visit_expression_statement(&mut self, expression: &Expression, has_semicolon: bool) {
+        self.visit_expression(expression);
+    }
 
     fn visit_let_statement(&mut self, pattern: &Pattern, value: &Expression, ty: Option<&Type>) {
         self.visit_pattern(pattern);

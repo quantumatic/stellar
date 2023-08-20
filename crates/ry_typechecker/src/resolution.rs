@@ -1,10 +1,11 @@
 use std::sync::Arc;
 
-use ry_ast::{IdentifierAST, ImportPath, Visibility};
+use ry_ast::{IdentifierAST, ImportPath, ModuleItemKind, Visibility};
 use ry_fx_hash::FxHashMap;
 use ry_interner::IdentifierID;
 use ry_name_resolution::{
     DefinitionID, EnumData, EnumItemID, ModuleID, ModuleScope, NameBinding, Path,
+    ResolvedImportsInModule,
 };
 use ry_thir::{
     generic_parameter_scope::GenericParameterScope,
@@ -15,35 +16,84 @@ use ry_thir::{
 use crate::{diagnostics::ExpectedType, TypeCheckingContext};
 
 impl TypeCheckingContext<'_, '_, '_> {
+    fn add_module(
+        &mut self,
+        id: ModuleID,
+        module_name_id: IdentifierID,
+        path: Path,
+        hir: ry_hir::Module,
+    ) {
+        let mut imports = FxHashMap::default();
+        let mut enums = FxHashMap::default();
+        let mut bindings = FxHashMap::default();
+
+        for item in hir.items {
+            self.add_module_item_hir(id, item, &mut imports, &mut enums, &mut bindings);
+        }
+
+        self.resolution_environment.module_paths.insert(id, path);
+        self.resolution_environment.module_scopes.insert(
+            id,
+            ModuleScope {
+                name: module_name_id,
+                id,
+                bindings,
+                enums,
+                imports,
+            },
+        );
+    }
+
     /// Adds a not analyzed module item HIR into the context.
-    pub fn add_item_hir(
+    fn add_module_item_hir(
         &mut self,
         module_id: ModuleID,
         item: ry_hir::ModuleItem,
-        imports: &mut FxHashMap<IdentifierID, NameBinding>,
-        enums: &mut FxHashMap<DefinitionID, EnumData>,
+        imports: &mut FxHashMap<IdentifierID, ry_ast::Path>,
+        enums: &mut FxHashMap<IdentifierID, EnumData>,
+        bindings: &mut FxHashMap<IdentifierID, NameBinding>,
     ) {
         match item {
             ry_hir::ModuleItem::Import { path, .. } => {
                 self.add_import_hir(path, imports);
             }
-            ry_hir::ModuleItem::Enum {
+            ry_hir::ModuleItem::Enum(ry_hir::Enum {
                 visibility,
                 name: IdentifierAST { id: name_id, .. },
                 items,
                 ..
-            } => {
+            }) => {
+                bindings.insert(
+                    name_id,
+                    NameBinding::Enum(DefinitionID { name_id, module_id }),
+                );
+
                 self.add_enum_hir(module_id, visibility, name_id, items, enums);
             }
             _ => {
                 let definition_id = DefinitionID {
-                    name_id: item.name().unwrap(),
+                    name_id: item.name_or_panic(),
                     module_id,
                 };
 
                 self.resolution_environment
                     .visibilities
                     .insert(definition_id, item.visibility());
+
+                bindings.insert(
+                    item.name().unwrap(),
+                    match item.kind() {
+                        ModuleItemKind::Function => NameBinding::Function(definition_id),
+                        ModuleItemKind::Struct => NameBinding::Struct(definition_id),
+                        ModuleItemKind::TupleLikeStruct => {
+                            NameBinding::TupleLikeStruct(definition_id)
+                        }
+                        ModuleItemKind::Interface => NameBinding::Interface(definition_id),
+                        ModuleItemKind::TypeAlias => NameBinding::TypeAlias(definition_id),
+                        ModuleItemKind::Enum | ModuleItemKind::Import => unreachable!(),
+                    },
+                );
+
                 self.hir_storage
                     .write()
                     .add_module_item(definition_id, item);
@@ -55,7 +105,7 @@ impl TypeCheckingContext<'_, '_, '_> {
     fn add_import_hir(
         &self,
         path: ry_hir::ImportPath,
-        imports: &mut FxHashMap<IdentifierID, NameBinding>,
+        imports: &mut FxHashMap<IdentifierID, ry_ast::Path>,
     ) {
         let ImportPath { path, r#as } = path;
 
@@ -66,15 +116,7 @@ impl TypeCheckingContext<'_, '_, '_> {
         }
         .id;
 
-        let Some(binding) = self.resolution_environment.resolve_path(
-            path.clone(),
-            self.identifier_interner,
-            self.diagnostics,
-        ) else {
-            return;
-        };
-
-        imports.insert(name_id, binding);
+        imports.insert(name_id, path);
     }
 
     /// Adds a not yet analyzed enum module item HIR into the context.
@@ -84,7 +126,7 @@ impl TypeCheckingContext<'_, '_, '_> {
         visibility: Visibility,
         name_id: IdentifierID,
         items: Vec<ry_hir::EnumItem>,
-        enums: &mut FxHashMap<DefinitionID, EnumData>,
+        enums: &mut FxHashMap<IdentifierID, EnumData>,
     ) {
         let definition_id = DefinitionID { name_id, module_id };
 
@@ -103,7 +145,7 @@ impl TypeCheckingContext<'_, '_, '_> {
         self.resolution_environment
             .visibilities
             .insert(definition_id, visibility);
-        enums.insert(definition_id, EnumData { items: items_data });
+        enums.insert(name_id, EnumData { items: items_data });
     }
 
     /// Resolves all imports in the name resolution context.

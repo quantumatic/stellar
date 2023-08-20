@@ -1,4 +1,4 @@
-//! Defines [`Precedence`] enum for different operator precedences.
+//! Defines a [`Precedence`] enum for different operator precedences.
 //!
 //! # Operator Precedence
 //!

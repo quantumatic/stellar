@@ -120,12 +120,8 @@ pub trait Files<'a> {
     /// # Note for trait implementors
     ///
     /// This can be implemented efficiently by performing a binary search over
-    /// a list of line starts that was computed by calling the [`line_starts`]
-    /// function that is exported from the [`files`] module. It might be useful
-    /// to pre-compute and cache these line starts.
-    ///
-    /// [`line_starts`]: crate::files::line_starts
-    /// [`files`]: crate::files
+    /// a list of line starts. It might be useful to pre-compute and cache these
+    /// line starts.
     fn line_index(&'a self, id: Self::FileId, byte_index: usize) -> Result<usize, Error>;
 
     /// The user-facing line number at the given line index.

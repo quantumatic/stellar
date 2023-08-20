@@ -1,4 +1,4 @@
-//! Defines [`Token`] which represents grammatical unit of Ry source text.
+//! Defines a [`Token`] which represents grammatical unit of Ry source text.
 
 use derive_more::Display;
 use ry_filesystem::location::Location;

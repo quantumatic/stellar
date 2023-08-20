@@ -20,12 +20,12 @@ pub(crate) struct Locus {
 /// ```text
 /// ^^^^^^^^^ blah blah
 /// ```
-pub(crate) type SingleLabel<'diagnostic> = (LabelStyle, Range<usize>, &'diagnostic str);
+pub(crate) type SingleLabel<'d> = (LabelStyle, Range<usize>, &'d str);
 
 /// A multi-line label to render.
 ///
 /// Locations are relative to the start of where the source code is rendered.
-pub(crate) enum MultiLabel<'diagnostic> {
+pub(crate) enum MultiLabel<'d> {
     /// Multi-line label top.
     /// The contained value indicates where the label starts.
     ///
@@ -36,7 +36,7 @@ pub(crate) enum MultiLabel<'diagnostic> {
     /// Can also be rendered at the beginning of the line
     /// if there is only whitespace before the label starts.
     ///
-    /// /// ```text
+    /// ```text
     /// ╭
     /// ```
     Top(usize),
@@ -52,7 +52,7 @@ pub(crate) enum MultiLabel<'diagnostic> {
     /// ```text
     /// ╰────────────^ blah blah
     /// ```
-    Bottom(usize, &'diagnostic str),
+    Bottom(usize, &'d str),
 }
 
 #[derive(Copy, Clone)]
@@ -109,25 +109,22 @@ type Underline = (LabelStyle, VerticalBound);
 /// ```
 ///
 /// Filler text from <http://www.cupcakeipsum.com>.
-pub(crate) struct Renderer<'writer, 'config> {
-    writer: &'writer mut dyn WriteColor,
-    config: &'config Config,
+pub(crate) struct Renderer<'w, 'c> {
+    writer: &'w mut dyn WriteColor,
+    config: &'c Config,
 }
 
-impl<'writer, 'config> Renderer<'writer, 'config> {
+impl<'w, 'c> Renderer<'w, 'c> {
     /// Construct a renderer from the given writer and config.
-    pub(crate) fn new(
-        writer: &'writer mut dyn WriteColor,
-        config: &'config Config,
-    ) -> Renderer<'writer, 'config> {
+    pub(crate) fn new(writer: &'w mut dyn WriteColor, config: &'c Config) -> Renderer<'w, 'c> {
         Renderer { writer, config }
     }
 
-    const fn chars(&self) -> &'config Chars {
+    const fn chars(&self) -> &'c Chars {
         &self.config.chars
     }
 
-    const fn styles(&self) -> &'config Styles {
+    const fn styles(&self) -> &'c Styles {
         &self.config.styles
     }
 
@@ -1006,10 +1003,10 @@ const fn label_priority_key(label_style: LabelStyle) -> u8 {
 
 /// Return an iterator that yields the labels that require hanging messages
 /// rendered underneath them.
-fn hanging_labels<'labels, 'diagnostic>(
-    single_labels: &'labels [SingleLabel<'diagnostic>],
-    trailing_label: Option<(usize, &'labels SingleLabel<'diagnostic>)>,
-) -> impl 'labels + DoubleEndedIterator<Item = &'labels SingleLabel<'diagnostic>> {
+fn hanging_labels<'l, 'd>(
+    single_labels: &'l [SingleLabel<'d>],
+    trailing_label: Option<(usize, &'l SingleLabel<'d>)>,
+) -> impl 'l + DoubleEndedIterator<Item = &'l SingleLabel<'d>> {
     single_labels
         .iter()
         .enumerate()

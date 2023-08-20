@@ -12,19 +12,19 @@ fn count_digits(n: usize) -> usize {
 }
 
 /// Output a richly formatted diagnostic, with source code previews.
-pub(crate) struct RichDiagnostic<'diagnostic, 'config, FileId> {
-    diagnostic: &'diagnostic Diagnostic<FileId>,
-    config: &'config Config,
+pub(crate) struct RichDiagnostic<'d, 'c, FileId> {
+    diagnostic: &'d Diagnostic<FileId>,
+    config: &'c Config,
 }
 
-impl<'diagnostic, 'config, FileId> RichDiagnostic<'diagnostic, 'config, FileId>
+impl<'d, 'c, FileId> RichDiagnostic<'d, 'c, FileId>
 where
     FileId: Copy + PartialEq,
 {
     pub(crate) const fn new(
-        diagnostic: &'diagnostic Diagnostic<FileId>,
-        config: &'config Config,
-    ) -> RichDiagnostic<'diagnostic, 'config, FileId> {
+        diagnostic: &'d Diagnostic<FileId>,
+        config: &'c Config,
+    ) -> RichDiagnostic<'d, 'c, FileId> {
         RichDiagnostic { diagnostic, config }
     }
 

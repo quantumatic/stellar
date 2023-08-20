@@ -1,4 +1,4 @@
-//! Defines [`InMemoryFileStorage`], to avoid rereading files in some situtations.
+//! Defines a [`InMemoryFileStorage`], to avoid rereading files in some situtations.
 
 use std::io;
 

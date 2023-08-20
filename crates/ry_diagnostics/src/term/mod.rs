@@ -62,10 +62,10 @@ impl From<ColorArg> for ColorChoice {
 /// * a file was removed from the file database.
 /// * a file was changed so that it is too small to have an index
 /// * IO fails
-pub fn emit<'files, F: Files<'files>>(
+pub fn emit<'f, F: Files<'f>>(
     writer: &mut dyn WriteColor,
     config: &Config,
-    files: &'files F,
+    files: &'f F,
     diagnostic: &Diagnostic<F::FileId>,
 ) -> Result<(), super::files::Error> {
     use self::renderer::Renderer;

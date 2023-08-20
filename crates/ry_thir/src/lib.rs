@@ -63,6 +63,7 @@ use generic_parameter_scope::GenericParameterScope;
 use ry_ast::{IdentifierAST, Literal, Path, Visibility};
 use ry_filesystem::location::Location;
 use ry_fx_hash::FxHashMap;
+use ry_hir as _;
 use ry_interner::IdentifierID;
 use ty::{Type, TypeConstructor};
 

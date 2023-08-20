@@ -1,8 +1,8 @@
 use ry_ast::{
     token::{Keyword, Punctuator, RawToken},
-    EnumItem, Function, FunctionParameter, FunctionSignature, IdentifierAST, ModuleItem,
-    NotSelfFunctionParameter, SelfFunctionParameter, StructField, TupleField, TypeAlias,
-    Visibility,
+    Enum, EnumItem, Function, FunctionParameter, FunctionSignature, IdentifierAST, Interface,
+    ModuleItem, NotSelfFunctionParameter, SelfFunctionParameter, Struct, StructField, TupleField,
+    TupleLikeStruct, TypeAlias, Visibility,
 };
 use ry_interner::builtin_identifiers;
 
@@ -190,7 +190,7 @@ impl Parse for StructParser {
 
             state.advance();
 
-            Some(ModuleItem::TupleLikeStruct {
+            Some(ModuleItem::TupleLikeStruct(TupleLikeStruct {
                 visibility: self.visibility,
                 name,
                 generic_parameters,
@@ -199,7 +199,7 @@ impl Parse for StructParser {
                 methods,
                 implements,
                 docstring: self.docstring,
-            })
+            }))
         } else if state.next_token.raw == Punctuator::OpenBrace {
             state.advance();
 
@@ -246,7 +246,7 @@ impl Parse for StructParser {
 
             state.advance();
 
-            Some(ModuleItem::Struct {
+            Some(ModuleItem::Struct(Struct {
                 visibility: self.visibility,
                 name,
                 generic_parameters,
@@ -255,7 +255,7 @@ impl Parse for StructParser {
                 methods,
                 implements,
                 docstring: self.docstring,
-            })
+            }))
         } else {
             state.add_diagnostic(UnexpectedTokenDiagnostic::new(
                 Some(state.current_token.location.end),
@@ -385,7 +385,7 @@ struct TypeAliasParser {
 }
 
 impl Parse for TypeAliasParser {
-    type Output = Option<TypeAlias>;
+    type Output = Option<ModuleItem>;
 
     fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
         state.advance();
@@ -399,13 +399,13 @@ impl Parse for TypeAliasParser {
 
         state.consume(Punctuator::Semicolon, "type alias")?;
 
-        Some(TypeAlias {
+        Some(ModuleItem::TypeAlias(TypeAlias {
             visibility: self.visibility,
             name,
             generic_parameters,
             value,
             docstring: self.docstring,
-        })
+        }))
     }
 }
 
@@ -463,7 +463,7 @@ impl Parse for InterfaceParser {
 
         state.advance();
 
-        Some(ModuleItem::Interface {
+        Some(ModuleItem::Interface(Interface {
             visibility: self.visibility,
             name,
             generic_parameters,
@@ -471,7 +471,7 @@ impl Parse for InterfaceParser {
             methods,
             inherits,
             docstring: self.docstring,
-        })
+        }))
     }
 }
 
@@ -568,7 +568,7 @@ impl Parse for EnumParser {
 
         state.advance(); // `}`
 
-        Some(ModuleItem::Enum {
+        Some(ModuleItem::Enum(Enum {
             visibility: self.visibility,
             name,
             generic_parameters,
@@ -577,7 +577,7 @@ impl Parse for EnumParser {
             methods,
             implements,
             docstring: self.docstring,
-        })
+        }))
     }
 }
 
@@ -737,14 +737,14 @@ impl Parse for ItemParser {
                 }
                 .parse(state)
             )),
-            RawToken::Keyword(Keyword::Type) => ModuleItem::TypeAlias(possibly_recover!(
+            RawToken::Keyword(Keyword::Type) => possibly_recover!(
                 state,
                 TypeAliasParser {
                     visibility,
                     docstring
                 }
                 .parse(state)
-            )),
+            ),
             _ => {
                 state.add_diagnostic(UnexpectedTokenDiagnostic::new(
                     None,

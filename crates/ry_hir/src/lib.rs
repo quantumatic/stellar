@@ -3,6 +3,124 @@
 //! In Ry, we have 2 abstract structures that represents relations between tokens - AST and HIR.
 //! AST in this case is more abstract than HIR, because HIR is a more desugared version of AST,
 //! e.g. `loop` expression doesn't exist for the HIR and is reduced into `while true {}` expression.
+//!
+//! For example, here is a code example, that uses `loop` expression:
+//!
+//! ```ry
+//! fun main() {
+//!     loop {
+//!         println("printing this forever!");
+//!     }
+//! }
+//! ```
+//!
+//! After AST lowering (converting AST into HIR), the resulting HIR will looks like this:
+//!
+//! ```json
+//! {
+//!     "items": [
+//!         {
+//!             "kind": "function_item",
+//!             "signature": {
+//!                 "visibility": {
+//!                     "kind": "private"
+//!                 },
+//!                 "name": {
+//!                     "location": {
+//!                         "file_path_id": 1,
+//!                         "start": 4,
+//!                         "end": 8
+//!                     },
+//!                     "id": 21
+//!                 },
+//!                 "generic_parameters": [],
+//!                 "parameters": [],
+//!                 "where_predicates": []
+//!             },
+//!             "body": [
+//!                 {
+//!                     "kind": "expression_statement",
+//!                     "expression": {
+//!                         "kind": "while_expression",
+//!                         "location": {
+//!                             "file_path_id": 1,
+//!                             "start": 17,
+//!                             "end": 21
+//!                         },
+//!                         "condition": {
+//!                             "kind": "literal_expression",
+//!                             "literal_kind": "boolean",
+//!                             "value": true,
+//!                             "location": {
+//!                                 "file_path_id": 1,
+//!                                 "start": 17,
+//!                                 "end": 21
+//!                             }
+//!                         },
+//!                         "statements_block": [
+//!                             {
+//!                                 "kind": "expression_statement",
+//!                                 "expression": {
+//!                                     "kind": "call_expression",
+//!                                     "location": {
+//!                                         "file_path_id": 1,
+//!                                         "start": 32,
+//!                                         "end": 65
+//!                                     },
+//!                                     "callee": {
+//!                                         "kind": "identifier_expression",
+//!                                         "location": {
+//!                                             "file_path_id": 1,
+//!                                             "start": 32,
+//!                                             "end": 39
+//!                                         },
+//!                                         "id": 22
+//!                                     },
+//!                                     "arguments": [
+//!                                         {
+//!                                             "kind": "literal_expression",
+//!                                             "literal_kind": "string",
+//!                                             "value": "printing this forever!",
+//!                                             "location": {
+//!                                                 "file_path_id": 1,
+//!                                                 "start": 40,
+//!                                                 "end": 64
+//!                                             }
+//!                                         }
+//!                                     ]
+//!                                 },
+//!                                 "has_semicolon": true
+//!                             }
+//!                         ]
+//!                     },
+//!                     "has_semicolon": false
+//!                 }
+//!             ]
+//!         }
+//!     ]
+//! }
+//! ```
+//!
+//! In this case, we can see that `loop` was converted into `while true`:
+//!
+//! ```json
+//!                         "kind": "while_expression",
+//!                         "location": {
+//!                             "file_path_id": 1,
+//!                             "start": 17,
+//!                             "end": 21
+//!                         },
+//!                         "condition": {
+//!                             "kind": "literal_expression",
+//!                             "literal_kind": "boolean",
+//!                             "value": true,
+//!                             "location": {
+//!                                 "file_path_id": 1,
+//!                                 "start": 17,
+//!                                 "end": 21
+//!                             }
+//!                         },
+//! ```
 
 #![doc(
     html_logo_url = "https://raw.githubusercontent.com/abs0luty/Ry/main/additional/icon/ry.png",
@@ -536,6 +654,77 @@ pub struct FunctionSignature {
     pub docstring: Option<String>,
 }
 
+/// An enum module item.
+#[derive(Debug, PartialEq, Clone)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+pub struct Enum {
+    pub visibility: Visibility,
+    pub name: IdentifierAST,
+    pub generic_parameters: Vec<GenericParameter>,
+    pub where_predicates: Vec<WherePredicate>,
+    pub items: Vec<EnumItem>,
+    pub methods: Vec<Function>,
+
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
+    pub implements: Option<Vec<TypeConstructor>>,
+
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
+    pub docstring: Option<String>,
+}
+
+/// An interface module item.
+#[derive(Debug, PartialEq, Clone)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+pub struct Interface {
+    pub visibility: Visibility,
+    pub name: IdentifierAST,
+    pub generic_parameters: Vec<GenericParameter>,
+    pub where_predicates: Vec<WherePredicate>,
+    pub methods: Vec<Function>,
+
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
+    pub implements: Option<Vec<TypeConstructor>>,
+
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
+    pub docstring: Option<String>,
+}
+
+/// A struct module item.
+#[derive(Debug, PartialEq, Clone)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+pub struct Struct {
+    pub visibility: Visibility,
+    pub name: IdentifierAST,
+    pub generic_parameters: Vec<GenericParameter>,
+    pub where_predicates: Vec<WherePredicate>,
+    pub fields: Vec<StructField>,
+    pub methods: Vec<Function>,
+
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
+    pub implements: Option<Vec<TypeConstructor>>,
+
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
+    pub docstring: Option<String>,
+}
+
+/// A tuple-like struct module item.
+#[derive(Debug, PartialEq, Clone)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+pub struct TupleLikeStruct {
+    pub visibility: Visibility,
+    pub name: IdentifierAST,
+    pub generic_parameters: Vec<GenericParameter>,
+    pub where_predicates: Vec<WherePredicate>,
+    pub fields: Vec<TupleField>,
+    pub methods: Vec<Function>,
+
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
+    pub implements: Option<Vec<TypeConstructor>>,
+
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
+    pub docstring: Option<String>,
+}
+
 /// A module item.
 #[derive(Debug, PartialEq, Clone)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
@@ -543,20 +732,7 @@ pub struct FunctionSignature {
 pub enum ModuleItem {
     /// Enum item.
     #[cfg_attr(feature = "serde", serde(rename = "enum_item"))]
-    Enum {
-        visibility: Visibility,
-        name: IdentifierAST,
-        generic_parameters: Vec<GenericParameter>,
-        where_predicates: Vec<WherePredicate>,
-        items: Vec<EnumItem>,
-        methods: Vec<Function>,
-
-        #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-        implements: Option<Vec<TypeConstructor>>,
-
-        #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-        docstring: Option<String>,
-    },
+    Enum(Enum),
 
     /// Function item.
     #[cfg_attr(feature = "serde", serde(rename = "function_item"))]
@@ -572,51 +748,13 @@ pub enum ModuleItem {
 
     /// Interface item.
     #[cfg_attr(feature = "serde", serde(rename = "interface_item"))]
-    Interface {
-        visibility: Visibility,
-        name: IdentifierAST,
-        generic_parameters: Vec<GenericParameter>,
-        where_predicates: Vec<WherePredicate>,
-        methods: Vec<Function>,
-
-        #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-        implements: Option<Vec<TypeConstructor>>,
-
-        #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-        docstring: Option<String>,
-    },
+    Interface(Interface),
 
     /// Struct item.
-    Struct {
-        visibility: Visibility,
-        name: IdentifierAST,
-        generic_parameters: Vec<GenericParameter>,
-        where_predicates: Vec<WherePredicate>,
-        fields: Vec<StructField>,
-        methods: Vec<Function>,
-
-        #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-        implements: Option<Vec<TypeConstructor>>,
-
-        #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-        docstring: Option<String>,
-    },
+    Struct(Struct),
 
     /// Tuple-like struct item.
-    TupleLikeStruct {
-        visibility: Visibility,
-        name: IdentifierAST,
-        generic_parameters: Vec<GenericParameter>,
-        where_predicates: Vec<WherePredicate>,
-        fields: Vec<TupleField>,
-        methods: Vec<Function>,
-
-        #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-        implements: Option<Vec<TypeConstructor>>,
-
-        #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-        docstring: Option<String>,
-    },
+    TupleLikeStruct(TupleLikeStruct),
 
     /// Type alias item.
     TypeAlias(TypeAlias),
@@ -628,10 +766,10 @@ impl ModuleItem {
     #[must_use]
     pub const fn location(&self) -> Location {
         match self {
-            Self::Enum {
+            Self::Enum(Enum {
                 name: IdentifierAST { location, .. },
                 ..
-            }
+            })
             | Self::Function(Function {
                 signature:
                     FunctionSignature {
@@ -641,18 +779,18 @@ impl ModuleItem {
                 ..
             })
             | Self::Import { location, .. }
-            | Self::Struct {
+            | Self::Struct(Struct {
                 name: IdentifierAST { location, .. },
                 ..
-            }
-            | Self::Interface {
+            })
+            | Self::Interface(Interface {
                 name: IdentifierAST { location, .. },
                 ..
-            }
-            | Self::TupleLikeStruct {
+            })
+            | Self::TupleLikeStruct(TupleLikeStruct {
                 name: IdentifierAST { location, .. },
                 ..
-            }
+            })
             | Self::TypeAlias(TypeAlias {
                 name: IdentifierAST { location, .. },
                 ..
@@ -665,10 +803,10 @@ impl ModuleItem {
     #[must_use]
     pub const fn name(&self) -> Option<IdentifierID> {
         match self {
-            Self::Enum {
+            Self::Enum(Enum {
                 name: IdentifierAST { id, .. },
                 ..
-            }
+            })
             | Self::Function(Function {
                 signature:
                     FunctionSignature {
@@ -677,18 +815,18 @@ impl ModuleItem {
                     },
                 ..
             })
-            | Self::Struct {
+            | Self::Struct(Struct {
                 name: IdentifierAST { id, .. },
                 ..
-            }
-            | Self::TupleLikeStruct {
+            })
+            | Self::TupleLikeStruct(TupleLikeStruct {
                 name: IdentifierAST { id, .. },
                 ..
-            }
-            | Self::Interface {
+            })
+            | Self::Interface(Interface {
                 name: IdentifierAST { id, .. },
                 ..
-            }
+            })
             | Self::TypeAlias(TypeAlias {
                 name: IdentifierAST { id, .. },
                 ..
@@ -728,10 +866,10 @@ impl ModuleItem {
     #[must_use]
     pub const fn visibility(&self) -> Visibility {
         match self {
-            Self::Enum { visibility, .. }
-            | Self::Struct { visibility, .. }
-            | Self::TupleLikeStruct { visibility, .. }
-            | Self::Interface { visibility, .. }
+            Self::Enum(Enum { visibility, .. })
+            | Self::Struct(Struct { visibility, .. })
+            | Self::TupleLikeStruct(TupleLikeStruct { visibility, .. })
+            | Self::Interface(Interface { visibility, .. })
             | Self::TypeAlias(TypeAlias { visibility, .. })
             | Self::Function(Function {
                 signature: FunctionSignature { visibility, .. },

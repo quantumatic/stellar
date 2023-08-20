@@ -10,6 +10,7 @@ description = "Defines THIR for the Ry programming language."
 
 [dependencies]
 ry_ast = { path = "../ry_ast" }
+ry_hir = { path = "../ry_hir" }
 ry_filesystem = { path = "../ry_filesystem" }
 ry_fx_hash = { path = "../ry_fx_hash" }
 ry_interner = { path = "../ry_interner" }

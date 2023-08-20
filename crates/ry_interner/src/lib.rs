@@ -552,12 +552,12 @@ pub struct PathID(pub usize);
 impl SymbolID for PathID {
     #[inline]
     fn into_storage_index(self) -> usize {
-        self.0
+        self.0 - 1
     }
 
     #[inline]
     fn from_storage_index(index: usize) -> Self {
-        Self(index)
+        Self(index + 1)
     }
 }
 

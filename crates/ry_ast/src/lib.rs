@@ -9,17 +9,85 @@
 //! information about relations between tokens. It can be emitted by
 //! the parser defined in [`ry_parser`] crate.
 //!
+//! For example, the following code:
+//!
+//! ```ry
+//! fun main() {
+//!     println("hello world");
+//! }
+//! ```
+//!
+//! Will be converted during parsing stage to AST, which when serialized will look like this:
+//!
+//! ```json
+//! {
+//!     "items": [
+//!         {
+//!             "kind": "function_item",
+//!             "signature": {
+//!                 "visibility": {
+//!                     "kind": "private"
+//!                 },
+//!                 "name": {
+//!                     "location": {
+//!                         "file_path_id": 1,
+//!                         "start": 4,
+//!                         "end": 8
+//!                     },
+//!                     "id": 21
+//!                 },
+//!                 "generic_parameters": [],
+//!                 "parameters": [],
+//!                 "where_predicates": []
+//!             },
+//!             "body": [
+//!                 {
+//!                     "kind": "expression_statement",
+//!                     "expression": {
+//!                         "kind": "call_expression",
+//!                         "location": {
+//!                             "file_path_id": 1,
+//!                             "start": 15,
+//!                             "end": 37
+//!                         },
+//!                         "callee": {
+//!                             "kind": "identifier_expression",
+//!                             "location": {
+//!                                 "file_path_id": 1,
+//!                                 "start": 15,
+//!                                 "end": 22
+//!                             },
+//!                             "id": 22
+//!                         },
+//!                         "arguments": [
+//!                             {
+//!                                 "kind": "literal_expression",
+//!                                 "literal_kind": "string",
+//!                                 "value": "hello world",
+//!                                 "location": {
+//!                                     "file_path_id": 1,
+//!                                     "start": 23,
+//!                                     "end": 36
+//!                                 }
+//!                             }
+//!                         ]
+//!                     },
+//!                     "has_semicolon": true
+//!                 }
+//!             ]
+//!         }
+//!     ]
+//! }
+//! ```
+//!
 //! For more details see the module items and start with [`Module`] node.
+//!
 //!
 //! # Serialization
 //!
-//! AST can be serialized into a string using [`serialize_ast()`]. This is used in the
-//! language CLI `parse` command, when serialized AST is written into a txt file.
+//! If the `serde` feature is enabled, the AST can be serialized using the `serde`
+//! crate.
 //!
-//! See [`Serializer`] for more details.
-//!
-//! [`Serializer`]: crate::serialize::Serializer
-//! [`serialize_ast()`]: crate::serialize::serialize_ast
 //! [`Token`]: crate::token::Token
 //! [`ry_parser`]: ../ry_parser/index.html
 
@@ -906,33 +974,91 @@ pub enum Statement {
     },
 }
 
+/// An interface module item.
+#[derive(Debug, PartialEq, Clone)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+pub struct Interface {
+    pub visibility: Visibility,
+    pub name: IdentifierAST,
+    pub generic_parameters: Vec<GenericParameter>,
+    pub where_predicates: Vec<WherePredicate>,
+    pub methods: Vec<Function>,
+
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
+    pub inherits: Option<Vec<TypeConstructor>>,
+
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
+    pub docstring: Option<String>,
+}
+
+/// An enum module item.
+#[derive(Debug, PartialEq, Clone)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+pub struct Enum {
+    pub visibility: Visibility,
+    pub name: IdentifierAST,
+    pub generic_parameters: Vec<GenericParameter>,
+    pub where_predicates: Vec<WherePredicate>,
+    pub items: Vec<EnumItem>,
+    pub methods: Vec<Function>,
+
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
+    pub implements: Option<Vec<TypeConstructor>>,
+
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
+    pub docstring: Option<String>,
+}
+
+/// A struct module item.
+#[derive(Debug, PartialEq, Clone)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+pub struct Struct {
+    pub visibility: Visibility,
+    pub name: IdentifierAST,
+    pub generic_parameters: Vec<GenericParameter>,
+    pub where_predicates: Vec<WherePredicate>,
+    pub fields: Vec<StructField>,
+    pub methods: Vec<Function>,
+
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
+    pub implements: Option<Vec<TypeConstructor>>,
+
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
+    pub docstring: Option<String>,
+}
+
+/// A tuple-like struct module item.
+#[derive(Debug, PartialEq, Clone)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+pub struct TupleLikeStruct {
+    pub visibility: Visibility,
+    pub name: IdentifierAST,
+    pub generic_parameters: Vec<GenericParameter>,
+    pub where_predicates: Vec<WherePredicate>,
+    pub fields: Vec<TupleField>,
+    pub methods: Vec<Function>,
+
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
+    pub implements: Option<Vec<TypeConstructor>>,
+
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
+    pub docstring: Option<String>,
+}
+
 /// A module item.
 #[derive(Debug, PartialEq, Clone)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "serde", serde(tag = "kind"))]
 pub enum ModuleItem {
-    /// Enum item.
+    /// An enum module item.
     #[cfg_attr(feature = "serde", serde(rename = "enum_item"))]
-    Enum {
-        visibility: Visibility,
-        name: IdentifierAST,
-        generic_parameters: Vec<GenericParameter>,
-        where_predicates: Vec<WherePredicate>,
-        items: Vec<EnumItem>,
-        methods: Vec<Function>,
+    Enum(Enum),
 
-        #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-        implements: Option<Vec<TypeConstructor>>,
-
-        #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-        docstring: Option<String>,
-    },
-
-    /// Function item.
+    /// A function module item.
     #[cfg_attr(feature = "serde", serde(rename = "function_item"))]
     Function(Function),
 
-    /// Import item.
+    /// An import module item.
     #[cfg_attr(feature = "serde", serde(rename = "import_item"))]
     Import {
         /// Location of the entire import item.
@@ -940,57 +1066,19 @@ pub enum ModuleItem {
         path: ImportPath,
     },
 
-    /// Interface item.
+    /// An interface module item.
     #[cfg_attr(feature = "serde", serde(rename = "interface_item"))]
-    Interface {
-        visibility: Visibility,
-        name: IdentifierAST,
-        generic_parameters: Vec<GenericParameter>,
-        where_predicates: Vec<WherePredicate>,
-        methods: Vec<Function>,
+    Interface(Interface),
 
-        #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-        inherits: Option<Vec<TypeConstructor>>,
-
-        #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-        docstring: Option<String>,
-    },
-
-    /// Struct item.
+    /// A struct module item.
     #[cfg_attr(feature = "serde", serde(rename = "struct_item"))]
-    Struct {
-        visibility: Visibility,
-        name: IdentifierAST,
-        generic_parameters: Vec<GenericParameter>,
-        where_predicates: Vec<WherePredicate>,
-        fields: Vec<StructField>,
-        methods: Vec<Function>,
+    Struct(Struct),
 
-        #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-        implements: Option<Vec<TypeConstructor>>,
-
-        #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-        docstring: Option<String>,
-    },
-
-    /// Tuple-like struct item.
+    /// A tuple-like struct module item.
     #[cfg_attr(feature = "serde", serde(rename = "tuple_like_struct_item"))]
-    TupleLikeStruct {
-        visibility: Visibility,
-        name: IdentifierAST,
-        generic_parameters: Vec<GenericParameter>,
-        where_predicates: Vec<WherePredicate>,
-        fields: Vec<TupleField>,
-        methods: Vec<Function>,
+    TupleLikeStruct(TupleLikeStruct),
 
-        #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-        implements: Option<Vec<TypeConstructor>>,
-
-        #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-        docstring: Option<String>,
-    },
-
-    /// Type alias item.
+    /// A type alias module item.
     #[cfg_attr(feature = "serde", serde(rename = "type_alias_item"))]
     TypeAlias(TypeAlias),
 }
@@ -1001,10 +1089,10 @@ impl ModuleItem {
     #[must_use]
     pub const fn location(&self) -> Location {
         match self {
-            Self::Enum {
+            Self::Enum(Enum {
                 name: IdentifierAST { location, .. },
                 ..
-            }
+            })
             | Self::Function(Function {
                 signature:
                     FunctionSignature {
@@ -1014,18 +1102,18 @@ impl ModuleItem {
                 ..
             })
             | Self::Import { location, .. }
-            | Self::Struct {
+            | Self::Struct(Struct {
                 name: IdentifierAST { location, .. },
                 ..
-            }
-            | Self::Interface {
+            })
+            | Self::Interface(Interface {
                 name: IdentifierAST { location, .. },
                 ..
-            }
-            | Self::TupleLikeStruct {
+            })
+            | Self::TupleLikeStruct(TupleLikeStruct {
                 name: IdentifierAST { location, .. },
                 ..
-            }
+            })
             | Self::TypeAlias(TypeAlias {
                 name: IdentifierAST { location, .. },
                 ..
@@ -1038,10 +1126,10 @@ impl ModuleItem {
     #[must_use]
     pub const fn name_identifier_id(&self) -> Option<IdentifierID> {
         match self {
-            Self::Enum {
+            Self::Enum(Enum {
                 name: IdentifierAST { id, .. },
                 ..
-            }
+            })
             | Self::Function(Function {
                 signature:
                     FunctionSignature {
@@ -1050,18 +1138,18 @@ impl ModuleItem {
                     },
                 ..
             })
-            | Self::Struct {
+            | Self::Struct(Struct {
                 name: IdentifierAST { id, .. },
                 ..
-            }
-            | Self::TupleLikeStruct {
+            })
+            | Self::TupleLikeStruct(TupleLikeStruct {
                 name: IdentifierAST { id, .. },
                 ..
-            }
-            | Self::Interface {
+            })
+            | Self::Interface(Interface {
                 name: IdentifierAST { id, .. },
                 ..
-            }
+            })
             | Self::TypeAlias(TypeAlias {
                 name: IdentifierAST { id, .. },
                 ..
@@ -1101,10 +1189,10 @@ impl ModuleItem {
     #[must_use]
     pub const fn visibility(&self) -> Option<Visibility> {
         match self {
-            Self::Enum { visibility, .. }
-            | Self::Struct { visibility, .. }
-            | Self::TupleLikeStruct { visibility, .. }
-            | Self::Interface { visibility, .. }
+            Self::Enum(Enum { visibility, .. })
+            | Self::Struct(Struct { visibility, .. })
+            | Self::TupleLikeStruct(TupleLikeStruct { visibility, .. })
+            | Self::Interface(Interface { visibility, .. })
             | Self::TypeAlias(TypeAlias { visibility, .. })
             | Self::Function(Function {
                 signature: FunctionSignature { visibility, .. },

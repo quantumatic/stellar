@@ -51,7 +51,7 @@ impl GenericParameterScope {
     /// **Note**: the method shouldn't be used to check if the parameter exists
     /// in the scope. Use the [`contains()`] method.
     ///
-    /// [`contains()`]: GenericParameterData::contains
+    /// [`contains()`]: GenericParameterScope::contains
     #[must_use]
     pub fn resolve(&self, parameter_name: IdentifierID) -> Option<&GenericParameterData> {
         if let Some(data) = self.parameters.get(&parameter_name) {
