@@ -606,7 +606,7 @@ macro_rules! operator_type {
         #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
         pub struct $operator_type_name {
             #[cfg_attr(feature = "serde", serde(serialize_with = "use_display"))]
-            #[cfg_attr(feature = "serde", serde(deserialize_with = "from_display"))]
+            #[cfg_attr(feature = "serde", serde(deserialize_with = "use_from_str"))]
             pub raw: $raw_operator_type_name,
             pub location: Location,
         }
@@ -1304,7 +1304,7 @@ where
 }
 
 #[cfg(feature = "serde")]
-fn from_display<'de, D, T>(deserializer: D) -> Result<T, D::Error>
+fn use_from_str<'de, D, T>(deserializer: D) -> Result<T, D::Error>
 where
     D: Deserializer<'de>,
     T: FromStr,

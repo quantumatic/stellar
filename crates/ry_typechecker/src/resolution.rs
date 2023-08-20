@@ -129,7 +129,7 @@ impl TypeCheckingContext<'_, '_, '_> {
                 .resolve_type_constructor(constructor, generic_parameter_scope, module_scope)
                 .map(Type::Constructor),
             ry_hir::Type::Tuple { element_types, .. } => element_types
-                .into_iter()
+                .iter()
                 .map(|element| self.resolve_type(element, generic_parameter_scope, module_scope))
                 .collect::<Option<Vec<_>>>()
                 .map(|element_types| Type::Tuple { element_types }),
@@ -139,7 +139,7 @@ impl TypeCheckingContext<'_, '_, '_> {
                 ..
             } => Some(Type::Function {
                 parameter_types: parameter_types
-                    .into_iter()
+                    .iter()
                     .map(|parameter| {
                         self.resolve_type(parameter, generic_parameter_scope, module_scope)
                     })
@@ -154,9 +154,9 @@ impl TypeCheckingContext<'_, '_, '_> {
                 let bounds = self.resolve_bounds(generic_parameter_scope, bounds, module_scope);
 
                 if bounds.is_empty() {
-                    return None;
+                    None
                 } else {
-                    return Some(Type::InterfaceObject { bounds });
+                    Some(Type::InterfaceObject { bounds })
                 }
             }
         }
@@ -172,15 +172,16 @@ impl TypeCheckingContext<'_, '_, '_> {
         let mut identifiers_iter = ty.path.identifiers.iter();
         let possible_generic_parameter_name = identifiers_iter.next().unwrap();
 
-        if identifiers_iter.next().is_none() && ty.arguments.is_empty() {
-            if generic_parameter_scope.contains(possible_generic_parameter_name.id) {
-                return Some(TypeConstructor {
-                    path: Path {
-                        identifiers: vec![possible_generic_parameter_name.id],
-                    },
-                    arguments: vec![],
-                });
-            }
+        if identifiers_iter.next().is_none()
+            && ty.arguments.is_empty()
+            && generic_parameter_scope.contains(possible_generic_parameter_name.id)
+        {
+            return Some(TypeConstructor {
+                path: Path {
+                    identifiers: vec![possible_generic_parameter_name.id],
+                },
+                arguments: vec![],
+            });
         }
 
         let Some(name_binding) = module_scope.resolve_path(
@@ -216,7 +217,7 @@ impl TypeCheckingContext<'_, '_, '_> {
         generic_parameter_scope: &GenericParameterScope,
         module_scope: &ModuleScope,
     ) -> Option<Vec<Type>> {
-        hir.into_iter()
+        hir.iter()
             .map(|ty| self.resolve_type(ty, generic_parameter_scope, module_scope))
             .collect::<Option<_>>()
     }
@@ -226,6 +227,7 @@ impl TypeCheckingContext<'_, '_, '_> {
         todo!()
     }
 
+    #[allow(clippy::single_match)]
     fn implements(&self, ty: Type, interface: TypeConstructor) -> bool {
         match ty {
             Type::Constructor(constructor) => {
@@ -244,7 +246,7 @@ impl TypeCheckingContext<'_, '_, '_> {
 
     pub(crate) fn resolve_interface(
         &self,
-        interface: ry_hir::TypeConstructor,
+        interface: &ry_hir::TypeConstructor,
         generic_parameter_scope: &GenericParameterScope,
         module_scope: &ModuleScope,
     ) -> Option<TypeConstructor> {
@@ -286,9 +288,9 @@ impl TypeCheckingContext<'_, '_, '_> {
         module_scope: &ModuleScope,
     ) -> Vec<TypeConstructor> {
         bounds
-            .into_iter()
+            .iter()
             .filter_map(|bound| {
-                self.resolve_interface(bound.clone(), generic_parameter_scope, module_scope)
+                self.resolve_interface(bound, generic_parameter_scope, module_scope)
             })
             .collect()
     }

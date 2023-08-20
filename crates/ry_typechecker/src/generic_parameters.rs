@@ -73,8 +73,23 @@ impl TypeCheckingContext<'_, '_, '_> {
                     });
 
             if let Some(bounds_hir) = &parameter_hir.bounds {
+                if unlikely(is_type_alias) {
+                    self.diagnostics.write().add_single_file_diagnostic(
+                        module_item_name_location.file_path_id,
+                        BoundsInTypeAliasDiagnostic::new(
+                            module_item_name_location,
+                            Location {
+                                start: bounds_hir.first().unwrap().location.start,
+                                end: bounds_hir.last().unwrap().location.end,
+                                file_path_id: module_item_name_location.file_path_id,
+                            },
+                        ),
+                    );
+
+                    continue;
+                }
+
                 self.analyze_generic_parameter_bounds(
-                    is_type_alias,
                     module_item_name_location,
                     parameter_hir,
                     bounds_hir,
@@ -98,7 +113,6 @@ impl TypeCheckingContext<'_, '_, '_> {
 
     pub(crate) fn analyze_generic_parameter_bounds(
         &self,
-        is_type_alias: bool,
         module_item_name_location: Location,
         parameter_hir: &ry_hir::GenericParameter,
         bounds_hir: &[ry_hir::TypeConstructor],
@@ -106,27 +120,11 @@ impl TypeCheckingContext<'_, '_, '_> {
         predicates: &mut Vec<Predicate>,
         module_scope: &ModuleScope,
     ) {
-        if unlikely(is_type_alias) {
-            self.diagnostics.write().add_single_file_diagnostic(
-                module_item_name_location.file_path_id,
-                BoundsInTypeAliasDiagnostic::new(
-                    module_item_name_location,
-                    Location {
-                        start: bounds_hir.first().unwrap().location.start,
-                        end: bounds_hir.last().unwrap().location.end,
-                        file_path_id: module_item_name_location.file_path_id,
-                    },
-                ),
-            );
-
-            return;
-        }
-
         let mut bounds = vec![];
 
         for bound_hir in bounds_hir {
             let Some(bound) =
-                self.resolve_interface(bound_hir.clone(), &generic_parameter_scope, module_scope)
+                self.resolve_interface(bound_hir, generic_parameter_scope, module_scope)
             else {
                 continue;
             };
