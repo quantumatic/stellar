@@ -1,6 +1,5 @@
 use std::sync::Arc;
 
-use ry_diagnostics::BuildDiagnostic;
 use ry_filesystem::location::Location;
 use ry_name_resolution::ModuleScope;
 use ry_stable_likely::unlikely;

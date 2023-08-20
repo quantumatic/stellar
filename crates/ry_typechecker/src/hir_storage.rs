@@ -3,8 +3,6 @@ use std::collections::hash_map;
 use ry_fx_hash::FxHashMap;
 use ry_name_resolution::DefinitionID;
 
-use crate::ModuleItemState;
-
 /// Storage of HIR for module items.
 #[derive(Debug, Default)]
 pub struct HIRStorage {
