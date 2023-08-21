@@ -1,17 +1,18 @@
 #![allow(dead_code, unused)]
 
-use std::sync::Arc;
+use std::{collections::BTreeSet, sync::Arc};
 
 use hir_storage::HIRStorage;
 use parking_lot::RwLock;
 use ry_diagnostics::Diagnostics;
 use ry_fx_hash::{FxHashMap, FxHashSet};
 use ry_interner::{IdentifierInterner, PathInterner};
-use ry_name_resolution::{DefinitionID, ResolutionEnvironment};
+use ry_name_resolution::{DefinitionID, Path, ResolutionEnvironment};
 use ry_thir::{
     ty::{Type, TypeVariableID},
     ModuleItemSignature,
 };
+use signature_analysis::signature_analysis_context::SignatureAnalysisContext;
 use thir_storage::THIRStorage;
 use type_variable_factory::TypeVariableFactory;
 
@@ -59,9 +60,8 @@ pub struct TypeCheckingContext<'i, 'p, 'd> {
     /// THIR global storage.
     thir_storage: RwLock<THIRStorage>,
 
-    /// List of type aliases, that have been recursivly analyzed. Used to find
-    /// type alias cycles.
-    type_alias_stack: FxHashSet<DefinitionID>,
+    /// Signature analysis context.
+    signature_analysis_context: RwLock<SignatureAnalysisContext>,
 
     /// Identifier interner.
     identifier_interner: &'i IdentifierInterner,
@@ -93,13 +93,13 @@ impl<'i, 'p, 'd> TypeCheckingContext<'i, 'p, 'd> {
             path_interner,
             identifier_interner,
             diagnostics,
-            type_alias_stack: FxHashSet::default(),
             hir_storage: RwLock::new(HIRStorage::new()),
             thir_storage: RwLock::new(THIRStorage::new()),
             resolution_environment: ResolutionEnvironment::new(),
             type_variable_factory: TypeVariableFactory::new(),
             substitutions: FxHashMap::default(),
             signatures: FxHashMap::default(),
+            signature_analysis_context: RwLock::new(SignatureAnalysisContext::new()),
         }
     }
 }

@@ -404,15 +404,15 @@ pub struct Predicate {
 }
 
 #[derive(Debug, PartialEq, Clone)]
-pub struct TypeSignature {
+pub struct GeneralTypeSignature {
     pub name: IdentifierAST,
     pub generic_parameter_scope: GenericParameterScope,
     pub bounds: Vec<Predicate>,
 }
 
 #[derive(Debug, PartialEq, Clone)]
-pub struct Enum {
-    pub type_signature: TypeSignature,
+pub struct EnumSignature {
+    pub type_signature: GeneralTypeSignature,
     pub items: FxHashMap<IdentifierID, EnumItem>,
 }
 
@@ -442,8 +442,8 @@ pub struct EnumItemTupleField {
 }
 
 #[derive(Debug, PartialEq, Clone)]
-pub struct Struct {
-    pub type_signature: TypeSignature,
+pub struct StructSignature {
+    pub type_signature: GeneralTypeSignature,
     pub fields: FxHashMap<IdentifierID, StructField>,
 }
 
@@ -463,9 +463,8 @@ pub struct TypeAliasSignature {
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct InterfaceSignature {
-    pub name: IdentifierAST,
-    pub generic_parameter_scope: GenericParameterScope,
-    pub bounds: Vec<Predicate>,
+    pub type_signature: GeneralTypeSignature,
+    pub method_signatures: Vec<FunctionSignature>,
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -499,7 +498,8 @@ pub struct Interface {
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum ModuleItemSignature {
-    Type(TypeSignature),
+    Enum(EnumSignature),
+    Struct(StructSignature),
     TypeAlias(TypeAliasSignature),
     Interface(InterfaceSignature),
     Function(Vec<FunctionSignature>),
@@ -507,14 +507,8 @@ pub enum ModuleItemSignature {
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum ModuleItem {
-    Enum {
-        signature: TypeSignature,
-        items: FxHashMap<IdentifierID, EnumItem>,
-    },
-    Struct {
-        signature: TypeSignature,
-        fields: FxHashMap<IdentifierID, StructField>,
-    },
+    Enum(EnumSignature),
+    Struct(StructSignature),
     Interface {
         signature: InterfaceSignature,
         methods: FxHashMap<IdentifierID, Function>,

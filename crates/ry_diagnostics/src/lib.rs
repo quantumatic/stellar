@@ -196,11 +196,11 @@ impl Diagnostics {
     pub fn is_ok(&self) -> bool {
         self.context_free_diagnostics
             .iter()
-            .all(|d| !is_fatal_sevirity(d.severity))
+            .all(|d| !is_fatal_severity(d.severity))
             && self
                 .file_diagnostics
                 .iter()
-                .all(|d| !is_fatal_sevirity(d.severity))
+                .all(|d| !is_fatal_severity(d.severity))
     }
 }
 
@@ -364,7 +364,7 @@ pub enum DiagnosticsStatus {
 /// Returns `true` if the given [`Severity`] is fatal.
 #[inline]
 #[must_use]
-pub const fn is_fatal_sevirity(severity: Severity) -> bool {
+pub const fn is_fatal_severity(severity: Severity) -> bool {
     matches!(severity, Severity::Error | Severity::Bug)
 }
 

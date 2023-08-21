@@ -10,8 +10,8 @@ pub struct THIRStorage {
 }
 
 impl IntoIterator for THIRStorage {
-    type IntoIter = hash_map::IntoIter<DefinitionID, ry_thir::ModuleItem>;
     type Item = (DefinitionID, ry_thir::ModuleItem);
+    type IntoIter = hash_map::IntoIter<DefinitionID, ry_thir::ModuleItem>;
 
     #[inline]
     fn into_iter(self) -> Self::IntoIter {

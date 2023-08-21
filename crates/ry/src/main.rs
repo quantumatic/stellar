@@ -67,7 +67,6 @@ mod new;
 mod parse;
 mod parse_manifest;
 mod prefix;
-mod unique_file;
 
 #[derive(Parser)]
 #[command(name = "ry")]

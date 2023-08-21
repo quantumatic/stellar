@@ -1,5 +1,8 @@
 //! Defines [`Type`] for working with types and THIR nodes.
 
+use std::fmt::Display;
+
+use derive_more::Display;
 use ry_filesystem::location::Location;
 use ry_interner::{builtin_identifiers, IdentifierID};
 use ry_name_resolution::Path;
@@ -61,35 +64,48 @@ pub enum Type {
     },
 }
 
+impl Display for Type {
+    #[inline]
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.kind().fmt(f)
+    }
+}
+
 /// A kind of type.
 ///
 /// See [`Type`] for more details.
-#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, Display)]
 pub enum TypeKind {
     /// A unit type, e.g. `()`.
+    #[display(fmt = "unit type")]
     Unit,
 
     /// A type constructor: `List[uint32]`, `uint32`, `String`.
     ///
     /// Anything that has name and optionally have generic arguments.
+    #[display(fmt = "type constructor")]
     Constructor,
 
     /// A tuple type: `(uint32,)`, `(String, uint32)`.
     ///
     /// **Note**: `element_types` vector is never empty, because an
     /// enum variant for unit type already exists: [`Type::Unit`].
+    #[display(fmt = "tuple type")]
     Tuple,
 
     /// A function type: `(String): bool`, `(): ()`, `(T, M): ()`.
+    #[display(fmt = "function type")]
     Function,
 
     /// A type variable (placeholder for types, that aren't inferred yet).
+    #[display(fmt = "uninferred type")]
     Variable,
 
     /// An interface object type, e.g. `dyn Iterator[char] + ToString`.
     ///
     /// A type of dynamically dispatched objects, that have a vtable of interfaces in
     /// `bounds`.
+    #[display(fmt = "interface object type")]
     InterfaceObject,
 }
 

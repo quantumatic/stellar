@@ -1,14 +1,15 @@
-use std::ops::Deref;
-use std::{io::Write, path::PathBuf, time::Instant};
+use std::io::Write;
+use std::{path::PathBuf, time::Instant};
 
 use parking_lot::RwLock;
 use ry_ast_lowering::LoweringContext;
 use ry_diagnostics::diagnostic::Diagnostic;
 use ry_diagnostics::{Diagnostics, DiagnosticsEmitter};
+use ry_filesystem::file_utils::make_unique_file;
 use ry_interner::{IdentifierInterner, PathInterner};
 use ry_parser::read_and_parse_module;
 
-use crate::{prefix::log_with_left_padded_prefix, unique_file::create_unique_file};
+use crate::prefix::log_with_left_padded_prefix;
 
 pub fn command(path_str: &str) {
     let mut path_interner = PathInterner::new();
@@ -42,10 +43,9 @@ pub fn command(path_str: &str) {
 
             log_with_left_padded_prefix("Lowered", format!("in {}s", now.elapsed().as_secs_f64()));
 
-            let diagnostics_reader = diagnostics.read();
-            let diagnostics = diagnostics_reader.deref();
+            let diagnostics = diagnostics.into_inner();
 
-            diagnostics_emitter.emit_global_diagnostics(diagnostics);
+            diagnostics_emitter.emit_global_diagnostics(&diagnostics);
 
             if diagnostics.is_ok() {
                 now = Instant::now();
@@ -57,8 +57,9 @@ pub fn command(path_str: &str) {
                     format!("in {}s", now.elapsed().as_secs_f64()),
                 );
 
-                let (filename, mut file) = create_unique_file("hir", "json");
-                file.write_all(hir_string.as_bytes())
+                let (filename, file) = make_unique_file("hir", "json");
+                file.expect("Cannot create `hir (n).json` file")
+                    .write_all(hir_string.as_bytes())
                     .unwrap_or_else(|_| panic!("Cannot write to file {filename}"));
 
                 log_with_left_padded_prefix("Emitted", format!("HIR in `{filename}`"));

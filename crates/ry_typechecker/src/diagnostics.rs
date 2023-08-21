@@ -1,3 +1,4 @@
+use itertools::Itertools;
 use ry_diagnostics::diagnostic::Diagnostic;
 use ry_diagnostics::{BuildDiagnostic, LocationExt};
 use ry_filesystem::location::Location;
@@ -191,5 +192,54 @@ impl BuildDiagnostic for DuplicateGenericParameterDiagnostic {
                 self.parameter_name
             ))
             .with_labels(vec![self.previous_parameter_location.to_secondary_label()])
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TypeAliasCycleFound {
+    pub stack_trace: Vec<TypeAliasCycleStackTraceItem>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TypeAliasCycleStackTraceItem {
+    pub alias_name: String,
+    pub alias_location: Location,
+}
+
+// error[E012]: type alias cycle found
+//  --> test.ry
+// 1 | type A = B;
+// 2 |      ^ expanding `A`, also requires expanding type alias `B`
+// 3 | type B = C;
+// 4 |      ^ expanding `B`, also requires expanding type alias `C`
+// 5 | type C = A;
+// 6 |      ^ type alias cycle found here: expanding `C`, also requires expanding type alias `A`
+impl BuildDiagnostic for TypeAliasCycleFound {
+    fn build(self) -> Diagnostic<PathID> {
+        Diagnostic::error()
+            .with_code("E012")
+            .with_message(format!(
+            "type alias cycle found here: expanding `{}`, also requires expanding type alias `{}`",
+            self.stack_trace.last().unwrap().alias_name,
+            self.stack_trace.first().unwrap().alias_name
+        ))
+            .with_labels(
+                self.stack_trace
+                    .split_last()
+                    .unwrap()
+                    .1
+                    .iter()
+                    .tuple_windows()
+                    .map(|(first, second)| {
+                        first
+                            .alias_location
+                            .to_secondary_label()
+                            .with_message(format!(
+                                "expanding `{}`, also requires expanding type alias `{}`",
+                                first.alias_name, second.alias_name
+                            ))
+                    })
+                    .collect::<Vec<_>>(),
+            )
     }
 }

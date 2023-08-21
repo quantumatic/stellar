@@ -10,8 +10,8 @@ pub struct HIRStorage {
 }
 
 impl IntoIterator for HIRStorage {
-    type IntoIter = hash_map::IntoIter<DefinitionID, ry_hir::ModuleItem>;
     type Item = (DefinitionID, ry_hir::ModuleItem);
+    type IntoIter = hash_map::IntoIter<DefinitionID, ry_hir::ModuleItem>;
 
     #[inline]
     fn into_iter(self) -> Self::IntoIter {

@@ -6,6 +6,7 @@ use ry_thir::{ModuleItemSignature, TypeAliasSignature};
 use crate::TypeCheckingContext;
 
 impl TypeCheckingContext<'_, '_, '_> {
+    /// Analyzes a type alias.
     pub(crate) fn analyze_type_alias_signature(
         &self,
         definition_id: DefinitionID,

@@ -1,10 +1,11 @@
 use std::sync::Arc;
 
-use ry_name_resolution::{ModuleScope, NameBinding};
-use ry_thir::ModuleItemSignature;
+use ry_name_resolution::{ModuleScope, NameBinding, NameBindingKind, Path};
+use ry_thir::{GeneralTypeSignature, ModuleItemSignature};
 
 use crate::TypeCheckingContext;
 
+pub mod signature_analysis_context;
 mod type_alias;
 
 impl TypeCheckingContext<'_, '_, '_> {
@@ -29,8 +30,10 @@ impl TypeCheckingContext<'_, '_, '_> {
         name_binding: NameBinding,
         module_scope: &ModuleScope,
     ) -> Option<Arc<ModuleItemSignature>> {
-        match name_binding {
-            NameBinding::TypeAlias(definition_id) => {
+        let definition_id = name_binding.definition_id_or_panic();
+
+        match name_binding.kind() {
+            NameBindingKind::TypeAlias => {
                 self.analyze_type_alias_signature(definition_id, module_scope)
             }
             _ => unreachable!(),

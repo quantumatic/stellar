@@ -150,7 +150,6 @@
 )]
 
 use std::fmt::Display;
-#[cfg(feature = "serde")]
 use std::str::FromStr;
 
 use derive_more::Display;

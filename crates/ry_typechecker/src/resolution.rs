@@ -10,10 +10,13 @@ use ry_name_resolution::{
 use ry_thir::{
     generic_parameter_scope::GenericParameterScope,
     ty::{Type, TypeConstructor},
-    ModuleItemSignature,
+    ModuleItemSignature, TypeAliasSignature,
 };
 
-use crate::{diagnostics::ExpectedType, TypeCheckingContext};
+use crate::{
+    diagnostics::{ExpectedType, TypeAliasCycleFound},
+    TypeCheckingContext,
+};
 
 impl TypeCheckingContext<'_, '_, '_> {
     fn add_module(
@@ -264,21 +267,43 @@ impl TypeCheckingContext<'_, '_, '_> {
             .collect::<Option<_>>()
     }
 
-    fn unwrap_type_alias(&self, path: Path) -> Type {
-        let definition_id = self.resolve_type_signature_by_path(path);
+    pub fn unwrap_type_aliases(&self, constructor: TypeConstructor) -> Type {
+        let ty = Type::Constructor(constructor);
+
+        // loop {
+        // match ty {
+        //     Type::Constructor(constructor) => {
+        //         self.signature_analysis_context
+        //             .write()
+        //             .add_type_alias_to_stack(&constructor.path);
+
+        //         let signature = self.resolve_type_signature_by_path(&constructor.path);
+        //     }
+        //     _ => ty,
+        // }
+        // }
+
+        self.signature_analysis_context
+            .write()
+            .drop_type_alias_stack();
+
+        todo!()
+    }
+
+    fn build_type_alias_cycle_diagnostic() -> TypeAliasCycleFound {
         todo!()
     }
 
     #[allow(clippy::single_match)]
-    fn implements(&self, ty: Type, interface: TypeConstructor) -> bool {
+    fn implements(&self, ty: Type, interface: &TypeConstructor) -> bool {
         match ty {
             Type::Constructor(constructor) => {
-                let signature = self.resolve_type_signature_by_path(constructor.path);
+                let signature = self.resolve_type_signature_by_path(&constructor.path);
 
-                match signature.as_ref() {
-                    ModuleItemSignature::TypeAlias(alias) => {}
-                    _ => {}
-                }
+                // match signature.as_ref() {
+                //     ModuleItemSignature::TypeAlias(alias) => {}
+                //     _ => {}
+                // }
 
                 todo!()
             }
@@ -344,7 +369,10 @@ impl TypeCheckingContext<'_, '_, '_> {
         todo!()
     }
 
-    fn resolve_type_signature_by_path(&self, path: Path) -> Arc<ModuleItemSignature> {
+    fn resolve_type_signature_by_path(
+        &self,
+        path: &Path,
+    ) -> (DefinitionID, Arc<ModuleItemSignature>) {
         todo!()
     }
 
@@ -355,7 +383,10 @@ impl TypeCheckingContext<'_, '_, '_> {
         todo!()
     }
 
-    fn resolve_interface_signature_by_path(&self, path: Path) -> Arc<ModuleItemSignature> {
+    fn resolve_interface_signature_by_path(
+        &self,
+        path: Path,
+    ) -> (DefinitionID, Arc<ModuleItemSignature>) {
         todo!()
     }
 }
