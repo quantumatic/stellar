@@ -176,7 +176,8 @@
     clippy::module_name_repetitions,
     clippy::too_many_lines,
     clippy::option_if_let_else,
-    clippy::unnested_or_patterns
+    clippy::unnested_or_patterns,
+    clippy::inline_always
 )]
 
 use ry_ast::ModuleItemKind;
@@ -731,15 +732,15 @@ pub struct TupleLikeStruct {
 #[cfg_attr(feature = "serde", serde(tag = "kind"))]
 pub enum ModuleItem {
     /// Enum item.
-    #[cfg_attr(feature = "serde", serde(rename = "enum_item"))]
+    #[cfg_attr(feature = "serde", serde(rename = "enum_module_item"))]
     Enum(Enum),
 
     /// Function item.
-    #[cfg_attr(feature = "serde", serde(rename = "function_item"))]
+    #[cfg_attr(feature = "serde", serde(rename = "function_module_item"))]
     Function(Function),
 
     /// Import item.
-    #[cfg_attr(feature = "serde", serde(rename = "import_item"))]
+    #[cfg_attr(feature = "serde", serde(rename = "import_module_item"))]
     Import {
         /// Location of the entire import item.
         location: Location,
@@ -747,16 +748,19 @@ pub enum ModuleItem {
     },
 
     /// Interface item.
-    #[cfg_attr(feature = "serde", serde(rename = "interface_item"))]
+    #[cfg_attr(feature = "serde", serde(rename = "interface_module_item"))]
     Interface(Interface),
 
     /// Struct item.
+    #[cfg_attr(feature = "serde", serde(rename = "struct_module_item"))]
     Struct(Struct),
 
     /// Tuple-like struct item.
+    #[cfg_attr(feature = "serde", serde(rename = "tuple_like_struct_module_item"))]
     TupleLikeStruct(TupleLikeStruct),
 
     /// Type alias item.
+    #[cfg_attr(feature = "serde", serde(rename = "type_alias_module_item"))]
     TypeAlias(TypeAlias),
 }
 

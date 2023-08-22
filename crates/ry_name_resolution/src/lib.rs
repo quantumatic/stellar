@@ -60,7 +60,8 @@
     clippy::module_name_repetitions,
     clippy::too_many_lines,
     clippy::option_if_let_else,
-    clippy::cast_possible_truncation
+    clippy::cast_possible_truncation,
+    clippy::inline_always
 )]
 
 use std::{fmt::Debug, iter};

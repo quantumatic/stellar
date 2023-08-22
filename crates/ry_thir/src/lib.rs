@@ -56,7 +56,8 @@
     clippy::module_name_repetitions,
     clippy::too_many_lines,
     clippy::option_if_let_else,
-    clippy::unnested_or_patterns
+    clippy::unnested_or_patterns,
+    clippy::inline_always
 )]
 
 use generic_parameter_scope::GenericParameterScope;

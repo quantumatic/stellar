@@ -58,7 +58,8 @@
 #![allow(
     clippy::module_name_repetitions,
     clippy::too_many_lines,
-    clippy::option_if_let_else
+    clippy::option_if_let_else,
+    clippy::inline_always
 )]
 
 use core::{

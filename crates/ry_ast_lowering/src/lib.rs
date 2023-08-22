@@ -28,7 +28,7 @@ impl<'d> LoweringContext<'d> {
     /// Creates a new lowering context.
     #[inline(always)]
     #[must_use]
-    pub fn new(file_path_id: PathID, diagnostics: &'d RwLock<Diagnostics>) -> Self {
+    pub const fn new(file_path_id: PathID, diagnostics: &'d RwLock<Diagnostics>) -> Self {
         Self {
             file_path_id,
             diagnostics,

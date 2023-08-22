@@ -61,7 +61,8 @@
     clippy::too_many_lines,
     clippy::option_if_let_else,
     clippy::redundant_pub_crate,
-    clippy::unnested_or_patterns
+    clippy::unnested_or_patterns,
+    clippy::inline_always
 )]
 
 pub mod diagnostics;

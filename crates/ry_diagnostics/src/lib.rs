@@ -58,7 +58,8 @@
     clippy::redundant_pub_crate,
     clippy::too_many_arguments,
     clippy::needless_pass_by_value,
-    clippy::similar_names
+    clippy::similar_names,
+    clippy::inline_always
 )]
 
 pub mod diagnostic;
