@@ -23,7 +23,7 @@
 //! {
 //!     "items": [
 //!         {
-//!             "kind": "function_item",
+//!             "kind": "function_module_item",
 //!             "signature": {
 //!                 "visibility": {
 //!                     "kind": "private"
