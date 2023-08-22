@@ -26,7 +26,7 @@ pub struct LoweringContext<'d> {
 
 impl<'d> LoweringContext<'d> {
     /// Creates a new lowering context.
-    #[inline]
+    #[inline(always)]
     #[must_use]
     pub fn new(file_path_id: PathID, diagnostics: &'d RwLock<Diagnostics>) -> Self {
         Self {
@@ -35,7 +35,7 @@ impl<'d> LoweringContext<'d> {
         }
     }
 
-    #[inline]
+    #[inline(always)]
     fn add_diagnostic(&mut self, diagnostic: impl BuildDiagnostic) {
         self.diagnostics
             .write()

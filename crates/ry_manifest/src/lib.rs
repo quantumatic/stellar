@@ -175,7 +175,7 @@ pub fn parse_manifest(source: impl AsRef<str>) -> Result<TomlManifest, String> {
     Ok(manifest)
 }
 
-#[inline]
+#[inline(always)]
 fn parse_document(source: impl AsRef<str>) -> Result<Document, String> {
     match source.as_ref().parse::<Document>() {
         Ok(table) => Ok(table),

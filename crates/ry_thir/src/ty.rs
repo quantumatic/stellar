@@ -65,7 +65,7 @@ pub enum Type {
 }
 
 impl Display for Type {
-    #[inline]
+    #[inline(always)]
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.kind().fmt(f)
     }
@@ -113,7 +113,7 @@ impl Type {
     /// Returns a type's kind.
     ///
     /// See [`TypeKind`] for more details.
-    #[inline]
+    #[inline(always)]
     #[must_use]
     pub const fn kind(&self) -> TypeKind {
         match self {
@@ -161,7 +161,7 @@ pub enum TypeVariable {
 
 impl TypeVariable {
     /// Returns ID of the type variable.
-    #[inline]
+    #[inline(always)]
     #[must_use]
     pub const fn id(&self) -> TypeVariableID {
         match self {
@@ -179,7 +179,7 @@ pub struct TypeVariableID(pub usize);
 macro_rules! generate_builtin_primitive_types {
     ($($name:ident => $symbol:ident),*) => {
         $(
-            #[inline]
+            #[inline(always)]
             #[must_use]
             #[doc = concat!("Returns a `", stringify!($name), "` type.")]
             pub fn $name() -> Type {
@@ -207,7 +207,7 @@ pub struct TypeConstructor {
 }
 
 impl TypeConstructor {
-    #[inline]
+    #[inline(always)]
     #[must_use]
     pub const fn new(left: Path, right: Vec<Type>) -> Self {
         Self {
@@ -216,7 +216,7 @@ impl TypeConstructor {
         }
     }
 
-    #[inline]
+    #[inline(always)]
     #[must_use]
     pub fn new_primitive(identifier_id: IdentifierID) -> Self {
         Self {
@@ -229,7 +229,7 @@ impl TypeConstructor {
 }
 
 impl Type {
-    #[inline]
+    #[inline(always)]
     #[must_use]
     pub fn new_primitive(identifier_id: IdentifierID) -> Self {
         Self::Constructor(TypeConstructor::new_primitive(identifier_id))
@@ -237,7 +237,7 @@ impl Type {
 }
 
 /// Returns a list type with the given element type.
-#[inline]
+#[inline(always)]
 #[must_use]
 pub fn list_of(element_type: Type) -> Type {
     Type::Constructor(TypeConstructor {

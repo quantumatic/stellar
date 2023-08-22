@@ -31,7 +31,7 @@ pub enum ModuleItemState {
 }
 
 impl ModuleItemState {
-    #[inline]
+    #[inline(always)]
     #[must_use]
     pub const fn hir(&self) -> Option<&ry_hir::ModuleItem> {
         match self {
@@ -40,7 +40,7 @@ impl ModuleItemState {
         }
     }
 
-    #[inline]
+    #[inline(always)]
     #[must_use]
     pub fn hir_or_panic(&self) -> &ry_hir::ModuleItem {
         self.hir()

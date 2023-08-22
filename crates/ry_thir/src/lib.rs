@@ -132,7 +132,7 @@ pub enum Pattern {
 
 impl Pattern {
     /// Returns the location of the pattern.
-    #[inline]
+    #[inline(always)]
     #[must_use]
     pub const fn location(&self) -> Location {
         match self {
@@ -307,7 +307,7 @@ pub enum TypeArgument {
 
 impl Expression {
     /// Returns the location of the expression.
-    #[inline]
+    #[inline(always)]
     #[must_use]
     pub const fn location(&self) -> Location {
         match self {
@@ -355,7 +355,7 @@ impl Expression {
     /// Returns `true` if this expression has a block in it (except function expressions).
     /// Used to determine if this expression has to have semicolon at the end.
     /// Function expression do have blocks in them, but they must have a semicolon at the end.
-    #[inline]
+    #[inline(always)]
     #[must_use]
     pub const fn with_block(&self) -> bool {
         matches!(

@@ -9,19 +9,19 @@ pub struct TypeVariableFactory {
 }
 
 impl TypeVariableFactory {
-    #[inline]
+    #[inline(always)]
     #[must_use]
     pub fn new() -> Self {
         Self::default()
     }
 
-    #[inline]
+    #[inline(always)]
     fn advance(&mut self) -> TypeVariableID {
         self.last_type_variable_id += 1;
         TypeVariableID(self.last_type_variable_id)
     }
 
-    #[inline]
+    #[inline(always)]
     #[must_use]
     pub fn make_variable_for_expression_type(&mut self, location: Location) -> TypeVariable {
         TypeVariable::Expression {
@@ -30,13 +30,13 @@ impl TypeVariableFactory {
         }
     }
 
-    #[inline]
+    #[inline(always)]
     #[must_use]
     pub fn make_expression_type_placeholder(&mut self, location: Location) -> Type {
         Type::Variable(self.make_variable_for_expression_type(location))
     }
 
-    #[inline]
+    #[inline(always)]
     #[must_use]
     pub fn make_variable_for_type_argument(
         &mut self,
@@ -54,7 +54,7 @@ impl TypeVariableFactory {
         }
     }
 
-    #[inline]
+    #[inline(always)]
     #[must_use]
     pub fn make_type_argument_placeholder(
         &mut self,

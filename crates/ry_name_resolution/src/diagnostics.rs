@@ -33,7 +33,7 @@ pub struct ItemDefinedMultipleTimesDiagnostic {
 
 impl ItemDefinedMultipleTimesDiagnostic {
     /// Creates a new instance of [`ItemDefinedMultipleTimesDiagnostic`].
-    #[inline]
+    #[inline(always)]
     #[must_use]
     pub fn new(
         name: impl ToString,
@@ -49,7 +49,7 @@ impl ItemDefinedMultipleTimesDiagnostic {
 }
 
 impl BuildDiagnostic for ItemDefinedMultipleTimesDiagnostic {
-    #[inline]
+    #[inline(always)]
     fn build(self) -> Diagnostic<PathID> {
         Diagnostic::error()
             .with_code("E005")
@@ -88,7 +88,7 @@ pub struct ImportingPackageDiagnostic {
 
 impl ImportingPackageDiagnostic {
     /// Creates a new instance of [`ImportingPackageDiagnostic`].
-    #[inline]
+    #[inline(always)]
     #[must_use]
     pub fn new(
         location: Location,
@@ -104,7 +104,7 @@ impl ImportingPackageDiagnostic {
 }
 
 impl BuildDiagnostic for ImportingPackageDiagnostic {
-    #[inline]
+    #[inline(always)]
     fn build(self) -> Diagnostic<PathID> {
         Diagnostic::error()
             .with_code("E006")
@@ -144,7 +144,7 @@ pub struct ModuleItemsExceptEnumsDoNotServeAsNamespacesDiagnostic {
 }
 
 impl BuildDiagnostic for ModuleItemsExceptEnumsDoNotServeAsNamespacesDiagnostic {
-    #[inline]
+    #[inline(always)]
     fn build(self) -> Diagnostic<PathID> {
         Diagnostic::error()
             .with_code("E007")
@@ -184,7 +184,7 @@ pub struct EnumItemsDoNotServeAsNamespacesDiagnostic {
 }
 
 impl BuildDiagnostic for EnumItemsDoNotServeAsNamespacesDiagnostic {
-    #[inline]
+    #[inline(always)]
     fn build(self) -> Diagnostic<PathID> {
         Diagnostic::error()
             .with_code("E007")

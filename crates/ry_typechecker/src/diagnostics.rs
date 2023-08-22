@@ -12,7 +12,7 @@ pub struct DuplicateTraitBoundDiagnostic {
 }
 
 impl DuplicateTraitBoundDiagnostic {
-    #[inline]
+    #[inline(always)]
     #[must_use]
     pub const fn new(first_bound_location: Location, second_bound_location: Location) -> Self {
         Self {
@@ -45,7 +45,7 @@ pub struct UnnecessaryEqualityPredicateDiagnostic {
 }
 
 impl UnnecessaryEqualityPredicateDiagnostic {
-    #[inline]
+    #[inline(always)]
     #[must_use]
     pub const fn new(generic_parameter_location: Location, type_location: Location) -> Self {
         Self {
@@ -78,7 +78,7 @@ pub struct ExpectedType {
 }
 
 impl ExpectedType {
-    #[inline]
+    #[inline(always)]
     #[must_use]
     pub fn new(location: Location, name_binding_kind: NameBindingKind) -> Self {
         Self {
@@ -104,7 +104,7 @@ pub struct ExpectedInterface {
 }
 
 impl ExpectedInterface {
-    #[inline]
+    #[inline(always)]
     #[must_use]
     pub fn new(location: Location, name_binding_kind: NameBindingKind) -> Self {
         Self {
@@ -133,7 +133,7 @@ pub struct BoundsInTypeAliasDiagnostic {
 }
 
 impl BoundsInTypeAliasDiagnostic {
-    #[inline]
+    #[inline(always)]
     #[must_use]
     pub const fn new(alias_name_location: Location, bounds_location: Location) -> Self {
         Self {
@@ -168,7 +168,7 @@ pub struct DuplicateGenericParameterDiagnostic {
 }
 
 impl DuplicateGenericParameterDiagnostic {
-    #[inline]
+    #[inline(always)]
     #[must_use]
     pub fn new(
         previous_parameter_location: Location,

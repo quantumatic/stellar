@@ -147,7 +147,7 @@ pub trait OptionallyParse: Sized {
 ///
 /// # Panics
 /// Panics if the file path cannot be resolved in the path storage.
-#[inline]
+#[inline(always)]
 pub fn read_and_parse_module(
     path_identifier_interner: &PathInterner,
     file_path_id: PathID,
@@ -163,7 +163,7 @@ pub fn read_and_parse_module(
 }
 
 /// Parse a Ry module.
-#[inline]
+#[inline(always)]
 #[must_use]
 pub fn parse_module(
     file_path_id: PathID,
@@ -180,7 +180,7 @@ pub fn parse_module(
 }
 
 /// Parse a Ry module using a given parse state.
-#[inline]
+#[inline(always)]
 #[must_use]
 pub fn parse_module_using(mut state: ParseState<'_, '_, '_>) -> Module {
     Module {
@@ -190,7 +190,7 @@ pub fn parse_module_using(mut state: ParseState<'_, '_, '_>) -> Module {
 }
 
 /// Parse an item.
-#[inline]
+#[inline(always)]
 #[must_use]
 pub fn parse_item(
     file_path_id: PathID,
@@ -207,14 +207,14 @@ pub fn parse_item(
 }
 
 /// Parse an item.
-#[inline]
+#[inline(always)]
 #[must_use]
 pub fn parse_item_using(state: &mut ParseState<'_, '_, '_>) -> Option<ModuleItem> {
     ItemParser.parse(state)
 }
 
 /// Parse an expression.
-#[inline]
+#[inline(always)]
 #[must_use]
 pub fn parse_expression(
     file_path_id: PathID,
@@ -231,14 +231,14 @@ pub fn parse_expression(
 }
 
 /// Parse an expression.
-#[inline]
+#[inline(always)]
 #[must_use]
 pub fn parse_expression_using(state: &mut ParseState<'_, '_, '_>) -> Option<Expression> {
     ExpressionParser::default().parse(state)
 }
 
 /// Parse a statement.
-#[inline]
+#[inline(always)]
 #[must_use]
 pub fn parse_statement(
     file_path_id: PathID,
@@ -255,14 +255,14 @@ pub fn parse_statement(
 }
 
 /// Parse a statement.
-#[inline]
+#[inline(always)]
 #[must_use]
 pub fn parse_statement_using(state: &mut ParseState<'_, '_, '_>) -> Option<Statement> {
     StatementParser.parse(state).map(|s| s.0)
 }
 
 /// Parse a type.
-#[inline]
+#[inline(always)]
 #[must_use]
 pub fn parse_type(
     file_path_id: PathID,
@@ -279,14 +279,14 @@ pub fn parse_type(
 }
 
 /// Parse a type.
-#[inline]
+#[inline(always)]
 #[must_use]
 pub fn parse_type_using(state: &mut ParseState<'_, '_, '_>) -> Option<Type> {
     TypeParser.parse(state)
 }
 
 /// Parse a pattern.
-#[inline]
+#[inline(always)]
 #[must_use]
 pub fn parse_pattern(
     file_path_id: PathID,
@@ -303,7 +303,7 @@ pub fn parse_pattern(
 }
 
 /// Parse a pattern.
-#[inline]
+#[inline(always)]
 #[must_use]
 pub fn parse_pattern_using(state: &mut ParseState<'_, '_, '_>) -> Option<Pattern> {
     PatternParser.parse(state)
@@ -341,7 +341,7 @@ impl<'s, 'd, 'i> ParseState<'s, 'd, 'i> {
     }
 
     /// Adds diagnostic if the next token has lex error in itself.
-    #[inline]
+    #[inline(always)]
     fn check_next_token(&mut self) {
         if let RawToken::Error(error) = self.next_token.raw {
             self.add_diagnostic(LexErrorDiagnostic(LexError {
@@ -352,14 +352,14 @@ impl<'s, 'd, 'i> ParseState<'s, 'd, 'i> {
     }
 
     /// Returns string slice corresponding to the given location.
-    #[inline]
+    #[inline(always)]
     #[must_use]
     fn resolve_location(&self, location: Location) -> &str {
         self.lexer.source.index(location)
     }
 
     /// Returns string slice corresponding to the current token's location.
-    #[inline]
+    #[inline(always)]
     #[must_use]
     fn resolve_current(&self) -> &str {
         self.resolve_location(self.current_token.location)
@@ -415,7 +415,7 @@ impl<'s, 'd, 'i> ParseState<'s, 'd, 'i> {
 
     /// Creates a new location with the parser state's file id and
     /// the given starting and ending byte offsets.
-    #[inline]
+    #[inline(always)]
     pub(crate) const fn make_location(&self, start: ByteOffset, end: ByteOffset) -> Location {
         Location {
             file_path_id: self.lexer.file_path_id,
@@ -426,7 +426,7 @@ impl<'s, 'd, 'i> ParseState<'s, 'd, 'i> {
 
     /// Creates a new location with the state's file id and
     /// ending with a current token location's end byte location.
-    #[inline]
+    #[inline(always)]
     pub(crate) const fn location_from(&self, start_offset: ByteOffset) -> Location {
         self.make_location(start_offset, self.current_token.location.end)
     }
@@ -499,7 +499,7 @@ impl<'s, 'd, 'i> ParseState<'s, 'd, 'i> {
     }
 
     /// Saves a single file diagnostic.
-    #[inline]
+    #[inline(always)]
     #[allow(clippy::needless_pass_by_value)]
     pub(crate) fn add_diagnostic(&mut self, diagnostic: impl BuildDiagnostic) {
         self.diagnostics

@@ -29,7 +29,7 @@ impl InMemoryFile {
     ///
     /// # Errors
     /// If the source of the file cannot be read.
-    #[inline]
+    #[inline(always)]
     pub fn new(path: impl Into<PathBuf> + Clone) -> Result<Self, io::Error> {
         Ok(Self::new_from_source(
             path.clone(),
@@ -44,7 +44,7 @@ impl InMemoryFile {
     ///
     /// # Errors
     /// If the source of the file cannot be read.
-    #[inline]
+    #[inline(always)]
     pub fn new_from_path_id(
         path_interner: &PathInterner,
         path_id: PathID,
@@ -57,7 +57,7 @@ impl InMemoryFile {
     ///
     /// # Panics
     /// If the file contents cannot be read.
-    #[inline]
+    #[inline(always)]
     #[must_use]
     pub fn new_or_panic(path: impl Into<PathBuf> + Clone) -> Self {
         Self::new(path).expect("Cannot read the file")
@@ -68,14 +68,14 @@ impl InMemoryFile {
     /// # Panics
     /// * If the path id cannot be resolved in the path storage.
     /// * If the source of the file cannot be read.
-    #[inline]
+    #[inline(always)]
     #[must_use]
     pub fn new_from_path_id_or_panic(path_interner: &PathInterner, path_id: PathID) -> Self {
         Self::new_or_panic(path_interner.resolve_or_panic(path_id))
     }
 
     /// Creates a new [`InMemoryFile`] with the given source.
-    #[inline]
+    #[inline(always)]
     #[must_use]
     pub fn new_from_source(path: impl Into<PathBuf>, source: String) -> Self {
         Self {
@@ -89,7 +89,7 @@ impl InMemoryFile {
     }
 
     /// Returns the string slice corresponding to the given location.
-    #[inline]
+    #[inline(always)]
     #[must_use]
     pub fn resolve_location(&self, location: Location) -> &str {
         self.source.index(location)

@@ -128,7 +128,7 @@ pub struct ResolvedImportsInModule {
 
 impl ResolutionEnvironment {
     /// Creates a new empty resolution environment
-    #[inline]
+    #[inline(always)]
     #[must_use]
     pub fn new() -> Self {
         Self::default()
@@ -240,7 +240,7 @@ pub enum NameBinding {
 
 impl NameBinding {
     /// Returns the definition ID of the name binding, if it is a module item.
-    #[inline]
+    #[inline(always)]
     #[must_use]
     pub const fn definition_id(&self) -> Option<DefinitionID> {
         match self {
@@ -257,7 +257,7 @@ impl NameBinding {
     ///
     /// # Panics
     /// If the name binding is not a module item.
-    #[inline]
+    #[inline(always)]
     #[must_use]
     pub fn definition_id_or_panic(&self) -> DefinitionID {
         self.definition_id().unwrap()
@@ -302,14 +302,14 @@ impl ResolveFullPath for DefinitionID {
 }
 
 impl ResolveFullPath for ModuleID {
-    #[inline]
+    #[inline(always)]
     fn full_path(self, environment: &ResolutionEnvironment) -> Option<Path> {
         environment.module_paths.get(&self).cloned()
     }
 }
 
 impl ResolveFullPath for EnumItemID {
-    #[inline]
+    #[inline(always)]
     fn full_path(self, environment: &ResolutionEnvironment) -> Option<Path> {
         self.enum_definition_id
             .full_path(environment)
@@ -324,7 +324,7 @@ impl ResolveFullPath for EnumItemID {
 }
 
 impl ResolveFullPath for NameBinding {
-    #[inline]
+    #[inline(always)]
     fn full_path(self, environment: &ResolutionEnvironment) -> Option<Path> {
         match self {
             Self::Package(package_id) => package_id.full_path(environment),
@@ -384,7 +384,7 @@ pub enum NameBindingKind {
 
 impl NameBindingKind {
     /// Returns `true` if the name binding is a module item.
-    #[inline]
+    #[inline(always)]
     #[must_use]
     pub const fn is_module_item(&self) -> bool {
         matches!(
@@ -396,7 +396,7 @@ impl NameBindingKind {
 
 impl NameBinding {
     /// Returns `true` if the name binding is a module item.
-    #[inline]
+    #[inline(always)]
     #[must_use]
     pub const fn is_module_item(&self) -> bool {
         matches!(
@@ -412,7 +412,7 @@ impl NameBinding {
     /// Returns the kind of the name binding.
     ///
     /// See [`NameBindingKind`] for more details.
-    #[inline]
+    #[inline(always)]
     #[must_use]
     pub const fn kind(&self) -> NameBindingKind {
         match self {
@@ -434,7 +434,7 @@ impl NameBinding {
     /// # Panics
     /// - If the environment data is invalid.
     /// - If the path contains symbols, that cannot be resolved by an identifier interner.
-    #[inline]
+    #[inline(always)]
     pub fn resolve_rest_of_the_path(
         self,
         first_identifier: IdentifierAST,

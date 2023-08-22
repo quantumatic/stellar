@@ -57,7 +57,7 @@ pub enum UnnecessaryVisibilityQualifierContext {
 pub struct LexErrorDiagnostic(pub LexError);
 
 impl BuildDiagnostic for LexErrorDiagnostic {
-    #[inline]
+    #[inline(always)]
     fn build(self) -> Diagnostic<PathID> {
         Diagnostic::error()
             .with_message(self.0.raw.to_string())
@@ -84,7 +84,7 @@ pub struct UnexpectedTokenDiagnostic {
 
 impl UnexpectedTokenDiagnostic {
     /// Creates a new instance of [`UnexpectedTokenDiagnostic`].
-    #[inline]
+    #[inline(always)]
     #[must_use]
     pub fn new(
         offset: Option<ByteOffset>,
@@ -102,7 +102,7 @@ impl UnexpectedTokenDiagnostic {
 }
 
 impl BuildDiagnostic for UnexpectedTokenDiagnostic {
-    #[inline]
+    #[inline(always)]
     fn build(self) -> Diagnostic<PathID> {
         Diagnostic::error()
             .with_message(format!(
@@ -139,7 +139,7 @@ pub struct IntegerOverflowDiagnostic {
 }
 
 impl BuildDiagnostic for IntegerOverflowDiagnostic {
-    #[inline]
+    #[inline(always)]
     fn build(self) -> Diagnostic<PathID> {
         Diagnostic::error()
             .with_message("unexpected integer overflow".to_owned())
@@ -161,7 +161,7 @@ pub struct FloatOverflowDiagnostic {
 }
 
 impl BuildDiagnostic for FloatOverflowDiagnostic {
-    #[inline]
+    #[inline(always)]
     fn build(self) -> Diagnostic<PathID> {
         Diagnostic::error()
             .with_message("unexpected float overflow".to_owned())
@@ -187,7 +187,7 @@ pub struct UnnecessaryVisibilityQualifierDiagnostic {
 }
 
 impl BuildDiagnostic for UnnecessaryVisibilityQualifierDiagnostic {
-    #[inline]
+    #[inline(always)]
     fn build(self) -> Diagnostic<PathID> {
         let mut labels = vec![self
             .location
@@ -237,7 +237,7 @@ pub struct EOFInsteadOfCloseBrace {
 }
 
 impl BuildDiagnostic for EOFInsteadOfCloseBrace {
-    #[inline]
+    #[inline(always)]
     fn build(self) -> Diagnostic<PathID> {
         Diagnostic::error()
             .with_message("unexpected end of file".to_owned())

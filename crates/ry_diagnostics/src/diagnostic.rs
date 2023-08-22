@@ -60,7 +60,7 @@ pub struct Label<FileId> {
 
 impl<FileId> Label<FileId> {
     /// Create a new label.
-    #[inline]
+    #[inline(always)]
     #[must_use]
     pub fn new(style: LabelStyle, file_id: FileId, range: impl Into<Range<usize>>) -> Self {
         Self {
@@ -74,7 +74,7 @@ impl<FileId> Label<FileId> {
     /// Create a new label with a style of [`LabelStyle::Primary`].
     ///
     /// [`LabelStyle::Primary`]: LabelStyle::Primary
-    #[inline]
+    #[inline(always)]
     #[must_use]
     pub fn primary(file_id: FileId, range: impl Into<Range<usize>>) -> Self {
         Self::new(LabelStyle::Primary, file_id, range)
@@ -83,14 +83,14 @@ impl<FileId> Label<FileId> {
     /// Create a new label with a style of [`LabelStyle::Secondary`].
     ///
     /// [`LabelStyle::Secondary`]: LabelStyle::Secondary
-    #[inline]
+    #[inline(always)]
     #[must_use]
     pub fn secondary(file_id: FileId, range: impl Into<Range<usize>>) -> Self {
         Self::new(LabelStyle::Secondary, file_id, range)
     }
 
     /// Add a message to the diagnostic.
-    #[inline]
+    #[inline(always)]
     #[must_use]
     pub fn with_message(mut self, message: impl ToString) -> Self {
         self.message = message.to_string();
@@ -126,7 +126,7 @@ pub struct Diagnostic<FileId> {
 
 impl<FileId> Diagnostic<FileId> {
     /// Create a new diagnostic.
-    #[inline]
+    #[inline(always)]
     #[must_use]
     pub const fn new(severity: Severity) -> Self {
         Self {
@@ -141,7 +141,7 @@ impl<FileId> Diagnostic<FileId> {
     /// Create a new diagnostic with a severity of [`Severity::Bug`].
     ///
     /// [`Severity::Bug`]: Severity::Bug
-    #[inline]
+    #[inline(always)]
     #[must_use]
     pub const fn bug() -> Self {
         Self::new(Severity::Bug)
@@ -150,7 +150,7 @@ impl<FileId> Diagnostic<FileId> {
     /// Create a new diagnostic with a severity of [`Severity::Error`].
     ///
     /// [`Severity::Error`]: Severity::Error
-    #[inline]
+    #[inline(always)]
     #[must_use]
     pub const fn error() -> Self {
         Self::new(Severity::Error)
@@ -159,7 +159,7 @@ impl<FileId> Diagnostic<FileId> {
     /// Create a new diagnostic with a severity of [`Severity::Warning`].
     ///
     /// [`Severity::Warning`]: Severity::Warning
-    #[inline]
+    #[inline(always)]
     #[must_use]
     pub const fn warning() -> Self {
         Self::new(Severity::Warning)
@@ -168,7 +168,7 @@ impl<FileId> Diagnostic<FileId> {
     /// Create a new diagnostic with a severity of [`Severity::Note`].
     ///
     /// [`Severity::Note`]: Severity::Note
-    #[inline]
+    #[inline(always)]
     #[must_use]
     pub const fn note() -> Self {
         Self::new(Severity::Note)
@@ -177,14 +177,14 @@ impl<FileId> Diagnostic<FileId> {
     /// Create a new diagnostic with a severity of [`Severity::Help`].
     ///
     /// [`Severity::Help`]: Severity::Help
-    #[inline]
+    #[inline(always)]
     #[must_use]
     pub const fn help() -> Self {
         Self::new(Severity::Help)
     }
 
     /// Set the error code of the diagnostic.
-    #[inline]
+    #[inline(always)]
     #[must_use]
     pub fn with_code(mut self, code: impl ToString) -> Self {
         self.code = Some(code.to_string());
@@ -192,7 +192,7 @@ impl<FileId> Diagnostic<FileId> {
     }
 
     /// Set the message of the diagnostic.
-    #[inline]
+    #[inline(always)]
     #[must_use]
     pub fn with_message(mut self, message: impl ToString) -> Self {
         self.message = message.to_string();
@@ -200,7 +200,7 @@ impl<FileId> Diagnostic<FileId> {
     }
 
     /// Add some labels to the diagnostic.
-    #[inline]
+    #[inline(always)]
     #[must_use]
     pub fn with_labels(mut self, mut labels: Vec<Label<FileId>>) -> Self {
         self.labels.append(&mut labels);
@@ -208,7 +208,7 @@ impl<FileId> Diagnostic<FileId> {
     }
 
     /// Add some notes to the diagnostic.
-    #[inline]
+    #[inline(always)]
     #[must_use]
     pub fn with_notes(mut self, mut notes: Vec<String>) -> Self {
         self.notes.append(&mut notes);

@@ -14,28 +14,28 @@ pub struct PackagePathResolver<'path> {
 
 impl PackagePathResolver<'_> {
     /// Returns the path of the package README.
-    #[inline]
+    #[inline(always)]
     #[must_use]
     pub fn readme(&self) -> PathBuf {
         self.root.join("README.md")
     }
 
     /// Returns the path of the package configuration file.
-    #[inline]
+    #[inline(always)]
     #[must_use]
     pub fn manifest(&self) -> PathBuf {
         self.root.join("package.toml")
     }
 
     /// Returns the path of the package source directory.
-    #[inline]
+    #[inline(always)]
     #[must_use]
     pub fn src_directory(&self) -> PathBuf {
         self.root.join("src")
     }
 
     /// Returns the path of the build directory (used by the compiler).
-    #[inline]
+    #[inline(always)]
     #[must_use]
     pub fn build_directory(&self) -> PathBuf {
         self.root.join("build")

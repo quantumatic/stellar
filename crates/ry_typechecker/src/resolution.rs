@@ -156,7 +156,7 @@ impl TypeCheckingContext<'_, '_, '_> {
     /// **WARNING**: The function must be called before any actions related to analysis or
     /// name resolution, because if not it will cause panics when trying to work with
     /// module imports.
-    #[inline]
+    #[inline(always)]
     pub fn process_imports(&mut self) {
         self.resolution_environment
             .resolve_imports(self.identifier_interner, self.diagnostics);

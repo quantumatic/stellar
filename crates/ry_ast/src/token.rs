@@ -358,7 +358,7 @@ pub enum RawToken {
 }
 
 impl RawToken {
-    #[inline]
+    #[inline(always)]
     #[must_use]
     pub const fn is_error(&self) -> bool {
         matches!(self, Self::Error(_))
@@ -402,7 +402,7 @@ impl From<RawToken> for String {
 }
 
 impl RawToken {
-    #[inline]
+    #[inline(always)]
     #[must_use]
     pub const fn eof(&self) -> bool {
         matches!(self, Self::EndOfFile)

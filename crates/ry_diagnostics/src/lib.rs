@@ -127,7 +127,7 @@ impl Default for Diagnostics {
 
 impl Diagnostics {
     /// Creates a new instance of [`Diagnostics`].
-    #[inline]
+    #[inline(always)]
     #[must_use]
     pub fn new() -> Self {
         Self {
@@ -138,7 +138,7 @@ impl Diagnostics {
     }
 
     /// Adds a diagnostic associated with a single file.
-    #[inline]
+    #[inline(always)]
     pub fn add_single_file_diagnostic(
         &mut self,
         file_path_id: PathID,
@@ -149,7 +149,7 @@ impl Diagnostics {
     }
 
     /// Adds diagnostics associated with a single file.
-    #[inline]
+    #[inline(always)]
     pub fn add_single_file_diagnostics(
         &mut self,
         file_path_id: PathID,
@@ -161,7 +161,7 @@ impl Diagnostics {
     }
 
     /// Adds a diagnostic associated with some files.
-    #[inline]
+    #[inline(always)]
     pub fn add_file_diagnostic(
         &mut self,
         files_involved: impl IntoIterator<Item = PathID>,
@@ -172,7 +172,7 @@ impl Diagnostics {
     }
 
     /// Adds diagnostics associated with some files.
-    #[inline]
+    #[inline(always)]
     pub fn add_file_diagnostics(
         &mut self,
         files_involved: impl IntoIterator<Item = PathID>,
@@ -184,14 +184,14 @@ impl Diagnostics {
     }
 
     /// Returns `true` if diagnostics are fatal.
-    #[inline]
+    #[inline(always)]
     #[must_use]
     pub fn is_fatal(&self) -> bool {
         !self.is_ok()
     }
 
     /// Returns `true` if diagnostics are ok.
-    #[inline]
+    #[inline(always)]
     #[must_use]
     pub fn is_ok(&self) -> bool {
         self.context_free_diagnostics
@@ -254,7 +254,7 @@ impl Files<'_> for EmptyDiagnosticsManager {
 
 impl<'p> DiagnosticsEmitter<'p> {
     /// Create a new [`DiagnosticsEmitter`] instance.
-    #[inline]
+    #[inline(always)]
     #[must_use]
     pub fn new(path_interner: &'p PathInterner) -> Self {
         Self {
@@ -265,7 +265,7 @@ impl<'p> DiagnosticsEmitter<'p> {
     }
 
     /// Set the stream in which diagnostics is reported into.
-    #[inline]
+    #[inline(always)]
     #[must_use]
     #[allow(clippy::missing_const_for_fn)] // false-positive clippy lint
     pub fn with_diagnostics_writer(mut self, writer: StandardStream) -> Self {
@@ -274,7 +274,7 @@ impl<'p> DiagnosticsEmitter<'p> {
     }
 
     /// Set the config for diagnostics reporting.
-    #[inline]
+    #[inline(always)]
     #[must_use]
     #[allow(clippy::missing_const_for_fn)] // false-positive clippy lint
     pub fn with_diagnostics_config(mut self, config: Config) -> Self {
@@ -283,7 +283,7 @@ impl<'p> DiagnosticsEmitter<'p> {
     }
 
     /// Emit the diagnostic not associated with a file.
-    #[inline]
+    #[inline(always)]
     #[allow(clippy::missing_panics_doc)]
     pub fn emit_context_free_diagnostic(&self, diagnostic: &Diagnostic<()>) {
         term::emit(
@@ -296,7 +296,7 @@ impl<'p> DiagnosticsEmitter<'p> {
     }
 
     /// Emit diagnostics not associated with a particular file.
-    #[inline]
+    #[inline(always)]
     pub fn emit_context_free_diagnostics(&self, diagnostics: &[Diagnostic<()>]) {
         for diagnostic in diagnostics {
             self.emit_context_free_diagnostic(diagnostic);
@@ -309,7 +309,7 @@ impl<'p> DiagnosticsEmitter<'p> {
     /// # Panics
     /// * If the file with a given path does not exist.
     /// * If the file path id cannot be resolved in the path storage.
-    #[inline]
+    #[inline(always)]
     pub fn emit_file_diagnostic(&self, diagnostic: &Diagnostic<PathID>) {
         term::emit(
             &mut self.writer.lock(),
@@ -343,7 +343,7 @@ impl<'p> DiagnosticsEmitter<'p> {
     }
 
     /// Emit global diagnostics.
-    #[inline]
+    #[inline(always)]
     pub fn emit_global_diagnostics(&mut self, global_diagnostics: &Diagnostics) {
         self.initialize_file_storage(&global_diagnostics.files_involved);
         self.emit_context_free_diagnostics(&global_diagnostics.context_free_diagnostics);
@@ -362,7 +362,7 @@ pub enum DiagnosticsStatus {
 }
 
 /// Returns `true` if the given [`Severity`] is fatal.
-#[inline]
+#[inline(always)]
 #[must_use]
 pub const fn is_fatal_severity(severity: Severity) -> bool {
     matches!(severity, Severity::Error | Severity::Bug)
@@ -376,7 +376,7 @@ pub trait BuildDiagnostic {
 }
 
 impl BuildDiagnostic for Diagnostic<PathID> {
-    #[inline]
+    #[inline(always)]
     fn build(self) -> Diagnostic<PathID> {
         self
     }
@@ -395,12 +395,12 @@ pub trait LocationExt {
 }
 
 impl LocationExt for Location {
-    #[inline]
+    #[inline(always)]
     fn to_primary_label(self) -> Label<PathID> {
         Label::primary(self.file_path_id, self)
     }
 
-    #[inline]
+    #[inline(always)]
     fn to_secondary_label(self) -> Label<PathID> {
         Label::secondary(self.file_path_id, self)
     }

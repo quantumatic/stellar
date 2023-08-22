@@ -153,7 +153,7 @@ pub struct Styles {
 
 impl Styles {
     /// The style used to mark a header at a given severity.
-    #[inline]
+    #[inline(always)]
     #[must_use]
     pub const fn header(&self, severity: Severity) -> &ColorSpec {
         match severity {
@@ -166,7 +166,7 @@ impl Styles {
     }
 
     /// The style used to mark a primary or secondary label at a given severity.
-    #[inline]
+    #[inline(always)]
     #[must_use]
     pub const fn label(&self, severity: Severity, label_style: LabelStyle) -> &ColorSpec {
         match (label_style, severity) {
@@ -286,7 +286,7 @@ impl Default for Chars {
 
 impl Chars {
     /// A character set that uses Unicode box drawing characters.
-    #[inline]
+    #[inline(always)]
     #[must_use]
     pub fn box_drawing() -> Self {
         Self {
@@ -318,7 +318,7 @@ impl Chars {
     /// This is useful if your terminal's font does not support box drawing
     /// characters well and results in output that looks similar to rustc's
     /// diagnostic output.
-    #[inline]
+    #[inline(always)]
     #[must_use]
     pub fn ascii() -> Self {
         Self {

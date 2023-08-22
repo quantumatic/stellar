@@ -37,7 +37,7 @@ impl Display for ByteOffset {
 impl Add for ByteOffset {
     type Output = Self;
 
-    #[inline]
+    #[inline(always)]
     fn add(self, rhs: Self) -> Self::Output {
         Self(self.0 + rhs.0)
     }
@@ -46,21 +46,21 @@ impl Add for ByteOffset {
 impl Add<usize> for ByteOffset {
     type Output = Self;
 
-    #[inline]
+    #[inline(always)]
     fn add(self, rhs: usize) -> Self::Output {
         Self(self.0 + rhs)
     }
 }
 
 impl AddAssign for ByteOffset {
-    #[inline]
+    #[inline(always)]
     fn add_assign(&mut self, rhs: Self) {
         self.0 += rhs.0;
     }
 }
 
 impl AddAssign<usize> for ByteOffset {
-    #[inline]
+    #[inline(always)]
     fn add_assign(&mut self, rhs: usize) {
         self.0 += rhs;
     }
@@ -69,7 +69,7 @@ impl AddAssign<usize> for ByteOffset {
 impl Sub for ByteOffset {
     type Output = Self;
 
-    #[inline]
+    #[inline(always)]
     fn sub(self, rhs: Self) -> Self::Output {
         Self(self.0 - rhs.0)
     }
@@ -78,21 +78,21 @@ impl Sub for ByteOffset {
 impl Sub<usize> for ByteOffset {
     type Output = Self;
 
-    #[inline]
+    #[inline(always)]
     fn sub(self, rhs: usize) -> Self::Output {
         Self(self.0 - rhs)
     }
 }
 
 impl SubAssign for ByteOffset {
-    #[inline]
+    #[inline(always)]
     fn sub_assign(&mut self, rhs: Self) {
         self.0 -= rhs.0;
     }
 }
 
 impl SubAssign<usize> for ByteOffset {
-    #[inline]
+    #[inline(always)]
     fn sub_assign(&mut self, rhs: usize) {
         self.0 -= rhs;
     }
@@ -100,7 +100,7 @@ impl SubAssign<usize> for ByteOffset {
 
 impl ByteOffset {
     /// Returns location of the next byte relative to the current offset.
-    #[inline]
+    #[inline(always)]
     #[must_use]
     pub const fn next_byte_location_at(self, file_path_id: PathID) -> Location {
         Location {
@@ -111,7 +111,7 @@ impl ByteOffset {
     }
 
     /// Returns location of the previous byte relative to the current offset.
-    #[inline]
+    #[inline(always)]
     #[must_use]
     pub const fn previous_byte_location_at(self, file_path_id: PathID) -> Location {
         Location {
@@ -162,7 +162,7 @@ impl Location {
     ///     }
     /// );
     /// ```
-    #[inline]
+    #[inline(always)]
     #[must_use]
     pub const fn start_byte_location(self) -> Self {
         self.start.next_byte_location_at(self.file_path_id)
@@ -189,7 +189,7 @@ impl Location {
     ///     }
     /// );
     /// ```
-    #[inline]
+    #[inline(always)]
     #[must_use]
     pub const fn end_byte_location(self) -> Self {
         self.end.previous_byte_location_at(self.file_path_id)
@@ -236,7 +236,7 @@ where
 {
     type Output = str;
 
-    #[inline]
+    #[inline(always)]
     #[allow(clippy::indexing_slicing)]
     fn index(&self, location: Location) -> &Self::Output {
         &self.as_ref()[location.start.0..location.end.0]

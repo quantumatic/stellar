@@ -154,7 +154,7 @@ pub struct Lexer<'s, 'i> {
 
 impl<'s, 'i> Lexer<'s, 'i> {
     /// Creates a new [`Lexer`] instance.
-    #[inline]
+    #[inline(always)]
     #[must_use]
     pub fn new(
         file_path_id: PathID,
@@ -182,14 +182,14 @@ impl<'s, 'i> Lexer<'s, 'i> {
 
     /// Returns a string being scanned early on (after processing escape sequences) and
     /// cleans internal lexer string buffer. So it must be used only once!
-    #[inline]
+    #[inline(always)]
     #[must_use]
     pub fn scanned_string(&mut self) -> String {
         mem::take(&mut self.scanned_string)
     }
 
     /// Returns a string being scanned early on (after processing escape sequences).
-    #[inline]
+    #[inline(always)]
     #[must_use]
     pub fn scanned_string_slice(&self) -> &str {
         &self.scanned_string
@@ -273,7 +273,7 @@ impl<'s, 'i> Lexer<'s, 'i> {
     /// where its arguments are the current and next characters.
     /// Returns the string slice of source text between `start_offset`
     /// and `self.offset` when `f` returns `false` OR `self.eof() == true`.
-    #[inline]
+    #[inline(always)]
     fn advance_while<F>(&mut self, start_offset: ByteOffset, mut f: F) -> &'s str
     where
         F: FnMut(char, char) -> bool,

@@ -17,7 +17,7 @@ pub struct InMemoryFileStorage<'p> {
 
 impl<'p> InMemoryFileStorage<'p> {
     /// Creates an empty storage.
-    #[inline]
+    #[inline(always)]
     #[must_use]
     pub fn new(path_interner: &'p PathInterner) -> Self {
         Self {
@@ -27,7 +27,7 @@ impl<'p> InMemoryFileStorage<'p> {
     }
 
     /// Adds a file into the storage.
-    #[inline]
+    #[inline(always)]
     pub fn add_file(&mut self, path_id: PathID, file: InMemoryFile) {
         self.storage.insert(path_id, file);
     }
@@ -36,7 +36,7 @@ impl<'p> InMemoryFileStorage<'p> {
     ///
     /// # Errors
     /// If the file contents cannot be read.
-    #[inline]
+    #[inline(always)]
     pub fn read_and_add_file(&mut self, path_id: PathID) -> Result<(), io::Error> {
         let file = InMemoryFile::new_from_path_id(self.path_interner, path_id)?;
         self.add_file(path_id, file);
@@ -48,7 +48,7 @@ impl<'p> InMemoryFileStorage<'p> {
     ///
     /// # Panics
     /// If the file contents cannot be read.
-    #[inline]
+    #[inline(always)]
     pub fn read_and_add_file_or_panic(&mut self, path_id: PathID) {
         self.storage.insert(
             path_id,
@@ -57,7 +57,7 @@ impl<'p> InMemoryFileStorage<'p> {
     }
 
     /// Adds a file into the storage if it does not exist.
-    #[inline]
+    #[inline(always)]
     pub fn add_file_if_not_exists(&mut self, path_id: PathID, file: InMemoryFile) {
         if !self.storage.contains_key(&path_id) {
             self.add_file(path_id, file);
@@ -68,7 +68,7 @@ impl<'p> InMemoryFileStorage<'p> {
     ///
     /// # Errors
     /// If the file contents cannot be read.
-    #[inline]
+    #[inline(always)]
     pub fn read_and_add_file_if_not_exists(&mut self, path_id: PathID) -> Result<(), io::Error> {
         if !self.storage.contains_key(&path_id) {
             self.read_and_add_file(path_id)?;
@@ -81,14 +81,14 @@ impl<'p> InMemoryFileStorage<'p> {
     ///
     /// # Panics
     /// If the file contents cannot be read.
-    #[inline]
+    #[inline(always)]
     #[must_use]
     pub fn read_and_add_file_if_not_exists_or_panic(&mut self, path_id: PathID) -> InMemoryFile {
         InMemoryFile::new_or_panic(self.path_interner.resolve_or_panic(path_id))
     }
 
     /// Resolves a file from the storage by its path id.
-    #[inline]
+    #[inline(always)]
     #[must_use]
     pub fn resolve_file(&self, path_id: PathID) -> Option<&InMemoryFile> {
         self.storage.get(&path_id)

@@ -26,14 +26,14 @@ pub struct ExpressionParser {
 
 impl ExpressionParser {
     /// Creates a parser for expressions with lowest precedence.
-    #[inline]
+    #[inline(always)]
     #[must_use]
     pub fn new() -> Self {
         Self::default()
     }
 
     /// Creates a parser for expressions with specified precedence.
-    #[inline]
+    #[inline(always)]
     #[must_use]
     pub const fn with_precedence(mut self, precedence: Precedence) -> Self {
         self.precedence = precedence;
@@ -41,7 +41,7 @@ impl ExpressionParser {
     }
 
     /// Creates a parser for expressions, that disallows struct expressions.
-    #[inline]
+    #[inline(always)]
     #[must_use]
     pub const fn prohibit_struct_expressions(mut self, prohibit_struct_expressions: bool) -> Self {
         self.prohibit_struct_expressions = prohibit_struct_expressions;

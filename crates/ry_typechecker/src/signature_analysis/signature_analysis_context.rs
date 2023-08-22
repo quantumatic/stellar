@@ -19,28 +19,28 @@ pub struct SignatureAnalysisContext {
 }
 
 impl SignatureAnalysisContext {
-    #[inline]
+    #[inline(always)]
     #[must_use]
     pub fn new() -> Self {
         Self::default()
     }
 
-    #[inline]
+    #[inline(always)]
     pub fn add_type_signature_to_stack(&mut self, type_signature: Arc<GeneralTypeSignature>) {
         self.type_signature_stack.push(type_signature);
     }
 
-    #[inline]
+    #[inline(always)]
     pub fn drop_type_signature_stack(&mut self) {
         self.type_signature_stack.clear();
     }
 
-    #[inline]
+    #[inline(always)]
     pub fn add_type_alias_to_stack(&mut self, definition_id: DefinitionID) {
         self.type_alias_stack.push(definition_id);
     }
 
-    #[inline]
+    #[inline(always)]
     pub fn drop_type_alias_stack(&mut self) {
         self.type_alias_stack.clear();
     }

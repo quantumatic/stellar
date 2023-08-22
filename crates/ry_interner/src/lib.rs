@@ -87,12 +87,12 @@ use ry_fx_hash::FxHasher;
 pub struct IdentifierID(pub usize);
 
 impl SymbolID for IdentifierID {
-    #[inline]
+    #[inline(always)]
     fn into_storage_index(self) -> usize {
         self.0
     }
 
-    #[inline]
+    #[inline(always)]
     fn from_storage_index(index: usize) -> Self {
         Self(index)
     }
@@ -111,36 +111,36 @@ pub trait SymbolID: Copy {
 }
 
 impl SymbolID for usize {
-    #[inline]
+    #[inline(always)]
     fn into_storage_index(self) -> usize {
         self
     }
 
-    #[inline]
+    #[inline(always)]
     fn from_storage_index(index: usize) -> Self {
         index
     }
 }
 
 impl SymbolID for u64 {
-    #[inline]
+    #[inline(always)]
     fn into_storage_index(self) -> usize {
         usize::try_from(self).unwrap()
     }
 
-    #[inline]
+    #[inline(always)]
     fn from_storage_index(index: usize) -> Self {
         index as Self
     }
 }
 
 impl SymbolID for u32 {
-    #[inline]
+    #[inline(always)]
     fn into_storage_index(self) -> usize {
         usize::try_from(self).unwrap()
     }
 
-    #[inline]
+    #[inline(always)]
     fn from_storage_index(index: usize) -> Self {
         Self::try_from(index).unwrap()
     }
@@ -200,13 +200,13 @@ where
     S: SymbolID,
 {
     /// Creates a new empty [`Interner`].
-    #[inline]
+    #[inline(always)]
     fn default() -> Self {
         Self::new()
     }
 }
 
-#[inline]
+#[inline(always)]
 fn hash_value<T>(hasher: &impl BuildHasher, value: &T) -> u64
 where
     T: ?Sized + Hash,
@@ -221,7 +221,7 @@ where
     S: SymbolID,
 {
     #[must_use]
-    #[inline]
+    #[inline(always)]
     fn with_capacity(capacity: usize) -> Self {
         Self {
             ends: Vec::with_capacity(capacity),
@@ -305,7 +305,7 @@ where
     S: SymbolID,
 {
     /// Creates a new empty [`Interner`], that only contains builtin symbols.
-    #[inline]
+    #[inline(always)]
     #[must_use]
     pub fn new() -> Self {
         Self {
@@ -316,7 +316,7 @@ where
     }
 
     /// Creates a new empty `Interner` with the given capacity.
-    #[inline]
+    #[inline(always)]
     #[must_use]
     pub fn with_capacity(capacity: usize) -> Self {
         Self {
@@ -327,7 +327,7 @@ where
     }
 
     /// Returns the number of symbols/strings interned by the interner.
-    #[inline]
+    #[inline(always)]
     #[must_use]
     #[allow(clippy::len_without_is_empty)] // interner is never empty
     pub fn len(&self) -> usize {
@@ -389,13 +389,13 @@ where
     }
 
     /// Interns the given string and returns a corresponding symbol.
-    #[inline]
+    #[inline(always)]
     pub fn get_or_intern(&mut self, string: impl AsRef<str>) -> S {
         self.get_or_intern_using(string.as_ref(), InternerStorage::intern)
     }
 
     /// Shrink backend capacity to fit the interned strings exactly.
-    #[inline]
+    #[inline(always)]
     pub fn shrink_to_fit(&mut self) {
         self.backend.shrink_to_fit();
     }
@@ -411,7 +411,7 @@ where
     /// assert_eq!(interner.get("hello"), Some(hello_id));
     /// assert_eq!(interner.get("!"), None);
     /// ```
-    #[inline]
+    #[inline(always)]
     #[must_use]
     pub fn resolve(&self, symbol: S) -> Option<&str> {
         self.backend.resolve(symbol)
@@ -484,7 +484,7 @@ define_builtin_identifiers! {
 
 impl IdentifierInterner {
     /// Returns the number of identifiers interned by the interner.
-    #[inline]
+    #[inline(always)]
     #[must_use]
     #[allow(clippy::len_without_is_empty)] // interner is never empty
     pub fn len(&self) -> usize {
@@ -500,19 +500,19 @@ impl IdentifierInterner {
     /// let hello_id = identifier_interner.get_or_intern("hello");
     /// assert_eq!(Some(hello_id), identifier_interner.get("hello"));
     /// ```
-    #[inline]
+    #[inline(always)]
     pub fn get(&self, identifier: impl AsRef<str>) -> Option<IdentifierID> {
         self.0.get(identifier)
     }
 
     /// Interns the given identifier (if it doesn't exist) and returns a corresponding symbol.
-    #[inline]
+    #[inline(always)]
     pub fn get_or_intern(&mut self, identifier: impl AsRef<str>) -> IdentifierID {
         self.0.get_or_intern(identifier)
     }
 
     /// Shrink backend capacity to fit the interned identifiers exactly.
-    #[inline]
+    #[inline(always)]
     pub fn shrink_to_fit(&mut self) {
         self.0.shrink_to_fit();
     }
@@ -530,7 +530,7 @@ impl IdentifierInterner {
     /// assert_eq!(identifier_interner.resolve(UINT8), Some("uint8")); // interned by default
     /// assert_eq!(identifier_interner.resolve(IdentifierID(3123123123)), None);
     /// ```
-    #[inline]
+    #[inline(always)]
     #[must_use]
     pub fn resolve(&self, symbol: IdentifierID) -> Option<&str> {
         self.0.resolve(symbol)
@@ -550,12 +550,12 @@ pub struct PathInterner(Interner<PathID>);
 pub struct PathID(pub usize);
 
 impl SymbolID for PathID {
-    #[inline]
+    #[inline(always)]
     fn into_storage_index(self) -> usize {
         self.0 - 1
     }
 
-    #[inline]
+    #[inline(always)]
     fn from_storage_index(index: usize) -> Self {
         Self(index + 1)
     }
@@ -565,7 +565,7 @@ impl SymbolID for PathID {
 pub const DUMMY_PATH_ID: PathID = PathID(0);
 
 impl Default for PathInterner {
-    #[inline]
+    #[inline(always)]
     fn default() -> Self {
         Self::new()
     }
@@ -573,7 +573,7 @@ impl Default for PathInterner {
 
 impl PathInterner {
     /// Creates a new empty file path storage.
-    #[inline]
+    #[inline(always)]
     #[must_use]
     pub fn new() -> Self {
         Self(Interner::new())
@@ -583,7 +583,7 @@ impl PathInterner {
     ///
     /// # Panics
     /// If the path is not a valid UTF-8 string.
-    #[inline]
+    #[inline(always)]
     #[must_use]
     pub fn get_or_intern(&mut self, path: impl AsRef<Path>) -> PathID {
         self.0
@@ -591,14 +591,14 @@ impl PathInterner {
     }
 
     /// Resolves a path stored in the storage.
-    #[inline]
+    #[inline(always)]
     #[must_use]
     pub fn resolve(&self, id: PathID) -> Option<&Path> {
         self.0.resolve(id).map(Path::new)
     }
 
     /// Resolves an owned path stored in the storage.
-    #[inline]
+    #[inline(always)]
     #[must_use]
     pub fn resolve_owned(&self, id: PathID) -> Option<PathBuf> {
         self.0.resolve(id).map(PathBuf::from)
@@ -606,7 +606,7 @@ impl PathInterner {
 
     /// Resolves a path stored in the storage (same as `resolve_path()`),
     /// but panics if the path is not found.
-    #[inline]
+    #[inline(always)]
     #[must_use]
     #[allow(clippy::missing_panics_doc)]
     pub fn resolve_or_panic(&self, id: PathID) -> &Path {
@@ -616,7 +616,7 @@ impl PathInterner {
 
     /// Resolves an owned path stored in the storage (same as `resolve_path()`),
     /// but panics if the path is not found.
-    #[inline]
+    #[inline(always)]
     #[must_use]
     #[allow(clippy::missing_panics_doc)]
     pub fn resolve_owned_or_panic(&self, id: PathID) -> PathBuf {

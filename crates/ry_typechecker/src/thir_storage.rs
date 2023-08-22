@@ -13,7 +13,7 @@ impl IntoIterator for THIRStorage {
     type Item = (DefinitionID, ry_thir::ModuleItem);
     type IntoIter = hash_map::IntoIter<DefinitionID, ry_thir::ModuleItem>;
 
-    #[inline]
+    #[inline(always)]
     fn into_iter(self) -> Self::IntoIter {
         self.module_items.into_iter()
     }
@@ -21,14 +21,14 @@ impl IntoIterator for THIRStorage {
 
 impl THIRStorage {
     /// Creates an empty THIR storage.
-    #[inline]
+    #[inline(always)]
     #[must_use]
     pub fn new() -> Self {
         Self::default()
     }
 
     /// Resolves a module item.
-    #[inline]
+    #[inline(always)]
     pub fn resolve_module_item(&self, definition_id: DefinitionID) -> Option<&ry_thir::ModuleItem> {
         self.module_items.get(&definition_id)
     }
@@ -46,19 +46,19 @@ impl THIRStorage {
     }
 
     /// Adds a module item to the storage.
-    #[inline]
+    #[inline(always)]
     pub fn add_item(&mut self, definition_id: DefinitionID, hir: ry_thir::ModuleItem) {
         self.module_items.insert(definition_id, hir);
     }
 
     /// Extends the storage with new items.
-    #[inline]
+    #[inline(always)]
     pub fn extend(&mut self, items: impl IntoIterator<Item = (DefinitionID, ry_thir::ModuleItem)>) {
         self.module_items.extend(items);
     }
 
     /// Removes a module item from the storage.
-    #[inline]
+    #[inline(always)]
     pub fn remove_item(&mut self, definition_id: DefinitionID) {
         self.module_items.remove(&definition_id);
     }

@@ -231,22 +231,22 @@ impl<'a> Files<'a> for InMemoryFile {
     type Name = String;
     type Source = &'a str;
 
-    #[inline]
+    #[inline(always)]
     fn name(&self, _: ()) -> Result<Self::Name, Error> {
         Ok(format!("{}", self.path.display()))
     }
 
-    #[inline]
+    #[inline(always)]
     fn source(&'a self, _: ()) -> Result<Self::Source, Error> {
         Ok(&self.source)
     }
 
-    #[inline]
+    #[inline(always)]
     fn line_index(&self, _: (), byte_index: usize) -> Result<usize, Error> {
         Ok(self.get_line_index_by_byte_index(byte_index))
     }
 
-    #[inline]
+    #[inline(always)]
     fn line_range(&self, _: (), line_index: usize) -> Result<Range<usize>, Error> {
         let line_start = self.get_line_start_by_index(line_index)?;
         let next_line_start = self.get_line_start_by_index(line_index + 1)?;
@@ -270,28 +270,28 @@ impl<'a> Files<'a> for InMemoryFileStorage<'a> {
     type Name = String;
     type Source = &'a str;
 
-    #[inline]
+    #[inline(always)]
     fn name(&'a self, id: PathID) -> Result<Self::Name, Error> {
         self.resolve_file(id)
             .map(|file| file.path.display().to_string())
             .ok_or(Error::FileMissing)
     }
 
-    #[inline]
+    #[inline(always)]
     fn source(&'a self, id: PathID) -> Result<Self::Source, Error> {
         self.resolve_file(id)
             .map(|file| file.source.as_str())
             .ok_or(Error::FileMissing)
     }
 
-    #[inline]
+    #[inline(always)]
     fn line_index(&'a self, id: PathID, byte_index: usize) -> Result<usize, Error> {
         self.resolve_file(id)
             .ok_or(Error::FileMissing)
             .and_then(|file| file.line_index((), byte_index))
     }
 
-    #[inline]
+    #[inline(always)]
     fn line_range(&'a self, id: PathID, line_index: usize) -> Result<Range<usize>, Error> {
         self.resolve_file(id)
             .ok_or(Error::FileMissing)
