@@ -1,6 +1,13 @@
 //! # AST Lowering
 //!
-//! AST Lowering is the process of converting AST into HIR. See the [`ry_hir`] crate for more details.
+//! AST Lowering is the process of converting AST into HIR.
+//!
+//! It:
+//! * removes parenthesized expressions, types and grouped patterns.
+//! * converts `loop {}` into `while true {}`.
+//! * converts `interface A[T]: B[T] + C` into `interface A[T] where Self: B[T] + C`.
+//!
+//! See the [`ry_hir`] crate for more details.
 //!
 //! See:
 //! - [`LoweringContext`] - essential structure, that is used to lower AST to HIR.
@@ -10,8 +17,9 @@
 
 use diagnostics::{UnnecessaryParenthesesInPatternDiagnostic, UnnecessaryParenthesizedExpression};
 use parking_lot::RwLock;
+use ry_ast::IdentifierAST;
 use ry_diagnostics::{BuildDiagnostic, Diagnostics};
-use ry_interner::PathID;
+use ry_interner::{builtin_identifiers::BIG_SELF, PathID};
 
 mod diagnostics;
 
@@ -165,23 +173,44 @@ impl<'d> LoweringContext<'d> {
                 generic_parameters,
                 where_predicates,
                 methods,
-                inherits: implements,
+                inherits,
                 docstring,
             }) => ry_hir::ModuleItem::Interface(ry_hir::Interface {
                 visibility,
                 name,
                 generic_parameters: self.lower_generic_parameters(generic_parameters),
-                where_predicates: self.lower_where_predicates(where_predicates),
+                where_predicates: {
+                    let mut where_predicates = self
+                        .lower_where_predicates(where_predicates)
+                        .into_iter()
+                        .collect::<Vec<_>>();
+
+                    if let Some(inherits) = inherits {
+                        where_predicates.push(ry_hir::WherePredicate {
+                            ty: ry_hir::Type::Constructor(ry_hir::TypeConstructor {
+                                location: name.location,
+                                path: ry_hir::Path {
+                                    location: name.location,
+                                    identifiers: vec![IdentifierAST {
+                                        id: BIG_SELF,
+                                        location: name.location,
+                                    }],
+                                },
+                                arguments: vec![],
+                            }),
+                            bounds: inherits
+                                .into_iter()
+                                .map(|bound| self.lower_type_constructor(bound))
+                                .collect(),
+                        });
+                    }
+
+                    where_predicates
+                },
                 methods: methods
                     .into_iter()
                     .map(|method| self.lower_function(method))
                     .collect(),
-                implements: implements.map(|implements| {
-                    implements
-                        .into_iter()
-                        .map(|interface| self.lower_type_constructor(interface))
-                        .collect()
-                }),
                 docstring,
             }),
         }

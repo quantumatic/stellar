@@ -7,7 +7,7 @@ use parking_lot::RwLock;
 use ry_diagnostics::Diagnostics;
 use ry_fx_hash::{FxHashMap, FxHashSet};
 use ry_interner::{IdentifierInterner, PathInterner};
-use ry_name_resolution::{DefinitionID, Path, ResolutionEnvironment};
+use ry_name_resolution::{DefinitionID, NameResolver, Path};
 use ry_thir::{
     ty::{Type, TypeVariableID},
     ModuleItemSignature,
@@ -51,8 +51,8 @@ impl ModuleItemState {
 /// Context for type checking stage of compilation.
 #[derive(Debug)]
 pub struct TypeCheckingContext<'i, 'p, 'd> {
-    /// Global name resolution environment.
-    resolution_environment: ResolutionEnvironment,
+    /// Global name resolver.
+    name_resolver: NameResolver,
 
     /// HIR global storage.
     hir_storage: RwLock<HIRStorage>,
@@ -95,7 +95,7 @@ impl<'i, 'p, 'd> TypeCheckingContext<'i, 'p, 'd> {
             diagnostics,
             hir_storage: RwLock::new(HIRStorage::new()),
             thir_storage: RwLock::new(THIRStorage::new()),
-            resolution_environment: ResolutionEnvironment::new(),
+            name_resolver: NameResolver::new(),
             type_variable_factory: TypeVariableFactory::new(),
             substitutions: FxHashMap::default(),
             signatures: FxHashMap::default(),

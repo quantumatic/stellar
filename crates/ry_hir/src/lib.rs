@@ -684,9 +684,6 @@ pub struct Interface {
     pub methods: Vec<Function>,
 
     #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    pub implements: Option<Vec<TypeConstructor>>,
-
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub docstring: Option<String>,
 }
 

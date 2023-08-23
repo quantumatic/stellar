@@ -4,6 +4,7 @@ members = [
     "crates/ry_ast",
     "crates/ry_ast_lowering",
     "crates/ry_diagnostics",
+    "crates/ry_english_commons",
     "crates/ry_filesystem",
     "crates/ry_fx_hash",
     "crates/ry_hir",

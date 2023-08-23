@@ -4,13 +4,26 @@ use ry_diagnostics::Diagnostics;
 use ry_filesystem::location::DUMMY_LOCATION;
 use ry_fx_hash::FxHashMap;
 use ry_interner::{IdentifierInterner, PathInterner};
-use ry_name_resolution::{ModuleID, ModuleScope, NameBinding, PackageID, ResolutionEnvironment};
+use ry_name_resolution::{path, ModuleID, ModuleScope, NameBinding, NameResolver, PackageID};
 
 macro_rules! dummy_identifier {
     ($id:expr) => {
         IdentifierAST {
             id: $id,
             location: DUMMY_LOCATION,
+        }
+    };
+}
+
+macro_rules! dummy_path {
+    ($($id:expr),*) => {
+        ry_ast::Path {
+            location: DUMMY_LOCATION,
+            identifiers: vec![
+                $(
+                    dummy_identifier!($id)
+                ),*
+            ]
         }
     };
 }
@@ -36,12 +49,13 @@ fn resolve_module() {
     let package_root_module_id = ModuleID(package_root_module_path_id);
     let child_module_id = ModuleID(child_module_path_id);
 
-    let mut environment = ResolutionEnvironment::new();
+    let mut name_resolver = NameResolver::new();
     let diagnostics = RwLock::new(Diagnostics::new());
 
     let mut package_root_module_scope = ModuleScope {
         name: a,
         id: package_root_module_id,
+        path: path!(a),
         bindings: FxHashMap::default(),
         enums: FxHashMap::default(),
         imports: FxHashMap::default(),
@@ -54,35 +68,23 @@ fn resolve_module() {
     let child_module_scope = ModuleScope {
         name: a,
         id: child_module_id,
+        path: path!(a, a),
         bindings: FxHashMap::default(),
         enums: FxHashMap::default(),
         imports: FxHashMap::default(),
     };
 
-    environment
-        .packages_root_modules
-        .insert(PackageID(a), package_root_module_id);
-    environment
-        .module_scopes
-        .insert(package_root_module_id, package_root_module_scope);
-    environment
-        .module_scopes
-        .insert(child_module_id, child_module_scope);
+    name_resolver.add_package(PackageID(a), package_root_module_id);
+    name_resolver.add_module_scope(package_root_module_id, package_root_module_scope);
+    name_resolver.add_module_scope(child_module_id, child_module_scope);
 
     assert_eq!(
-        environment.resolve_path(
-            Path {
-                location: DUMMY_LOCATION,
-                identifiers: vec![dummy_identifier!(a), dummy_identifier!(a)],
-            },
-            &identifier_interner,
-            &diagnostics
-        ),
+        name_resolver.resolve_path(dummy_path!(a, a), &identifier_interner, &diagnostics),
         Some(NameBinding::Module(child_module_id))
     );
 
     assert_eq!(
-        environment.resolve_path(
+        name_resolver.resolve_path(
             Path {
                 location: DUMMY_LOCATION,
                 identifiers: vec![dummy_identifier!(b)],
@@ -118,12 +120,13 @@ fn import() {
     let package_root_module_id = ModuleID(package_root_module_path_id);
     let child_module_id = ModuleID(child_module_path_id);
 
-    let mut environment = ResolutionEnvironment::new();
+    let mut name_resolver = NameResolver::new();
     let diagnostics = RwLock::new(Diagnostics::new());
 
     let mut package_root_module_scope = ModuleScope {
         name: a,
         id: package_root_module_id,
+        path: path!(a),
         bindings: FxHashMap::default(),
         imports: FxHashMap::default(),
         enums: FxHashMap::default(),
@@ -135,6 +138,7 @@ fn import() {
     let child_module_scope = ModuleScope {
         name: b,
         id: child_module_id,
+        path: path!(a, b),
         bindings: FxHashMap::default(),
         imports: FxHashMap::default(),
         enums: FxHashMap::default(),
@@ -155,42 +159,28 @@ fn import() {
         },
     );
 
-    environment
-        .packages_root_modules
-        .insert(PackageID(a), package_root_module_id);
-    environment
-        .module_scopes
-        .insert(package_root_module_id, package_root_module_scope);
-    environment
-        .module_scopes
-        .insert(child_module_id, child_module_scope);
+    name_resolver.add_package(PackageID(a), package_root_module_id);
+    name_resolver.add_module_scope(package_root_module_id, package_root_module_scope);
+    name_resolver.add_module_scope(child_module_id, child_module_scope);
 
-    environment.resolve_imports(&identifier_interner, &diagnostics);
+    name_resolver.resolve_imports(&identifier_interner, &diagnostics);
 
     assert_eq!(
-        environment
-            .module_scopes
-            .get(&package_root_module_id)
-            .unwrap()
-            .resolve(
-                dummy_identifier!(b),
-                &identifier_interner,
-                &diagnostics,
-                &environment
-            ),
+        name_resolver.resolve_identifier_in_module_scope(
+            name_resolver.resolve_module_scope_or_panic(package_root_module_id),
+            dummy_identifier!(b),
+            &identifier_interner,
+            &diagnostics,
+        ),
         Some(NameBinding::Module(child_module_id))
     );
     assert_eq!(
-        environment
-            .module_scopes
-            .get(&package_root_module_id)
-            .unwrap()
-            .resolve(
-                dummy_identifier!(c),
-                &identifier_interner,
-                &diagnostics,
-                &environment
-            ),
+        name_resolver.resolve_identifier_in_module_scope(
+            name_resolver.resolve_module_scope_or_panic(package_root_module_id),
+            dummy_identifier!(c),
+            &identifier_interner,
+            &diagnostics
+        ),
         Some(NameBinding::Module(child_module_id))
     );
 }

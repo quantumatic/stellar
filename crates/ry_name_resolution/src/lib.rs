@@ -3,7 +3,7 @@
 //! The name resolution allows to resolve names, after parsing all the packages in stages like
 //! type checking and MIR lowering.
 //!
-//! See [`ResolutionEnvironment`], [`ModuleScope`] and [`NameBinding`] for more details.
+//! See [`Resolutionname_resolver`], [`ModuleScope`] and [`NameBinding`] for more details.
 
 #![doc(
     html_logo_url = "https://raw.githubusercontent.com/abs0luty/Ry/main/additional/icon/ry.png",
@@ -61,7 +61,8 @@
     clippy::too_many_lines,
     clippy::option_if_let_else,
     clippy::cast_possible_truncation,
-    clippy::inline_always
+    clippy::inline_always,
+    clippy::doc_markdown
 )]
 
 use std::{fmt::Debug, iter};
@@ -87,7 +88,7 @@ pub mod diagnostics;
 pub struct PackageID(pub IdentifierID);
 
 /// An ID assigned to every module in a workspace.
-#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Display, Hash)]
 pub struct ModuleID(pub PathID);
 
 /// An ID for every definition (module item) in a workspace.
@@ -103,21 +104,41 @@ pub struct DefinitionID {
 /// A data structure used to store information about modules and packages that
 /// are going through the name resolution process.
 #[derive(Debug, PartialEq, Eq, Clone, Default)]
-pub struct ResolutionEnvironment {
+pub struct NameResolver {
     /// Packages' root modules that are analyzed in the workspace.
-    pub packages_root_modules: FxHashMap<PackageID, ModuleID>,
+    packages_root_modules: FxHashMap<PackageID, ModuleID>,
 
     /// Modules, that are analyzed in the workspace.
-    pub module_scopes: FxHashMap<ModuleID, ModuleScope>,
-
-    /// Storage of absolute paths of modules in the environment, e.g. `std.io`.
-    pub module_paths: FxHashMap<ModuleID, Path>,
-
-    /// Storage of visibilities of module items.
-    pub visibilities: FxHashMap<DefinitionID, Visibility>,
+    module_scopes: FxHashMap<ModuleID, ModuleScope>,
 
     /// Resolved imports in all modules.
-    pub resolved_imports: FxHashMap<ModuleID, ResolvedImportsInModule>,
+    resolved_imports: FxHashMap<ModuleID, ResolvedImportsInModule>,
+
+    /// Visibilities of module items.
+    visibilities: FxHashMap<DefinitionID, RawVisibility>,
+}
+
+/// Visibility representation, that doesn't store location of `pub` keyword.
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Display, Default)]
+pub enum RawVisibility {
+    /// Public visibility.
+    #[display(fmt = "public")]
+    Public,
+
+    /// Private visibility.
+    #[default]
+    #[display(fmt = "private")]
+    Private,
+}
+
+impl From<Visibility> for RawVisibility {
+    #[inline(always)]
+    fn from(value: Visibility) -> Self {
+        match value {
+            Visibility::Public(_) => Self::Public,
+            Visibility::Private => Self::Private,
+        }
+    }
 }
 
 /// Resolved imports in a particular module.
@@ -127,20 +148,78 @@ pub struct ResolvedImportsInModule {
     pub imports: FxHashMap<IdentifierID, NameBinding>,
 }
 
-impl ResolutionEnvironment {
-    /// Creates a new empty resolution environment
+impl NameResolver {
+    /// Creates a new empty resolution name_resolver
     #[inline(always)]
     #[must_use]
     pub fn new() -> Self {
         Self::default()
     }
 
-    /// Resolves all imports in modules that have been added to the environment previously.
+    /// Adds a package into the name resolver storage.
+    #[inline(always)]
+    pub fn add_package(&mut self, package_id: PackageID, root_module_id: ModuleID) {
+        self.packages_root_modules
+            .insert(package_id, root_module_id);
+    }
+
+    /// Adds a module scope into the name resolver storage.
+    #[inline(always)]
+    pub fn add_module_scope(&mut self, module_id: ModuleID, scope: ModuleScope) {
+        self.module_scopes.insert(module_id, scope);
+    }
+
+    /// Resolves a module scope by its module it.
+    #[inline(always)]
+    #[must_use]
+    pub fn resolve_module_scope(&self, module_id: ModuleID) -> Option<&ModuleScope> {
+        self.module_scopes.get(&module_id)
+    }
+
+    /// Resolve a module scope by its module it.
+    ///
+    /// # Panics
+    /// If the module doesn't exist.
+    #[inline(always)]
+    #[must_use]
+    pub fn resolve_module_scope_or_panic(&self, module_id: ModuleID) -> &ModuleScope {
+        self.resolve_module_scope(module_id)
+            .unwrap_or_else(|| panic!("Module with ID: {module_id} cannot be resolved."))
+    }
+
+    /// Adds a visibility information about definition into resolver storage.
+    #[inline(always)]
+    pub fn add_visibility(
+        &mut self,
+        definition_id: DefinitionID,
+        visibility: impl Into<RawVisibility>,
+    ) {
+        self.visibilities.insert(definition_id, visibility.into());
+    }
+
+    /// Adds a visibility information about definition into resolver storage.
+    #[inline(always)]
+    #[must_use]
+    pub fn resolve_visibility(&self, definition_id: DefinitionID) -> Option<RawVisibility> {
+        self.visibilities.get(&definition_id).copied()
+    }
+
+    /// Adds a visibility information about a definition into resolver storage.
+    ///
+    /// # Panics
+    /// If the visibility information about the definition doesn't exist.
+    #[inline(always)]
+    #[must_use]
+    pub fn resolve_visibility_or_panic(&self, definition_id: DefinitionID) -> RawVisibility {
+        *self.visibilities.get(&definition_id).unwrap()
+    }
+
+    /// Resolves all imports in modules that have been added to the name_resolver previously.
     ///
     /// **Note**: Imports must be resolved before any name resolution process going on!!!
     ///
     /// # Panics
-    /// - If the environment data is invalid.
+    /// - If the name_resolver data is invalid.
     /// - If one of the import paths is empty.
     /// - If one of the import paths contains symbols, that cannot be resolved by an identifier interner.
     pub fn resolve_imports(
@@ -166,10 +245,10 @@ impl ResolutionEnvironment {
         }
     }
 
-    /// Resolve an import path in the environment.
+    /// Resolve a global path in the name_resolver.
     ///
     /// # Panics
-    /// - If the environment data is invalid.
+    /// - If the name_resolver data is invalid.
     /// - If the path is empty.
     /// - If the path contains symbols, that cannot be resolved by an identifier interner.
     pub fn resolve_path(
@@ -205,6 +284,91 @@ impl ResolutionEnvironment {
             diagnostics,
             self,
         )
+    }
+
+    /// Resolve the path in the module scope.
+    ///
+    /// # Panics
+    ///
+    /// - If the name_resolver data is invalid.
+    /// - If the path is empty.
+    /// - If the path contains symbols, that cannot be resolved by an identifier interner.
+    pub fn resolve_path_in_module_scope(
+        &self,
+        module_scope: &ModuleScope,
+        path: ry_ast::Path,
+        identifier_interner: &IdentifierInterner,
+        diagnostics: &RwLock<Diagnostics>,
+    ) -> Option<NameBinding> {
+        let mut identifiers = path.identifiers.into_iter();
+        let first_identifier = identifiers.next().unwrap();
+
+        self.resolve_identifier_in_module_scope(
+            module_scope,
+            first_identifier,
+            identifier_interner,
+            diagnostics,
+        )?
+        .resolve_rest_of_the_path(
+            first_identifier,
+            identifiers,
+            identifier_interner,
+            diagnostics,
+            self,
+        )
+    }
+
+    /// Resolves an identifier in a module scope. If resolution fails, returns [`None`]
+    /// and adds a new diagnostics.
+    ///
+    /// # Panics
+    /// - If the name_resolver data is wrong.
+    /// - If the path contains symbols, that cannot be resolved by an identifier interner.
+    pub fn resolve_identifier_in_module_scope(
+        &self,
+        module_scope: &ModuleScope,
+        identifier: IdentifierAST,
+        identifier_interner: &IdentifierInterner,
+        diagnostics: &RwLock<Diagnostics>,
+    ) -> Option<NameBinding> {
+        if let Some(binding) = module_scope
+            .bindings
+            .get(&identifier.id)
+            .copied()
+            .or_else(|| {
+                if self
+                    .packages_root_modules
+                    .contains_key(&PackageID(identifier.id))
+                {
+                    Some(NameBinding::Package(PackageID(identifier.id)))
+                } else {
+                    None
+                }
+            })
+        {
+            Some(binding)
+        } else {
+            // check for possible name binding that can come from imports
+            if let Some(binding) = self.resolved_imports[&module_scope.id]
+                .imports
+                .get(&identifier.id)
+            {
+                Some(*binding)
+            } else {
+                diagnostics.write().add_single_file_diagnostic(
+                    identifier.location.file_path_id,
+                    FailedToResolveNameDiagnostic {
+                        name: identifier_interner
+                            .resolve(identifier.id)
+                            .unwrap()
+                            .to_owned(),
+                        location: identifier.location,
+                    },
+                );
+
+                None
+            }
+        }
     }
 }
 
@@ -266,77 +430,74 @@ impl NameBinding {
 }
 
 /// A trait for getting the full path of a definition.
-pub trait ResolveFullPath: Sized + Debug + Copy {
+pub trait FullPathOf<X>
+where
+    X: Debug + Copy,
+{
     /// Returns the full path of the definition.
-    fn full_path(self, environment: &ResolutionEnvironment) -> Option<Path>;
+    fn full_path_of(&self, x: X) -> Option<Path>;
 
     /// Returns the full path of the definition.
     #[must_use]
-    fn full_path_or_panic(self, environment: &ResolutionEnvironment) -> Path {
-        self.full_path(environment)
-            .unwrap_or_else(|| panic!("Failed to get full path of the definition id:\n{self:?}"))
+    fn full_path_of_or_panic(&self, x: X) -> Path {
+        self.full_path_of(x)
+            .unwrap_or_else(|| panic!("Failed to get full path of the definition id:\n{x:?}"))
     }
 }
 
-impl ResolveFullPath for PackageID {
-    fn full_path(self, _: &ResolutionEnvironment) -> Option<Path> {
+impl FullPathOf<PackageID> for NameResolver {
+    #[inline(always)]
+    fn full_path_of(&self, id: PackageID) -> Option<Path> {
         Some(Path {
-            identifiers: vec![self.0],
+            identifiers: vec![id.0],
         })
     }
 }
 
-impl ResolveFullPath for DefinitionID {
-    fn full_path(self, environment: &ResolutionEnvironment) -> Option<Path> {
-        environment
-            .module_paths
-            .get(&self.module_id)
-            .map(|module_path| Path {
-                identifiers: module_path
-                    .clone()
-                    .identifiers
-                    .into_iter()
-                    .chain(iter::once(self.name_id))
-                    .collect(),
-            })
+impl FullPathOf<DefinitionID> for NameResolver {
+    fn full_path_of(&self, id: DefinitionID) -> Option<Path> {
+        self.full_path_of(id.module_id).map(|module_path| Path {
+            identifiers: module_path
+                .identifiers
+                .into_iter()
+                .chain(iter::once(id.name_id))
+                .collect(),
+        })
     }
 }
 
-impl ResolveFullPath for ModuleID {
-    #[inline(always)]
-    fn full_path(self, environment: &ResolutionEnvironment) -> Option<Path> {
-        environment.module_paths.get(&self).cloned()
+impl FullPathOf<ModuleID> for NameResolver {
+    fn full_path_of(&self, id: ModuleID) -> Option<Path> {
+        self.module_scopes.get(&id).map(|scope| scope.path.clone())
     }
 }
 
-impl ResolveFullPath for EnumItemID {
+impl FullPathOf<EnumItemID> for NameResolver {
     #[inline(always)]
-    fn full_path(self, environment: &ResolutionEnvironment) -> Option<Path> {
-        self.enum_definition_id
-            .full_path(environment)
-            .map(|path| Path {
-                identifiers: path
-                    .identifiers
-                    .into_iter()
-                    .chain(iter::once(self.item_id))
-                    .collect(),
-            })
+    fn full_path_of(&self, id: EnumItemID) -> Option<Path> {
+        self.full_path_of(id.enum_definition_id).map(|path| Path {
+            identifiers: path
+                .identifiers
+                .into_iter()
+                .chain(iter::once(id.item_id))
+                .collect(),
+        })
     }
 }
 
-impl ResolveFullPath for NameBinding {
+impl FullPathOf<NameBinding> for NameResolver {
     #[inline(always)]
-    fn full_path(self, environment: &ResolutionEnvironment) -> Option<Path> {
-        match self {
-            Self::Package(package_id) => package_id.full_path(environment),
-            Self::Module(module_id) => module_id.full_path(environment),
-            Self::TypeAlias(definition_id)
-            | Self::Function(definition_id)
-            | Self::Interface(definition_id)
-            | Self::Struct(definition_id)
-            | Self::Enum(definition_id)
-            | Self::TupleLikeStruct(definition_id) => definition_id.full_path(environment),
-            Self::EnumItem(enum_item_id) => enum_item_id.full_path(environment),
+    fn full_path_of(&self, binding: NameBinding) -> Option<Path> {
+        match binding {
+            NameBinding::Package(package_id) => self.full_path_of(package_id),
+            NameBinding::Module(module_id) => self.full_path_of(module_id),
+            NameBinding::TypeAlias(definition_id)
+            | NameBinding::Function(definition_id)
+            | NameBinding::Interface(definition_id)
+            | NameBinding::Struct(definition_id)
+            | NameBinding::Enum(definition_id)
+            | NameBinding::TupleLikeStruct(definition_id) => self.full_path_of(definition_id),
+            NameBinding::EnumItem(enum_item_id) => self.full_path_of(enum_item_id),
         }
     }
 }
@@ -433,16 +594,16 @@ impl NameBinding {
     /// the value of `other_identifiers`, and the `std` is the `first_identifier`.
     ///
     /// # Panics
-    /// - If the environment data is invalid.
+    /// - If the name_resolver data is invalid.
     /// - If the path contains symbols, that cannot be resolved by an identifier interner.
     #[inline(always)]
-    pub fn resolve_rest_of_the_path(
+    fn resolve_rest_of_the_path(
         self,
         first_identifier: IdentifierAST,
         other_identifiers: impl IntoIterator<Item = IdentifierAST>,
         identifier_interner: &IdentifierInterner,
         diagnostics: &RwLock<Diagnostics>,
-        environment: &ResolutionEnvironment,
+        name_resolver: &NameResolver,
     ) -> Option<Self> {
         iter::once(first_identifier)
             .chain(other_identifiers)
@@ -456,7 +617,7 @@ impl NameBinding {
                         current_identifier,
                         identifier_interner,
                         diagnostics,
-                        environment,
+                        name_resolver,
                     )
                 },
             )
@@ -469,9 +630,9 @@ fn resolve_binding_in_module_namespace(
     name: IdentifierAST,
     identifier_interner: &IdentifierInterner,
     diagnostics: &RwLock<Diagnostics>,
-    environment: &ResolutionEnvironment,
+    name_resolver: &NameResolver,
 ) -> Option<NameBinding> {
-    let Some(binding) = environment
+    let Some(binding) = name_resolver
         .module_scopes
         .get(&module_id)
         .unwrap()
@@ -500,7 +661,7 @@ fn resolve_binding_in_module_namespace(
     | NameBinding::Function(definition_id)
     | NameBinding::TypeAlias(definition_id) = binding
     {
-        if *environment.visibilities.get(definition_id).unwrap() == Visibility::Private {
+        if *name_resolver.visibilities.get(definition_id).unwrap() == RawVisibility::Private {
             diagnostics.write().add_single_file_diagnostic(
                 name.location.file_path_id,
                 FailedToResolvePrivateModuleItemDiagnostic {
@@ -527,9 +688,9 @@ fn resolve_binding_in_module_item_namespace(
     name: IdentifierAST,
     identifier_interner: &IdentifierInterner,
     diagnostics: &RwLock<Diagnostics>,
-    environment: &ResolutionEnvironment,
+    name_resolver: &NameResolver,
 ) -> Option<NameBinding> {
-    if let Some(enum_scope) = environment
+    if let Some(enum_scope) = name_resolver
         .module_scopes
         .get(&item_definition_id.module_id)?
         .enums
@@ -563,16 +724,24 @@ fn resolve_binding_in_package_namespace(
     name: IdentifierAST,
     identifier_interner: &IdentifierInterner,
     diagnostics: &RwLock<Diagnostics>,
-    environment: &ResolutionEnvironment,
+    name_resolver: &NameResolver,
 ) -> Option<NameBinding> {
-    let Some(module) = environment
-        .module_scopes
-        .get(environment.packages_root_modules.get(&package_id).unwrap())
-        // Module must exist at this point, or something went wrong when
-        // building the name resolution environment.
-        .unwrap()
-        .resolve(name, identifier_interner, diagnostics, environment)
-    else {
+    let Some(module) = name_resolver.resolve_identifier_in_module_scope(
+        name_resolver
+            .module_scopes
+            .get(
+                name_resolver
+                    .packages_root_modules
+                    .get(&package_id)
+                    .unwrap(),
+            )
+            // Module must exist at this point, or something went wrong when
+            // building the name resolution name_resolver.
+            .unwrap(),
+        name,
+        identifier_interner,
+        diagnostics,
+    ) else {
         diagnostics.write().add_single_file_diagnostic(
             name.location.file_path_id,
             FailedToResolveModuleDiagnostic {
@@ -603,7 +772,7 @@ fn resolve_path_segment(
     name: IdentifierAST,
     identifier_interner: &IdentifierInterner,
     diagnostics: &RwLock<Diagnostics>,
-    environment: &ResolutionEnvironment,
+    name_resolver: &NameResolver,
 ) -> Option<NameBinding> {
     match binding {
         NameBinding::Package(package_id) => resolve_binding_in_package_namespace(
@@ -611,7 +780,7 @@ fn resolve_path_segment(
             name,
             identifier_interner,
             diagnostics,
-            environment,
+            name_resolver,
         ),
         NameBinding::EnumItem(_) => {
             // Enum items are not namespaces!
@@ -642,7 +811,7 @@ fn resolve_path_segment(
             name,
             identifier_interner,
             diagnostics,
-            environment,
+            name_resolver,
         ),
         NameBinding::Module(module_id) => resolve_binding_in_module_namespace(
             module_id,
@@ -650,7 +819,7 @@ fn resolve_path_segment(
             name,
             identifier_interner,
             diagnostics,
-            environment,
+            name_resolver,
         ),
     }
 }
@@ -664,6 +833,27 @@ pub struct Path {
     pub identifiers: Vec<IdentifierID>,
 }
 
+/// Macro, that can be used to construct a path in tests:
+///
+/// # Example
+///
+/// ```
+/// use ry_name_resolution::{path, Path};
+/// use ry_interner::IdentifierID;
+///
+/// let a = IdentifierID(2);
+/// let b = IdentifierID(3);
+/// assert_eq!(path!(a, b), Path { identifiers: vec![a, b] });
+/// ```
+#[macro_export]
+macro_rules! path {
+    ($($id:expr),*) => {
+        $crate::Path {
+            identifiers: vec![$($id),*]
+        }
+    };
+}
+
 /// Data that Ry compiler has about a module.
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct ModuleScope {
@@ -672,6 +862,9 @@ pub struct ModuleScope {
 
     /// ID of the module's source file path.
     pub id: ModuleID,
+
+    /// Module path.
+    pub path: Path,
 
     /// The module items name bindings.
     pub bindings: FxHashMap<IdentifierID, NameBinding>,
@@ -688,88 +881,6 @@ pub struct ModuleScope {
 pub struct EnumData {
     /// Enum items.
     pub items: FxHashMap<IdentifierID, EnumItemID>,
-}
-
-impl ModuleScope {
-    /// Resolve the path in the module scope.
-    ///
-    /// # Panics
-    ///
-    /// - If the environment data is invalid.
-    /// - If the path is empty.
-    /// - If the path contains symbols, that cannot be resolved by an identifier interner.
-    pub fn resolve_path(
-        &self,
-        path: ry_ast::Path,
-        identifier_interner: &IdentifierInterner,
-        diagnostics: &RwLock<Diagnostics>,
-        environment: &ResolutionEnvironment,
-    ) -> Option<NameBinding> {
-        let mut identifiers = path.identifiers.into_iter();
-        let first_identifier = identifiers.next().unwrap();
-
-        self.resolve(
-            first_identifier,
-            identifier_interner,
-            diagnostics,
-            environment,
-        )?
-        .resolve_rest_of_the_path(
-            first_identifier,
-            identifiers,
-            identifier_interner,
-            diagnostics,
-            environment,
-        )
-    }
-
-    /// Resolves an identifier in a module scope. If resolution fails, returns [`None`]
-    /// and adds a new diagnostics.
-    ///
-    /// # Panics
-    /// - If the environment data is wrong.
-    /// - If the path contains symbols, that cannot be resolved by an identifier interner.
-    pub fn resolve(
-        &self,
-        identifier: IdentifierAST,
-        identifier_interner: &IdentifierInterner,
-        diagnostics: &RwLock<Diagnostics>,
-        environment: &ResolutionEnvironment,
-    ) -> Option<NameBinding> {
-        if let Some(binding) = self.bindings.get(&identifier.id).copied().or_else(|| {
-            if environment
-                .packages_root_modules
-                .contains_key(&PackageID(identifier.id))
-            {
-                Some(NameBinding::Package(PackageID(identifier.id)))
-            } else {
-                None
-            }
-        }) {
-            Some(binding)
-        } else {
-            // check for possible name binding that can come from imports
-            if let Some(binding) = environment.resolved_imports[&self.id]
-                .imports
-                .get(&identifier.id)
-            {
-                Some(*binding)
-            } else {
-                diagnostics.write().add_single_file_diagnostic(
-                    identifier.location.file_path_id,
-                    FailedToResolveNameDiagnostic {
-                        name: identifier_interner
-                            .resolve(identifier.id)
-                            .unwrap()
-                            .to_owned(),
-                        location: identifier.location,
-                    },
-                );
-
-                None
-            }
-        }
-    }
 }
 
 /// Unique ID of the enum item

@@ -62,14 +62,12 @@
     clippy::inline_always
 )]
 
-use core::{
-    hash::{BuildHasher, Hash, Hasher},
-    str::from_utf8_unchecked,
-};
 use std::{
     hash::BuildHasherDefault,
+    hash::{BuildHasher, Hash, Hasher},
     marker::PhantomData,
     path::{Path, PathBuf},
+    str::from_utf8_unchecked,
 };
 
 #[cfg(feature = "serde")]
@@ -79,6 +77,7 @@ extern crate alloc;
 
 use alloc::{string::String, vec::Vec};
 
+use derive_more::Display;
 use hashbrown::{hash_map::RawEntryMut, HashMap};
 use ry_fx_hash::FxHasher;
 
@@ -546,7 +545,7 @@ impl IdentifierInterner {
 pub struct PathInterner(Interner<PathID>);
 
 /// ID of a path in the [`PathInterner`].
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Display, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct PathID(pub usize);
 

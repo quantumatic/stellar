@@ -34,12 +34,12 @@ impl TypeCheckingContext<'_, '_, '_> {
             self.add_module_item_hir(id, item, &mut imports, &mut enums, &mut bindings);
         }
 
-        self.resolution_environment.module_paths.insert(id, path);
-        self.resolution_environment.module_scopes.insert(
+        self.name_resolver.add_module_scope(
             id,
             ModuleScope {
                 name: module_name_id,
                 id,
+                path,
                 bindings,
                 enums,
                 imports,
@@ -79,9 +79,8 @@ impl TypeCheckingContext<'_, '_, '_> {
                     module_id,
                 };
 
-                self.resolution_environment
-                    .visibilities
-                    .insert(definition_id, item.visibility());
+                self.name_resolver
+                    .add_visibility(definition_id, item.visibility());
 
                 bindings.insert(
                     item.name().unwrap(),
@@ -145,9 +144,7 @@ impl TypeCheckingContext<'_, '_, '_> {
             );
         }
 
-        self.resolution_environment
-            .visibilities
-            .insert(definition_id, visibility);
+        self.name_resolver.add_visibility(definition_id, visibility);
         enums.insert(name_id, EnumData { items: items_data });
     }
 
@@ -158,7 +155,7 @@ impl TypeCheckingContext<'_, '_, '_> {
     /// module imports.
     #[inline(always)]
     pub fn process_imports(&mut self) {
-        self.resolution_environment
+        self.name_resolver
             .resolve_imports(self.identifier_interner, self.diagnostics);
     }
 
@@ -229,11 +226,11 @@ impl TypeCheckingContext<'_, '_, '_> {
             });
         }
 
-        let Some(name_binding) = module_scope.resolve_path(
+        let Some(name_binding) = self.name_resolver.resolve_path_in_module_scope(
+            module_scope,
             ty.path.clone(),
             self.identifier_interner,
             self.diagnostics,
-            &self.resolution_environment,
         ) else {
             return None;
         };
@@ -317,11 +314,11 @@ impl TypeCheckingContext<'_, '_, '_> {
         generic_parameter_scope: &GenericParameterScope,
         module_scope: &ModuleScope,
     ) -> Option<TypeConstructor> {
-        let Some(name_binding) = module_scope.resolve_path(
+        let Some(name_binding) = self.name_resolver.resolve_path_in_module_scope(
+            module_scope,
             interface.path.clone(),
             self.identifier_interner,
             self.diagnostics,
-            &self.resolution_environment,
         ) else {
             return None;
         };

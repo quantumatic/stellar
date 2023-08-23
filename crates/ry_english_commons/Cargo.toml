@@ -1,0 +1,13 @@
+[package]
+name = "ry_english_commons"
+version = "0.1.0"
+edition = "2021"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/ry-lang/ry"
+authors = ["Adi Salimgereyev <adisalimgereev@gmail.com>"]
+readme = "../../README.md"
+description = "Implements some utility functions for working with english grammar rules in diagnostics and more."
+
+[dependencies]
+once_cell = "1.18.0"
+ry_fx_hash = { path = "../ry_fx_hash" }
