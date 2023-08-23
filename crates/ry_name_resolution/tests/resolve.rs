@@ -1,3 +1,5 @@
+use std::iter;
+
 use parking_lot::RwLock;
 use ry_ast::{IdentifierAST, Path};
 use ry_diagnostics::Diagnostics;
@@ -52,18 +54,14 @@ fn resolve_module() {
     let mut name_resolver = NameResolver::new();
     let diagnostics = RwLock::new(Diagnostics::new());
 
-    let mut package_root_module_scope = ModuleScope {
+    let package_root_module_scope = ModuleScope {
         name: a,
         id: package_root_module_id,
         path: path!(a),
-        bindings: FxHashMap::default(),
+        bindings: FxHashMap::from_iter(iter::once((a, NameBinding::Module(child_module_id)))),
         enums: FxHashMap::default(),
         imports: FxHashMap::default(),
     };
-
-    package_root_module_scope
-        .bindings
-        .insert(a, NameBinding::Module(child_module_id));
 
     let child_module_scope = ModuleScope {
         name: a,
@@ -82,7 +80,6 @@ fn resolve_module() {
         name_resolver.resolve_path(dummy_path!(a, a), &identifier_interner, &diagnostics),
         Some(NameBinding::Module(child_module_id))
     );
-
     assert_eq!(
         name_resolver.resolve_path(
             Path {
@@ -123,41 +120,23 @@ fn import() {
     let mut name_resolver = NameResolver::new();
     let diagnostics = RwLock::new(Diagnostics::new());
 
-    let mut package_root_module_scope = ModuleScope {
+    let package_root_module_scope = ModuleScope {
         name: a,
         id: package_root_module_id,
         path: path!(a),
-        bindings: FxHashMap::default(),
+        bindings: FxHashMap::from_iter(iter::once((b, NameBinding::Module(child_module_id)))),
         imports: FxHashMap::default(),
         enums: FxHashMap::default(),
     };
-    package_root_module_scope
-        .bindings
-        .insert(b, NameBinding::Module(child_module_id));
 
     let child_module_scope = ModuleScope {
         name: b,
         id: child_module_id,
         path: path!(a, b),
         bindings: FxHashMap::default(),
-        imports: FxHashMap::default(),
+        imports: FxHashMap::from_iter([(b, dummy_path!(a, b)), (c, dummy_path!(a, b))].into_iter()),
         enums: FxHashMap::default(),
     };
-
-    package_root_module_scope.imports.insert(
-        b,
-        Path {
-            location: DUMMY_LOCATION,
-            identifiers: vec![dummy_identifier!(a), dummy_identifier!(b)],
-        },
-    );
-    package_root_module_scope.imports.insert(
-        c,
-        Path {
-            location: DUMMY_LOCATION,
-            identifiers: vec![dummy_identifier!(a), dummy_identifier!(b)],
-        },
-    );
 
     name_resolver.add_package(PackageID(a), package_root_module_id);
     name_resolver.add_module_scope(package_root_module_id, package_root_module_scope);
