@@ -1,5 +1,7 @@
 //! Provides a [`pluralize`] function to convert singular nouns to plural ones.
 
+use std::fmt::Display;
+
 use once_cell::sync::Lazy;
 use ry_fx_hash::{FxHashMap, FxHashSet};
 use ry_stable_likely::unlikely;
@@ -20,14 +22,14 @@ trait PluralizeExt {
 
 impl<S> PluralizeExt for S
 where
-    S: AsRef<str>,
+    S: Display,
 {
     fn pluralize(&self) -> String {
-        let noun = self.as_ref();
+        let noun = self.to_string();
 
         if unlikely(noun.is_empty()) {
             String::new()
-        } else if let Some(pluralized) = IRREGULAR_NOUNS.get(noun) {
+        } else if let Some(pluralized) = IRREGULAR_NOUNS.get(&*noun) {
             (*pluralized).to_owned()
         } else if VOWELS.contains(noun.chars().last().as_ref().expect("The noun is empty")) {
             format!("{noun}s")

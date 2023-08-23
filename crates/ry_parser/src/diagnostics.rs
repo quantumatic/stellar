@@ -10,6 +10,7 @@ use ry_ast::{
 };
 use ry_diagnostics::diagnostic::Diagnostic;
 use ry_diagnostics::{BuildDiagnostic, LocationExt};
+use ry_english_commons::enumeration;
 use ry_filesystem::location::{ByteOffset, Location};
 use ry_interner::PathID;
 
@@ -255,26 +256,6 @@ impl BuildDiagnostic for EOFInsteadOfCloseBrace {
 
 impl Display for Expected {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let len = self.0.len() - 1;
-
-        f.write_fmt(format_args!(
-            "{}",
-            self.0
-                .iter()
-                .enumerate()
-                .map(|(idx, token)| {
-                    format!(
-                        "{}{token}",
-                        if idx == 0 {
-                            ""
-                        } else if idx == len {
-                            " or "
-                        } else {
-                            ", "
-                        }
-                    )
-                })
-                .collect::<String>()
-        ))
+        f.write_str(&enumeration::one_of(self.0.iter(), false))
     }
 }

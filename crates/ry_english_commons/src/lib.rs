@@ -59,5 +59,6 @@
     clippy::inline_always
 )]
 
+pub mod enumeration;
 pub mod ordinal;
 pub mod pluralize;

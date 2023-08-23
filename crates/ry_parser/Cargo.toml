@@ -12,6 +12,7 @@ description = "Implements syntax parser for the Ry programming language."
 parking_lot = "0.12.1"
 ry_ast = { path = "../ry_ast" }
 ry_diagnostics = { path = "../ry_diagnostics" }
+ry_english_commons = { path = "../ry_english_commons" }
 ry_filesystem = { path = "../ry_filesystem" }
 ry_interner = { path = "../ry_interner" }
 ry_lexer = { path = "../ry_lexer" }
