@@ -1,5 +1,5 @@
 <p align="center">
-<img width="60%" src="./additional/icon/banner.png">
+<img width="80%" src="./additional/icon/banner.png">
 </p>
 
 Ry is an attempt of a [teenager](https://github.com/abs0luty) to create his own programming language and write its compiler in Rust. You can view it as a toy project. I view it as a showcase of what can a single young developer achieve if he is passionate about it!
