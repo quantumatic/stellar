@@ -125,7 +125,7 @@ fn import() {
         id: package_root_module_id,
         path: path!(a),
         bindings: FxHashMap::from_iter(iter::once((b, NameBinding::Module(child_module_id)))),
-        imports: FxHashMap::default(),
+        imports: FxHashMap::from_iter([(b, dummy_path!(a, b)), (c, dummy_path!(a, b))].into_iter()),
         enums: FxHashMap::default(),
     };
 
@@ -134,7 +134,7 @@ fn import() {
         id: child_module_id,
         path: path!(a, b),
         bindings: FxHashMap::default(),
-        imports: FxHashMap::from_iter([(b, dummy_path!(a, b)), (c, dummy_path!(a, b))].into_iter()),
+        imports: FxHashMap::default(),
         enums: FxHashMap::default(),
     };
 
