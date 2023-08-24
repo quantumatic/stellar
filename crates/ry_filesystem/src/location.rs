@@ -5,6 +5,7 @@ use std::{
     ops::{Add, AddAssign, Range, Sub, SubAssign},
 };
 
+use derive_more::Display;
 use ry_interner::PathID;
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
@@ -24,15 +25,9 @@ pub struct Location {
 }
 
 /// Offset of a byte in a source text.
-#[derive(Debug, Copy, Clone, Default, PartialEq, Eq, Hash)]
+#[derive(Debug, Copy, Clone, Default, PartialEq, Eq, Hash, Display)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct ByteOffset(pub usize);
-
-impl Display for ByteOffset {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        self.0.fmt(f)
-    }
-}
 
 impl Add for ByteOffset {
     type Output = Self;

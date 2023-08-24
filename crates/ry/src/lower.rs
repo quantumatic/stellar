@@ -2,7 +2,7 @@ use std::io::Write;
 use std::{path::PathBuf, time::Instant};
 
 use parking_lot::RwLock;
-use ry_ast_lowering::LoweringContext;
+use ry_ast_lowering::LowerExt;
 use ry_diagnostics::diagnostic::Diagnostic;
 use ry_diagnostics::{Diagnostics, DiagnosticsEmitter};
 use ry_filesystem::file_utils::make_unique_file;
@@ -38,8 +38,7 @@ pub fn command(path_str: &str) {
 
             now = Instant::now();
 
-            let mut lowering_context = LoweringContext::new(file_path_id, &diagnostics);
-            let hir = lowering_context.lower(ast);
+            let hir = ast.lower(file_path_id, &diagnostics);
 
             log_with_left_padded_prefix("Lowered", format!("in {}s", now.elapsed().as_secs_f64()));
 

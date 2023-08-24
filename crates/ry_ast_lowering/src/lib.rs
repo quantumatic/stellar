@@ -8,12 +8,6 @@
 //! * converts `interface A[T]: B[T] + C` into `interface A[T] where Self: B[T] + C`.
 //!
 //! See the [`ry_hir`] crate for more details.
-//!
-//! See:
-//! - [`LoweringContext`] - essential structure, that is used to lower AST to HIR.
-//! - [`LoweringContext::new()`] to create a new lowering context.
-//! - [`LoweringContext::lower()`] to convert the whole module AST into HIR.
-//! - [`LoweringContext::lower_module_item()`] to convert a module item AST into HIR.
 
 use diagnostics::{UnnecessaryParenthesesInPatternDiagnostic, UnnecessaryParenthesizedExpression};
 use parking_lot::RwLock;
@@ -23,11 +17,25 @@ use ry_interner::{builtin_identifiers::BIG_SELF, PathID};
 
 mod diagnostics;
 
+/// Provides [`LowerExt::lower()`] method.
+pub trait LowerExt {
+    /// Converts a given AST into HIR.
+    #[must_use]
+    fn lower(self, file_path_id: PathID, diagnostics: &RwLock<Diagnostics>) -> ry_hir::Module;
+}
+
+impl LowerExt for ry_ast::Module {
+    #[inline(always)]
+    fn lower(self, file_path_id: PathID, diagnostics: &RwLock<Diagnostics>) -> ry_hir::Module {
+        LoweringContext::new(file_path_id, diagnostics).lower(self)
+    }
+}
+
 /// Represents a context for AST lowering.
 ///
 /// See [crate-level docs](crate) for more details.
 #[derive(Debug, Clone, Copy)]
-pub struct LoweringContext<'d> {
+struct LoweringContext<'d> {
     file_path_id: PathID,
     diagnostics: &'d RwLock<Diagnostics>,
 }
@@ -36,7 +44,7 @@ impl<'d> LoweringContext<'d> {
     /// Creates a new lowering context.
     #[inline(always)]
     #[must_use]
-    pub const fn new(file_path_id: PathID, diagnostics: &'d RwLock<Diagnostics>) -> Self {
+    const fn new(file_path_id: PathID, diagnostics: &'d RwLock<Diagnostics>) -> Self {
         Self {
             file_path_id,
             diagnostics,

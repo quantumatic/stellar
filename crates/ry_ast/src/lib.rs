@@ -216,12 +216,46 @@ pub struct IdentifierAST {
     pub id: IdentifierID,
 }
 
+/// Returns an identifier with a dummy location.
+///
+/// See [`DUMMY_LOCATION`] and [`IdentifierAST`] for more details.
+///
+/// [`DUMMY_LOCATION`]: ry_filesystem::location::DUMMY_LOCATION
+#[macro_export]
+macro_rules! dummy_identifier {
+    ($id:expr) => {
+        $crate::IdentifierAST {
+            id: $id,
+            location: ry_filesystem::location::DUMMY_LOCATION,
+        }
+    };
+}
+
 /// A sequence of identifiers separated by `.`, e.g. `std.io`, `foo`.
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct Path {
     pub location: Location,
     pub identifiers: Vec<IdentifierAST>,
+}
+
+/// Returns a path with a dummy location.
+///
+/// See [`DUMMY_LOCATION`] and [`Path`] for more details.
+///
+/// [`DUMMY_LOCATION`]: ry_filesystem::location::DUMMY_LOCATION
+#[macro_export]
+macro_rules! dummy_path {
+    ($($id:expr),*) => {
+        ry_ast::Path {
+            location: DUMMY_LOCATION,
+            identifiers: vec![
+                $(
+                    dummy_identifier!($id)
+                ),*
+            ]
+        }
+    };
 }
 
 /// An import path, e.g. `std.io`, `std.io as myio`.

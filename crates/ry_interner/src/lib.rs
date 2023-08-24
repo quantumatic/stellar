@@ -70,6 +70,10 @@ use std::{
     str::from_utf8_unchecked,
 };
 
+#[cfg(feature = "tuples")]
+use itertools::traits::HomogeneousTuple;
+#[cfg(feature = "tuples")]
+use itertools::Itertools;
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 
@@ -394,6 +398,29 @@ where
         self.get_or_intern_using(string.as_ref(), InternerStorage::intern)
     }
 
+    /// Interns the given iterator of strings and returns corresponding symbols.
+    #[inline(always)]
+    pub fn get_or_intern_vec(&mut self, iter: impl IntoIterator<Item = impl AsRef<str>>) -> Vec<S> {
+        iter.into_iter()
+            .map(|string| self.get_or_intern(string))
+            .collect()
+    }
+
+    /// Interns the given tuple of strings and returns corresponding symbols as a tuple.
+    #[cfg(feature = "tuples")]
+    #[inline(always)]
+    pub fn get_or_intern_tuple<T>(
+        &mut self,
+        iter: impl IntoIterator<Item = impl AsRef<str>>,
+    ) -> Option<T>
+    where
+        T: HomogeneousTuple<Item = S>,
+    {
+        iter.into_iter()
+            .map(|string| self.get_or_intern(string))
+            .collect_tuple::<T>()
+    }
+
     /// Shrink backend capacity to fit the interned strings exactly.
     #[inline(always)]
     pub fn shrink_to_fit(&mut self) {
@@ -511,6 +538,28 @@ impl IdentifierInterner {
         self.0.get_or_intern(identifier)
     }
 
+    /// Interns the given identifiers (if they don't exist) and returns corresponding symbols.
+    #[inline(always)]
+    pub fn get_or_intern_vec(
+        &mut self,
+        identifiers: impl IntoIterator<Item = impl AsRef<str>>,
+    ) -> Vec<IdentifierID> {
+        self.0.get_or_intern_vec(identifiers)
+    }
+
+    /// Interns the given identifiers (if they don't exist) and returns corresponding symbols as a tuple.
+    #[cfg(feature = "tuples")]
+    #[inline(always)]
+    pub fn get_or_intern_tuple<T>(
+        &mut self,
+        identifiers: impl IntoIterator<Item = impl AsRef<str>>,
+    ) -> Option<T>
+    where
+        T: HomogeneousTuple<Item = IdentifierID>,
+    {
+        self.0.get_or_intern_tuple(identifiers)
+    }
+
     /// Shrink backend capacity to fit the interned identifiers exactly.
     #[inline(always)]
     pub fn shrink_to_fit(&mut self) {
@@ -588,6 +637,34 @@ impl PathInterner {
     pub fn get_or_intern(&mut self, path: impl AsRef<Path>) -> PathID {
         self.0
             .get_or_intern(path.as_ref().to_str().expect("Invalid UTF-8 path"))
+    }
+
+    /// Interns the given paths and returns corresponding symbols.
+    #[inline(always)]
+    pub fn get_or_intern_iter(
+        &mut self,
+        paths: impl IntoIterator<Item = impl AsRef<Path>>,
+    ) -> Vec<PathID> {
+        paths
+            .into_iter()
+            .map(|path| self.get_or_intern(path))
+            .collect()
+    }
+
+    /// Interns the given paths and returns corresponding symbols as a tuple.
+    #[cfg(feature = "tuples")]
+    #[inline(always)]
+    pub fn get_or_intern_tuple<T>(
+        &mut self,
+        paths: impl IntoIterator<Item = impl AsRef<Path>>,
+    ) -> Option<T>
+    where
+        T: HomogeneousTuple<Item = PathID>,
+    {
+        paths
+            .into_iter()
+            .map(|path| self.get_or_intern(path))
+            .collect_tuple()
     }
 
     /// Resolves a path stored in the storage.

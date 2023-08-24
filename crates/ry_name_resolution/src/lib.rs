@@ -163,10 +163,29 @@ impl NameResolver {
             .insert(package_id, root_module_id);
     }
 
+    /// Adds a list of packages into the name resolver storage.
+    #[inline(always)]
+    pub fn add_packages(&mut self, packages: impl IntoIterator<Item = (PackageID, ModuleID)>) {
+        for (package_id, root_module_id) in packages {
+            self.add_package(package_id, root_module_id);
+        }
+    }
+
     /// Adds a module scope into the name resolver storage.
     #[inline(always)]
     pub fn add_module_scope(&mut self, module_id: ModuleID, scope: ModuleScope) {
         self.module_scopes.insert(module_id, scope);
+    }
+
+    /// Adds a list of module scopes into the name resolver storage.
+    #[inline(always)]
+    pub fn add_module_scopes(
+        &mut self,
+        module_scopes: impl IntoIterator<Item = (ModuleID, ModuleScope)>,
+    ) {
+        for (module_id, scope) in module_scopes {
+            self.add_module_scope(module_id, scope);
+        }
     }
 
     /// Resolves a module scope by its module it.

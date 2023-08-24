@@ -1,34 +1,12 @@
 use std::iter;
 
 use parking_lot::RwLock;
-use ry_ast::{IdentifierAST, Path};
+use ry_ast::{dummy_identifier, dummy_path};
 use ry_diagnostics::Diagnostics;
 use ry_filesystem::location::DUMMY_LOCATION;
 use ry_fx_hash::FxHashMap;
 use ry_interner::{IdentifierInterner, PathInterner};
 use ry_name_resolution::{path, ModuleID, ModuleScope, NameBinding, NameResolver, PackageID};
-
-macro_rules! dummy_identifier {
-    ($id:expr) => {
-        IdentifierAST {
-            id: $id,
-            location: DUMMY_LOCATION,
-        }
-    };
-}
-
-macro_rules! dummy_path {
-    ($($id:expr),*) => {
-        ry_ast::Path {
-            location: DUMMY_LOCATION,
-            identifiers: vec![
-                $(
-                    dummy_identifier!($id)
-                ),*
-            ]
-        }
-    };
-}
 
 /// ```txt
 /// a
@@ -40,13 +18,13 @@ macro_rules! dummy_path {
 #[test]
 fn resolve_module() {
     let mut identifier_interner = IdentifierInterner::new();
-    let a = identifier_interner.get_or_intern("a");
-    let b = identifier_interner.get_or_intern("b");
-
     let mut path_interner = PathInterner::new();
 
-    let package_root_module_path_id = path_interner.get_or_intern("a/package.ry");
-    let child_module_path_id = path_interner.get_or_intern("a/a.ry");
+    let (a, b) = identifier_interner.get_or_intern_tuple(["a", "b"]).unwrap();
+
+    let (package_root_module_path_id, child_module_path_id) = path_interner
+        .get_or_intern_tuple(["a/package.ry", "a/a.ry"])
+        .unwrap();
 
     let package_root_module_id = ModuleID(package_root_module_path_id);
     let child_module_id = ModuleID(child_module_path_id);
@@ -54,41 +32,41 @@ fn resolve_module() {
     let mut name_resolver = NameResolver::new();
     let diagnostics = RwLock::new(Diagnostics::new());
 
-    let package_root_module_scope = ModuleScope {
-        name: a,
-        id: package_root_module_id,
-        path: path!(a),
-        bindings: FxHashMap::from_iter(iter::once((a, NameBinding::Module(child_module_id)))),
-        enums: FxHashMap::default(),
-        imports: FxHashMap::default(),
-    };
-
-    let child_module_scope = ModuleScope {
-        name: a,
-        id: child_module_id,
-        path: path!(a, a),
-        bindings: FxHashMap::default(),
-        enums: FxHashMap::default(),
-        imports: FxHashMap::default(),
-    };
-
     name_resolver.add_package(PackageID(a), package_root_module_id);
-    name_resolver.add_module_scope(package_root_module_id, package_root_module_scope);
-    name_resolver.add_module_scope(child_module_id, child_module_scope);
+    name_resolver.add_module_scopes([
+        (
+            package_root_module_id,
+            ModuleScope {
+                name: a,
+                id: package_root_module_id,
+                path: path!(a),
+                bindings: FxHashMap::from_iter(iter::once((
+                    a,
+                    NameBinding::Module(child_module_id),
+                ))),
+                enums: FxHashMap::default(),
+                imports: FxHashMap::default(),
+            },
+        ),
+        (
+            child_module_id,
+            ModuleScope {
+                name: a,
+                id: child_module_id,
+                path: path!(a, a),
+                bindings: FxHashMap::default(),
+                enums: FxHashMap::default(),
+                imports: FxHashMap::default(),
+            },
+        ),
+    ]);
 
     assert_eq!(
         name_resolver.resolve_path(dummy_path!(a, a), &identifier_interner, &diagnostics),
         Some(NameBinding::Module(child_module_id))
     );
     assert_eq!(
-        name_resolver.resolve_path(
-            Path {
-                location: DUMMY_LOCATION,
-                identifiers: vec![dummy_identifier!(b)],
-            },
-            &identifier_interner,
-            &diagnostics
-        ),
+        name_resolver.resolve_path(dummy_path!(b), &identifier_interner, &diagnostics),
         None,
     );
 }
@@ -105,14 +83,15 @@ fn resolve_module() {
 #[test]
 fn import() {
     let mut identifier_interner = IdentifierInterner::new();
-    let a = identifier_interner.get_or_intern("a");
-    let b = identifier_interner.get_or_intern("b");
-    let c = identifier_interner.get_or_intern("c");
+    let (a, b, c) = identifier_interner
+        .get_or_intern_tuple(["a", "b", "c"])
+        .unwrap();
 
     let mut path_interner = PathInterner::new();
 
-    let package_root_module_path_id = path_interner.get_or_intern("a/package.ry");
-    let child_module_path_id = path_interner.get_or_intern("a/b.ry");
+    let (package_root_module_path_id, child_module_path_id) = path_interner
+        .get_or_intern_tuple(["a/package.ry", "a/b.ry"])
+        .unwrap();
 
     let package_root_module_id = ModuleID(package_root_module_path_id);
     let child_module_id = ModuleID(child_module_path_id);
@@ -120,27 +99,36 @@ fn import() {
     let mut name_resolver = NameResolver::new();
     let diagnostics = RwLock::new(Diagnostics::new());
 
-    let package_root_module_scope = ModuleScope {
-        name: a,
-        id: package_root_module_id,
-        path: path!(a),
-        bindings: FxHashMap::from_iter(iter::once((b, NameBinding::Module(child_module_id)))),
-        imports: FxHashMap::from_iter([(b, dummy_path!(a, b)), (c, dummy_path!(a, b))].into_iter()),
-        enums: FxHashMap::default(),
-    };
-
-    let child_module_scope = ModuleScope {
-        name: b,
-        id: child_module_id,
-        path: path!(a, b),
-        bindings: FxHashMap::default(),
-        imports: FxHashMap::default(),
-        enums: FxHashMap::default(),
-    };
-
     name_resolver.add_package(PackageID(a), package_root_module_id);
-    name_resolver.add_module_scope(package_root_module_id, package_root_module_scope);
-    name_resolver.add_module_scope(child_module_id, child_module_scope);
+    name_resolver.add_module_scopes([
+        (
+            package_root_module_id,
+            ModuleScope {
+                name: a,
+                id: package_root_module_id,
+                path: path!(a),
+                bindings: FxHashMap::from_iter(iter::once((
+                    b,
+                    NameBinding::Module(child_module_id),
+                ))),
+                imports: FxHashMap::from_iter(
+                    [(b, dummy_path!(a, b)), (c, dummy_path!(a, b))].into_iter(),
+                ),
+                enums: FxHashMap::default(),
+            },
+        ),
+        (
+            child_module_id,
+            ModuleScope {
+                name: b,
+                id: child_module_id,
+                path: path!(a, b),
+                bindings: FxHashMap::default(),
+                imports: FxHashMap::default(),
+                enums: FxHashMap::default(),
+            },
+        ),
+    ]);
 
     name_resolver.resolve_imports(&identifier_interner, &diagnostics);
 
