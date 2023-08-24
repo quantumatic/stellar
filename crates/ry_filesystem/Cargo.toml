@@ -9,10 +9,10 @@ readme = "../../README.md"
 description = "Provides utilities for working with the file system."
 
 [dependencies]
+derive_more = "0.99.17"
 ry_fx_hash = { path = "../ry_fx_hash" }
 ry_interner = { path = "../ry_interner" }
 serde = { version = "1.0.183", features = ["derive"], optional = true }
-derive_more = "0.99.17"
 
 [features]
 serde = ["dep:serde", "ry_interner/serde"]
