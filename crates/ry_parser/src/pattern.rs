@@ -45,6 +45,13 @@ impl Parse for PatternExceptOrParser {
             | RawToken::FloatLiteral
             | RawToken::TrueBoolLiteral
             | RawToken::FalseBoolLiteral => Some(Pattern::Literal(LiteralParser.parse(state)?)),
+            RawToken::Punctuator(Punctuator::Underscore) => {
+                state.advance();
+
+                Some(Pattern::Wildcard {
+                    location: state.current_token.location,
+                })
+            }
             RawToken::Identifier => {
                 let path = PathParser.parse(state)?;
 

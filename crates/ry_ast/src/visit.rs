@@ -283,6 +283,7 @@ pub trait Visitor {
             } => {
                 self.visit_tuple_like_pattern(*location, path, inner_patterns);
             }
+            Pattern::Wildcard { location } => self.visit_wildcard_pattern(*location),
         }
     }
 
@@ -355,6 +356,9 @@ pub trait Visitor {
         }
     }
 
+    /// Visits a wildcard pattern.
+    fn visit_wildcard_pattern(&mut self, location: Location) {}
+
     /// Visits a type.
     fn visit_type(&mut self, ty: &Type) {
         match ty {
@@ -363,7 +367,7 @@ pub trait Visitor {
                 location,
                 parameter_types,
                 return_type,
-            } => self.visit_function_type(*location, parameter_types, return_type),
+            } => self.visit_function_type(*location, parameter_types, return_type.as_deref()),
             Type::InterfaceObject { location, bounds } => {
                 self.visit_interface_object_type(*location, bounds);
             }
@@ -376,6 +380,7 @@ pub trait Visitor {
             } => {
                 self.visit_tuple_type(*location, element_types);
             }
+            Type::Underscore { location } => self.visit_underscore_type(*location),
         }
     }
 
@@ -396,13 +401,15 @@ pub trait Visitor {
         &mut self,
         location: Location,
         parameter_types: &[Type],
-        return_type: &Type,
+        return_type: Option<&Type>,
     ) {
         for parameter_type in parameter_types {
             self.visit_type(parameter_type);
         }
 
-        self.visit_type(return_type);
+        if let Some(return_type) = return_type {
+            self.visit_type(return_type);
+        }
     }
 
     /// Visits an interface object type.
@@ -428,6 +435,9 @@ pub trait Visitor {
             self.visit_type(element_type);
         }
     }
+
+    /// Visit an underscore type.
+    fn visit_underscore_type(&mut self, location: Location) {}
 
     /// Visits an expression.
     fn visit_expression(&mut self, expression: &Expression) {
@@ -538,6 +548,7 @@ pub trait Visitor {
             } => {
                 self.visit_type_arguments_expression(*location, left, arguments);
             }
+            Expression::Underscore { location } => self.visit_underscore_expression(*location),
         }
     }
 
@@ -631,6 +642,9 @@ pub trait Visitor {
 
         self.visit_expression(value);
     }
+
+    /// Visits an underscore expression.
+    fn visit_underscore_expression(&mut self, location: Location) {}
 
     /// Visits a lambda function parameter.
     fn visit_lambda_function_parameter(&mut self, parameter: &LambdaFunctionParameter) {

@@ -296,6 +296,10 @@ pub enum Pattern {
         pattern: Option<Box<Self>>,
     },
 
+    /// A wildcard pattern, e.g. `_`.
+    #[cfg_attr(feature = "serde", serde(rename = "wildcard_pattern"))]
+    Wildcard { location: Location },
+
     /// A struct pattern, e.g. `Person { name, age, .. }`.
     #[cfg_attr(feature = "serde", serde(rename = "struct_pattern"))]
     Struct {
@@ -374,7 +378,8 @@ impl Pattern {
             | Self::TupleLike { location, .. }
             | Self::Path {
                 path: Path { location, .. },
-            } => *location,
+            }
+            | Self::Wildcard { location } => *location,
         }
     }
 }
@@ -419,7 +424,7 @@ pub enum Type {
     Function {
         location: Location,
         parameter_types: Vec<Self>,
-        return_type: Box<Self>,
+        return_type: Option<Box<Self>>,
     },
 
     /// A parenthesized type, e.g. `(int32)`.
@@ -431,6 +436,10 @@ pub enum Type {
         location: Location,
         inner: Box<Self>,
     },
+
+    /// An underscore type, e.g. `_`.
+    #[cfg_attr(feature = "serde", serde(rename = "underscore_type"))]
+    Underscore { location: Location },
 
     /// An interface object type, e.g. `dyn Iterator[Item = uint32]`, `dyn Debug + Clone`.
     #[cfg_attr(feature = "serde", serde(rename = "interface_object_type"))]
@@ -450,7 +459,8 @@ impl Type {
             | Self::Parenthesized { location, .. }
             | Self::Constructor(TypeConstructor { location, .. })
             | Self::InterfaceObject { location, .. }
-            | Self::Tuple { location, .. } => *location,
+            | Self::Tuple { location, .. }
+            | Self::Underscore { location } => *location,
         }
     }
 }
@@ -541,6 +551,10 @@ pub enum Expression {
     /// Identifier expression, e.g. `foo`.
     #[cfg_attr(feature = "serde", serde(rename = "identifier_expression"))]
     Identifier(IdentifierAST),
+
+    /// Underscore expression, e.g. `_`.
+    #[cfg_attr(feature = "serde", serde(rename = "underscore_expression"))]
+    Underscore { location: Location },
 
     /// Parenthesized expression, e.g. `(1 + 2)`.
     #[cfg_attr(feature = "serde", serde(rename = "parenthesized_expression"))]
@@ -682,7 +696,8 @@ impl Expression {
             | Self::Tuple { location, .. }
             | Self::Struct { location, .. }
             | Self::Match { location, .. }
-            | Self::Lambda { location, .. } => *location,
+            | Self::Lambda { location, .. }
+            | Self::Underscore { location } => *location,
         }
     }
 }

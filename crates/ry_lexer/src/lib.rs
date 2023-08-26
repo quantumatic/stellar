@@ -726,6 +726,8 @@ impl<'s, 'i> Lexer<'s, 'i> {
 
             ('.', '.') => self.advance_twice_with(Punctuator::DoubleDot),
 
+            ('_', _) => self.advance_with(Punctuator::Underscore),
+
             _ => {
                 if self.current.is_ascii_digit()
                     || (self.current == '.' && self.next.is_ascii_digit())

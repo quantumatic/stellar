@@ -175,6 +175,9 @@ impl TypeCheckingContext<'_, '_, '_> {
                 .map(|element| self.resolve_type(element, generic_parameter_scope, module_scope))
                 .collect::<Option<Vec<_>>>()
                 .map(|element_types| Type::Tuple { element_types }),
+            ry_hir::Type::Underscore { location } => {
+                todo!()
+            }
             ry_hir::Type::Function {
                 parameter_types,
                 return_type,

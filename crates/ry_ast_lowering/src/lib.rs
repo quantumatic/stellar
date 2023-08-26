@@ -6,6 +6,7 @@
 //! * removes parenthesized expressions, types and grouped patterns.
 //! * converts `loop {}` into `while true {}`.
 //! * converts `interface A[T]: B[T] + C` into `interface A[T] where Self: B[T] + C`.
+//! * converts `fun (A, B)` into `fun (A, B): ()` (adds unit type into function return types).
 //!
 //! See the [`ry_hir`] crate for more details.
 
@@ -13,6 +14,7 @@ use diagnostics::{UnnecessaryParenthesesInPatternDiagnostic, UnnecessaryParenthe
 use parking_lot::RwLock;
 use ry_ast::IdentifierAST;
 use ry_diagnostics::{BuildDiagnostic, Diagnostics};
+use ry_filesystem::location::{Location, DUMMY_LOCATION};
 use ry_interner::{builtin_identifiers::BIG_SELF, PathID};
 
 mod diagnostics;
@@ -302,6 +304,7 @@ impl<'d> LoweringContext<'d> {
 
                 self.lower_pattern(*inner)
             }
+            ry_ast::Pattern::Wildcard { location } => ry_hir::Pattern::Wildcard { location },
             ry_ast::Pattern::Identifier {
                 location,
                 identifier,
@@ -392,6 +395,9 @@ impl<'d> LoweringContext<'d> {
             ry_ast::Expression::Literal(literal) => ry_hir::Expression::Literal(literal),
             ry_ast::Expression::Identifier(identifier) => {
                 ry_hir::Expression::Identifier(identifier)
+            }
+            ry_ast::Expression::Underscore { location } => {
+                ry_hir::Expression::Underscore { location }
             }
             ry_ast::Expression::Loop {
                 location,
@@ -774,6 +780,10 @@ impl<'d> LoweringContext<'d> {
         }
     }
 
+    fn lower_underscore_type(&mut self, location: Location) -> ry_hir::Type {
+        ry_hir::Type::Underscore { location }
+    }
+
     fn lower_type(&mut self, ast: ry_ast::Type) -> ry_hir::Type {
         match ast {
             ry_ast::Type::Function {
@@ -786,7 +796,12 @@ impl<'d> LoweringContext<'d> {
                     .into_iter()
                     .map(|ty| self.lower_type(ty))
                     .collect(),
-                return_type: Box::new(self.lower_type(*return_type)),
+                return_type: Box::new(return_type.map(|ty| self.lower_type(*ty)).unwrap_or(
+                    ry_hir::Type::Tuple {
+                        location: DUMMY_LOCATION,
+                        element_types: vec![],
+                    },
+                )),
             },
             ry_ast::Type::Constructor(constructor) => {
                 ry_hir::Type::Constructor(self.lower_type_constructor(constructor))
@@ -798,6 +813,7 @@ impl<'d> LoweringContext<'d> {
 
                 self.lower_type(*inner)
             }
+            ry_ast::Type::Underscore { location } => self.lower_underscore_type(location),
             ry_ast::Type::InterfaceObject { location, bounds } => ry_hir::Type::InterfaceObject {
                 location,
                 bounds: bounds

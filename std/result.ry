@@ -6,7 +6,7 @@ pub enum Result[T, E] {
         self.unwrap_or_else(|| panic("unwrap on `Err` value"))
     }
 
-    pub fun unwrap_or_else(self, f: (): ()): T {
+    pub fun unwrap_or_else(self, f: fun ()): T {
         self.ok().unwrap_or_else()
     }
 

@@ -215,6 +215,10 @@ pub enum Pattern {
         pattern: Option<Box<Self>>,
     },
 
+    /// A wildcard pattern, e.g. `_`.
+    #[cfg_attr(feature = "serde", serde(rename = "wildcard_pattern"))]
+    Wildcard { location: Location },
+
     /// A struct pattern, e.g. `Person { name, age, .. }`.
     #[cfg_attr(feature = "serde", serde(rename = "struct_pattern"))]
     Struct {
@@ -279,7 +283,8 @@ impl Pattern {
             | Self::Path {
                 path: Path { location, .. },
                 ..
-            } => *location,
+            }
+            | Self::Wildcard { location } => *location,
             Self::Literal(literal) => literal.location(),
         }
     }
@@ -331,6 +336,10 @@ pub enum Type {
         return_type: Box<Self>,
     },
 
+    /// An underscore type, e.g. `_`.
+    #[cfg_attr(feature = "serde", serde(rename = "underscore_type"))]
+    Underscore { location: Location },
+
     /// An interface object type, e.g. `dyn Iterator[Item = uint32]`, `dyn Debug + Clone`.
     #[cfg_attr(feature = "serde", serde(rename = "interface_object_type"))]
     InterfaceObject {
@@ -348,7 +357,8 @@ impl Type {
             Self::Function { location, .. }
             | Self::Constructor(TypeConstructor { location, .. })
             | Self::InterfaceObject { location, .. }
-            | Self::Tuple { location, .. } => *location,
+            | Self::Tuple { location, .. }
+            | Self::Underscore { location } => *location,
         }
     }
 }
@@ -431,6 +441,10 @@ pub enum Expression {
     /// Identifier expression, e.g. `foo`.
     #[cfg_attr(feature = "serde", serde(rename = "identifier_expression"))]
     Identifier(IdentifierAST),
+
+    /// Underscore expression, e.g. `_`.
+    #[cfg_attr(feature = "serde", serde(rename = "underscore_expression"))]
+    Underscore { location: Location },
 
     /// If expression, e.g. `if x { ... } else { ... }`.
     #[cfg_attr(feature = "serde", serde(rename = "if_expression"))]
@@ -548,7 +562,8 @@ impl Expression {
             | Self::Struct { location, .. }
             | Self::Match { location, .. }
             | Self::Lambda { location, .. }
-            | Self::TypeArguments { location, .. } => *location,
+            | Self::TypeArguments { location, .. }
+            | Self::Underscore { location } => *location,
             Self::Literal(literal) => literal.location(),
         }
     }

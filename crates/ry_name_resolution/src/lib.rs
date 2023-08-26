@@ -3,7 +3,7 @@
 //! The name resolution allows to resolve names, after parsing all the packages in stages like
 //! type checking and MIR lowering.
 //!
-//! See [`Resolutionname_resolver`], [`ModuleScope`] and [`NameBinding`] for more details.
+//! See [`NameResolver`], [`ModuleScope`] and [`NameBinding`] for more details.
 
 #![doc(
     html_logo_url = "https://raw.githubusercontent.com/abs0luty/Ry/main/additional/icon/ry.png",

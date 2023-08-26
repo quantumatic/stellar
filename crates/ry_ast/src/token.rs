@@ -8,6 +8,7 @@ use crate::precedence::Precedence;
 /// Represents error that scanning process can fail with.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Display)]
 pub enum RawLexError {
+    #[display(fmt = "digit doesn't correspond to base")]
     DigitDoesNotCorrespondToBase,
     #[display(fmt = "empty character literal")]
     EmptyCharacterLiteral,
@@ -306,7 +307,10 @@ define_punctuators! {
     CaretEq => "^=",
 
     /// Hash Tag (`#`).
-    HashTag => "#"
+    HashTag => "#",
+
+    /// Underscore (`_`).
+    Underscore => "_"
 }
 
 /// Represents token without a specific location in source text.

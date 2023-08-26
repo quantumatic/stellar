@@ -40,15 +40,28 @@ impl Parse for TypeParser {
     fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
         match state.next_token.raw {
             RawToken::Punctuator(Punctuator::OpenParent) => {
-                ParenthesizedTupleOrFunctionTypeParser.parse(state)
+                ParenthesizedOrTupleTypeParser.parse(state)
             }
             RawToken::Identifier => TypeConstructorParser.parse(state).map(Type::Constructor),
             RawToken::Keyword(Keyword::Dyn) => InterfaceObjectTypeParser.parse(state),
+            RawToken::Punctuator(Punctuator::Underscore) => {
+                state.advance();
+
+                Some(Type::Underscore {
+                    location: state.current_token.location,
+                })
+            }
+            RawToken::Keyword(Keyword::Fun) => FunctionTypeParser.parse(state),
             _ => {
                 state.add_diagnostic(UnexpectedTokenDiagnostic::new(
                     None,
                     state.next_token,
-                    expected!("identifier", Punctuator::OpenParent, Keyword::Dyn),
+                    expected!(
+                        "identifier",
+                        Punctuator::OpenParent,
+                        Punctuator::Underscore,
+                        Keyword::Dyn
+                    ),
                     "type",
                 ));
 
@@ -75,9 +88,46 @@ impl Parse for InterfaceObjectTypeParser {
     }
 }
 
-struct ParenthesizedTupleOrFunctionTypeParser;
+struct FunctionTypeParser;
 
-impl Parse for ParenthesizedTupleOrFunctionTypeParser {
+impl Parse for FunctionTypeParser {
+    type Output = Option<Type>;
+
+    fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
+        let start = state.next_token.location.start;
+
+        state.advance(); // `fun`
+
+        state.consume(Punctuator::OpenParent, "function type")?;
+
+        let parameter_types = ListParser::new(
+            "function type",
+            &[RawToken::from(Punctuator::CloseParent)],
+            |state| TypeParser.parse(state),
+        )
+        .parse(state)?;
+
+        state.advance(); // `)`
+
+        let return_type = if state.next_token.raw == Punctuator::Colon {
+            state.advance();
+
+            Some(Box::new(TypeParser.parse(state)?))
+        } else {
+            None
+        };
+
+        Some(Type::Function {
+            location: state.location_from(start),
+            parameter_types,
+            return_type,
+        })
+    }
+}
+
+struct ParenthesizedOrTupleTypeParser;
+
+impl Parse for ParenthesizedOrTupleTypeParser {
     type Output = Option<Type>;
 
     fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
@@ -92,18 +142,6 @@ impl Parse for ParenthesizedTupleOrFunctionTypeParser {
         .parse(state)?;
 
         state.advance(); // `)`
-
-        if state.next_token.raw == Punctuator::Colon {
-            state.advance();
-
-            let return_type = Box::new(TypeParser.parse(state)?);
-
-            return Some(Type::Function {
-                location: state.location_from(start),
-                parameter_types: element_types,
-                return_type,
-            });
-        }
 
         let location = state.location_from(start);
 

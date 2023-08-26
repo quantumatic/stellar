@@ -96,7 +96,7 @@ fun factorial(n: uint32): uint32 {
 Ry supports function types:
 
 ```
-fun do_stuff_with(a: uint32, b: uint32, fn: (uint32, uint32): ()) {
+fun do_stuff_with(a: uint32, b: uint32, fn: fun (uint32, uint32)) {
     fn(a, b)
 }
 ```

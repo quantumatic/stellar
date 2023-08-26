@@ -220,6 +220,13 @@ impl Parse for PrimaryExpressionParser {
             RawToken::Keyword(Keyword::Match) => MatchExpressionParser.parse(state),
             RawToken::Keyword(Keyword::While) => WhileExpressionParser.parse(state),
             RawToken::Keyword(Keyword::Loop) => LoopExpressionParser.parse(state),
+            RawToken::Punctuator(Punctuator::Underscore) => {
+                state.advance();
+
+                Some(Expression::Underscore {
+                    location: state.current_token.location,
+                })
+            }
             _ => {
                 if state.next_token.raw.is_prefix_operator() {
                     return PrefixExpressionParser {
