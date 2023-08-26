@@ -1,7 +1,5 @@
 //! Provides a [`pluralize`] function to convert singular nouns to plural ones.
 
-use std::fmt::Display;
-
 use once_cell::sync::Lazy;
 use ry_fx_hash::{FxHashMap, FxHashSet};
 use ry_stable_likely::unlikely;
