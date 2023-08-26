@@ -64,7 +64,7 @@ match tuple {
     (.., false) -> {
         println("Third element is false");
     }
-    .. -> {
+    _ -> {
         println("Default case");
     }
 }
@@ -111,7 +111,7 @@ enum Result[T, E] {
     fun ok(self): Option[T] {
         match self {
             Self.Ok(t) -> Option.Some(t),
-            .. -> Option.None,
+            _ -> Option.None,
         }
     }
 }
