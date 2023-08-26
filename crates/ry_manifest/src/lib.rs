@@ -106,14 +106,17 @@ pub struct TomlManifest {
 }
 
 impl TomlManifest {
+    /// Returns a new toml manifest struct with a given package.
     #[inline(always)]
-    pub fn new(package: TomlPackage) -> Self {
+    #[must_use]
+    pub const fn new(package: TomlPackage) -> Self {
         Self {
             package,
             dependencies: None,
         }
     }
 
+    /// Returns a new toml manifest struct with given dependencies.
     #[inline(always)]
     #[must_use]
     pub fn with_dependencies(
@@ -152,7 +155,10 @@ pub struct TomlPackage {
 }
 
 impl TomlPackage {
+    /// Returns a new toml package struct with a given name and version.
+    /// Other fieds can be constructed using `with_*` methods.
     #[inline(always)]
+    #[must_use]
     pub fn new(name: impl Into<String>, version: impl Into<String>) -> Self {
         Self {
             name: name.into(),
@@ -166,6 +172,7 @@ impl TomlPackage {
         }
     }
 
+    /// Builds a new toml package struct with a given description.
     #[inline(always)]
     #[must_use]
     pub fn with_description(mut self, description: impl Into<String>) -> Self {
@@ -173,6 +180,7 @@ impl TomlPackage {
         self
     }
 
+    /// Builds a new toml package struct with a given license.
     #[inline(always)]
     #[must_use]
     pub fn with_license(mut self, license: impl Into<String>) -> Self {
@@ -180,6 +188,7 @@ impl TomlPackage {
         self
     }
 
+    /// Builds a new toml package struct with a given author.
     #[inline(always)]
     #[must_use]
     pub fn with_author(mut self, author: impl Into<String>) -> Self {
@@ -187,6 +196,7 @@ impl TomlPackage {
         self
     }
 
+    /// Builds a new toml package struct with a given repository.
     #[inline(always)]
     #[must_use]
     pub fn with_repository(mut self, repository: impl Into<String>) -> Self {
@@ -194,20 +204,22 @@ impl TomlPackage {
         self
     }
 
+    /// Builds a new toml package struct with given keywords.
     #[inline(always)]
     #[must_use]
     pub fn with_keywords(mut self, keywords: impl IntoIterator<Item = impl Into<String>>) -> Self {
-        self.keywords = Some(keywords.into_iter().map(|k| k.into()).collect());
+        self.keywords = Some(keywords.into_iter().map(Into::into).collect());
         self
     }
 
+    /// Builds a new toml package struct with given categories.
     #[inline(always)]
     #[must_use]
     pub fn with_categories(
         mut self,
         categories: impl IntoIterator<Item = impl Into<String>>,
     ) -> Self {
-        self.categories = Some(categories.into_iter().map(|c| c.into()).collect());
+        self.categories = Some(categories.into_iter().map(Into::into).collect());
         self
     }
 }
@@ -226,11 +238,14 @@ pub struct TomlDependency {
 }
 
 impl TomlDependency {
+    /// Returns a new empty toml dependency struct.
     #[inline(always)]
+    #[must_use]
     pub fn new() -> Self {
         Self::default()
     }
 
+    /// Builds a new toml dependency struct with a given version.
     #[inline(always)]
     #[must_use]
     pub fn with_version(mut self, version: impl Into<String>) -> Self {
@@ -238,6 +253,7 @@ impl TomlDependency {
         self
     }
 
+    /// Builds a new toml dependency struct with a given path.s
     #[inline(always)]
     #[must_use]
     pub fn with_path(mut self, path: impl Into<String>) -> Self {
@@ -245,6 +261,7 @@ impl TomlDependency {
         self
     }
 
+    /// Builds a new toml dependency struct with a given author.
     #[inline(always)]
     #[must_use]
     pub fn with_author(mut self, author: impl Into<String>) -> Self {

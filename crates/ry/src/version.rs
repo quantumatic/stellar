@@ -5,21 +5,18 @@ use ry_info::{
 
 pub fn compiler_version_command() {
     println!(
-        "Compiler version: {}.\nCurrently owned by: {}\nRepository: {}",
-        COMPILER_VERSION, COMPILER_OWNER, REPOSITORY
+        "Compiler version: {COMPILER_VERSION}.\nCurrently owned by: {COMPILER_OWNER}\nRepository: {REPOSITORY}",
     );
 }
 
 pub fn std_version_command() {
     println!(
-        "Standard library version: {}\nCurrently owned by: {}\nRepository: {}",
-        STD_VERSION, STD_OWNER, REPOSITORY
+        "Standard library version: {STD_VERSION}\nCurrently owned by: {STD_OWNER}\nRepository: {REPOSITORY}",
     );
 }
 
 pub fn package_manager_version_command() {
     println!(
-        "Package manager version: {}\nCurrently owned by: {}",
-        RY_REPOSITORY_VERSION, RY_REPOSITORY_OWNER
+        "Package manager version: {RY_REPOSITORY_VERSION}\nCurrently owned by: {RY_REPOSITORY_OWNER}",
     );
 }
