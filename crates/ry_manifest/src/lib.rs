@@ -15,8 +15,8 @@
 //! ...
 //!
 //! [dependencies]
-//! hashmap = "1.0.1"
-//! btreemap = { version = "1.0.0" }
+//! hashmap = { version = "1.0.1", author = "quantumatic" }
+//! http = { version = "1.0.0", author = "quantumatic" }
 //! serialization_engine = { path = "../serialization_engine" }
 //! ```
 //!
@@ -105,6 +105,31 @@ pub struct TomlManifest {
     pub dependencies: Option<BTreeMap<String, TomlDependency>>,
 }
 
+impl TomlManifest {
+    #[inline(always)]
+    pub fn new(package: TomlPackage) -> Self {
+        Self {
+            package,
+            dependencies: None,
+        }
+    }
+
+    #[inline(always)]
+    #[must_use]
+    pub fn with_dependencies(
+        mut self,
+        dependencies: impl IntoIterator<Item = (impl Into<String>, TomlDependency)>,
+    ) -> Self {
+        self.dependencies = Some(
+            dependencies
+                .into_iter()
+                .map(|(s, d)| (s.into(), d))
+                .collect(),
+        );
+        self
+    }
+}
+
 /// Represents data in the `[package]` section of the manifest.
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 pub struct TomlPackage {
@@ -126,33 +151,106 @@ pub struct TomlPackage {
     pub categories: Option<Vec<String>>,
 }
 
-/// Represents dependency (value part of the key-value pair in the `[dependencies]` section of the manifest).
-#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
-#[serde(untagged)]
-pub enum TomlDependency {
-    /// In the simple format, only a version is specified, eg.
-    ///
-    /// ```toml
-    /// package = "<version>"
-    /// ```
-    Simple(String),
-    /// The simple format is equivalent to a detailed dependency
-    /// specifying only a version, eg.
-    ///
-    /// ```toml
-    /// package = { version = "<version>" }
-    /// ```
-    Detailed(DetailedTomlDependency),
+impl TomlPackage {
+    #[inline(always)]
+    pub fn new(name: impl Into<String>, version: impl Into<String>) -> Self {
+        Self {
+            name: name.into(),
+            version: version.into(),
+            description: None,
+            license: None,
+            author: None,
+            repository: None,
+            keywords: None,
+            categories: None,
+        }
+    }
+
+    #[inline(always)]
+    #[must_use]
+    pub fn with_description(mut self, description: impl Into<String>) -> Self {
+        self.description = Some(description.into());
+        self
+    }
+
+    #[inline(always)]
+    #[must_use]
+    pub fn with_license(mut self, license: impl Into<String>) -> Self {
+        self.license = Some(license.into());
+        self
+    }
+
+    #[inline(always)]
+    #[must_use]
+    pub fn with_author(mut self, author: impl Into<String>) -> Self {
+        self.author = Some(author.into());
+        self
+    }
+
+    #[inline(always)]
+    #[must_use]
+    pub fn with_repository(mut self, repository: impl Into<String>) -> Self {
+        self.repository = Some(repository.into());
+        self
+    }
+
+    #[inline(always)]
+    #[must_use]
+    pub fn with_keywords(mut self, keywords: impl IntoIterator<Item = impl Into<String>>) -> Self {
+        self.keywords = Some(keywords.into_iter().map(|k| k.into()).collect());
+        self
+    }
+
+    #[inline(always)]
+    #[must_use]
+    pub fn with_categories(
+        mut self,
+        categories: impl IntoIterator<Item = impl Into<String>>,
+    ) -> Self {
+        self.categories = Some(categories.into_iter().map(|c| c.into()).collect());
+        self
+    }
 }
 
-/// Detailed dependency information.
-///
-/// See [`TomlDependency::Detailed`] for more details.
-#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
-pub struct DetailedTomlDependency {
+/// Represents dependency (value part of the key-value pair in the `[dependencies]` section of the manifest).
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize, Default)]
+pub struct TomlDependency {
     /// The version of the dependency.
     pub version: Option<String>,
+
+    /// The path to the local dependency's folder.
     pub path: Option<String>,
+
+    /// The author of the dependency.
+    pub author: Option<String>,
+}
+
+impl TomlDependency {
+    #[inline(always)]
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    #[inline(always)]
+    #[must_use]
+    pub fn with_version(mut self, version: impl Into<String>) -> Self {
+        self.version = Some(version.into());
+        self
+    }
+
+    #[inline(always)]
+    #[must_use]
+    pub fn with_path(mut self, path: impl Into<String>) -> Self {
+        self.path = Some(path.into());
+        self
+    }
+
+    #[inline(always)]
+    #[must_use]
+    pub fn with_author(mut self, author: impl Into<String>) -> Self {
+        self.author = Some(author.into());
+        self
+    }
 }
 
 /// # Errors
@@ -176,7 +274,6 @@ pub fn parse_manifest(source: impl AsRef<str>) -> Result<TomlManifest, String> {
     Ok(manifest)
 }
 
-#[inline(always)]
 fn parse_document(source: impl AsRef<str>) -> Result<Document, String> {
     match source.as_ref().parse::<Document>() {
         Ok(table) => Ok(table),

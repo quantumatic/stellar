@@ -3,7 +3,7 @@ name = "ry_typechecker"
 version = "0.1.0"
 edition = "2021"
 license = "MIT OR Apache-2.0"
-repository = "https://github.com/ry-lang/ry"
+repository = "https://github.com/quantumatic/ry"
 authors = ["Adi Salimgereyev <adisalimgereev@gmail.com>"]
 readme = "../../README.md"
 description = "Implements type checking compilation stage for the Ry programming language."
@@ -23,4 +23,3 @@ ry_name_resolution = { path = "../ry_name_resolution" }
 ry_parser = { path = "../ry_parser" }
 ry_stable_likely = { path = "../ry_stable_likely" }
 ry_thir = { path = "../ry_thir" }
-

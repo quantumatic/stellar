@@ -17,15 +17,15 @@ trait PluralizeExt {
     ///
     /// # Panics
     /// If the given noun string is empty.
-    fn pluralize(&self) -> String;
+    fn pluralize(self) -> String;
 }
 
 impl<S> PluralizeExt for S
 where
-    S: Display,
+    S: Into<String>,
 {
-    fn pluralize(&self) -> String {
-        let noun = self.to_string();
+    fn pluralize(self) -> String {
+        let noun = self.into();
 
         if unlikely(noun.is_empty()) {
             String::new()

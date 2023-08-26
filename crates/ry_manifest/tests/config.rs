@@ -1,7 +1,5 @@
-use std::collections::BTreeMap;
-
-use ry_manifest::{parse_manifest, DetailedTomlDependency, TomlManifest};
-use ry_manifest::{TomlDependency, TomlPackage};
+use ry_manifest::TomlPackage;
+use ry_manifest::{parse_manifest, TomlDependency, TomlManifest};
 
 #[test]
 fn simple_manifest() {
@@ -10,19 +8,7 @@ name = \"json\"
 version = \"1.0.0\"";
     assert_eq!(
         parse_manifest(manifest),
-        Ok(TomlManifest {
-            package: TomlPackage {
-                name: "json".to_owned(),
-                version: "1.0.0".to_owned(),
-                description: None,
-                keywords: None,
-                categories: None,
-                license: None,
-                author: None,
-                repository: None,
-            },
-            dependencies: None,
-        })
+        Ok(TomlManifest::new(TomlPackage::new("json", "1.0.0")))
     );
 }
 
@@ -32,7 +18,7 @@ fn full_package_metadata() {
 name = \"json\"
 version = \"1.0.0\"
 author = \"abs0luty\"
-repository = \"github.com/ry-lang/ry\"
+repository = \"github.com/quantumatic/ry\"
 license = \"MIT\"
 description = \"Parses and processes json.\"
 categories = [\"json\", \"parser\", \"serialization\", \"deserialization\",
@@ -41,25 +27,21 @@ keywords = [\"json\", \"config\"]";
 
     assert_eq!(
         parse_manifest(manifest),
-        Ok(TomlManifest {
-            package: TomlPackage {
-                name: "json".to_owned(),
-                version: "1.0.0".to_owned(),
-                description: Some("Parses and processes json.".to_owned()),
-                author: Some("abs0luty".to_owned()),
-                repository: Some("github.com/ry-lang/ry".to_owned()),
-                license: Some("MIT".to_owned()),
-                keywords: Some(vec!["json".to_owned(), "config".to_owned()]),
-                categories: Some(vec![
-                    "json".to_owned(),
-                    "parser".to_owned(),
-                    "serialization".to_owned(),
-                    "deserialization".to_owned(),
-                    "config".to_owned()
-                ]),
-            },
-            dependencies: None,
-        })
+        Ok(TomlManifest::new(
+            TomlPackage::new("json", "1.0.0")
+                .with_author("abs0luty")
+                .with_repository("github.com/quantumatic/ry")
+                .with_license("MIT")
+                .with_description("Parses and processes json.")
+                .with_categories([
+                    "json",
+                    "parser",
+                    "serialization",
+                    "deserialization",
+                    "config"
+                ])
+                .with_keywords(["json", "config"])
+        ))
     );
 }
 
@@ -71,41 +53,25 @@ version = \"1.0.0\"
 author = \"abs0luty\"
 
 [dependencies]
-foo = \"1.0\"
-bar = { version = \"1.0\" }
+foo = { version = \"1.0\", author = \"foo\" }
+bar = { version = \"1.0\", author = \"bar\" }
 foo2 = { path = \"../foo\" }";
-
-    let mut deps = BTreeMap::new();
-    deps.insert("foo".to_owned(), TomlDependency::Simple("1.0".to_owned()));
-    deps.insert(
-        "bar".to_owned(),
-        TomlDependency::Detailed(DetailedTomlDependency {
-            version: Some("1.0".to_owned()),
-            path: None,
-        }),
-    );
-    deps.insert(
-        "foo2".to_owned(),
-        TomlDependency::Detailed(DetailedTomlDependency {
-            path: Some("../foo".to_owned()),
-            version: None,
-        }),
-    );
 
     assert_eq!(
         parse_manifest(manifest),
-        Ok(TomlManifest {
-            package: TomlPackage {
-                name: "json".to_owned(),
-                version: "1.0.0".to_owned(),
-                author: Some("abs0luty".to_owned()),
-                description: None,
-                keywords: None,
-                categories: None,
-                license: None,
-                repository: None,
-            },
-            dependencies: Some(deps),
-        })
+        Ok(
+            TomlManifest::new(TomlPackage::new("json", "1.0.0").with_author("abs0luty"))
+                .with_dependencies([
+                    (
+                        "foo",
+                        TomlDependency::new().with_version("1.0").with_author("foo")
+                    ),
+                    (
+                        "bar",
+                        TomlDependency::new().with_version("1.0").with_author("bar")
+                    ),
+                    ("foo2", TomlDependency::new().with_path("../foo")),
+                ])
+        )
     );
 }

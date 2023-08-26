@@ -150,14 +150,14 @@ pub trait OptionallyParse: Sized {
 /// Panics if the file path cannot be resolved in the path storage.
 #[inline(always)]
 pub fn read_and_parse_module(
-    path_identifier_interner: &PathInterner,
+    path_interner: &PathInterner,
     file_path_id: PathID,
     diagnostics: &RwLock<Diagnostics>,
     identifier_interner: &RwLock<IdentifierInterner>,
 ) -> Result<Module, io::Error> {
     Ok(parse_module_using(ParseState::new(
         file_path_id,
-        &fs::read_to_string(path_identifier_interner.resolve_or_panic(file_path_id))?,
+        &fs::read_to_string(path_interner.resolve_or_panic(file_path_id))?,
         diagnostics,
         identifier_interner,
     )))

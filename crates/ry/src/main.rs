@@ -67,6 +67,7 @@ mod new;
 mod parse;
 mod parse_manifest;
 mod prefix;
+mod version;
 
 #[derive(Parser)]
 #[command(name = "ry")]
@@ -78,20 +79,26 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
-    #[command(about = "Tokenize Ry source file")]
+    #[command(about = "Tokenizes a given source file")]
     Lex {
         filepath: String,
         #[arg(long)]
         show_locations: bool,
     },
-    #[command(about = "Parse Ry source file and get its AST")]
+    #[command(about = "Parses a given source file and get its AST")]
     Ast { filepath: String },
-    #[command(about = "Parse Ry source file, lower its AST and return output HIR")]
+    #[command(about = "Parses a given source file, lower its AST and return output HIR")]
     Hir { filepath: String },
-    #[command(about = "Parse Ry manifest file")]
+    #[command(about = "Parses a given manifest file")]
     ParseManifest { filepath: String },
-    #[command(about = "Create a new Ry package")]
+    #[command(about = "Creates a new package")]
     New { package_name: String },
+    #[command(about = "Prints current version of the compiler")]
+    CompilerVersion,
+    #[command(about = "Prints current version of the standart library")]
+    StdVersion,
+    #[command(about = "Prints current version of the package manager (Ry repository)")]
+    PackageManagerVersion,
 }
 
 fn main() {
@@ -103,6 +110,9 @@ fn main() {
         .init();
 
     match Cli::parse().command {
+        Commands::CompilerVersion => version::compiler_version_command(),
+        Commands::StdVersion => version::std_version_command(),
+        Commands::PackageManagerVersion => version::package_manager_version_command(),
         Commands::Lex {
             filepath,
             show_locations,
