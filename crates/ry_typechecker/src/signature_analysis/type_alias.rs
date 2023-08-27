@@ -24,7 +24,8 @@ impl TypeCheckingContext<'_, '_, '_> {
             module_scope,
         )?;
 
-        let value = self.resolve_type(&alias.value, &generic_parameter_scope, module_scope)?;
+        let value =
+            self.resolve_type(&alias.value, true, &generic_parameter_scope, module_scope)?;
 
         Some(Arc::new(ModuleItemSignature::TypeAlias(
             TypeAliasSignature {

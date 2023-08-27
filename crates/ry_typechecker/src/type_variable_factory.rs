@@ -38,15 +38,13 @@ impl TypeVariableFactory {
 
     #[inline(always)]
     #[must_use]
-    pub fn make_variable_for_type_argument(
+    pub fn make_variable_for_type_placeholder(
         &mut self,
-        symbol: IdentifierID,
         location: Option<Location>,
         origin_type_path: Path,
         origin_location: Location,
     ) -> TypeVariable {
-        TypeVariable::TypeArgument {
-            symbol,
+        TypeVariable::TypePlaceholder {
             location,
             origin_type_path,
             origin_location,
@@ -56,15 +54,13 @@ impl TypeVariableFactory {
 
     #[inline(always)]
     #[must_use]
-    pub fn make_type_argument_placeholder(
+    pub fn make_type_placeholder(
         &mut self,
-        symbol: IdentifierID,
         location: Option<Location>,
         origin_type_path: Path,
         origin_location: Location,
     ) -> Type {
-        Type::Variable(self.make_variable_for_type_argument(
-            symbol,
+        Type::Variable(self.make_variable_for_type_placeholder(
             location,
             origin_type_path,
             origin_location,

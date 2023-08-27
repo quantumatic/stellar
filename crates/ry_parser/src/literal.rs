@@ -1,7 +1,7 @@
 use ry_ast::{token::RawToken, Literal};
 
 use crate::{
-    diagnostics::{FloatOverflowDiagnostic, IntegerOverflowDiagnostic},
+    diagnostics::{FloatOverflow, IntegerOverflow},
     Parse, ParseState,
 };
 
@@ -20,9 +20,7 @@ impl Parse for LiteralParser {
                         location: state.current_token.location,
                     })
                 } else {
-                    state.add_diagnostic(IntegerOverflowDiagnostic {
-                        location: state.current_token.location,
-                    });
+                    state.add_diagnostic(IntegerOverflow::new(state.current_token.location));
                     None
                 }
             }
@@ -34,9 +32,7 @@ impl Parse for LiteralParser {
                         location: state.current_token.location,
                     })
                 } else {
-                    state.add_diagnostic(FloatOverflowDiagnostic {
-                        location: state.current_token.location,
-                    });
+                    state.add_diagnostic(FloatOverflow::new(state.current_token.location));
                     None
                 }
             }

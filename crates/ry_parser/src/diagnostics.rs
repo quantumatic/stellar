@@ -4,11 +4,8 @@
 
 use std::fmt::Display;
 
-use ry_ast::{
-    token::{LexError, Token},
-    ModuleItemKind,
-};
-use ry_diagnostics::diagnostic::Diagnostic;
+use ry_ast::token::{LexError, Token};
+use ry_diagnostics::{define_diagnostics, diagnostic::Diagnostic};
 use ry_diagnostics::{BuildDiagnostic, LocationExt};
 use ry_english_commons::enumeration;
 use ry_filesystem::location::{ByteOffset, Location};
@@ -53,17 +50,41 @@ pub enum UnnecessaryVisibilityQualifierContext {
     Import,
 }
 
-/// Diagnostic related to an error occured when tokenizing.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct LexErrorDiagnostic(pub LexError);
+define_diagnostics! {
+    /// Diagnostic related to an error occured when tokenizing.
+    diagnostic(error) LexErrorDiagnostic(self, error: LexError) {
+        code { "E000" }
+        message { format!("{}", self.error.raw) }
+        labels {
+            primary self.error.location => {""}
+        }
+        notes {}
+    }
 
-impl BuildDiagnostic for LexErrorDiagnostic {
-    #[inline(always)]
-    fn build(self) -> Diagnostic<PathID> {
-        Diagnostic::error()
-            .with_message(self.0.raw.to_string())
-            .with_code("E000")
-            .with_labels(vec![self.0.location.to_primary_label()])
+    /// Diagnostic related to an integer overflow error.
+    diagnostic(error) IntegerOverflow(self, location: Location) {
+        code { "E002" }
+        message { "unexpected integer overflow" }
+        labels {
+            primary self.location => {"error appeared when parsing this integer"}
+        }
+        notes {
+            "note: integer cannot exceed the maximum value of `u64` (u64.max() == 18_446_744_073_709_551_615)"
+            "note: you can use exponent to do so, but be careful!"
+        }
+    }
+
+    /// Diagnostic related to an float overflow error.
+    diagnostic(error) FloatOverflow(self, location: Location) {
+        code { "E003" }
+        message { "unexpected float overflow" }
+        labels {
+            primary self.location => {"error appeared when parsing this float literal"}
+        }
+        notes {
+            "note: float cannot exceed the maximum value of `f64` (f64.max() == 1.7976931348623157e+308)"
+            "note: you can use exponent to do so, but be careful!"
+        }
     }
 }
 
@@ -91,13 +112,13 @@ impl UnexpectedTokenDiagnostic {
         offset: Option<ByteOffset>,
         got: Token,
         expected: Expected,
-        node: impl ToString,
+        node: impl Into<String>,
     ) -> Self {
         Self {
             offset,
             got,
             expected,
-            node: node.to_string(),
+            node: node.into(),
         }
     }
 }
@@ -129,51 +150,6 @@ impl BuildDiagnostic for UnexpectedTokenDiagnostic {
                     .to_primary_label()
                     .with_message(format!("expected {} for {}", self.expected, self.node))]
             })
-    }
-}
-
-/// Diagnostic related to ana integer overflow.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct IntegerOverflowDiagnostic {
-    /// Location of number when parsing which, overflow happened.
-    pub location: Location,
-}
-
-impl BuildDiagnostic for IntegerOverflowDiagnostic {
-    #[inline(always)]
-    fn build(self) -> Diagnostic<PathID> {
-        Diagnostic::error()
-            .with_message("unexpected integer overflow".to_owned())
-            .with_code("E002")
-            .with_labels(vec![self.location.to_primary_label()
-                .with_message("error appeared when parsing this integer")])
-            .with_notes(vec![
-                "note: integer cannot exceed the maximum value of `u64` (u64.max() == 18_446_744_073_709_551_615)".to_owned(),
-                "note: you can use exponent to do so, but be careful!".to_owned()
-            ])
-    }
-}
-
-/// Diagnostic related to a float overflow.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct FloatOverflowDiagnostic {
-    /// Location of number when parsing which, overflow happened.
-    pub location: Location,
-}
-
-impl BuildDiagnostic for FloatOverflowDiagnostic {
-    #[inline(always)]
-    fn build(self) -> Diagnostic<PathID> {
-        Diagnostic::error()
-            .with_message("unexpected float overflow".to_owned())
-            .with_code("E003")
-            .with_labels(vec![self.location.to_primary_label()
-                .with_message("error appeared when parsing this float literal")
-            ])
-            .with_notes(vec![
-                "note: float literal cannot exceed the maximum value of `f64` (f64.max() == 1.7976931348623157E+308)".to_owned(),
-                "note: you can use exponent to do so, but be careful, especially when working with floats!".to_owned()
-            ])
     }
 }
 
@@ -221,36 +197,6 @@ impl BuildDiagnostic for UnnecessaryVisibilityQualifierDiagnostic {
                     vec!["note: using `pub` will not make the import public.".to_owned()]
                 }
             })
-    }
-}
-
-/// Diagnostic related to an EOF instead of close brace error.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct EOFInsteadOfCloseBrace {
-    /// Type of item in which error occurred.
-    pub item_kind: ModuleItemKind,
-
-    /// Location of item name.
-    pub item_location: Location,
-
-    /// EOF token location.
-    pub location: Location,
-}
-
-impl BuildDiagnostic for EOFInsteadOfCloseBrace {
-    #[inline(always)]
-    fn build(self) -> Diagnostic<PathID> {
-        Diagnostic::error()
-            .with_message("unexpected end of file".to_owned())
-            .with_code("E001")
-            .with_labels(vec![
-                self.item_location
-                    .to_primary_label()
-                    .with_message(format!("happened when parsing this {}", self.item_kind)),
-                self.location
-                    .to_secondary_label()
-                    .with_message("consider adding `}`".to_owned()),
-            ])
     }
 }
 

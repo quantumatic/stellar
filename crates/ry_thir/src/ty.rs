@@ -133,10 +133,7 @@ impl Type {
 #[cfg_attr(feature = "serde", serde(tag = "kind"))]
 pub enum TypeVariable {
     #[cfg_attr(feature = "serde", serde(rename = "type_argument_variable"))]
-    TypeArgument {
-        /// Interned name of the corresponding generic parameter.
-        symbol: IdentifierID,
-
+    TypePlaceholder {
         /// Location of the type argument itself (if exists), e.g. location `_` in `HashMap[_, int32]`.
         #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
         location: Option<Location>,
@@ -165,7 +162,7 @@ impl TypeVariable {
     #[must_use]
     pub const fn id(&self) -> TypeVariableID {
         match self {
-            Self::TypeArgument { id, .. } | Self::Expression { id, .. } => *id,
+            Self::TypePlaceholder { id, .. } | Self::Expression { id, .. } => *id,
         }
     }
 }

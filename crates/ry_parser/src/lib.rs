@@ -345,7 +345,7 @@ impl<'s, 'd, 'i> ParseState<'s, 'd, 'i> {
     #[inline(always)]
     fn check_next_token(&mut self) {
         if let RawToken::Error(error) = self.next_token.raw {
-            self.add_diagnostic(LexErrorDiagnostic(LexError {
+            self.add_diagnostic(LexErrorDiagnostic::new(LexError {
                 location: self.next_token.location,
                 raw: error,
             }));

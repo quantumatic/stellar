@@ -64,6 +64,8 @@
 
 pub mod diagnostic;
 pub mod files;
+#[macro_use]
+mod macro_;
 pub mod term;
 
 use core::fmt;

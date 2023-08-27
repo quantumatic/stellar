@@ -7,7 +7,7 @@ use ry_thir::generic_parameter_scope::{GenericParameterData, GenericParameterSco
 use ry_thir::ty::Type;
 use ry_thir::Predicate;
 
-use crate::diagnostics::{BoundsInTypeAliasDiagnostic, DuplicateGenericParameterDiagnostic};
+use crate::diagnostics::{BoundsInTypeAlias, DuplicateGenericParameter};
 use crate::TypeCheckingContext;
 
 impl TypeCheckingContext<'_, '_, '_> {
@@ -54,7 +54,7 @@ impl TypeCheckingContext<'_, '_, '_> {
             if let Some(data) = generic_parameter_scope.resolve(parameter_hir.name.id) {
                 self.diagnostics.write().add_single_file_diagnostic(
                     module_item_name_location.file_path_id,
-                    DuplicateGenericParameterDiagnostic::new(
+                    DuplicateGenericParameter::new(
                         data.location,
                         parameter_hir.name.location,
                         self.identifier_interner
@@ -69,14 +69,19 @@ impl TypeCheckingContext<'_, '_, '_> {
                     .default_value
                     .as_ref()
                     .and_then(|default_value_hir| {
-                        self.resolve_type(default_value_hir, &generic_parameter_scope, module_scope)
+                        self.resolve_type(
+                            default_value_hir,
+                            true,
+                            &generic_parameter_scope,
+                            module_scope,
+                        )
                     });
 
             if let Some(bounds_hir) = &parameter_hir.bounds {
                 if unlikely(is_type_alias) {
                     self.diagnostics.write().add_single_file_diagnostic(
                         module_item_name_location.file_path_id,
-                        BoundsInTypeAliasDiagnostic::new(
+                        BoundsInTypeAlias::new(
                             module_item_name_location,
                             Location {
                                 start: bounds_hir.first().unwrap().location.start,
@@ -124,7 +129,7 @@ impl TypeCheckingContext<'_, '_, '_> {
 
         for bound_hir in bounds_hir {
             let Some(bound) =
-                self.resolve_interface(bound_hir, generic_parameter_scope, module_scope)
+                self.resolve_interface(bound_hir, true, generic_parameter_scope, module_scope)
             else {
                 continue;
             };
@@ -148,6 +153,7 @@ impl TypeCheckingContext<'_, '_, '_> {
         for where_predicate_hir in where_predicates_hir {
             let Some(ty) = self.resolve_type(
                 &where_predicate_hir.ty,
+                true,
                 generic_parameter_scope,
                 module_scope,
             ) else {
@@ -156,6 +162,7 @@ impl TypeCheckingContext<'_, '_, '_> {
 
             let bounds = self.resolve_bounds(
                 generic_parameter_scope,
+                true,
                 &where_predicate_hir.bounds,
                 module_scope,
             );

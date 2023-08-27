@@ -13,6 +13,7 @@ use ry_thir::{
     ModuleItemSignature, TypeAliasSignature,
 };
 
+use crate::diagnostics::UnderscoreTypeInSignature;
 use crate::{
     diagnostics::{ExpectedType, TypeAliasCycleFound},
     TypeCheckingContext,
@@ -163,6 +164,7 @@ impl TypeCheckingContext<'_, '_, '_> {
     pub fn resolve_type(
         &self,
         ty: &ry_hir::Type,
+        signature: bool,
         generic_parameter_scope: &GenericParameterScope,
         module_scope: &ModuleScope,
     ) -> Option<Type> {
@@ -172,11 +174,22 @@ impl TypeCheckingContext<'_, '_, '_> {
                 .map(Type::Constructor),
             ry_hir::Type::Tuple { element_types, .. } => element_types
                 .iter()
-                .map(|element| self.resolve_type(element, generic_parameter_scope, module_scope))
+                .map(|element| {
+                    self.resolve_type(element, signature, generic_parameter_scope, module_scope)
+                })
                 .collect::<Option<Vec<_>>>()
                 .map(|element_types| Type::Tuple { element_types }),
             ry_hir::Type::Underscore { location } => {
-                todo!()
+                if signature {
+                    self.diagnostics.write().add_single_file_diagnostic(
+                        location.file_path_id,
+                        UnderscoreTypeInSignature::new(*location),
+                    );
+
+                    None
+                } else {
+                    todo!()
+                }
             }
             ry_hir::Type::Function {
                 parameter_types,
@@ -186,17 +199,24 @@ impl TypeCheckingContext<'_, '_, '_> {
                 parameter_types: parameter_types
                     .iter()
                     .map(|parameter| {
-                        self.resolve_type(parameter, generic_parameter_scope, module_scope)
+                        self.resolve_type(
+                            parameter,
+                            signature,
+                            generic_parameter_scope,
+                            module_scope,
+                        )
                     })
                     .collect::<Option<_>>()?,
                 return_type: Box::new(self.resolve_type(
                     return_type,
+                    signature,
                     generic_parameter_scope,
                     module_scope,
                 )?),
             }),
             ry_hir::Type::InterfaceObject { bounds, .. } => {
-                let bounds = self.resolve_bounds(generic_parameter_scope, bounds, module_scope);
+                let bounds =
+                    self.resolve_bounds(generic_parameter_scope, signature, bounds, module_scope);
 
                 if bounds.is_empty() {
                     None
@@ -243,10 +263,7 @@ impl TypeCheckingContext<'_, '_, '_> {
         if !name_binding_kind.is_module_item() {
             self.diagnostics.write().add_single_file_diagnostic(
                 ty.location.file_path_id,
-                ExpectedType {
-                    location: ty.location,
-                    name_binding_kind,
-                },
+                ExpectedType::new(ty.location, name_binding_kind),
             );
 
             return None;
@@ -259,11 +276,12 @@ impl TypeCheckingContext<'_, '_, '_> {
     fn resolve_type_arguments(
         &self,
         hir: &[ry_hir::Type],
+        signature: bool,
         generic_parameter_scope: &GenericParameterScope,
         module_scope: &ModuleScope,
     ) -> Option<Vec<Type>> {
         hir.iter()
-            .map(|ty| self.resolve_type(ty, generic_parameter_scope, module_scope))
+            .map(|ty| self.resolve_type(ty, signature, generic_parameter_scope, module_scope))
             .collect::<Option<_>>()
     }
 
@@ -314,6 +332,7 @@ impl TypeCheckingContext<'_, '_, '_> {
     pub(crate) fn resolve_interface(
         &self,
         interface: &ry_hir::TypeConstructor,
+        signature: bool,
         generic_parameter_scope: &GenericParameterScope,
         module_scope: &ModuleScope,
     ) -> Option<TypeConstructor> {
@@ -326,9 +345,9 @@ impl TypeCheckingContext<'_, '_, '_> {
             return None;
         };
 
-        let signature = self.resolve_signature(name_binding, module_scope)?;
+        let signature_ = self.resolve_signature(name_binding, module_scope)?;
 
-        match signature.as_ref() {
+        match signature_.as_ref() {
             ModuleItemSignature::Interface(_) => Some(TypeConstructor {
                 path: Path {
                     identifiers: interface
@@ -340,6 +359,7 @@ impl TypeCheckingContext<'_, '_, '_> {
                 },
                 arguments: self.resolve_type_arguments(
                     &interface.arguments,
+                    signature,
                     generic_parameter_scope,
                     module_scope,
                 )?,
@@ -351,13 +371,14 @@ impl TypeCheckingContext<'_, '_, '_> {
     pub(crate) fn resolve_bounds(
         &self,
         generic_parameter_scope: &GenericParameterScope,
+        signature: bool,
         bounds: &[ry_hir::TypeConstructor],
         module_scope: &ModuleScope,
     ) -> Vec<TypeConstructor> {
         bounds
             .iter()
             .filter_map(|bound| {
-                self.resolve_interface(bound, generic_parameter_scope, module_scope)
+                self.resolve_interface(bound, signature, generic_parameter_scope, module_scope)
             })
             .collect()
     }

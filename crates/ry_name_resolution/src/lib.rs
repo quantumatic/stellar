@@ -69,10 +69,8 @@ use std::{fmt::Debug, iter};
 
 use derive_more::Display;
 use diagnostics::{
-    FailedToResolveModuleDiagnostic, FailedToResolveModuleItemDiagnostic,
-    FailedToResolveNameDiagnostic, FailedToResolvePackageDiagnostic,
-    FailedToResolvePrivateModuleItemDiagnostic,
-    ModuleItemsExceptEnumsDoNotServeAsNamespacesDiagnostic,
+    FailedToResolveModule, FailedToResolveModuleItem, FailedToResolveName, FailedToResolvePackage,
+    FailedToResolvePrivateModuleItem, ModuleItemsExceptEnumsDoNotServeAsNamespaces,
 };
 use itertools::Itertools;
 use parking_lot::RwLock;
@@ -285,13 +283,13 @@ impl NameResolver {
         {
             diagnostics.write().add_single_file_diagnostic(
                 first_identifier.location.file_path_id,
-                FailedToResolvePackageDiagnostic {
-                    package_name: identifier_interner
+                FailedToResolvePackage::new(
+                    first_identifier.location,
+                    identifier_interner
                         .resolve(first_identifier.id)
                         .unwrap()
                         .to_owned(),
-                    location: first_identifier.location,
-                },
+                ),
             );
             return None;
         }
@@ -376,13 +374,13 @@ impl NameResolver {
             } else {
                 diagnostics.write().add_single_file_diagnostic(
                     identifier.location.file_path_id,
-                    FailedToResolveNameDiagnostic {
-                        name: identifier_interner
+                    FailedToResolveName::new(
+                        identifier_interner
                             .resolve(identifier.id)
                             .unwrap()
                             .to_owned(),
-                        location: identifier.location,
-                    },
+                        identifier.location,
+                    ),
                 );
 
                 None
@@ -660,15 +658,15 @@ fn resolve_binding_in_module_namespace(
     else {
         diagnostics.write().add_single_file_diagnostic(
             name.location.file_path_id,
-            FailedToResolveModuleItemDiagnostic {
-                item_name: identifier_interner.resolve(name.id).unwrap().to_owned(),
-                item_name_location: name.location,
-                module_name: identifier_interner
+            FailedToResolveModuleItem::new(
+                identifier_interner
                     .resolve(namespace.id)
                     .unwrap()
                     .to_owned(),
-                module_name_location: namespace.location,
-            },
+                namespace.location,
+                identifier_interner.resolve(name.id).unwrap().to_owned(),
+                name.location,
+            ),
         );
 
         return None;
@@ -683,15 +681,15 @@ fn resolve_binding_in_module_namespace(
         if *name_resolver.visibilities.get(definition_id).unwrap() == RawVisibility::Private {
             diagnostics.write().add_single_file_diagnostic(
                 name.location.file_path_id,
-                FailedToResolvePrivateModuleItemDiagnostic {
-                    item_name: identifier_interner.resolve(name.id).unwrap().to_owned(),
-                    item_name_location: name.location,
-                    module_name: identifier_interner
+                FailedToResolvePrivateModuleItem::new(
+                    identifier_interner
                         .resolve(namespace.id)
                         .unwrap()
                         .to_owned(),
-                    module_name_location: namespace.location,
-                },
+                    namespace.location,
+                    identifier_interner.resolve(name.id).unwrap().to_owned(),
+                    name.location,
+                ),
             );
 
             return None;
@@ -723,15 +721,15 @@ fn resolve_binding_in_module_item_namespace(
     } else {
         diagnostics.write().add_single_file_diagnostic(
             name.location.file_path_id,
-            ModuleItemsExceptEnumsDoNotServeAsNamespacesDiagnostic {
-                name: identifier_interner.resolve(name.id).unwrap().to_owned(),
-                name_location: name.location,
-                module_item_name: identifier_interner
+            ModuleItemsExceptEnumsDoNotServeAsNamespaces::new(
+                identifier_interner
                     .resolve(namespace.id)
                     .unwrap()
                     .to_owned(),
-                module_item_name_location: namespace.location,
-            },
+                namespace.location,
+                identifier_interner.resolve(name.id).unwrap().to_owned(),
+                name.location,
+            ),
         );
 
         None
@@ -763,12 +761,12 @@ fn resolve_binding_in_package_namespace(
     ) else {
         diagnostics.write().add_single_file_diagnostic(
             name.location.file_path_id,
-            FailedToResolveModuleDiagnostic {
-                module_name: identifier_interner.resolve(name.id).unwrap().to_owned(),
-                module_name_location: name.location,
-                package_name: identifier_interner.resolve(name.id).unwrap().to_owned(),
-                package_name_location: name.location,
-            },
+            FailedToResolveModule::new(
+                name.location,
+                identifier_interner.resolve(name.id).unwrap().to_owned(),
+                name.location,
+                identifier_interner.resolve(name.id).unwrap().to_owned(),
+            ),
         );
 
         return None;
@@ -806,15 +804,15 @@ fn resolve_path_segment(
 
             diagnostics.write().add_single_file_diagnostic(
                 name.location.file_path_id,
-                ModuleItemsExceptEnumsDoNotServeAsNamespacesDiagnostic {
-                    name: identifier_interner.resolve(name.id).unwrap().to_owned(),
-                    name_location: name.location,
-                    module_item_name: identifier_interner
+                ModuleItemsExceptEnumsDoNotServeAsNamespaces::new(
+                    identifier_interner
                         .resolve(namespace.id)
                         .unwrap()
                         .to_owned(),
-                    module_item_name_location: namespace.location,
-                },
+                    namespace.location,
+                    identifier_interner.resolve(name.id).unwrap().to_owned(),
+                    name.location,
+                ),
             );
 
             None
