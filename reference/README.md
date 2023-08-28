@@ -320,7 +320,7 @@ fun answer_to_life_the_universe_and_everything(): uint32 {
 Function parameters are irrefutable patterns, so any pattern that is valid in an else-less let binding is also valid as a parameter:
 
 ```ry
-fn first((value, _): (i32, i32)): i32 { value }
+fun first((value, _): (i32, i32)): i32 { value }
 ```
 
 If the first parameter is a `self`, this indicates that the function is a method.
