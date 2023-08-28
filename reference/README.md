@@ -343,7 +343,7 @@ Function = [ "pub" ] "fun" identifier "[" GenericParameters "]" "(" FunctionPara
            [ ":" Type ] [ WhereClause ] ";" .
 
 FunctionParameters = [ FunctionParameter { "," FunctionParameter } [ "," ] ] .
-FunctionParameter  = Pattern [ ":" ] Type
+FunctionParameter  = Pattern ":" Type
                    | "self" [ ":" Type ] .
 ```
 
