@@ -682,7 +682,7 @@ impl<'d> LoweringContext<'d> {
         ast: ry_ast::NotSelfFunctionParameter,
     ) -> ry_hir::NotSelfFunctionParameter {
         ry_hir::NotSelfFunctionParameter {
-            name: ast.name,
+            pattern: self.lower_pattern(ast.pattern),
             ty: self.lower_type(ast.ty),
         }
     }

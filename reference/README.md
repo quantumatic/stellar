@@ -1,3 +1,7 @@
+<p align="center">
+    <img width="40%" src="../additional/icon/banner.png">
+</p>
+
 # Official Ry 0.1.0 programming language reference
 
 # Introduction
@@ -44,7 +48,7 @@ Each code point is distinct; for instance, uppercase and lowercase letters are d
 
 The following terms are used to denote specific Unicode character categories:
 
-```
+```wsn
 newline = /* the Unicode code point U+000A */ .
 unicode_char = /* an arbitrary Unicode code point except newline */ .
 unicode_letter = /* a Unicode code point categorized as "Letter" */ .
@@ -58,7 +62,7 @@ In The Unicode Standard 8.0, Section 4.5 "General Category" defines a set of cha
 > [!NOTE]
 > The underscore character `_` (`U+005F`) is **not** considered a letter.
 
-```
+```wsn
 letter = unicode_letter | "*" .
 decimal_digit = "0" … "9" .
 binary_digit = "0" | "1" .
@@ -79,7 +83,7 @@ Comments serve as program documentation and start with `//`.
 
 Identifiers name program entities such as variables and types. An identifier is a sequence of one or more letters and digits. The first character in an identifier must be a letter.
 
-```
+```wsn
 letter_or_underscore = letter | "_" .
 identifier           = letter { letter_or_underscore | unicode_digit }
                      | "_" ( letter_or_underscore | unicode_digit )
@@ -124,7 +128,7 @@ An integer literal is a sequence of digits representing an integer constant. An 
 
 For readability, an underscore character `_` may appear after a base prefix or between successive digits; such underscores do not change the literal's value.
 
-```
+```wsn
 int_lit        = decimal_lit | binary_lit | octal_lit | hex_lit .
 decimal_lit    = "0" | ( "1" … "9" ) [ [ "_" ] decimal_digits ] .
 binary_lit     = "0" ( "b" | "B" ) [ "_" ] binary_digits .
@@ -162,7 +166,7 @@ A floating-point literal consists of an integer part (decimal digits), a decimal
 
 For readability, an underscore character `'_'` may appear after a base prefix or between successive digits; such underscores do not change the literal value.
 
-```
+```wsn
 float_lit   = decimal_digits "." [ decimal_digits ] [ exponent ] |
               decimal_digits exponent |
               "." decimal_digits [ exponent ] .
@@ -201,7 +205,7 @@ Although these representations all result in an integer, they have different val
 
 After a backslash, certain single-character escapes represent special values:
 
-```
+```wsn
 char_lit         = "'" ( unicode_value | byte_value ) "'" .
 unicode_value    = unicode_char | little_u_value | big_u_value | escaped_char .
 byte_value       = `\` "x" hex_digit hex_digit .
@@ -239,7 +243,7 @@ escaped_char     = `\` ( "a" | "b" | "f" | "n" | "r" | "t" | "v" | `\` | "'" | `
 
 A type alias defines a new name for an existing type. Type aliases are declared with the keyword `type`:
 
-```
+```wsn
 TypeAlias = "type" identifier [ GenericParameters ] "=" Type .
 ```
 
@@ -286,4 +290,60 @@ fun main() {
 >   println(MyToString.len(s)); // invalid
 >   println(String.len(s)); // ok
 > }
+> ```
+
+## Function
+
+A function consists of a block, along with a name, a set of parameters, and an output type. Other than a name, all these are optional. Functions are declared with the keyword `fun`. Functions may declare a set of input variables as parameters, through which the caller passes arguments into the function, and the output type of the value the function will return to its caller on completion. If the output type is not explicitly stated, it is the unit type.
+
+```wsn
+Function = [ "pub" ] "fun" identifier [ GenericParameters ] "(" [ FunctionParameters ] ")"
+           [ ":" Type ] [ WhereClause ] StatementsBlock
+         | [ "pub" ] "fun" identifier [ GenericParameters ] "(" [ FunctionParameters ] ")"
+           [ ":" Type ] [ WhereClause ] ";" .
+
+FunctionParameters = FunctionParameter { "," FunctionParameter } [ "," ] .
+FunctionParameter  = Pattern [ ":" ] Type
+                   | "self" [ ":" Type ] .
+```
+
+Example:
+
+```ry
+fun answer_to_life_the_universe_and_everything(): uint32 {
+    42
+}
+```
+
+### Function parameters
+
+Function parameters are irrefutable patterns, so any pattern that is valid in an else-less let binding is also valid as a parameter:
+
+```ry
+fn first((value, _): (i32, i32)): i32 { value }
+```
+
+If the first parameter is a `self`, this indicates that the function is a method.
+
+### Generic functions
+
+A generic function allows one or more parameterized types to appear in its signature. Each type parameter must be explicitly declared in an bracket-enclosed and comma-separated list, following the function name.
+
+```ry
+fun foo[A, B](a: A, b: B) where A: ToString { ... }
+```
+
+> [!NOTE]
+> Function overloading is not supported in Ry.
+>
+> ```ry
+> fun foo(A { a }: A) {}
+> fun foo() {} // invalid
+> ```
+
+> [!NOTE]
+> Functions with names `_` cannot exist, because `_` is not a valid identifier.
+>
+> ```ry
+> fun _() { println("test") }
 > ```

@@ -14,6 +14,7 @@ use crate::{
     },
     list::ListParser,
     path::ImportPathParser,
+    pattern::PatternParser,
     r#type::{
         BoundsParser, GenericParametersParser, TypeConstructorParser, TypeParser,
         WherePredicatesParser,
@@ -274,13 +275,13 @@ impl Parse for NotSelfFunctionParameterParser {
     type Output = Option<NotSelfFunctionParameter>;
 
     fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
-        let name = state.consume_identifier()?;
+        let pattern = PatternParser.parse(state)?;
 
         state.consume(Punctuator::Colon)?;
 
         let ty = TypeParser.parse(state)?;
 
-        Some(NotSelfFunctionParameter { name, ty })
+        Some(NotSelfFunctionParameter { pattern, ty })
     }
 }
 

@@ -1356,7 +1356,7 @@ pub struct Function {
 }
 
 /// A function signature - information about function except a block.
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(Debug, PartialEq, Clone)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct FunctionSignature {
     pub visibility: Visibility,
@@ -1374,7 +1374,7 @@ pub struct FunctionSignature {
 }
 
 /// A function parameter, e.g. `self`, `self: Self`, `a: uint32`.
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(Debug, PartialEq, Clone)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "serde", serde(tag = "kind"))]
 pub enum FunctionParameter {
@@ -1399,10 +1399,10 @@ pub struct SelfFunctionParameter {
 }
 
 /// A function parameter that is not `self`, e.g. `a: uint32`.
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(Debug, PartialEq, Clone)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct NotSelfFunctionParameter {
-    pub name: IdentifierAST,
+    pub pattern: Pattern,
 
     #[cfg_attr(feature = "serde", serde(rename = "type"))]
     pub ty: Type,
