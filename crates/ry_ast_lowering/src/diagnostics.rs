@@ -1,64 +1,49 @@
-use ry_diagnostics::diagnostic::Diagnostic;
-use ry_diagnostics::{BuildDiagnostic, LocationExt};
+use ry_diagnostics::define_diagnostics;
 use ry_filesystem::location::Location;
-use ry_interner::PathID;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct UnnecessaryParenthesesInPatternDiagnostic {
-    pub location: Location,
-}
-
-impl BuildDiagnostic for UnnecessaryParenthesesInPatternDiagnostic {
-    fn build(self) -> Diagnostic<PathID> {
-        Diagnostic::warning()
-            .with_code("W000")
-            .with_message("unnecessary parentheses in the pattern")
-            .with_labels(vec![
-                self.location.start_byte_location().to_primary_label(),
-                self.location
-                    .end_byte_location()
-                    .to_primary_label()
-                    .with_message("consider removing these parentheses"),
-            ])
+define_diagnostics! {
+    diagnostic(warning) UnnecessaryGroupedPattern(
+        self,
+        location: Location
+    ) {
+        code { "W000" }
+        message { "unnecessary grouped pattern" }
+        labels {
+            primary self.location.start_byte_location() => {""},
+            secondary self.location.end_byte_location() => {
+                "consider removing these parentheses"
+            }
+        }
+        notes {}
     }
-}
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct UnnecessaryParenthesizedExpression {
-    pub location: Location,
-}
-
-impl BuildDiagnostic for UnnecessaryParenthesizedExpression {
-    fn build(self) -> Diagnostic<PathID> {
-        Diagnostic::warning()
-            .with_code("W001")
-            .with_message("unnecessary parenthesized expression")
-            .with_labels(vec![
-                self.location.start_byte_location().to_primary_label(),
-                self.location
-                    .end_byte_location()
-                    .to_primary_label()
-                    .with_message("consider removing these parentheses"),
-            ])
+    diagnostic(warning) UnnecessaryParenthesizedExpression(
+        self,
+        location: Location
+    ) {
+        code { "W001" }
+        message { "unnecessary parenthesized expression" }
+        labels {
+            primary self.location.start_byte_location() => {""},
+            secondary self.location.end_byte_location() => {
+                "consider removing these parentheses"
+            }
+        }
+        notes {}
     }
-}
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct UnnecessaryParenthesizedType {
-    pub location: Location,
-}
-
-impl BuildDiagnostic for UnnecessaryParenthesizedType {
-    fn build(self) -> Diagnostic<PathID> {
-        Diagnostic::warning()
-            .with_code("W002")
-            .with_message("unnecessary parenthesized type")
-            .with_labels(vec![
-                self.location.start_byte_location().to_primary_label(),
-                self.location
-                    .end_byte_location()
-                    .to_primary_label()
-                    .with_message("consider removing these parentheses"),
-            ])
+    diagnostic(warning) UnnecessaryParenthesizedType(
+        self,
+        location: Location
+    ) {
+        code { "W002" }
+        message { "unnecessary parenthesized type" }
+        labels {
+            primary self.location.start_byte_location() => {""},
+            secondary self.location.end_byte_location() => {
+                "consider removing these parentheses"
+            }
+        }
+        notes {}
     }
 }

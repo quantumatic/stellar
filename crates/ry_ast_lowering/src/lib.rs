@@ -10,7 +10,7 @@
 //!
 //! See the [`ry_hir`] crate for more details.
 
-use diagnostics::{UnnecessaryParenthesesInPatternDiagnostic, UnnecessaryParenthesizedExpression};
+use diagnostics::{UnnecessaryGroupedPattern, UnnecessaryParenthesizedExpression};
 use parking_lot::RwLock;
 use ry_ast::IdentifierAST;
 use ry_diagnostics::{BuildDiagnostic, Diagnostics};
@@ -300,7 +300,7 @@ impl<'d> LoweringContext<'d> {
     fn lower_pattern(&mut self, ast: ry_ast::Pattern) -> ry_hir::Pattern {
         match ast {
             ry_ast::Pattern::Grouped { location, inner } => {
-                self.add_diagnostic(UnnecessaryParenthesesInPatternDiagnostic { location });
+                self.add_diagnostic(UnnecessaryGroupedPattern::new(location));
 
                 self.lower_pattern(*inner)
             }
@@ -437,7 +437,7 @@ impl<'d> LoweringContext<'d> {
                 block,
             } => {
                 if let ry_ast::Expression::Parenthesized { location, .. } = *expression {
-                    self.add_diagnostic(UnnecessaryParenthesizedExpression { location });
+                    self.add_diagnostic(UnnecessaryParenthesizedExpression::new(location));
                 }
 
                 ry_hir::Expression::Match {
@@ -467,7 +467,7 @@ impl<'d> LoweringContext<'d> {
                 statements_block: body,
             } => {
                 if let ry_ast::Expression::Parenthesized { location, .. } = *condition {
-                    self.add_diagnostic(UnnecessaryParenthesizedExpression { location });
+                    self.add_diagnostic(UnnecessaryParenthesizedExpression::new(location));
                 }
 
                 ry_hir::Expression::While {
@@ -505,7 +505,7 @@ impl<'d> LoweringContext<'d> {
             },
             ry_ast::Expression::Parenthesized { inner, .. } => {
                 if let ry_ast::Expression::Parenthesized { location, .. } = *inner {
-                    self.add_diagnostic(UnnecessaryParenthesizedExpression { location });
+                    self.add_diagnostic(UnnecessaryParenthesizedExpression::new(location));
                 }
 
                 self.lower_expression(*inner)
@@ -581,7 +581,7 @@ impl<'d> LoweringContext<'d> {
         ast: ry_ast::MatchExpressionItem,
     ) -> ry_hir::MatchExpressionItem {
         if let ry_ast::Expression::Parenthesized { location, .. } = ast.right {
-            self.add_diagnostic(UnnecessaryParenthesizedExpression { location });
+            self.add_diagnostic(UnnecessaryParenthesizedExpression::new(location));
         }
 
         ry_hir::MatchExpressionItem {
@@ -625,7 +625,7 @@ impl<'d> LoweringContext<'d> {
         if_block: (ry_ast::Expression, Vec<ry_ast::Statement>),
     ) -> (ry_hir::Expression, Vec<ry_hir::Statement>) {
         if let ry_ast::Expression::Parenthesized { location, .. } = if_block.0 {
-            self.add_diagnostic(UnnecessaryParenthesizedExpression { location });
+            self.add_diagnostic(UnnecessaryParenthesizedExpression::new(location));
         }
 
         (
@@ -808,7 +808,7 @@ impl<'d> LoweringContext<'d> {
             }
             ry_ast::Type::Parenthesized { inner, .. } => {
                 if let ry_ast::Type::Parenthesized { location, .. } = *inner {
-                    self.add_diagnostic(UnnecessaryParenthesizedExpression { location });
+                    self.add_diagnostic(UnnecessaryParenthesizedExpression::new(location));
                 }
 
                 self.lower_type(*inner)
