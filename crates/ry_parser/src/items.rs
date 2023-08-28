@@ -9,7 +9,7 @@ use ry_interner::builtin_identifiers;
 
 use crate::{
     diagnostics::{
-        UnexpectedTokenDiagnostic, UnnecessaryVisibilityQualifierContext,
+        UnexpectedToken, UnnecessaryVisibilityQualifierContext,
         UnnecessaryVisibilityQualifierDiagnostic,
     },
     list::ListParser,
@@ -250,7 +250,7 @@ impl Parse for StructParser {
                 docstring: self.docstring,
             }))
         } else {
-            state.add_diagnostic(UnexpectedTokenDiagnostic::new(
+            state.add_diagnostic(UnexpectedToken::new(
                 state.current_token.location.end,
                 state.next_token,
                 one_of(
@@ -356,7 +356,7 @@ impl Parse for FunctionParser {
                 _ => {
                     state.advance();
 
-                    state.add_diagnostic(UnexpectedTokenDiagnostic::new(
+                    state.add_diagnostic(UnexpectedToken::new(
                         state.current_token.location.end,
                         state.next_token,
                         one_of([Punctuator::Semicolon, Punctuator::OpenParent].iter()),
@@ -730,7 +730,7 @@ impl Parse for ItemParser {
                 .parse(state)
             ),
             _ => {
-                state.add_diagnostic(UnexpectedTokenDiagnostic::new(
+                state.add_diagnostic(UnexpectedToken::new(
                     state.current_token.location.end,
                     state.next_token,
                     "module item",

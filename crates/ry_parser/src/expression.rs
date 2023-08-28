@@ -7,7 +7,7 @@ use ry_ast::{
 };
 
 use crate::{
-    diagnostics::UnexpectedTokenDiagnostic,
+    diagnostics::UnexpectedToken,
     list::ListParser,
     literal::LiteralParser,
     pattern::PatternParser,
@@ -232,7 +232,7 @@ impl Parse for PrimaryExpressionParser {
                     .parse(state);
                 }
 
-                state.add_diagnostic(UnexpectedTokenDiagnostic::new(
+                state.add_diagnostic(UnexpectedToken::new(
                     state.current_token.location.end,
                     state.next_token,
                     "expression",

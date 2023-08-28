@@ -3,7 +3,7 @@ use std::iter;
 use ry_ast::token::{Punctuator, RawToken};
 use ry_english_commons::enumeration::one_of;
 
-use crate::{diagnostics::UnexpectedTokenDiagnostic, Parse, ParseState};
+use crate::{diagnostics::UnexpectedToken, Parse, ParseState};
 
 pub(crate) struct ListParser<'a, P, E>
 where
@@ -55,7 +55,7 @@ where
 
             // `(` element `?` (invalid token)
             if state.next_token.raw != Punctuator::Comma {
-                state.add_diagnostic(UnexpectedTokenDiagnostic::new(
+                state.add_diagnostic(UnexpectedToken::new(
                     state.current_token.location.end,
                     state.next_token,
                     one_of(

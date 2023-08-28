@@ -4,8 +4,8 @@ use ry_ast::{
 };
 
 use crate::{
-    diagnostics::UnexpectedTokenDiagnostic, list::ListParser, literal::LiteralParser,
-    path::PathParser, Parse, ParseState,
+    diagnostics::UnexpectedToken, list::ListParser, literal::LiteralParser, path::PathParser,
+    Parse, ParseState,
 };
 
 pub(crate) struct PatternParser;
@@ -105,7 +105,7 @@ impl Parse for PatternExceptOrParser {
                 GroupedOrTuplePatternParser.parse(state)
             }
             _ => {
-                state.add_diagnostic(UnexpectedTokenDiagnostic::new(
+                state.add_diagnostic(UnexpectedToken::new(
                     state.current_token.location.end,
                     state.next_token,
                     "expression",

@@ -1,33 +1,10 @@
 //! Defines diagnostics for parser.
 
-#![allow(clippy::needless_pass_by_value)]
-
-use std::fmt::Display;
-
 use ry_ast::token::{LexError, Token};
 use ry_diagnostics::{define_diagnostics, diagnostic::Diagnostic};
 use ry_diagnostics::{BuildDiagnostic, LocationExt};
-use ry_english_commons::enumeration;
 use ry_filesystem::location::{ByteOffset, Location};
 use ry_interner::PathID;
-
-/// Represents list of expected tokens.
-#[derive(Debug, PartialEq, Eq, Clone)]
-pub struct Expected(pub Vec<String>);
-
-/// Allows to construct [`Expected`] object shorter:
-///
-/// ```
-/// use ry_parser::{expected, diagnostics::Expected};
-///
-/// assert_eq!(expected!("a", "b"), Expected(vec!["a".to_owned(), "b".to_owned()]));
-/// ```
-#[macro_export]
-macro_rules! expected {
-    ($($e:expr),*) => {{
-        $crate::diagnostics::Expected(vec![$(format!("{}", $e)),*])
-    }};
-}
 
 /// Context in which the unnecessary visibility qualifier error is found.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -86,53 +63,23 @@ define_diagnostics! {
             "note: you can use exponent to do so, but be careful!"
         }
     }
-}
 
-/// Diagnostic related to an unexpected token error.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct UnexpectedTokenDiagnostic {
-    /// End byte offset of the token before unexpected one.
-    pub offset: ByteOffset,
-
-    /// The token that was not expected.
-    pub got: Token,
-
-    /// What has been expected.
-    pub expected: String,
-}
-
-impl UnexpectedTokenDiagnostic {
-    /// Creates a new instance of [`UnexpectedTokenDiagnostic`].
-    #[inline(always)]
-    #[must_use]
-    pub fn new(offset: ByteOffset, got: Token, expected: impl Into<String>) -> Self {
-        Self {
-            offset,
-            got,
-            expected: expected.into(),
+    /// Diagnostic related to an unexpected token error.
+    diagnostic(error) UnexpectedToken(
+        self,
+        offset: ByteOffset,
+        got: Token,
+        expected: String
+    ) {
+        code { "E001" }
+        message { format!("expected {}, found {}", self.expected, self.got.raw) }
+        labels {
+            primary self.offset.next_byte_location_at(self.got.location.file_path_id) => {
+                format!("expected {}", self.expected)
+            },
+            secondary self.got.location => { "unexpected token" }
         }
-    }
-}
-
-impl BuildDiagnostic for UnexpectedTokenDiagnostic {
-    #[inline(always)]
-    fn build(self) -> Diagnostic<PathID> {
-        Diagnostic::error()
-            .with_message(format!(
-                "expected {}, found {}",
-                self.expected, self.got.raw
-            ))
-            .with_code("E001")
-            .with_labels(vec![
-                self.offset
-                    .next_byte_location_at(self.got.location.file_path_id)
-                    .to_secondary_label()
-                    .with_message(format!("expected {}", self.expected)),
-                self.got
-                    .location
-                    .to_primary_label()
-                    .with_message("unexpected token"),
-            ])
+        notes {}
     }
 }
 
@@ -180,11 +127,5 @@ impl BuildDiagnostic for UnnecessaryVisibilityQualifierDiagnostic {
                     vec!["note: using `pub` will not make the import public.".to_owned()]
                 }
             })
-    }
-}
-
-impl Display for Expected {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str(&enumeration::one_of(self.0.iter()))
     }
 }

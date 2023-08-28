@@ -95,7 +95,7 @@ use ry_stable_likely::unlikely;
 use statement::StatementParser;
 use tracing::trace;
 
-use crate::diagnostics::UnexpectedTokenDiagnostic;
+use crate::diagnostics::UnexpectedToken;
 
 /// Represents a parse state.
 #[derive(Debug)]
@@ -396,7 +396,7 @@ impl<'s, 'd, 'i> ParseState<'s, 'd, 'i> {
         if self.next_token.raw == expected {
             Some(())
         } else {
-            self.add_diagnostic(UnexpectedTokenDiagnostic::new(
+            self.add_diagnostic(UnexpectedToken::new(
                 self.current_token.location.end,
                 self.next_token,
                 expected,
@@ -446,7 +446,7 @@ impl<'s, 'd, 'i> ParseState<'s, 'd, 'i> {
                 id: self.lexer.scanned_identifier,
             }
         } else {
-            self.add_diagnostic(UnexpectedTokenDiagnostic::new(
+            self.add_diagnostic(UnexpectedToken::new(
                 self.current_token.location.end,
                 self.next_token,
                 "identifier",

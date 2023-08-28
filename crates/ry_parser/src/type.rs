@@ -4,8 +4,8 @@ use ry_ast::{
 };
 
 use crate::{
-    diagnostics::UnexpectedTokenDiagnostic, list::ListParser, path::PathParser, OptionallyParse,
-    Parse, ParseState,
+    diagnostics::UnexpectedToken, list::ListParser, path::PathParser, OptionallyParse, Parse,
+    ParseState,
 };
 
 pub(crate) struct BoundsParser;
@@ -53,7 +53,7 @@ impl Parse for TypeParser {
             }
             RawToken::Keyword(Keyword::Fun) => FunctionTypeParser.parse(state),
             _ => {
-                state.add_diagnostic(UnexpectedTokenDiagnostic::new(
+                state.add_diagnostic(UnexpectedToken::new(
                     state.current_token.location.end,
                     state.next_token,
                     "type",

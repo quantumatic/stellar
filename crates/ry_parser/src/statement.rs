@@ -4,7 +4,7 @@ use ry_ast::{
 };
 
 use crate::{
-    diagnostics::UnexpectedTokenDiagnostic, expression::ExpressionParser, pattern::PatternParser,
+    diagnostics::UnexpectedToken, expression::ExpressionParser, pattern::PatternParser,
     r#type::TypeParser, Parse, ParseState,
 };
 
@@ -91,7 +91,7 @@ impl Parse for StatementParser {
                             }
                         }
                         _ => {
-                            state.add_diagnostic(UnexpectedTokenDiagnostic::new(
+                            state.add_diagnostic(UnexpectedToken::new(
                                 state.current_token.location.end,
                                 state.next_token,
                                 Punctuator::Semicolon,
@@ -141,7 +141,7 @@ impl Parse for StatementsBlockParser {
             match state.next_token.raw {
                 RawToken::Punctuator(Punctuator::CloseBrace) => break,
                 RawToken::EndOfFile => {
-                    state.add_diagnostic(UnexpectedTokenDiagnostic::new(
+                    state.add_diagnostic(UnexpectedToken::new(
                         state.current_token.location.end,
                         state.next_token,
                         Punctuator::CloseBrace,
