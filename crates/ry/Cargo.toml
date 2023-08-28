@@ -9,7 +9,6 @@ readme = "../../README.md"
 description = "Implements CLI for the Ry programming language."
 
 [dependencies]
-chrono = "0.4.26"
 clap = { version = "4.1.4", features = ["derive"] }
 leftpad-str = "9.9.9"
 parking_lot = "0.12.1"
