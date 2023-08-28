@@ -355,19 +355,19 @@ fun foo[A, B](a: A, b: B) where A: ToString { ... }
 ## Struct
 
 ```wsn
-Struct = StructStruct | TupleStruct .
+Struct        = StructStruct | TupleStruct .
 
-StructStruct            = [ "pub" ] "struct" identifier "[" GenericParameters "]"
-                          [ Implements ] [ WhereClause ] "{" StructFieldList { Method } "}" ;
-Implements              = "implements" TypeConstructor { "," TypeConstructor } [ "," ] ;
-StructFields            = [ StructField { "," StructField } [ "," ] ] ;
-StructField             = [ "pub" ] identifier ":" type ;
+StructStruct  = [ "pub" ] "struct" identifier "[" GenericParameters "]"
+                [ Implements ] [ WhereClause ] "{" StructFieldList { Method } "}" ;
+Implements    = "implements" TypeConstructor { "," TypeConstructor } [ "," ] ;
+StructFields  = [ StructField { "," StructField } [ "," ] ] ;
+StructField   = [ "pub" ] identifier ":" type ;
 
-TupleStruct             = [ "pub" ] "struct" identifier "[" GenericParameters "]"
-                          "(" TupleFields ")" [ Implements ] [ WhereClause ]
-                          "{" { Method } "}" ;
-TupleFields             = [ TupleField { "," TupleField } [ "," ] ] ;
-TupleField              = [ "pub" ] Type ;
+TupleStruct   = [ "pub" ] "struct" identifier "[" GenericParameters "]"
+                "(" TupleFields ")" [ Implements ] [ WhereClause ]
+                "{" { Method } "}" ;
+TupleFields   = [ TupleField { "," TupleField } [ "," ] ] ;
+TupleField    = [ "pub" ] Type ;
 ```
 
 A _struct_ is a nominal struct type defined with the keyword `struct`.
@@ -399,3 +399,68 @@ fun main() {
     let x = point.0;
 }
 ```
+
+## Enumerations
+
+```wsn
+Enum         = [ "pub" ] "enum" identifier "[" GenericParameters "]"
+               [ WhereClause ] "{" EnumItems { Method } "}" ;
+EnumItems    = [ EnumItem { "," Enumitem } [ "," ] ] ;
+EnumItem     = identifier
+             | identifier "{" StructFields "}"
+             | identifier "(" TupleFields ")" ;
+```
+
+An enumeration, also referred to as an enum, is a simultaneous definition of a nominal enumerated type as well as a set of constructors, that can be used to create or pattern-match values of the corresponding enumerated type.
+
+Enumerations are declared with the keyword `enum`.
+
+An example of an enum item and its use:
+
+```ry
+enum Animal {
+    Dog,
+    Cat
+}
+
+fun main() {
+    let a: Animal = Animal.Dog;
+    a = Animal.Cat;
+}
+```
+
+Enum constructors can have either named or unnamed fields:
+
+```ry
+enum Animal {
+    Dog(String, float64),
+    Cat { name: String, weight: float64 },
+}
+
+fun main() {
+    let a: Animal = Animal.Dog("Cocoa", 37.2);
+    a = Animal.Cat { name: "Spotty", weight: 2.7 };
+}
+```
+
+In this example, `Cat` is a struct-like enum variant, whereas `Dog` is simply called an enum variant.
+
+An enum where no constructors contain fields are called a field-less enum. For example, this is a fieldless enum:
+
+```
+enum Fieldless {
+    Tuple(),
+    Struct{},
+    Unit,
+}
+```
+
+> [!NOTE]
+> Enum items don't have visibilities!
+>
+> ```ry
+> pub enum Option[T] {
+>   pub None, // invalid
+>   Some(T),
+> }
+> ```
