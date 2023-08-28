@@ -565,3 +565,19 @@ pub interface Foo {
     pub fun foo(); // invalid
 }
 ```
+
+## Imports
+
+```wsn
+Import     = "import" ImportPath .
+ImportPath = Path [ "as" identifier ] .
+```
+
+Imports are used to qualify long names from other modules, packages, etc.
+
+Examples:
+
+```
+import std.io;
+import std.fs as stdfs;
+```
