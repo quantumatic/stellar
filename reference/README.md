@@ -2,6 +2,46 @@
     <img width="40%" src="../additional/icon/banner.png">
 </p>
 
+<table>
+<tr><td width=50% valign=top>
+
+- [Introduction](#introduction)
+- [Notation](#notation)
+- [Source code representation](#source-code-representation)
+- [Characters](#characters)
+- [Letters and digits](#letters-and-digits)
+- [Lexical elements](#lexical-elements)
+  - [Comments](#comments)
+  - [Identifiers](#identifiers)
+  - [Keywords](#keywords)
+  - [Operators and punctuation](#operators-and-punctuation)
+  - [Integer literals](#integer-literals)
+  - [Floating-point literals](#floating-point-literals)
+  - [Character literals](#character-literals)
+- [Module items](#module-items)
+  - [Type alias](#type-alias)
+  - [Function](#function)
+    - [Function parameters](#function-parameters)
+    - [Generic functions](#generic-functions)
+  - [Struct](#struct)
+  - [Enumeration](#enumeration)
+  - [Interfaces](#interfaces)
+    - [Generic interfaces](#generic-interfaces)
+    - [Super interfaces](#super-interfaces)
+    - [Parameter patterns](#parameter-patterns)
+    - [Method visibility](#method-visibility)
+  - [Imports](#imports)
+
+</td><td width=50% valign=top>
+
+</td></tr>
+<tr><td width=50% valign=top>
+
+</td><td width=50% valign=top>
+
+</td></tr>
+</table>
+
 # Official Ry 0.1.0 programming language reference
 
 # Introduction
