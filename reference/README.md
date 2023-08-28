@@ -358,16 +358,16 @@ fun foo[A, B](a: A, b: B) where A: ToString { ... }
 Struct        = StructStruct | TupleStruct .
 
 StructStruct  = [ "pub" ] "struct" identifier "[" GenericParameters "]"
-                [ Implements ] [ WhereClause ] "{" StructFieldList { Method } "}" ;
-Implements    = "implements" TypeConstructor { "," TypeConstructor } [ "," ] ;
-StructFields  = [ StructField { "," StructField } [ "," ] ] ;
-StructField   = [ "pub" ] identifier ":" type ;
+                [ Implements ] [ WhereClause ] "{" StructFieldList { Method } "}" .
+Implements    = "implements" TypeConstructor { "," TypeConstructor } [ "," ] .
+StructFields  = [ StructField { "," StructField } [ "," ] ] .
+StructField   = [ "pub" ] identifier ":" type .
 
 TupleStruct   = [ "pub" ] "struct" identifier "[" GenericParameters "]"
                 "(" TupleFields ")" [ Implements ] [ WhereClause ]
-                "{" { Method } "}" ;
-TupleFields   = [ TupleField { "," TupleField } [ "," ] ] ;
-TupleField    = [ "pub" ] Type ;
+                "{" { Method } "}" .
+TupleFields   = [ TupleField { "," TupleField } [ "," ] ] .
+TupleField    = [ "pub" ] Type .
 ```
 
 A _struct_ is a nominal struct type defined with the keyword `struct`.
@@ -404,11 +404,11 @@ fun main() {
 
 ```wsn
 Enum         = [ "pub" ] "enum" identifier "[" GenericParameters "]"
-               [ WhereClause ] "{" EnumItems { Method } "}" ;
-EnumItems    = [ EnumItem { "," Enumitem } [ "," ] ] ;
+               [ WhereClause ] "{" EnumItems { Method } "}" .
+EnumItems    = [ EnumItem { "," Enumitem } [ "," ] ] .
 EnumItem     = identifier
              | identifier "{" StructFields "}"
-             | identifier "(" TupleFields ")" ;
+             | identifier "(" TupleFields ")" .
 ```
 
 An enumeration, also referred to as an enum, is a simultaneous definition of a nominal enumerated type as well as a set of constructors, that can be used to create or pattern-match values of the corresponding enumerated type.
@@ -464,3 +464,104 @@ enum Fieldless {
 >   Some(T),
 > }
 > ```
+
+## Interfaces
+
+```wsn
+Interface = [ "pub" ] "interface" identifier "[" GenericParameters "]"
+            [ ":" Bounds ] [ WhereClause ] "{" { Method } "}" .
+```
+
+Interfaces are declared with the keyword `interface`.
+
+Interface methods may omit the function body by replacing it with a semicolon. This indicates that the implementation must define the method's body.
+If the interface method defines a body, this definition acts as a default for any implementation which does not override it.
+
+```ry
+interface ToString {
+    fun to_string(self): String;
+}
+```
+
+### Generic interfaces
+
+Type parameters can be specified for a interface to make it generic. These appear after the interface name, using the same syntax used in generic functions:
+
+```ry
+interface Iterator[T] {
+    fun next(self): Option[T]
+}
+```
+
+### Super interfaces
+
+Super interfaces are interfaces that are required to be implemented for a type to implement a specific interface. Furthermore, anywhere a generic or trait object is bounded by a trait, it has access to the associated items of its super interfaces.
+
+Super interfaces are declared by bounds on the `Self` type of an interface and transitively the super interfaces of the interfaces declared in those bounds. It is an error for an interface to to be its own super interface.
+
+The interface with a super interface is called a sub interface of its super interface.
+
+The following is an example of declaring `Shape` to be a super interface of `Circle`.
+
+```ry
+interface Shape { fun area(self): float64; }
+interface Circle : Shape { fun radius(self): float64; }
+```
+
+And the following is the same example, except using where clauses.
+
+```ry
+interface Shape { fun area(self): float64; }
+interface Circle where Self: Shape { fun radius(self): float64; }
+```
+
+This next example gives radius a default implementation using the `area` function from `Shape`.
+
+```ry
+interface Circle where Self: Shape {
+    fun radius(self): float64 {
+        // A = pi * r^2
+        // so algebraically,
+        // r = sqrt(A / pi)
+        (self.area() /std.float64.consts.PI).sqrt()
+    }
+}
+```
+
+This next example calls a super interface method on a generic parameter.
+
+```ry
+fun print_area_and_radius[C: Circle](c: C) {
+    println(c.area());
+    println(c.radius());
+}
+```
+
+Similarly, here is an example of calling super interface methods on interface objects.
+
+```
+let circle = circle as dyn Circle;
+let nonsense = circle.radius() * circle.area();
+```
+
+### Parameter patterns
+
+Function or method declarations without a body only allow identifier or `_` wild card patterns. All irrefutable patterns are allowed as long as there is a body:
+
+```ry
+interface T {
+    fun f1((a, b): (int32, int32)) {}
+    fun f2(_: (int32, int32));
+    fun f3((a, b): (int32, int32)) {} // invalid
+}
+```
+
+### Method visibility
+
+All methods in public interface are public. All method in private interface are private! So `pub` in methods is invalid!
+
+```ry
+pub interface Foo {
+    pub fun foo(); // invalid
+}
+```
