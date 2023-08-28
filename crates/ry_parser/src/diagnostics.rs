@@ -92,33 +92,24 @@ define_diagnostics! {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct UnexpectedTokenDiagnostic {
     /// End byte offset of the token before unexpected one.
-    pub offset: Option<ByteOffset>,
+    pub offset: ByteOffset,
 
     /// The token that was not expected.
     pub got: Token,
 
-    /// Tokens that were expected.
-    pub expected: Expected,
-
-    /// AST Node at which the error occurred while parsing.
-    pub node: String,
+    /// What has been expected.
+    pub expected: String,
 }
 
 impl UnexpectedTokenDiagnostic {
     /// Creates a new instance of [`UnexpectedTokenDiagnostic`].
     #[inline(always)]
     #[must_use]
-    pub fn new(
-        offset: Option<ByteOffset>,
-        got: Token,
-        expected: Expected,
-        node: impl Into<String>,
-    ) -> Self {
+    pub fn new(offset: ByteOffset, got: Token, expected: impl Into<String>) -> Self {
         Self {
             offset,
             got,
-            expected,
-            node: node.into(),
+            expected: expected.into(),
         }
     }
 }
@@ -132,24 +123,16 @@ impl BuildDiagnostic for UnexpectedTokenDiagnostic {
                 self.expected, self.got.raw
             ))
             .with_code("E001")
-            .with_labels(if let Some(offset) = self.offset {
-                vec![
-                    offset
-                        .next_byte_location_at(self.got.location.file_path_id)
-                        .to_secondary_label()
-                        .with_message(format!("expected {}", self.expected)),
-                    self.got
-                        .location
-                        .to_primary_label()
-                        .with_message(format!("found {}", self.got.raw)),
-                ]
-            } else {
-                vec![self
-                    .got
+            .with_labels(vec![
+                self.offset
+                    .next_byte_location_at(self.got.location.file_path_id)
+                    .to_secondary_label()
+                    .with_message(format!("expected {}", self.expected)),
+                self.got
                     .location
                     .to_primary_label()
-                    .with_message(format!("expected {} for {}", self.expected, self.node))]
-            })
+                    .with_message("unexpected token"),
+            ])
     }
 }
 
@@ -202,6 +185,6 @@ impl BuildDiagnostic for UnnecessaryVisibilityQualifierDiagnostic {
 
 impl Display for Expected {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str(&enumeration::one_of(self.0.iter(), false))
+        f.write_str(&enumeration::one_of(self.0.iter()))
     }
 }

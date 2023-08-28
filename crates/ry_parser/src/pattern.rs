@@ -1,10 +1,10 @@
 use ry_ast::{
-    token::{Keyword, Punctuator, RawToken},
+    token::{Punctuator, RawToken},
     Path, Pattern, StructFieldPattern,
 };
 
 use crate::{
-    diagnostics::UnexpectedTokenDiagnostic, expected, list::ListParser, literal::LiteralParser,
+    diagnostics::UnexpectedTokenDiagnostic, list::ListParser, literal::LiteralParser,
     path::PathParser, Parse, ParseState,
 };
 
@@ -106,19 +106,8 @@ impl Parse for PatternExceptOrParser {
             }
             _ => {
                 state.add_diagnostic(UnexpectedTokenDiagnostic::new(
-                    None,
+                    state.current_token.location.end,
                     state.next_token,
-                    expected!(
-                        "integer literal",
-                        "float literal",
-                        "string literal",
-                        "char literal",
-                        "boolean literal",
-                        Punctuator::OpenBracket,
-                        "identifier",
-                        Keyword::If,
-                        Keyword::While
-                    ),
                     "expression",
                 ));
                 None
@@ -137,35 +126,31 @@ impl Parse for StructPatternParser {
     fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
         state.advance(); // `{`
 
-        let fields = ListParser::new(
-            "struct pattern",
-            &[RawToken::from(Punctuator::CloseBrace)],
-            |state| {
-                if state.next_token.raw == Punctuator::DoubleDot {
+        let fields = ListParser::new(&[RawToken::from(Punctuator::CloseBrace)], |state| {
+            if state.next_token.raw == Punctuator::DoubleDot {
+                state.advance();
+
+                Some(StructFieldPattern::Rest {
+                    location: state.current_token.location,
+                })
+            } else {
+                let field_name = state.consume_identifier()?;
+
+                let value_pattern = if state.next_token.raw == Punctuator::Colon {
                     state.advance();
 
-                    Some(StructFieldPattern::Rest {
-                        location: state.current_token.location,
-                    })
+                    Some(PatternParser.parse(state)?)
                 } else {
-                    let field_name = state.consume_identifier("struct pattern")?;
+                    None
+                };
 
-                    let value_pattern = if state.next_token.raw == Punctuator::Colon {
-                        state.advance();
-
-                        Some(PatternParser.parse(state)?)
-                    } else {
-                        None
-                    };
-
-                    Some(StructFieldPattern::NotRest {
-                        location: state.location_from(field_name.location.start),
-                        field_name,
-                        value_pattern,
-                    })
-                }
-            },
-        )
+                Some(StructFieldPattern::NotRest {
+                    location: state.location_from(field_name.location.start),
+                    field_name,
+                    value_pattern,
+                })
+            }
+        })
         .parse(state)?;
 
         state.advance();
@@ -187,12 +172,11 @@ impl Parse for ListPatternParser {
         let start = state.next_token.location.start;
         state.advance();
 
-        let inner_patterns = ListParser::new(
-            "list pattern",
-            &[RawToken::from(Punctuator::CloseBracket)],
-            |state| PatternParser.parse(state),
-        )
-        .parse(state)?;
+        let inner_patterns =
+            ListParser::new(&[RawToken::from(Punctuator::CloseBracket)], |state| {
+                PatternParser.parse(state)
+            })
+            .parse(state)?;
 
         state.advance();
 
@@ -213,11 +197,9 @@ impl Parse for TupleLikePatternParser {
     fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
         state.advance(); // `(`
 
-        let inner_patterns = ListParser::new(
-            "enum item tuple pattern",
-            &[RawToken::from(Punctuator::CloseParent)],
-            |state| PatternParser.parse(state),
-        )
+        let inner_patterns = ListParser::new(&[RawToken::from(Punctuator::CloseParent)], |state| {
+            PatternParser.parse(state)
+        })
         .parse(state)?;
 
         state.advance(); // `)`
@@ -239,11 +221,9 @@ impl Parse for GroupedOrTuplePatternParser {
         let start = state.next_token.location.start;
         state.advance();
 
-        let elements = ListParser::new(
-            "parenthesized or tuple pattern",
-            &[RawToken::from(Punctuator::CloseParent)],
-            |state| PatternParser.parse(state),
-        )
+        let elements = ListParser::new(&[RawToken::from(Punctuator::CloseParent)], |state| {
+            PatternParser.parse(state)
+        })
         .parse(state)?;
 
         state.advance();

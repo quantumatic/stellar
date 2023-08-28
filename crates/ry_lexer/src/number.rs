@@ -6,7 +6,7 @@ use ry_filesystem::location::{ByteOffset, Location};
 use crate::{is_id_start, Lexer};
 
 impl Lexer<'_, '_> {
-    pub(crate) fn eat_number(&mut self) -> Token {
+    pub(crate) fn tokenize_number(&mut self) -> Token {
         let start_offset = self.offset;
 
         // If the number is an integer or a float.
@@ -165,17 +165,21 @@ impl Lexer<'_, '_> {
         start_offset: ByteOffset,
         number_string: &str,
     ) -> Option<Location> {
-        let mut idx = 0;
+        let mut idx = 1;
         let chars_slice = &number_string.chars().collect::<Vec<char>>();
 
         for window in chars_slice.windows(3) {
-            let (current, previous, next) = (window[0], window[1], window[2]);
+            let (previous, current, next) = (window[0], window[1], window[2]);
 
             if current != '_' || (next.is_ascii_hexdigit() && previous.is_ascii_hexdigit()) {
                 idx += 1;
                 continue;
             }
 
+            return Some(self.make_location(start_offset + idx, start_offset + idx + 1));
+        }
+
+        if *chars_slice.last().unwrap() == '_' {
             return Some(self.make_location(start_offset + idx, start_offset + idx + 1));
         }
 

@@ -6,15 +6,13 @@ use std::fmt::Display;
 /// ```
 /// use ry_english_commons::enumeration::one_of;
 ///
-/// assert_eq!(one_of(["a"].iter(), false), "a".to_owned());
-/// assert_eq!(one_of(["a", "b"].iter(), false), "a or b".to_owned());
-/// assert_eq!(one_of(["a", "b"].iter(), true), "a or b".to_owned());
-/// assert_eq!(one_of(["a", "b", "c"].iter(), true), "a, b, or c".to_owned());
-/// assert_eq!(one_of(["a", "b", "c"].iter(), false), "a, b or c".to_owned());
+/// assert_eq!(one_of(["a"].iter()), "a".to_owned());
+/// assert_eq!(one_of(["a", "b"].iter()), "a or b".to_owned());
+/// assert_eq!(one_of(["a", "b", "c"].iter()), "a, b, or c".to_owned());
 /// ```
 #[allow(single_use_lifetimes)]
 #[must_use]
-pub fn one_of(list: impl ExactSizeIterator<Item = impl Display>, oxford_comma: bool) -> String {
+pub fn one_of(list: impl ExactSizeIterator<Item = impl Display>) -> String {
     let len = list.len();
 
     list.enumerate()
@@ -24,10 +22,10 @@ pub fn one_of(list: impl ExactSizeIterator<Item = impl Display>, oxford_comma: b
                 if idx == 0 {
                     ""
                 } else if idx == len - 1 {
-                    if oxford_comma && len != 2 {
-                        ", or "
-                    } else {
+                    if len == 2 {
                         " or "
+                    } else {
+                        ", or "
                     }
                 } else {
                     ", "
@@ -42,15 +40,13 @@ pub fn one_of(list: impl ExactSizeIterator<Item = impl Display>, oxford_comma: b
 /// ```
 /// use ry_english_commons::enumeration::all_of;
 ///
-/// assert_eq!(all_of(["a"].iter(), false), "a".to_owned());
-/// assert_eq!(all_of(["a", "b"].iter(), false), "a and b".to_owned());
-/// assert_eq!(all_of(["a", "b"].iter(), true), "a and b".to_owned());
-/// assert_eq!(all_of(["a", "b", "c"].iter(), true), "a, b, and c".to_owned());
-/// assert_eq!(all_of(["a", "b", "c"].iter(), false), "a, b and c".to_owned());
+/// assert_eq!(all_of(["a"].iter()), "a".to_owned());
+/// assert_eq!(all_of(["a", "b"].iter()), "a and b".to_owned());
+/// assert_eq!(all_of(["a", "b", "c"].iter()), "a, b, and c".to_owned());
 /// ```
 #[allow(single_use_lifetimes)]
 #[must_use]
-pub fn all_of(list: impl ExactSizeIterator<Item = impl Display>, oxford_comma: bool) -> String {
+pub fn all_of(list: impl ExactSizeIterator<Item = impl Display>) -> String {
     let len = list.len();
 
     list.enumerate()
@@ -60,10 +56,10 @@ pub fn all_of(list: impl ExactSizeIterator<Item = impl Display>, oxford_comma: b
                 if idx == 0 {
                     ""
                 } else if idx == len - 1 {
-                    if oxford_comma && len != 2 {
-                        ", and "
-                    } else {
+                    if len == 2 {
                         " and "
+                    } else {
+                        ", and "
                     }
                 } else {
                     ", "

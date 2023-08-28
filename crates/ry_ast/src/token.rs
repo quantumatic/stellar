@@ -75,6 +75,16 @@ pub struct LexError {
     pub raw: RawLexError,
 }
 
+impl From<LexError> for Token {
+    #[inline(always)]
+    fn from(value: LexError) -> Self {
+        Self {
+            location: value.location,
+            raw: RawToken::Error(value.raw),
+        }
+    }
+}
+
 /// Either the number is integer or float.
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum NumberKind {
@@ -348,7 +358,7 @@ pub enum RawToken {
     #[display(fmt = "integer literal")]
     IntegerLiteral,
     /// Error token.
-    #[display(fmt = "{_0}")]
+    #[display(fmt = "error token")]
     Error(RawLexError),
     /// Keyword.
     #[display(fmt = "{_0}")]
@@ -458,5 +468,19 @@ impl From<RawToken> for Precedence {
             RawToken::Keyword(Keyword::As) => Self::As,
             _ => Self::Lowest,
         }
+    }
+}
+
+impl From<Punctuator> for String {
+    #[inline(always)]
+    fn from(punctuator: Punctuator) -> Self {
+        punctuator.to_string()
+    }
+}
+
+impl From<Keyword> for String {
+    #[inline(always)]
+    fn from(keyword: Keyword) -> Self {
+        keyword.to_string()
     }
 }

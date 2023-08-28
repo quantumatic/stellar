@@ -8,7 +8,6 @@ use ry_ast::{
 
 use crate::{
     diagnostics::UnexpectedTokenDiagnostic,
-    expected,
     list::ListParser,
     literal::LiteralParser,
     pattern::PatternParser,
@@ -151,13 +150,11 @@ impl Parse for MatchExpressionBlockParser {
     type Output = Option<Vec<MatchExpressionItem>>;
 
     fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
-        state.consume(Punctuator::OpenBrace, "match expression block")?;
+        state.consume(Punctuator::OpenBrace)?;
 
-        let units = ListParser::new(
-            "match expression block",
-            &[RawToken::from(Punctuator::CloseBrace)],
-            |state| MatchExpressionUnitParser.parse(state),
-        )
+        let units = ListParser::new(&[RawToken::from(Punctuator::CloseBrace)], |state| {
+            MatchExpressionUnitParser.parse(state)
+        })
         .parse(state)?;
 
         state.advance(); // `}`
@@ -174,7 +171,7 @@ impl Parse for MatchExpressionUnitParser {
     fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
         let left = PatternParser.parse(state)?;
 
-        state.consume(Punctuator::Arrow, "match expression unit")?;
+        state.consume(Punctuator::Arrow)?;
 
         let right = ExpressionParser::new().parse(state)?;
 
@@ -234,24 +231,10 @@ impl Parse for PrimaryExpressionParser {
                     }
                     .parse(state);
                 }
+
                 state.add_diagnostic(UnexpectedTokenDiagnostic::new(
-                    None,
+                    state.current_token.location.end,
                     state.next_token,
-                    expected!(
-                        "integer literal",
-                        "float literal",
-                        "string literal",
-                        "char literal",
-                        "boolean literal",
-                        Punctuator::Or,
-                        Punctuator::OpenParent,
-                        Punctuator::OpenBracket,
-                        Punctuator::OpenBrace,
-                        "identifier",
-                        Keyword::If,
-                        Keyword::Match,
-                        Keyword::While
-                    ),
                     "expression",
                 ));
                 None
@@ -288,7 +271,7 @@ impl Parse for FieldAccessExpressionParser {
     fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
         state.advance(); // `.`
 
-        let right = state.consume_identifier("property")?;
+        let right = state.consume_identifier()?;
 
         Some(Expression::FieldAccess {
             location: state.location_from(self.left.location().start),
@@ -358,11 +341,9 @@ impl Parse for ParenthesizedOrTupleExpressionParser {
         let start = state.next_token.location.start;
         state.advance();
 
-        let elements = ListParser::new(
-            "parenthesized or tuple expression",
-            &[RawToken::from(Punctuator::CloseParent)],
-            |state| ExpressionParser::default().parse(state),
-        )
+        let elements = ListParser::new(&[RawToken::from(Punctuator::CloseParent)], |state| {
+            ExpressionParser::default().parse(state)
+        })
         .parse(state)?;
 
         state.advance(); // `)`
@@ -488,11 +469,9 @@ impl Parse for CallExpressionParser {
     fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
         state.advance(); // `(`
 
-        let arguments = ListParser::new(
-            "call arguments list",
-            &[RawToken::from(Punctuator::CloseParent)],
-            |state| ExpressionParser::default().parse(state),
-        )
+        let arguments = ListParser::new(&[RawToken::from(Punctuator::CloseParent)], |state| {
+            ExpressionParser::default().parse(state)
+        })
         .parse(state)?;
 
         state.advance();
@@ -548,11 +527,9 @@ impl Parse for ListExpressionParser {
 
         state.advance();
 
-        let elements = ListParser::new(
-            "list expression",
-            &[RawToken::from(Punctuator::CloseBracket)],
-            |state| ExpressionParser::default().parse(state),
-        )
+        let elements = ListParser::new(&[RawToken::from(Punctuator::CloseBracket)], |state| {
+            ExpressionParser::default().parse(state)
+        })
         .parse(state)?;
 
         state.advance();
@@ -574,11 +551,9 @@ impl Parse for StructExpressionParser {
     fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
         state.advance(); // `{`
 
-        let fields = ListParser::new(
-            "struct expression",
-            &[RawToken::from(Punctuator::CloseBrace)],
-            |state| StructFieldExpressionParser.parse(state),
-        )
+        let fields = ListParser::new(&[RawToken::from(Punctuator::CloseBrace)], |state| {
+            StructFieldExpressionParser.parse(state)
+        })
         .parse(state)?;
 
         state.advance(); // `}`
@@ -597,7 +572,7 @@ impl Parse for StructFieldExpressionParser {
     type Output = Option<StructFieldExpression>;
 
     fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
-        let name = state.consume_identifier("struct field")?;
+        let name = state.consume_identifier()?;
 
         let value = if state.next_token.raw == Punctuator::Colon {
             state.advance();
@@ -637,23 +612,19 @@ impl Parse for LambdaExpressionParser {
         state.advance(); // `|` or `||`
 
         let parameters = if state.current_token.raw == Punctuator::Or {
-            ListParser::new(
-                "function expression parameters",
-                &[RawToken::from(Punctuator::Or)],
-                |state| {
-                    let name = state.consume_identifier("function parameter name")?;
+            ListParser::new(&[RawToken::from(Punctuator::Or)], |state| {
+                let name = state.consume_identifier()?;
 
-                    let ty = if state.next_token.raw == Punctuator::Colon {
-                        state.advance();
+                let ty = if state.next_token.raw == Punctuator::Colon {
+                    state.advance();
 
-                        Some(TypeParser.parse(state)?)
-                    } else {
-                        None
-                    };
+                    Some(TypeParser.parse(state)?)
+                } else {
+                    None
+                };
 
-                    Some(LambdaFunctionParameter { name, ty })
-                },
-            )
+                Some(LambdaFunctionParameter { name, ty })
+            })
             .parse(state)?
         } else {
             vec![]

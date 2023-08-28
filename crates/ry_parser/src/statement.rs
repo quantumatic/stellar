@@ -4,8 +4,8 @@ use ry_ast::{
 };
 
 use crate::{
-    diagnostics::UnexpectedTokenDiagnostic, expected, expression::ExpressionParser,
-    pattern::PatternParser, r#type::TypeParser, Parse, ParseState,
+    diagnostics::UnexpectedTokenDiagnostic, expression::ExpressionParser, pattern::PatternParser,
+    r#type::TypeParser, Parse, ParseState,
 };
 
 // Pattern of a token, that can appear as a beginning of some statement
@@ -92,10 +92,9 @@ impl Parse for StatementParser {
                         }
                         _ => {
                             state.add_diagnostic(UnexpectedTokenDiagnostic::new(
-                                Some(state.current_token.location.end),
+                                state.current_token.location.end,
                                 state.next_token,
-                                expected!(Punctuator::Semicolon),
-                                "expression statement",
+                                Punctuator::Semicolon,
                             ));
                             return None;
                         }
@@ -121,7 +120,7 @@ impl Parse for StatementParser {
         };
 
         if !last_statement_in_block && must_have_semicolon_at_the_end {
-            state.consume(Punctuator::Semicolon, "statement")?;
+            state.consume(Punctuator::Semicolon)?;
         }
 
         Some((statement, last_statement_in_block))
@@ -134,7 +133,7 @@ impl Parse for StatementsBlockParser {
     type Output = Option<Vec<Statement>>;
 
     fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
-        state.consume(Punctuator::OpenBrace, "statements block")?;
+        state.consume(Punctuator::OpenBrace)?;
 
         let mut block = vec![];
 
@@ -143,10 +142,9 @@ impl Parse for StatementsBlockParser {
                 RawToken::Punctuator(Punctuator::CloseBrace) => break,
                 RawToken::EndOfFile => {
                     state.add_diagnostic(UnexpectedTokenDiagnostic::new(
-                        Some(state.current_token.location.end),
+                        state.current_token.location.end,
                         state.next_token,
-                        expected!(Punctuator::CloseBrace),
-                        "statements block",
+                        Punctuator::CloseBrace,
                     ));
 
                     return None;
@@ -220,7 +218,7 @@ impl Parse for LetStatementParser {
             None
         };
 
-        state.consume(Punctuator::Eq, "let statement")?;
+        state.consume(Punctuator::Eq)?;
 
         let value = ExpressionParser::default().parse(state)?;
 

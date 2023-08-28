@@ -13,14 +13,14 @@ impl Parse for PathParser {
     fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
         let mut identifiers = vec![];
 
-        let first_identifier = state.consume_identifier("path")?;
+        let first_identifier = state.consume_identifier()?;
         identifiers.push(first_identifier);
 
         let start = first_identifier.location.start;
 
         while state.next_token.raw == Punctuator::Dot {
             state.advance();
-            identifiers.push(state.consume_identifier("path")?);
+            identifiers.push(state.consume_identifier()?);
         }
 
         Some(Path {
@@ -41,7 +41,7 @@ impl Parse for ImportPathParser {
         let r#as = if state.next_token.raw == Keyword::As {
             state.advance();
 
-            Some(state.consume_identifier("import path")?)
+            Some(state.consume_identifier()?)
         } else {
             None
         };

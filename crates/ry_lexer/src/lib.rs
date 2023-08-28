@@ -304,6 +304,8 @@ impl<'s, 'i> Lexer<'s, 'i> {
                 location: self.current_char_location(),
             }),
             'u' => {
+                let start_offset = self.offset;
+
                 self.advance();
 
                 if self.current != '{' {
@@ -340,11 +342,13 @@ impl<'s, 'i> Lexer<'s, 'i> {
                     Some(c) => Ok(c),
                     None => Err(LexError {
                         raw: RawLexError::InvalidUnicodeEscapeSequence,
-                        location: self.current_char_location(),
+                        location: self.location_from(start_offset),
                     }),
                 }
             }
             'U' => {
+                let start_offset = self.offset;
+
                 self.advance();
 
                 if self.current != '{' {
@@ -381,11 +385,13 @@ impl<'s, 'i> Lexer<'s, 'i> {
                     Some(c) => Ok(c),
                     None => Err(LexError {
                         raw: RawLexError::InvalidUnicodeEscapeSequence,
-                        location: self.current_char_location(),
+                        location: self.location_from(start_offset),
                     }),
                 }
             }
             'x' => {
+                let start_offset = self.offset;
+
                 self.advance();
 
                 if self.current != '{' {
@@ -422,7 +428,7 @@ impl<'s, 'i> Lexer<'s, 'i> {
                     Some(c) => Ok(c),
                     None => Err(LexError {
                         raw: RawLexError::InvalidByteEscapeSequence,
-                        location: self.make_location(self.offset - 4, self.offset),
+                        location: self.location_from(start_offset),
                     }),
                 }
             }
@@ -460,11 +466,20 @@ impl<'s, 'i> Lexer<'s, 'i> {
                     Ok(c) => {
                         self.scanned_char = c;
                     }
+                    Err(
+                        e @ LexError {
+                            raw:
+                                RawLexError::InvalidUnicodeEscapeSequence
+                                | RawLexError::InvalidByteEscapeSequence,
+                            ..
+                        },
+                    ) => {
+                        self.advance();
+
+                        return e.into();
+                    }
                     Err(e) => {
-                        return Token {
-                            location: e.location,
-                            raw: RawToken::from(e.raw),
-                        }
+                        return e.into();
                     }
                 }
             } else {
@@ -520,11 +535,20 @@ impl<'s, 'i> Lexer<'s, 'i> {
                     Ok(c) => {
                         self.scanned_string.push(c);
                     }
+                    Err(
+                        e @ LexError {
+                            raw:
+                                RawLexError::InvalidUnicodeEscapeSequence
+                                | RawLexError::InvalidByteEscapeSequence,
+                            ..
+                        },
+                    ) => {
+                        self.advance();
+
+                        return e.into();
+                    }
                     Err(e) => {
-                        return Token {
-                            location: e.location,
-                            raw: RawToken::from(e.raw),
-                        }
+                        return e.into();
                     }
                 }
             } else {
@@ -732,7 +756,7 @@ impl<'s, 'i> Lexer<'s, 'i> {
                 if self.current.is_ascii_digit()
                     || (self.current == '.' && self.next.is_ascii_digit())
                 {
-                    return self.eat_number();
+                    return self.tokenize_number();
                 } else if is_id_start(self.current) {
                     return self.tokenize_identifier_or_keyword();
                 } else if self.current == '.' {

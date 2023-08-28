@@ -4,6 +4,7 @@ use ry_ast::{
     ModuleItem, NotSelfFunctionParameter, SelfFunctionParameter, Struct, StructField, TupleField,
     TupleLikeStruct, TypeAlias, Visibility,
 };
+use ry_english_commons::enumeration::one_of;
 use ry_interner::builtin_identifiers;
 
 use crate::{
@@ -11,7 +12,6 @@ use crate::{
         UnexpectedTokenDiagnostic, UnnecessaryVisibilityQualifierContext,
         UnnecessaryVisibilityQualifierDiagnostic,
     },
-    expected,
     list::ListParser,
     path::ImportPathParser,
     r#type::{
@@ -43,7 +43,7 @@ impl Parse for ImportParser {
 
         let path = ImportPathParser.parse(state)?;
 
-        state.consume(Punctuator::Semicolon, "import")?;
+        state.consume(Punctuator::Semicolon)?;
 
         Some(ModuleItem::Import {
             path,
@@ -61,9 +61,9 @@ impl Parse for StructFieldParser {
     type Output = Option<StructField>;
 
     fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
-        let name = state.consume_identifier("struct field")?;
+        let name = state.consume_identifier()?;
 
-        state.consume(Punctuator::Colon, "struct field")?;
+        state.consume(Punctuator::Colon)?;
 
         let ty = TypeParser.parse(state)?;
 
@@ -82,19 +82,15 @@ impl Parse for StructFieldsParser {
     type Output = Option<Vec<StructField>>;
 
     fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
-        state.consume(Punctuator::OpenBrace, "struct fields")?;
+        state.consume(Punctuator::OpenBrace)?;
 
-        let fields = ListParser::new(
-            "struct fields",
-            &[RawToken::from(Punctuator::CloseBrace)],
-            |state| {
-                StructFieldParser {
-                    docstring: state.consume_local_docstring(),
-                    visibility: VisibilityParser.parse(state),
-                }
-                .parse(state)
-            },
-        )
+        let fields = ListParser::new(&[RawToken::from(Punctuator::CloseBrace)], |state| {
+            StructFieldParser {
+                docstring: state.consume_local_docstring(),
+                visibility: VisibilityParser.parse(state),
+            }
+            .parse(state)
+        })
         .parse(state)?;
 
         state.advance(); // `}`
@@ -114,7 +110,7 @@ impl Parse for StructParser {
     fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
         state.advance();
 
-        let name = state.consume_identifier("struct name")?;
+        let name = state.consume_identifier()?;
 
         let generic_parameters = GenericParametersParser.optionally_parse(state)?;
 
@@ -123,7 +119,6 @@ impl Parse for StructParser {
 
             Some(
                 ListParser::new(
-                    "implemented interfaces",
                     &[
                         RawToken::from(Keyword::Where),
                         RawToken::from(Punctuator::Semicolon),
@@ -150,7 +145,6 @@ impl Parse for StructParser {
 
                 Some(
                     ListParser::new(
-                        "implemented interfaces",
                         &[
                             RawToken::from(Keyword::Where),
                             RawToken::from(Punctuator::Semicolon),
@@ -169,7 +163,7 @@ impl Parse for StructParser {
             let mut methods = vec![];
 
             if state.next_token.raw != Punctuator::Semicolon {
-                state.consume(Punctuator::OpenBrace, "struct")?;
+                state.consume(Punctuator::OpenBrace)?;
 
                 loop {
                     if state.next_token.raw == Punctuator::CloseBrace {
@@ -204,7 +198,6 @@ impl Parse for StructParser {
             state.advance();
 
             let fields = ListParser::new(
-                "struct fields",
                 &[
                     RawToken::from(Punctuator::CloseBrace),
                     RawToken::from(Keyword::Fun),
@@ -258,14 +251,16 @@ impl Parse for StructParser {
             }))
         } else {
             state.add_diagnostic(UnexpectedTokenDiagnostic::new(
-                Some(state.current_token.location.end),
+                state.current_token.location.end,
                 state.next_token,
-                expected!(
-                    Punctuator::Semicolon,
-                    Punctuator::OpenParent,
-                    Punctuator::OpenBrace
+                one_of(
+                    [
+                        Punctuator::Semicolon,
+                        Punctuator::OpenParent,
+                        Punctuator::OpenBrace,
+                    ]
+                    .iter(),
                 ),
-                "item",
             ));
 
             None
@@ -279,9 +274,9 @@ impl Parse for NotSelfFunctionParameterParser {
     type Output = Option<NotSelfFunctionParameter>;
 
     fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
-        let name = state.consume_identifier("function parameter name")?;
+        let name = state.consume_identifier()?;
 
-        state.consume(Punctuator::Colon, "function parameter name")?;
+        state.consume(Punctuator::Colon)?;
 
         let ty = TypeParser.parse(state)?;
 
@@ -298,38 +293,34 @@ impl Parse for FunctionParser {
     type Output = Option<Function>;
 
     fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
-        state.consume(Keyword::Fun, "function")?;
+        state.consume(Keyword::Fun)?;
 
-        let name = state.consume_identifier("function name")?;
+        let name = state.consume_identifier()?;
 
         let generic_parameters = GenericParametersParser.optionally_parse(state)?;
 
-        state.consume(Punctuator::OpenParent, "function")?;
+        state.consume(Punctuator::OpenParent)?;
 
-        let parameters = ListParser::new(
-            "function parameters",
-            &[RawToken::from(Punctuator::CloseParent)],
-            |state| {
-                if state.lexer.scanned_identifier == builtin_identifiers::SMALL_SELF {
-                    state.advance();
+        let parameters = ListParser::new(&[RawToken::from(Punctuator::CloseParent)], |state| {
+            if state.lexer.scanned_identifier == builtin_identifiers::SMALL_SELF {
+                state.advance();
 
-                    Some(FunctionParameter::SelfParameter(SelfFunctionParameter {
-                        self_location: state.current_token.location,
-                        ty: if state.next_token.raw == Punctuator::Colon {
-                            state.advance();
+                Some(FunctionParameter::SelfParameter(SelfFunctionParameter {
+                    self_location: state.current_token.location,
+                    ty: if state.next_token.raw == Punctuator::Colon {
+                        state.advance();
 
-                            Some(TypeParser.parse(state)?)
-                        } else {
-                            None
-                        },
-                    }))
-                } else {
-                    NotSelfFunctionParameterParser
-                        .parse(state)
-                        .map(FunctionParameter::NotSelfParameter)
-                }
-            },
-        )
+                        Some(TypeParser.parse(state)?)
+                    } else {
+                        None
+                    },
+                }))
+            } else {
+                NotSelfFunctionParameterParser
+                    .parse(state)
+                    .map(FunctionParameter::NotSelfParameter)
+            }
+        })
         .parse(state)?;
 
         state.advance();
@@ -366,10 +357,9 @@ impl Parse for FunctionParser {
                     state.advance();
 
                     state.add_diagnostic(UnexpectedTokenDiagnostic::new(
-                        Some(state.current_token.location.end),
+                        state.current_token.location.end,
                         state.next_token,
-                        expected!(Punctuator::Semicolon, Punctuator::OpenParent),
-                        "function",
+                        one_of([Punctuator::Semicolon, Punctuator::OpenParent].iter()),
                     ));
 
                     return None;
@@ -390,14 +380,14 @@ impl Parse for TypeAliasParser {
     fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
         state.advance();
 
-        let name = state.consume_identifier("type alias")?;
+        let name = state.consume_identifier()?;
         let generic_parameters = GenericParametersParser.optionally_parse(state)?;
 
-        state.consume(Punctuator::Eq, "type alias")?;
+        state.consume(Punctuator::Eq)?;
 
         let value = TypeParser.parse(state)?;
 
-        state.consume(Punctuator::Semicolon, "type alias")?;
+        state.consume(Punctuator::Semicolon)?;
 
         Some(ModuleItem::TypeAlias(TypeAlias {
             visibility: self.visibility,
@@ -420,7 +410,7 @@ impl Parse for InterfaceParser {
     fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
         state.advance();
 
-        let name = state.consume_identifier("interface name in interface declaration")?;
+        let name = state.consume_identifier()?;
 
         let generic_parameters = GenericParametersParser.optionally_parse(state)?;
 
@@ -434,7 +424,7 @@ impl Parse for InterfaceParser {
 
         let where_predicates = WherePredicatesParser.optionally_parse(state)?;
 
-        state.consume(Punctuator::OpenBrace, "interface declaration")?;
+        state.consume(Punctuator::OpenBrace)?;
 
         let mut methods = vec![];
 
@@ -509,7 +499,7 @@ impl Parse for EnumParser {
     fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
         state.advance();
 
-        let name = state.consume_identifier("enum name")?;
+        let name = state.consume_identifier()?;
 
         let generic_parameters = GenericParametersParser.optionally_parse(state)?;
 
@@ -518,7 +508,6 @@ impl Parse for EnumParser {
 
             Some(
                 ListParser::new(
-                    "implemented interfaces",
                     &[
                         RawToken::from(Keyword::Where),
                         RawToken::from(Punctuator::OpenBrace),
@@ -533,10 +522,9 @@ impl Parse for EnumParser {
 
         let where_predicates = WherePredicatesParser.optionally_parse(state)?;
 
-        state.consume(Punctuator::OpenBrace, "enum")?;
+        state.consume(Punctuator::OpenBrace)?;
 
         let items = ListParser::new(
-            "enum items",
             &[
                 RawToken::from(Punctuator::CloseBrace),
                 RawToken::from(Keyword::Fun),
@@ -589,7 +577,7 @@ impl Parse for EnumItemParser {
     fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
         let docstring = state.consume_local_docstring();
 
-        let name = state.consume_identifier("enum item")?;
+        let name = state.consume_identifier()?;
 
         match state.next_token.raw {
             RawToken::Punctuator(Punctuator::OpenBrace) => {
@@ -632,16 +620,12 @@ impl Parse for TupleFieldsParser {
     fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
         state.advance(); // `(`
 
-        let fields = ListParser::new(
-            "item tuple",
-            &[RawToken::from(Punctuator::CloseParent)],
-            |state| {
-                Some(TupleField {
-                    visibility: VisibilityParser.parse(state),
-                    ty: TypeParser.parse(state)?,
-                })
-            },
-        )
+        let fields = ListParser::new(&[RawToken::from(Punctuator::CloseParent)], |state| {
+            Some(TupleField {
+                visibility: VisibilityParser.parse(state),
+                ty: TypeParser.parse(state)?,
+            })
+        })
         .parse(state)?;
 
         state.advance(); // `)`
@@ -747,17 +731,9 @@ impl Parse for ItemParser {
             ),
             _ => {
                 state.add_diagnostic(UnexpectedTokenDiagnostic::new(
-                    None,
+                    state.current_token.location.end,
                     state.next_token,
-                    expected!(
-                        Keyword::Enum,
-                        Keyword::Import,
-                        Keyword::Struct,
-                        Keyword::Interface,
-                        Keyword::Fun,
-                        Keyword::Type
-                    ),
-                    "item",
+                    "module item",
                 ));
 
                 Self::goto_next_valid_item(state);

@@ -381,7 +381,7 @@ impl<'s, 'd, 'i> ParseState<'s, 'd, 'i> {
     }
 
     /// Checks if the next token is [`expected`].
-    fn expect(&mut self, expected: RawToken, node: &'static str) -> Option<()> {
+    fn expect(&mut self, expected: RawToken) -> Option<()> {
         trace!(
             "excepted {} to be {} at: {}",
             self.next_token.raw,
@@ -397,10 +397,9 @@ impl<'s, 'd, 'i> ParseState<'s, 'd, 'i> {
             Some(())
         } else {
             self.add_diagnostic(UnexpectedTokenDiagnostic::new(
-                Some(self.current_token.location.end),
+                self.current_token.location.end,
                 self.next_token,
-                expected!(expected),
-                node,
+                expected,
             ));
 
             None
@@ -408,8 +407,8 @@ impl<'s, 'd, 'i> ParseState<'s, 'd, 'i> {
     }
 
     /// Checks if the next token is [`expected`] and advances the parse state.
-    fn consume(&mut self, expected: impl Into<RawToken>, node: &'static str) -> Option<()> {
-        self.expect(expected.into(), node)?;
+    fn consume(&mut self, expected: impl Into<RawToken>) -> Option<()> {
+        self.expect(expected.into())?;
         self.advance();
         Some(())
     }
@@ -434,7 +433,7 @@ impl<'s, 'd, 'i> ParseState<'s, 'd, 'i> {
 
     /// Checks if the next token is identifiers, advances the parse state and if
     /// everything is ok, returns the identifier symbol.
-    fn consume_identifier(&mut self, node: &'static str) -> Option<IdentifierAST> {
+    fn consume_identifier(&mut self) -> Option<IdentifierAST> {
         trace!(
             "expected next_token {} to be an identifier at: {}",
             self.next_token.raw,
@@ -448,10 +447,9 @@ impl<'s, 'd, 'i> ParseState<'s, 'd, 'i> {
             }
         } else {
             self.add_diagnostic(UnexpectedTokenDiagnostic::new(
-                None,
+                self.current_token.location.end,
                 self.next_token,
-                expected!("identifier"),
-                node,
+                "identifier",
             ));
             return None;
         };

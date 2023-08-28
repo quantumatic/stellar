@@ -4,8 +4,8 @@ use ry_ast::{
 };
 
 use crate::{
-    diagnostics::UnexpectedTokenDiagnostic, expected, list::ListParser, path::PathParser,
-    OptionallyParse, Parse, ParseState,
+    diagnostics::UnexpectedTokenDiagnostic, list::ListParser, path::PathParser, OptionallyParse,
+    Parse, ParseState,
 };
 
 pub(crate) struct BoundsParser;
@@ -54,14 +54,8 @@ impl Parse for TypeParser {
             RawToken::Keyword(Keyword::Fun) => FunctionTypeParser.parse(state),
             _ => {
                 state.add_diagnostic(UnexpectedTokenDiagnostic::new(
-                    None,
+                    state.current_token.location.end,
                     state.next_token,
-                    expected!(
-                        "identifier",
-                        Punctuator::OpenParent,
-                        Punctuator::Underscore,
-                        Keyword::Dyn
-                    ),
                     "type",
                 ));
 
@@ -98,14 +92,13 @@ impl Parse for FunctionTypeParser {
 
         state.advance(); // `fun`
 
-        state.consume(Punctuator::OpenParent, "function type")?;
+        state.consume(Punctuator::OpenParent)?;
 
-        let parameter_types = ListParser::new(
-            "function type",
-            &[RawToken::from(Punctuator::CloseParent)],
-            |state| TypeParser.parse(state),
-        )
-        .parse(state)?;
+        let parameter_types =
+            ListParser::new(&[RawToken::from(Punctuator::CloseParent)], |state| {
+                TypeParser.parse(state)
+            })
+            .parse(state)?;
 
         state.advance(); // `)`
 
@@ -134,11 +127,9 @@ impl Parse for ParenthesizedOrTupleTypeParser {
         let start = state.next_token.location.start;
         state.advance(); // `(`
 
-        let element_types = ListParser::new(
-            "parenthesized or tuple type",
-            &[RawToken::from(Punctuator::CloseParent)],
-            |state| TypeParser.parse(state),
-        )
+        let element_types = ListParser::new(&[RawToken::from(Punctuator::CloseParent)], |state| {
+            TypeParser.parse(state)
+        })
         .parse(state)?;
 
         state.advance(); // `)`
@@ -197,29 +188,25 @@ impl OptionallyParse for GenericParametersParser {
 
         state.advance();
 
-        let result = ListParser::new(
-            "generic parameters",
-            &[RawToken::from(Punctuator::CloseBracket)],
-            |state| {
-                Some(GenericParameter {
-                    name: state.consume_identifier("generic parameter name")?,
-                    bounds: if state.next_token.raw == Punctuator::Colon {
-                        state.advance();
+        let result = ListParser::new(&[RawToken::from(Punctuator::CloseBracket)], |state| {
+            Some(GenericParameter {
+                name: state.consume_identifier()?,
+                bounds: if state.next_token.raw == Punctuator::Colon {
+                    state.advance();
 
-                        Some(BoundsParser.parse(state))
-                    } else {
-                        None
-                    },
-                    default_value: if state.next_token.raw == Punctuator::Eq {
-                        state.advance();
+                    Some(BoundsParser.parse(state))
+                } else {
+                    None
+                },
+                default_value: if state.next_token.raw == Punctuator::Eq {
+                    state.advance();
 
-                        Some(TypeParser.parse(state)?)
-                    } else {
-                        None
-                    },
-                })
-            },
-        )
+                    Some(TypeParser.parse(state)?)
+                } else {
+                    None
+                },
+            })
+        })
         .parse(state)?;
 
         state.advance();
@@ -265,11 +252,9 @@ impl Parse for TypeArgumentsParser {
     fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
         state.advance();
 
-        let result = ListParser::new(
-            "type arguments",
-            &[RawToken::from(Punctuator::CloseBracket)],
-            |state| TypeParser.parse(state),
-        )
+        let result = ListParser::new(&[RawToken::from(Punctuator::CloseBracket)], |state| {
+            TypeParser.parse(state)
+        })
         .parse(state)?;
 
         state.advance();
@@ -291,7 +276,6 @@ impl OptionallyParse for WherePredicatesParser {
         state.advance();
 
         ListParser::new(
-            "where clause",
             &[
                 RawToken::from(Punctuator::OpenBrace),
                 RawToken::from(Punctuator::Semicolon),
@@ -299,7 +283,7 @@ impl OptionallyParse for WherePredicatesParser {
             |state| {
                 let left = TypeParser.parse(state)?;
 
-                state.consume(Punctuator::Colon, "where predicate")?;
+                state.consume(Punctuator::Colon)?;
 
                 Some(WherePredicate {
                     ty: left,
