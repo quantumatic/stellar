@@ -297,12 +297,12 @@ fun main() {
 A function consists of a block, along with a name, a set of parameters, and an output type. Other than a name, all these are optional. Functions are declared with the keyword `fun`. Functions may declare a set of input variables as parameters, through which the caller passes arguments into the function, and the output type of the value the function will return to its caller on completion. If the output type is not explicitly stated, it is the unit type.
 
 ```wsn
-Function = [ "pub" ] "fun" identifier [ GenericParameters ] "(" [ FunctionParameters ] ")"
+Function = [ "pub" ] "fun" identifier "[" GenericParameters "]" "(" FunctionParameters ")"
            [ ":" Type ] [ WhereClause ] StatementsBlock
-         | [ "pub" ] "fun" identifier [ GenericParameters ] "(" [ FunctionParameters ] ")"
+         | [ "pub" ] "fun" identifier "[" GenericParameters "]" "(" FunctionParameters ")"
            [ ":" Type ] [ WhereClause ] ";" .
 
-FunctionParameters = FunctionParameter { "," FunctionParameter } [ "," ] .
+FunctionParameters = [ FunctionParameter { "," FunctionParameter } [ "," ] ] .
 FunctionParameter  = Pattern [ ":" ] Type
                    | "self" [ ":" Type ] .
 ```
@@ -324,6 +324,10 @@ fn first((value, _): (i32, i32)): i32 { value }
 ```
 
 If the first parameter is a `self`, this indicates that the function is a method.
+
+```wsn
+Method = Function .
+```
 
 ### Generic functions
 
@@ -347,3 +351,51 @@ fun foo[A, B](a: A, b: B) where A: ToString { ... }
 > ```ry
 > fun _() { println("test") }
 > ```
+
+## Struct
+
+```wsn
+Struct = StructStruct | TupleStruct .
+
+StructStruct            = [ "pub" ] "struct" identifier "[" GenericParameters "]"
+                          [ Implements ] [ WhereClause ] "{" StructFieldList { Method } "}" ;
+Implements              = "implements" TypeConstructor { "," TypeConstructor } [ "," ] ;
+StructFields            = [ StructField { "," StructField } [ "," ] ] ;
+StructField             = [ "pub" ] identifier ":" type ;
+
+TupleStruct             = [ "pub" ] "struct" identifier "[" GenericParameters "]"
+                          "(" TupleFields ")" [ Implements ] [ WhereClause ]
+                          "{" { Method } "}" ;
+TupleFields             = [ TupleField { "," TupleField } [ "," ] ] ;
+TupleField              = [ "pub" ] Type ;
+```
+
+A _struct_ is a nominal struct type defined with the keyword `struct`.
+
+An example of a _struct_ module item and its use:
+
+```ry
+struct Point {
+    x: int32,
+    y: int32
+
+    fun new(x: int32, y: int32): Point {
+        Point { x, y }
+    }
+}
+
+fun main() {
+    let point = Point.new(1, 2);
+}
+```
+
+A tuple struct is a nominal tuple type, also defined with the keyword `struct`. For example:
+
+```ry
+struct Point(int32, int32);
+
+fun main() {
+    let point = Point(1, 2);
+    let x = point.0;
+}
+```
