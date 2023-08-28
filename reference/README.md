@@ -55,7 +55,8 @@ In The Unicode Standard 8.0, Section 4.5 "General Category" defines a set of cha
 
 # Letters and digits
 
-The underscore character `_` (`U+005F`) is **not** considered a letter.
+> [!NOTE]
+> The underscore character `_` (`U+005F`) is **not** considered a letter.
 
 ```
 letter = unicode_letter | "*" .
@@ -92,6 +93,9 @@ ThisVariableIsExported
 αβ
 ```
 
+> [!NOTE]
+> single `_` character is not considered an identifier, but rather a [punctuation](#operators-and-punctuation).
+
 Some identifiers are predeclared.
 
 ## Keywords
@@ -114,7 +118,7 @@ The following character sequences represent operators (including assignment oper
 %= + += ++ ? >> ; / /= ^ ^= # _
 ```
 
-# Integer literals
+## Integer literals
 
 An integer literal is a sequence of digits representing an integer constant. An optional prefix sets a non-decimal base: `0b` or `0B` for binary, `0`, `0o`, or `0O` for octal, and `0x` or `0X` for hexadecimal. A single `0` is considered a decimal zero. In hexadecimal literals, letters `a` through `f` and `A` through `F` represent values `10` through `15`.
 
@@ -152,9 +156,7 @@ _42         // an identifier, not an integer literal
 0_xBadFace  // invalid: `_` must separate successive digits
 ```
 
-# Floating-point literals
-
-A floating-point literal is a decimal or hexadecimal representation of a floating-point constant.
+## Floating-point literals
 
 A floating-point literal consists of an integer part (decimal digits), a decimal point, a fractional part (decimal digits), and an exponent part (`e` or `E` followed by an optional sign and decimal digits). One of the integer part or the fractional part may be elided; one of the decimal point or the exponent part may be elided. An exponent value exp scales the mantissa (integer and fractional part) by `10exp`.
 
@@ -187,7 +189,7 @@ exponent    = ( "e" | "E" ) [ "+" | "-" ] decimal_digits .
 1.5e1_ // invalid: `_` must separate successive digits
 ```
 
-# Character literals
+## Character literals
 
 A character literal represents a character constant, an integer value identifying a Unicode code point. A character literal is expressed as one or more characters enclosed in single quotes, as in `'x'` or `'\n'`. Within the quotes, any character may appear except newline and unescaped single quote. A single quoted character represents the Unicode value of the character itself, while multi-character sequences beginning with a backslash encode values in various formats.
 
@@ -230,3 +232,58 @@ escaped_char     = `\` ( "a" | "b" | "f" | "n" | "r" | "t" | "v" | `\` | "'" | `
 '\uDFFF'     // illegal: surrogate half
 '\U00110000' // illegal: invalid Unicode code point
 ```
+
+# Module items
+
+## Type alias
+
+A type alias defines a new name for an existing type. Type aliases are declared with the keyword `type`:
+
+```
+TypeAlias = "type" identifier [ GenericParameters ] "=" Type .
+```
+
+For example, the following defines the type `Point` as a synonym for the type `(uint8, uint8)`, the type of pairs of unsigned 8 bit integers:
+
+```ry
+type Point = (uint8, uint8);
+
+fun main() {
+    let point: Point = (1, 2);
+}
+```
+
+> [!NOTE]
+> Type aliases **cannot** be used to qualify type's constructor:
+>
+> ```ry
+> struct A(uint32);
+> type B = A;
+>
+> fun main() {
+>   let a = A(42);
+>   let a = B(42); // invalid
+> }
+> ```
+
+> [!NOTE]
+> Type aliases **cannot** be used to qualify interfaces:
+>
+> ```ry
+> type MyToString = ToString; // invalid
+>
+> fun foo[T](s: S) where S: MyToString {}
+> ```
+
+> [!NOTE]
+> Type aliases **cannot** be used to call static methods on:
+>
+> ```ry
+> type MyToString = String;
+>
+> fun main() {
+>   let s = "hello";
+>   println(MyToString.len(s)); // invalid
+>   println(String.len(s)); // ok
+> }
+> ```
