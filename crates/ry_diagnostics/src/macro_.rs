@@ -3,6 +3,9 @@
 /// # Example
 ///
 /// ```
+/// use ry_diagnostics::define_diagnostics;
+/// use ry_filesystem::location::Location;
+///
 /// define_diagnostics! {
 ///    diagnostic(error) FailedToResolveModule(
 ///        self,
@@ -72,16 +75,17 @@ macro_rules! define_diagnostics {
                 }
             }
 
-            impl BuildDiagnostic for $name {
+            #[allow(clippy::unnecessary_qualification)]
+            impl $crate::BuildDiagnostic for $name {
                 #[inline(always)]
-                fn build($self) -> Diagnostic<PathID> {
-                    Diagnostic::$severity()
+                fn build($self) -> $crate::diagnostic::Diagnostic<ry_interner::PathID> {
+                    $crate::diagnostic::Diagnostic::$severity()
                         .with_code($code.to_string())
                         .with_message($message)
                         .with_labels(vec![
-                            $primary_label_location.to_primary_label().with_message($primary_label_message)
+                            $crate::LocationExt::to_primary_label($primary_label_location).with_message($primary_label_message)
                             $(,
-                                $label_location.to_secondary_label().with_message($label_message),
+                                $crate::LocationExt::to_secondary_label($label_location).with_message($label_message),
                             )*
                         ])
                         .with_notes(vec![

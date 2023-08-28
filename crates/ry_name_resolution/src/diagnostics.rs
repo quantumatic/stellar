@@ -3,10 +3,8 @@
 #![allow(clippy::needless_pass_by_value)]
 
 use ry_ast::ModuleItemKind;
-use ry_diagnostics::diagnostic::Diagnostic;
-use ry_diagnostics::{define_diagnostics, BuildDiagnostic, LocationExt};
+use ry_diagnostics::define_diagnostics;
 use ry_filesystem::location::Location;
-use ry_interner::PathID;
 
 define_diagnostics! {
     /// Diagnostic related to an item defined multiple times error.
