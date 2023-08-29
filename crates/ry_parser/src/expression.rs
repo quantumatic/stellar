@@ -641,7 +641,7 @@ impl Parse for LambdaExpressionParser {
         state.advance(); // `|` or `||`
 
         let parameters = if state.current_token.raw == Punctuator::Or {
-            ListParser::new(&[RawToken::from(Punctuator::Or)], |state| {
+            let parameters = ListParser::new(&[RawToken::from(Punctuator::Or)], |state| {
                 let name = state.consume_identifier()?;
 
                 let ty = if state.next_token.raw == Punctuator::Colon {
@@ -654,12 +654,14 @@ impl Parse for LambdaExpressionParser {
 
                 Some(LambdaFunctionParameter { name, ty })
             })
-            .parse(state)?
+            .parse(state)?;
+
+            state.advance();
+
+            parameters
         } else {
             vec![]
         };
-
-        state.advance();
 
         let return_type = if state.next_token.raw == Punctuator::Colon {
             state.advance();

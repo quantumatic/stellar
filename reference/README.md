@@ -742,7 +742,7 @@ ReturnStatement = "return" Expression ";" .
 
 Return statements are denoted with the keyword `return`. Evaluating a return expression moves its argument into the designated output location for the current function call, destroys the current function activation frame, and transfers control to the caller frame:
 
-```
+```ry
 fun factorial(n: uint32): uint32 {
     if n < 2 {
         1
@@ -750,4 +750,10 @@ fun factorial(n: uint32): uint32 {
         n * factorial(n - 1)
     }
 }
+```
+
+### Break statements
+
+```wsn
+BreakStatement = "break" ";" .
 ```

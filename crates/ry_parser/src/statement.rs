@@ -8,42 +8,6 @@ use crate::{
     r#type::TypeParser, Parse, ParseState,
 };
 
-// Pattern of a token, that can appear as a beginning of some statement
-// and which we can effectively jump to for error recovering.
-macro_rules! possibly_first_statement_token_pattern {
-    () => {
-        RawToken::Keyword(Keyword::Continue | Keyword::Return | Keyword::Defer | Keyword::Let)
-            | possibly_first_expression_token_pattern!()
-    };
-}
-
-// Pattern of a token, that can appear as a beginning of some expression
-// and which we can effectively jump to for error recovering.
-macro_rules! possibly_first_expression_token_pattern {
-    () => {
-        RawToken::Keyword(Keyword::If | Keyword::Match | Keyword::While | Keyword::Loop)
-    };
-}
-
-// If parsing some statement fails, to recover the error and avoid unnecessary diagnostics,
-// we go to the next statement.
-macro_rules! possibly_recover {
-    ($state:ident, $statement:expr) => {
-        if let Some(statement) = $statement {
-            statement
-        } else {
-            loop {
-                match $state.next_token.raw {
-                    possibly_first_statement_token_pattern!() | RawToken::EndOfFile => break,
-                    _ => $state.advance(),
-                }
-            }
-
-            return None;
-        }
-    };
-}
-
 pub(crate) struct StatementParser;
 
 pub(crate) struct StatementParserResult {
@@ -56,33 +20,17 @@ impl Parse for StatementParser {
 
     fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
         let (statement, last_expression_in_block) = match state.next_token.raw {
-            RawToken::Keyword(Keyword::Return) => (
-                possibly_recover!(state, ReturnStatementParser.parse(state)),
-                false,
-            ),
-            RawToken::Keyword(Keyword::Defer) => (
-                possibly_recover!(state, DeferStatementParser.parse(state)),
-                false,
-            ),
-            RawToken::Keyword(Keyword::Let) => (
-                possibly_recover!(state, LetStatementParser.parse(state)),
-                false,
-            ),
-            RawToken::Keyword(Keyword::Continue) => (
-                possibly_recover!(state, ContinueStatementParser.parse(state)),
-                false,
-            ),
-            RawToken::Keyword(Keyword::Break) => (
-                possibly_recover!(state, BreakStatementParser.parse(state)),
-                false,
-            ),
+            RawToken::Keyword(Keyword::Return) => (ReturnStatementParser.parse(state)?, false),
+            RawToken::Keyword(Keyword::Defer) => (DeferStatementParser.parse(state)?, false),
+            RawToken::Keyword(Keyword::Let) => (LetStatementParser.parse(state)?, false),
+            RawToken::Keyword(Keyword::Continue) => (ContinueStatementParser.parse(state)?, false),
+            RawToken::Keyword(Keyword::Break) => (BreakStatementParser.parse(state)?, false),
             _ => {
-                let expression_statement_parser_result = ExpressionStatementParser.parse(state);
+                let expression_statement_parser_result = ExpressionStatementParser.parse(state)?;
 
-                possibly_recover!(
-                    state,
-                    expression_statement_parser_result
-                        .map(|r| (r.expression_statement, r.last_expression_in_block))
+                (
+                    expression_statement_parser_result.expression_statement,
+                    expression_statement_parser_result.last_expression_in_block,
                 )
             }
         };
@@ -107,20 +55,19 @@ impl Parse for ExpressionStatementParser {
     fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
         let expression = ExpressionParser::new().in_statements_block().parse(state)?;
 
-        let (last_expression_in_block, has_semicolon) =
-            if state.current_token.raw == Punctuator::CloseBrace {
-                // 1. `ExpressionWithBlocks` are treated as individual statements
-                //    (last_expression_in_block = false)
-                // 2. Semicolons after them are also treated as individual statements
-                //    (has_semicolon = false)
-                (false, false)
-            } else if state.next_token.raw == Punctuator::Semicolon {
-                state.advance();
+        let (last_expression_in_block, has_semicolon) = if expression.with_block() {
+            // 1. `ExpressionWithBlocks` are treated as individual statements
+            //    (last_expression_in_block = false)
+            // 2. Semicolons after them are also treated as individual statements
+            //    (has_semicolon = false)
+            (false, false)
+        } else if state.next_token.raw == Punctuator::Semicolon {
+            state.advance();
 
-                (false, true)
-            } else {
-                (true, false)
-            };
+            (false, true)
+        } else {
+            (true, false)
+        };
 
         Some(ExpressionStatementParserResult {
             expression_statement: Statement::Expression {
@@ -174,7 +121,7 @@ impl Parse for StatementsBlockParser {
             }
         }
 
-        state.advance();
+        state.consume(Punctuator::CloseBrace)?;
 
         Some(block)
     }
