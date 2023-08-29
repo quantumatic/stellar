@@ -157,8 +157,6 @@ println(str);
 
 # Roadmap
 
-![roadmap](https://github.com/quantumatic/stellar/assets/68709264/21e8b205-57b2-46d9-b82f-c3a0be30a55a)
-
 ## 0.1.0
 
 - No runtime yet (no gc and async)
