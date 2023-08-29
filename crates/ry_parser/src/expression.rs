@@ -5,6 +5,7 @@ use ry_ast::{
     PostfixOperator, PrefixOperator, RawBinaryOperator, RawPostfixOperator, RawPrefixOperator,
     StructFieldExpression,
 };
+use ry_english_commons::enumeration::one_of;
 
 use crate::{
     diagnostics::UnexpectedToken,
@@ -19,6 +20,7 @@ use crate::{
 /// Parser for Ry expressions.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub struct ExpressionParser {
+    in_statements_block: bool,
     precedence: Precedence,
     prohibit_struct_expressions: bool,
 }
@@ -42,8 +44,26 @@ impl ExpressionParser {
     /// Creates a parser for expressions, that disallows struct expressions.
     #[inline(always)]
     #[must_use]
-    pub const fn prohibit_struct_expressions(mut self, prohibit_struct_expressions: bool) -> Self {
-        self.prohibit_struct_expressions = prohibit_struct_expressions;
+    pub const fn prohibit_struct_expressions(mut self) -> Self {
+        self.prohibit_struct_expressions = true;
+        self
+    }
+
+    /// Creates a parser for expressions, that disallows struct expressions if
+    /// condition is satisfied.
+    #[inline(always)]
+    #[must_use]
+    pub const fn prohibit_struct_expressions_if(mut self, condition: bool) -> Self {
+        self.prohibit_struct_expressions = condition;
+        self
+    }
+
+    /// Creates a parser for expressions, that prints diagnostics
+    /// specific to statements blocks.
+    #[inline(always)]
+    #[must_use]
+    pub const fn in_statements_block(mut self) -> Self {
+        self.in_statements_block = true;
         self
     }
 }
@@ -53,11 +73,12 @@ impl Parse for ExpressionParser {
 
     fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
         let mut left = PrimaryExpressionParser {
+            in_statements_block: self.in_statements_block,
             prohibit_struct_expressions: self.prohibit_struct_expressions,
         }
         .parse(state)?;
 
-        while self.precedence < state.next_token.raw.into() {
+        while self.precedence < state.next_token.raw.into() && !left.with_block() {
             left = match state.next_token.raw {
                 RawToken::Punctuator(Punctuator::OpenParent) => {
                     CallExpressionParser { left }.parse(state)?
@@ -105,11 +126,9 @@ impl Parse for WhileExpressionParser {
         let start = state.next_token.location.start;
         state.advance(); // `while`
 
-        let condition = ExpressionParser {
-            precedence: Precedence::Lowest,
-            prohibit_struct_expressions: true,
-        }
-        .parse(state)?;
+        let condition = ExpressionParser::new()
+            .prohibit_struct_expressions()
+            .parse(state)?;
 
         let body = StatementsBlockParser.parse(state)?;
 
@@ -131,7 +150,7 @@ impl Parse for MatchExpressionParser {
         state.advance(); // `match`
 
         let expression = ExpressionParser::new()
-            .prohibit_struct_expressions(true)
+            .prohibit_struct_expressions()
             .parse(state)?;
 
         let block = MatchExpressionBlockParser.parse(state)?;
@@ -180,6 +199,7 @@ impl Parse for MatchExpressionUnitParser {
 }
 
 struct PrimaryExpressionParser {
+    in_statements_block: bool,
     prohibit_struct_expressions: bool,
 }
 
@@ -232,11 +252,26 @@ impl Parse for PrimaryExpressionParser {
                     .parse(state);
                 }
 
-                state.add_diagnostic(UnexpectedToken::new(
-                    state.current_token.location.end,
-                    state.next_token,
-                    "expression",
-                ));
+                if self.in_statements_block {
+                    state.add_diagnostic(UnexpectedToken::new(
+                        state.current_token.location.end,
+                        state.next_token,
+                        one_of(
+                            [
+                                "statement".to_owned(),
+                                Punctuator::Semicolon.to_string(),
+                                Punctuator::CloseBrace.to_string(),
+                            ]
+                            .iter(),
+                        ),
+                    ));
+                } else {
+                    state.add_diagnostic(UnexpectedToken::new(
+                        state.current_token.location.end,
+                        state.next_token,
+                        "expression",
+                    ));
+                }
                 None
             }
         }
@@ -295,11 +330,10 @@ impl Parse for PrefixExpressionParser {
         };
         state.advance();
 
-        let inner = ExpressionParser {
-            precedence: Precedence::Unary,
-            prohibit_struct_expressions: self.prohibit_struct_expressions,
-        }
-        .parse(state)?;
+        let inner = ExpressionParser::new()
+            .with_precedence(Precedence::Unary)
+            .prohibit_struct_expressions_if(self.prohibit_struct_expressions)
+            .parse(state)?;
 
         Some(Expression::Prefix {
             location: state.make_location(operator_token.location.start, inner.location().end),
@@ -399,11 +433,9 @@ impl Parse for IfExpressionParser {
         let start = state.next_token.location.start;
         state.advance(); // `if`
 
-        let condition = ExpressionParser {
-            precedence: Precedence::Lowest,
-            prohibit_struct_expressions: true,
-        }
-        .parse(state)?;
+        let condition = ExpressionParser::new()
+            .prohibit_struct_expressions()
+            .parse(state)?;
 
         let block = StatementsBlockParser.parse(state)?;
 
@@ -421,11 +453,9 @@ impl Parse for IfExpressionParser {
 
             state.advance();
 
-            let condition = ExpressionParser {
-                precedence: Precedence::Lowest,
-                prohibit_struct_expressions: true,
-            }
-            .parse(state)?;
+            let condition = ExpressionParser::new()
+                .prohibit_struct_expressions()
+                .parse(state)?;
             let block = StatementsBlockParser.parse(state)?;
 
             if_blocks.push((condition, block));
@@ -502,11 +532,10 @@ impl Parse for BinaryExpressionParser {
 
         state.advance();
 
-        let right = ExpressionParser {
-            precedence,
-            prohibit_struct_expressions: self.prohibit_struct_expressions,
-        }
-        .parse(state)?;
+        let right = ExpressionParser::new()
+            .with_precedence(precedence)
+            .prohibit_struct_expressions_if(self.prohibit_struct_expressions)
+            .parse(state)?;
 
         Some(Expression::Binary {
             location: state.location_from(self.left.location().start),

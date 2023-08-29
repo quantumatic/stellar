@@ -34,6 +34,36 @@
 
 </td><td width=50% valign=top>
 
+- [Expressions and statements](#statements-and-expressions)
+  - [Statements](#statements)
+    - [Let statements](#let-statements)
+    - [Expression statements](#expression-statements)
+    - [Defer statements](#defer-statements)
+    - [Return statements](#return-statements)
+    - Break statements
+    - Continue statements
+  - Expressions
+    - Literal expressions
+    - Identifier expressions
+    - Block expressions
+    - Binary expressions
+    - Prefix expressions
+    - Postfix expressions
+    - Parenthesized expressions
+    - List expressions
+    - Tuple expressions
+    - Type argument qualification expressions
+    - Cast expressions
+    - Loop expressions
+    - While expressions
+    - If expressions
+    - Match expressions
+    - Struct expressions
+    - Field access expressions
+    - Call expressions
+    - Underscore expressions
+    - Lambda expressions
+
 </td></tr>
 <tr><td width=50% valign=top>
 
@@ -617,7 +647,107 @@ Imports are used to qualify long names from other modules, packages, etc.
 
 Examples:
 
-```
+```ry
 import std.io;
 import std.fs as stdfs;
+```
+
+# Statements and expressions
+
+## Statements
+
+```wsn
+Statement = `;` /* empty statement */
+          | LetStatement
+          | ExpressionStatement
+          | DeferStatement
+          | ContinueStatement
+          | BreakStatement .
+```
+
+### Let statements
+
+```wsn
+LetStatement = "let" Pattern [ ":" Type ] "=" Expression ";" .
+```
+
+A let statement introduces a new set of variables, given by a pattern. The pattern is followed optionally by a type annotation and then either ends, or is followed by an initializer expression plus an optional else block. When no type annotation is given, the compiler will infer the type, or signal an error if insufficient type information is available for definite inference.
+
+Any variables introduced by a variable declaration are visible from the point of declaration until the end of the enclosing block scope, except when they are shadowed by another variable declaration.
+
+The pattern inside the let statement must be **irrefutable**.
+
+```ry
+let [a, b] = [1, 2];
+let (a, b, _) = (1, 2, 3);
+let a = 3;
+let Some(a) = foo(); // invalid
+```
+
+### Expression statements
+
+```wsn
+ExpressionStatement = ExpressionWithoutBlock ";"
+                    | ExpressionWithBlock [ ";" ] .
+```
+
+An expression statement is one that evaluates an expression and ignores its result. As a rule, an expression statement's purpose is to trigger the effects of evaluating its expression.
+
+An expression that consists of only a block expression or control flow expression, if used in a context where a statement is permitted, can omit the trailing semicolon. This can cause an ambiguity between it being parsed as a standalone statement and as a part of another expression; in this case, it is parsed as a statement.
+
+```ry
+v.pop();
+
+if v.is_empty() {
+    v.push(5);
+} else {
+    v.remove(0);
+}
+
+3 + 2; // separate expression statement
+```
+
+When the trailing semicolon is omitted, the result must be type `()`.
+
+```ry
+fun foo(): int32 {
+    if true {
+        1
+    } else {
+        2
+    }; // invalid
+}
+```
+
+### Defer statements
+
+```wsn
+DeferStatement = "defer" Expression ";" .
+```
+
+Defer statements are used to defer the execution of a function until the end of the enclosing block scope and are denoted with the keyword `defer`:
+
+```
+defer file.close();
+defer { println("deferred") };
+```
+
+The expression in the defer statement must be either a call or a block.
+
+### Return statements
+
+```wsn
+ReturnStatement = "return" Expression ";" .
+```
+
+Return statements are denoted with the keyword `return`. Evaluating a return expression moves its argument into the designated output location for the current function call, destroys the current function activation frame, and transfers control to the caller frame:
+
+```
+fun factorial(n: uint32): uint32 {
+    if n < 2 {
+        1
+    } else {
+        n * factorial(n - 1)
+    }
+}
 ```

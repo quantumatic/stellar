@@ -259,7 +259,7 @@ pub fn parse_statement(
 #[inline(always)]
 #[must_use]
 pub fn parse_statement_using(state: &mut ParseState<'_, '_, '_>) -> Option<Statement> {
-    StatementParser.parse(state).map(|s| s.0)
+    StatementParser.parse(state).map(|s| s.statement)
 }
 
 /// Parse a type.

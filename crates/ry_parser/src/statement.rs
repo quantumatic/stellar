@@ -46,84 +46,89 @@ macro_rules! possibly_recover {
 
 pub(crate) struct StatementParser;
 
+pub(crate) struct StatementParserResult {
+    pub(crate) statement: Statement,
+    pub(crate) last_expression_in_block: bool,
+}
+
 impl Parse for StatementParser {
-    type Output = Option<(Statement, bool)>;
+    type Output = Option<StatementParserResult>;
 
     fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
-        let mut last_statement_in_block = false;
-        let mut must_have_semicolon_at_the_end = true;
-
-        let statement = match state.next_token.raw {
-            RawToken::Keyword(Keyword::Return) => {
-                possibly_recover!(state, ReturnStatementParser.parse(state))
-            }
-            RawToken::Keyword(Keyword::Defer) => {
-                possibly_recover!(state, DeferStatementParser.parse(state))
-            }
-            RawToken::Keyword(Keyword::Let) => {
-                possibly_recover!(state, LetStatementParser.parse(state))
-            }
-            RawToken::Keyword(Keyword::Continue) => {
-                state.advance();
-
-                Statement::Continue {
-                    location: state.current_token.location,
-                }
-            }
-            RawToken::Keyword(Keyword::Break) => {
-                state.advance();
-
-                Statement::Break {
-                    location: state.current_token.location,
-                }
-            }
+        let (statement, last_expression_in_block) = match state.next_token.raw {
+            RawToken::Keyword(Keyword::Return) => (
+                possibly_recover!(state, ReturnStatementParser.parse(state)),
+                false,
+            ),
+            RawToken::Keyword(Keyword::Defer) => (
+                possibly_recover!(state, DeferStatementParser.parse(state)),
+                false,
+            ),
+            RawToken::Keyword(Keyword::Let) => (
+                possibly_recover!(state, LetStatementParser.parse(state)),
+                false,
+            ),
+            RawToken::Keyword(Keyword::Continue) => (
+                possibly_recover!(state, ContinueStatementParser.parse(state)),
+                false,
+            ),
+            RawToken::Keyword(Keyword::Break) => (
+                possibly_recover!(state, BreakStatementParser.parse(state)),
+                false,
+            ),
             _ => {
-                let expression = ExpressionParser::default().parse(state);
+                let expression_statement_parser_result = ExpressionStatementParser.parse(state);
 
-                if let Some(expression) = expression {
-                    must_have_semicolon_at_the_end = !expression.with_block();
-
-                    match state.next_token.raw {
-                        RawToken::Punctuator(Punctuator::Semicolon) => {}
-                        RawToken::Punctuator(Punctuator::CloseBrace) => {
-                            if must_have_semicolon_at_the_end {
-                                last_statement_in_block = true;
-                            }
-                        }
-                        _ => {
-                            state.add_diagnostic(UnexpectedToken::new(
-                                state.current_token.location.end,
-                                state.next_token,
-                                Punctuator::Semicolon,
-                            ));
-                            return None;
-                        }
-                    }
-
-                    if last_statement_in_block || !must_have_semicolon_at_the_end {
-                        Statement::Expression {
-                            has_semicolon: false,
-                            expression,
-                        }
-                    } else {
-                        Statement::Expression {
-                            has_semicolon: true,
-                            expression,
-                        }
-                    }
-                } else {
-                    possibly_recover!(state, None);
-
-                    return None;
-                }
+                possibly_recover!(
+                    state,
+                    expression_statement_parser_result
+                        .map(|r| (r.expression_statement, r.last_expression_in_block))
+                )
             }
         };
 
-        if !last_statement_in_block && must_have_semicolon_at_the_end {
-            state.consume(Punctuator::Semicolon)?;
-        }
+        Some(StatementParserResult {
+            statement,
+            last_expression_in_block,
+        })
+    }
+}
 
-        Some((statement, last_statement_in_block))
+pub(crate) struct ExpressionStatementParser;
+
+pub(crate) struct ExpressionStatementParserResult {
+    pub(crate) expression_statement: Statement,
+    pub(crate) last_expression_in_block: bool,
+}
+
+impl Parse for ExpressionStatementParser {
+    type Output = Option<ExpressionStatementParserResult>;
+
+    fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
+        let expression = ExpressionParser::new().in_statements_block().parse(state)?;
+
+        let (last_expression_in_block, has_semicolon) =
+            if state.current_token.raw == Punctuator::CloseBrace {
+                // 1. `ExpressionWithBlocks` are treated as individual statements
+                //    (last_expression_in_block = false)
+                // 2. Semicolons after them are also treated as individual statements
+                //    (has_semicolon = false)
+                (false, false)
+            } else if state.next_token.raw == Punctuator::Semicolon {
+                state.advance();
+
+                (false, true)
+            } else {
+                (true, false)
+            };
+
+        Some(ExpressionStatementParserResult {
+            expression_statement: Statement::Expression {
+                expression,
+                has_semicolon,
+            },
+            last_expression_in_block,
+        })
     }
 }
 
@@ -158,10 +163,13 @@ impl Parse for StatementsBlockParser {
                 _ => {}
             }
 
-            let (statement, last) = StatementParser.parse(state)?;
+            let StatementParserResult {
+                statement,
+                last_expression_in_block,
+            } = StatementParser.parse(state)?;
             block.push(statement);
 
-            if last {
+            if last_expression_in_block {
                 break;
             }
         }
@@ -180,9 +188,11 @@ impl Parse for DeferStatementParser {
     fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
         state.advance();
 
-        Some(Statement::Defer {
-            call: ExpressionParser::default().parse(state)?,
-        })
+        let call = ExpressionParser::default().parse(state)?;
+
+        state.consume(Punctuator::Semicolon)?;
+
+        Some(Statement::Defer { call })
     }
 }
 
@@ -194,9 +204,11 @@ impl Parse for ReturnStatementParser {
     fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
         state.advance();
 
-        Some(Statement::Return {
-            expression: ExpressionParser::default().parse(state)?,
-        })
+        let expression = ExpressionParser::default().parse(state)?;
+
+        state.consume(Punctuator::Semicolon)?;
+
+        Some(Statement::Return { expression })
     }
 }
 
@@ -222,6 +234,40 @@ impl Parse for LetStatementParser {
 
         let value = ExpressionParser::default().parse(state)?;
 
+        state.consume(Punctuator::Semicolon)?;
+
         Some(Statement::Let { pattern, value, ty })
+    }
+}
+
+struct ContinueStatementParser;
+
+impl Parse for ContinueStatementParser {
+    type Output = Option<Statement>;
+
+    fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
+        state.advance();
+
+        let location = state.current_token.location;
+
+        state.consume(Punctuator::Semicolon)?;
+
+        Some(Statement::Continue { location })
+    }
+}
+
+struct BreakStatementParser;
+
+impl Parse for BreakStatementParser {
+    type Output = Option<Statement>;
+
+    fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
+        state.advance();
+
+        let location = state.current_token.location;
+
+        state.consume(Punctuator::Semicolon)?;
+
+        Some(Statement::Break { location })
     }
 }
