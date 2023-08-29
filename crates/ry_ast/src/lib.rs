@@ -978,7 +978,10 @@ impl Expression {
     pub const fn with_block(&self) -> bool {
         matches!(
             self,
-            Self::If { .. } | Self::While { .. } | Self::Match { .. }
+            Self::If { .. }
+                | Self::While { .. }
+                | Self::Match { .. }
+                | Self::StatementsBlock { .. }
         )
     }
 }

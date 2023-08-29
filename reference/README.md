@@ -42,20 +42,20 @@
     - [Expression statements](#expression-statements)
     - [Defer statements](#defer-statements)
     - [Return statements](#return-statements)
-    - Break statements
-    - Continue statements
-  - Expressions
-    - Literal expressions
+    - [Break statements](#break-statements)
+    - [Continue statements](#continue-statements)
+  - [Expressions](#expressions)
+    - [Literal expressions](#literal-expressions)
     - Identifier expressions
-    - Block expressions
-    - Binary expressions
-    - Prefix expressions
-    - Postfix expressions
-    - Parenthesized expressions
-    - List expressions
+    - [Block expressions](#block-expressions)
+    - [Binary expressions](#binary-expressions)
+    - [Prefix expressions](#prefix-expressions)
+    - [Postfix expressions](#postfix-expressions)
+    - [Parenthesized expressions](#parenthesized-expressions)
+    - [List expressions](#list-expressions)
     - Tuple expressions
     - Type argument qualification expressions
-    - Cast expressions
+    - [Cast expressions](#cast-expressions)
     - Loop expressions
     - While expressions
     - If expressions
@@ -94,11 +94,12 @@
   - Type layout
   - Predicates
 - Names
+
   - Namespaces
   - Scopes
   - Path
   - Visibility
-  
+
 </td></tr>
 </table>
 
@@ -114,7 +115,7 @@ Ry is a general-purpose language designed with systems programming in mind. It i
 
 The syntax is specified using a [variant](https://en.wikipedia.org/wiki/Wirth_syntax_notation) of Extended Backus-Naur Form (EBNF):
 
-```wsn
+```ebnf
 Syntax = { Production } .
 Production = production_name "=" [ Expression ] "." .
 Expression = Term { "|" Term } .
@@ -148,7 +149,7 @@ Each code point is distinct; for instance, uppercase and lowercase letters are d
 
 The following terms are used to denote specific Unicode character categories:
 
-```wsn
+```ebnf
 newline = /* the Unicode code point U+000A */ .
 unicode_char = /* an arbitrary Unicode code point except newline */ .
 unicode_letter = /* a Unicode code point categorized as "Letter" */ .
@@ -162,7 +163,7 @@ In The Unicode Standard 8.0, Section 4.5 "General Category" defines a set of cha
 > [!NOTE]
 > The underscore character `_` (`U+005F`) is **not** considered a letter.
 
-```wsn
+```ebnf
 letter = unicode_letter | "*" .
 decimal_digit = "0" … "9" .
 binary_digit = "0" | "1" .
@@ -183,7 +184,7 @@ Comments serve as program documentation and start with `//`.
 
 Identifiers name program entities such as variables and types. An identifier is a sequence of one or more letters and digits. The first character in an identifier must be a letter.
 
-```wsn
+```ebnf
 letter_or_underscore = letter | "_" .
 identifier           = letter { letter_or_underscore | unicode_digit }
                      | "_" ( letter_or_underscore | unicode_digit )
@@ -207,9 +208,9 @@ Some identifiers are predeclared.
 The following keywords are reserved and may not be used as identifiers.
 
 ```
-as defer else enum for fun if pub return struct type let
-where while match import break continue dyn loop
-interface implements
+as defer else enum for false fun if pub return struct
+true type let where while match import break continue
+dyn loop interface implements
 ```
 
 ## Operators and punctuation
@@ -228,7 +229,7 @@ An integer literal is a sequence of digits representing an integer constant. An 
 
 For readability, an underscore character `_` may appear after a base prefix or between successive digits; such underscores do not change the literal's value.
 
-```wsn
+```ebnf
 int_lit        = decimal_lit | binary_lit | octal_lit | hex_lit .
 decimal_lit    = "0" | ( "1" … "9" ) [ [ "_" ] decimal_digits ] .
 binary_lit     = "0" ( "b" | "B" ) [ "_" ] binary_digits .
@@ -266,7 +267,7 @@ A floating-point literal consists of an integer part (decimal digits), a decimal
 
 For readability, an underscore character `'_'` may appear after a base prefix or between successive digits; such underscores do not change the literal value.
 
-```wsn
+```ebnf
 float_lit   = decimal_digits "." [ decimal_digits ] [ exponent ] |
               decimal_digits exponent |
               "." decimal_digits [ exponent ] .
@@ -305,7 +306,7 @@ Although these representations all result in an integer, they have different val
 
 After a backslash, certain single-character escapes represent special values:
 
-```wsn
+```ebnf
 char_lit         = "'" ( unicode_value | byte_value ) "'" .
 unicode_value    = unicode_char | little_u_value | big_u_value | escaped_char .
 byte_value       = `\` "x" hex_digit hex_digit .
@@ -343,7 +344,7 @@ escaped_char     = `\` ( "a" | "b" | "f" | "n" | "r" | "t" | "v" | `\` | "'" | `
 
 A type alias defines a new name for an existing type. Type aliases are declared with the keyword `type`:
 
-```wsn
+```ebnf
 TypeAlias = "type" identifier [ GenericParameters ] "=" Type .
 ```
 
@@ -396,7 +397,7 @@ fun main() {
 
 A function consists of a block, along with a name, a set of parameters, and an output type. Other than a name, all these are optional. Functions are declared with the keyword `fun`. Functions may declare a set of input variables as parameters, through which the caller passes arguments into the function, and the output type of the value the function will return to its caller on completion. If the output type is not explicitly stated, it is the unit type.
 
-```wsn
+```ebnf
 Function = [ "pub" ] "fun" identifier "[" GenericParameters "]" "(" FunctionParameters ")"
            [ ":" Type ] [ WhereClause ] StatementsBlock
          | [ "pub" ] "fun" identifier "[" GenericParameters "]" "(" FunctionParameters ")"
@@ -420,12 +421,12 @@ fun answer_to_life_the_universe_and_everything(): uint32 {
 Function parameters are irrefutable patterns, so any pattern that is valid in an else-less let binding is also valid as a parameter:
 
 ```ry
-fun first((value, _): (i32, i32)): i32 { value }
+fun first((value, _): (int32, int32)): int32 { value }
 ```
 
 If the first parameter is a `self`, this indicates that the function is a method.
 
-```wsn
+```ebnf
 Method = Function .
 ```
 
@@ -454,7 +455,7 @@ fun foo[A, B](a: A, b: B) where A: ToString { ... }
 
 ## Struct
 
-```wsn
+```ebnf
 Struct        = StructStruct | TupleStruct .
 
 StructStruct  = [ "pub" ] "struct" identifier "[" GenericParameters "]"
@@ -492,17 +493,21 @@ fun main() {
 A tuple struct is a nominal tuple type, also defined with the keyword `struct`. For example:
 
 ```ry
-struct Point(int32, int32);
+struct Point(int32, int32) {
+  fun new(x: int32, y: int32): Self {
+    Self(x, y)
+  }
+}
 
 fun main() {
-    let point = Point(1, 2);
+    let point = Point.new(1, 2);
     let x = point.0;
 }
 ```
 
 ## Enumerations
 
-```wsn
+```ebnf
 Enum         = [ "pub" ] "enum" identifier "[" GenericParameters "]"
                [ WhereClause ] "{" EnumItems { Method } "}" .
 EnumItems    = [ EnumItem { "," Enumitem } [ "," ] ] .
@@ -567,7 +572,7 @@ enum Fieldless {
 
 ## Interfaces
 
-```wsn
+```ebnf
 Interface = [ "pub" ] "interface" identifier "[" GenericParameters "]"
             [ ":" Bounds ] [ WhereClause ] "{" { Method } "}" .
 ```
@@ -595,7 +600,7 @@ interface Iterator[T] {
 
 ### Super interfaces
 
-Super interfaces are interfaces that are required to be implemented for a type to implement a specific interface. Furthermore, anywhere a generic or trait object is bounded by a trait, it has access to the associated items of its super interfaces.
+Super interfaces are interfaces that are required to be implemented for a type to implement a specific interface. Furthermore, anywhere a generic or interface object is bounded by a interface, it has access to the associated items of its super interfaces.
 
 Super interfaces are declared by bounds on the `Self` type of an interface and transitively the super interfaces of the interfaces declared in those bounds. It is an error for an interface to to be its own super interface.
 
@@ -668,7 +673,7 @@ pub interface Foo {
 
 ## Imports
 
-```wsn
+```ebnf
 Import     = "import" ImportPath .
 ImportPath = Path [ "as" identifier ] .
 ```
@@ -686,7 +691,7 @@ import std.fs as stdfs;
 
 ## Statements
 
-```wsn
+```ebnf
 Statement = `;` /* empty statement */
           | LetStatement
           | ExpressionStatement
@@ -697,7 +702,7 @@ Statement = `;` /* empty statement */
 
 ### Let statements
 
-```wsn
+```ebnf
 LetStatement = "let" Pattern [ ":" Type ] "=" Expression ";" .
 ```
 
@@ -716,7 +721,7 @@ let Some(a) = foo(); // invalid
 
 ### Expression statements
 
-```wsn
+```ebnf
 ExpressionStatement = ExpressionWithoutBlock ";"
                     | ExpressionWithBlock [ ";" ] .
 ```
@@ -751,13 +756,13 @@ fun foo(): int32 {
 
 ### Defer statements
 
-```wsn
+```ebnf
 DeferStatement = "defer" Expression ";" .
 ```
 
 Defer statements are used to defer the execution of a function until the end of the enclosing block scope and are denoted with the keyword `defer`:
 
-```
+```ry
 defer file.close();
 defer { println("deferred") };
 ```
@@ -766,7 +771,7 @@ The expression in the defer statement must be either a call or a block.
 
 ### Return statements
 
-```wsn
+```ebnf
 ReturnStatement = "return" Expression ";" .
 ```
 
@@ -784,6 +789,189 @@ fun factorial(n: uint32): uint32 {
 
 ### Break statements
 
-```wsn
+```ebnf
 BreakStatement = "break" ";" .
 ```
+
+Break statements are denoted with the keyword `break`. When break is encountered, execution of the associated loop body is immediately terminated, for example:
+
+```ry
+fun main() {
+    let a = 3;
+
+    loop {
+        a++;
+
+        if a > 10 {
+            break;
+        }
+    }
+
+    println(a);
+}
+```
+
+### Continue statements
+
+```ebnf
+ContinueStatement = "continue" ";" .
+```
+
+Continue statements are denoted with the keyword `continue`. When continue is encountered, the current iteration of the associated loop body is immediately terminated, returning control to the loop head. In the case of a while loop, the head is the conditional expression controlling the loop. In the case of a for loop, the head is the call-expression controlling the loop.
+
+```ry
+fun main() {
+    let a = 0;
+
+    loop {
+        a++;
+
+        if a > 4 {
+            continue;
+        }
+
+        println(a); // prints 1\n2\n3\n4\n
+    }
+}
+```
+
+## Expressions
+
+### Literal expressions
+
+```ebnf
+LiteralExpression = "true" | "false" | int_lit | float_lit
+                  | string_lit | char_lit .
+```
+
+A literal expression is an expression consisting of a single token, rather than a sequence of tokens, that immediately and directly denotes the value it evaluates to, rather than referring to it by name or some other evaluation rule.
+
+A literal is a form of constant expression, so is evaluated (primarily) at compile time.
+
+Each of the lexical literal forms described earlier can make up a literal expression, as can the keywords `true` and `false`.
+
+### Block expressions
+
+```ebnf
+BlockExpression = StatementsBlock .
+StatementsBlock = "{" Statements "}" .
+Statements      = [ Statement { "," Statement } [ "," ] ] .
+```
+
+A block expression, or block, is a control flow expression and anonymous namespace scope for items and variable declarations. As a control flow expression, a block sequentially executes its component non-item declaration statements and then its final optional expression. As an anonymous namespace scope, variables declared by let statements are in scope from the next statement until the end of the block.
+
+```ry
+let a = {
+  let b = 3;
+  b++;
+  b
+};
+```
+
+### Binary expressions
+
+```ebnf
+BinaryExpression = Expression BinaryOperator Expression ";" .
+BinaryOperator   = "+=" | "+" | "-=" | "-" | "**" | "*" | "*="
+                 | "/=" | "/" | "!=" | ">>" | "<<" | "<="
+                 | "<" | ">=" | ">" | "==" | "=" | "|" | "&"
+                 | "||" | "&&" | "|=" | "&=" | "%" | "%=" .
+```
+
+### Prefix expressions
+
+```ebnf
+PrefixExpression = PrefixOperator Expression .
+PrefixOperator   = "++" | "--" .
+```
+
+### Postfix expressions
+
+```ebnf
+PostfixExpression = Expression PostfixOperator .
+PostfixOperator   = "++" | "--" .
+```
+
+### Parenthesized expressions
+
+```ebnf
+ParenthesizedExpression = "(" Expression ")" .
+```
+
+A parenthesized expression wraps a single expression, evaluating to that expression. The syntax for a parenthesized expression is a `(`, then an expression, called the enclosed operand, and then a `)`.
+
+Parenthesized expressions evaluate to the value of the enclosed operand. Parentheses can be used to explicitly modify the precedence order of subexpressions within an expression.
+
+An example of a parenthesized expression:
+
+```
+fun main() {
+    let x = 2 + 3 * 4;
+    let y = (2 + 3) * 4;
+}
+```
+
+### List expressions
+
+```ebnf
+ListExpression = "[" [ Expression { "," Expression } [ "," ] ] "]" .
+```
+
+List expressions construct lists. The syntax is a comma-separated list of expressions of uniform type enclosed in square brackets. This produces an list containing each of these values in the order they are written.
+
+```ry
+let x = [1, 2, 3];
+let y = ["a", "b", "c"];
+let empty = [];
+```
+
+### Tuple expressions
+
+```ebnf
+TupleExpression = "(" ExpressionsInTuple ")" .
+ExpressionsInTuple = /* empty */
+                   | Expression ","
+                   | Expression "," Expression { "," Expression } [ "," ] .
+```
+
+A tuple expression constructs tuple values.
+
+The syntax for tuple expressions is a parenthesized, comma separated list of expressions, called the tuple initializer operands. 1-ary tuple expressions require a comma after their tuple initializer operand to be disambiguated with a parenthetical expression.
+
+Tuple expressions are a value expression that evaluate into a newly constructed value of a tuple type. The number of tuple initializer operands is the **arity** of the constructed tuple. Tuple expressions without any tuple initializer operands produce the **unit tuple**. For other tuple expressions, the first written tuple initializer operand initializes the field `0`, and subsequent operands initializes the next highest field. For example, in the tuple expression `('a', 'b', 'c')`, `'a'` initializes the value of the field `0`, `'b'` field `1`, and `'c'` field `2`.
+
+Examples of tuple expressions and their types:
+
+| Expression          | Type                       |
+| ------------------- | -------------------------- |
+| `()`                | `()` (unit type)           |
+| `(0.0, 4.5)`        | `(float64, float64)`       |
+| `("x",)`            | `(String,)`                |
+| `("a", (1,), true)` | `(String, (int32,), bool)` |
+
+### Cast expressions
+
+```ebnf
+CastExpression = Expression "as" Type .
+```
+
+A type cast expression is denoted with the binary operator `as`.
+
+Executing an `as` expression casts the value on the left-hand side to the type on the right-hand side.
+
+An example of an `as` expression:
+
+```
+let x = 1 as bool;
+```
+
+A table of all possible type casts:
+
+| From             | To                   | Cast                      | Example              |
+| ---------------- | -------------------- | ------------------------- | -------------------- |
+| Numeric type     | Numeric type         | Numeric cast              | `1 as uint64`        |
+| Enumeration      | Integer type         | Enum cast                 | `Color.Red as int32` |
+| `bool` or `char` | Integer type         | Primitive to integer cast | `true as int32`      |
+| Integer type     | `bool` or `char`     | Integer to primitive cast | `0 as bool`          |
+| `A`              | `A`                  | Type to itself cast       | `"hello" as String`  |
+| `A`              | `dyn T` where `A: T` | Cast to interface object  | `1 as dyn ToString`  |
