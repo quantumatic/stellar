@@ -1,11 +1,6 @@
-<p align="center">
-    <img width="40%" src="../additional/icon/banner.png">
-</p>
+# Official Ry 0.1.0 programming language reference
 
 # Table of contents
-
-<table>
-<tr><td width=33%  valign=top>
 
 - [Introduction](#introduction)
 - [Notation](#notation)
@@ -33,9 +28,6 @@
     - [Parameter patterns](#parameter-patterns)
     - [Method visibility](#method-visibility)
   - [Imports](#imports)
-
-</td><td width=33%  valign=top>
-
 - [Expressions and statements](#statements-and-expressions)
   - [Statements](#statements)
     - [Let statements](#let-statements)
@@ -65,9 +57,6 @@
     - Call expressions
     - Underscore expressions
     - Lambda expressions
-
-</td><td width=33%  valign=top>
-
 - Patterns
   - Literal patterns
   - Identifier patterns
@@ -94,16 +83,10 @@
   - Type layout
   - Predicates
 - Names
-
   - Namespaces
   - Scopes
   - Path
   - Visibility
-
-</td></tr>
-</table>
-
-# Official Ry 0.1.0 programming language reference
 
 # Introduction
 
@@ -160,7 +143,7 @@ In The Unicode Standard 8.0, Section 4.5 "General Category" defines a set of cha
 
 # Letters and digits
 
-> [!NOTE]
+> **NOTE**:
 > The underscore character `_` (`U+005F`) is **not** considered a letter.
 
 ```ebnf
@@ -177,7 +160,7 @@ hex_digit = "0" … "9" | "A" … "F" | "a" … "f" .
 
 Comments serve as program documentation and start with `//`.
 
-> [!NOTE]  
+> **NOTE**:  
 > A comment cannot start inside a char or string literal, or inside another comment.
 
 ## Identifiers
@@ -198,7 +181,7 @@ ThisVariableIsExported
 αβ
 ```
 
-> [!NOTE]
+> **NOTE**:
 > single `_` character is not considered an identifier, but rather a [punctuation](#operators-and-punctuation).
 
 Some identifiers are predeclared.
@@ -358,7 +341,7 @@ fun main() {
 }
 ```
 
-> [!NOTE]
+> **NOTE**:
 > Type aliases **cannot** be used to qualify type's constructor:
 >
 > ```ry
@@ -371,7 +354,7 @@ fun main() {
 > }
 > ```
 
-> [!NOTE]
+> **NOTE**:
 > Type aliases **cannot** be used to qualify interfaces:
 >
 > ```ry
@@ -380,7 +363,7 @@ fun main() {
 > fun foo[T](s: S) where S: MyToString {}
 > ```
 
-> [!NOTE]
+> **NOTE**:
 > Type aliases **cannot** be used to call static methods on:
 >
 > ```ry
@@ -438,7 +421,7 @@ A generic function allows one or more parameterized types to appear in its signa
 fun foo[A, B](a: A, b: B) where A: ToString { ... }
 ```
 
-> [!NOTE]
+> **NOTE**:
 > Function overloading is not supported in Ry.
 >
 > ```ry
@@ -446,7 +429,7 @@ fun foo[A, B](a: A, b: B) where A: ToString { ... }
 > fun foo() {} // invalid
 > ```
 
-> [!NOTE]
+> **NOTE**:
 > Functions with names `_` cannot exist, because `_` is not a valid identifier.
 >
 > ```ry
@@ -560,7 +543,7 @@ enum Fieldless {
 }
 ```
 
-> [!NOTE]
+> **NOTE**:
 > Enum items don't have visibilities!
 >
 > ```ry
