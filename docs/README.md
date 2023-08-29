@@ -1,4 +1,4 @@
-# Official Ry 0.1.0 programming language reference
+# Official Stellar 0.1.0 programming language reference
 
 # Table of contents
 
@@ -90,9 +90,9 @@
 
 # Introduction
 
-This is the reference manual for the Ry programming language.
+This is the reference manual for the Stellar programming language.
 
-Ry is a general-purpose language designed with systems programming in mind. It is strongly typed and garbage-collected.
+Stellar is a general-purpose language designed with systems programming in mind. It is strongly typed and garbage-collected.
 
 # Notation
 
@@ -120,7 +120,7 @@ Productions are expressions constructed from terms and the following operators, 
 
 Lowercase production names are used to identify lexical (terminal) tokens. Non-terminals are in CamelCase. Lexical tokens are enclosed in double quotes "" or back quotes \`\`.
 
-The form `a … b` represents the set of characters from a through b as alternatives. The horizontal ellipsis `…` is also used elsewhere in the spec to informally denote various enumerations or code snippets that are not further specified. The character `…` (as opposed to the three characters `...`) is not a token of the Ry language.
+The form `a … b` represents the set of characters from a through b as alternatives. The horizontal ellipsis `…` is also used elsewhere in the spec to informally denote various enumerations or code snippets that are not further specified. The character `…` (as opposed to the three characters `...`) is not a token of the Stellar language.
 
 # Source code representation
 
@@ -139,7 +139,7 @@ unicode_letter = /* a Unicode code point categorized as "Letter" */ .
 unicode_digit = /* a Unicode code point categorized as "Number, decimal digit" */ .
 ```
 
-In The Unicode Standard 8.0, Section 4.5 "General Category" defines a set of character categories. Ry treats all characters in any of the Letter categories `Lu`, `Ll`, `Lt`, `Lm`, or `Lo` as Unicode letters, and those in the Number category `Nd` as Unicode digits.
+In The Unicode Standard 8.0, Section 4.5 "General Category" defines a set of character categories. Stellar treats all characters in any of the Letter categories `Lu`, `Ll`, `Lt`, `Lm`, or `Lo` as Unicode letters, and those in the Number category `Nd` as Unicode digits.
 
 # Letters and digits
 
@@ -281,7 +281,7 @@ exponent    = ( "e" | "E" ) [ "+" | "-" ] decimal_digits .
 
 A character literal represents a character constant, an integer value identifying a Unicode code point. A character literal is expressed as one or more characters enclosed in single quotes, as in `'x'` or `'\n'`. Within the quotes, any character may appear except newline and unescaped single quote. A single quoted character represents the Unicode value of the character itself, while multi-character sequences beginning with a backslash encode values in various formats.
 
-The simplest form represents the single character within the quotes; since Ry source text is Unicode characters encoded in UTF-8, multiple UTF-8-encoded bytes may represent a single integer value. For instance, the literal `'a'` holds a single byte representing a literal `a`, Unicode `U+0061`, value `0x61`, while `'ä'` holds two bytes (`0xc3` `0xa4`) representing a literal a-dieresis, `U+00E4`, value `0xe4`.
+The simplest form represents the single character within the quotes; since Stellar source text is Unicode characters encoded in UTF-8, multiple UTF-8-encoded bytes may represent a single integer value. For instance, the literal `'a'` holds a single byte representing a literal `a`, Unicode `U+0061`, value `0x61`, while `'ä'` holds two bytes (`0xc3` `0xa4`) representing a literal a-dieresis, `U+00E4`, value `0xe4`.
 
 Several backslash escapes allow arbitrary values to be encoded as ASCII text. There are four ways to represent the integer value as a numeric constant: `\x` followed by exactly two hexadecimal digits; `\u` followed by exactly four hexadecimal digits; `\U` followed by exactly eight hexadecimal digits, and a plain backslash `\` followed by exactly three octal digits. In each case the value of the literal is the value represented by the digits in the corresponding base.
 
@@ -333,7 +333,7 @@ TypeAlias = "type" identifier [ GenericParameters ] "=" Type .
 
 For example, the following defines the type `Point` as a synonym for the type `(uint8, uint8)`, the type of pairs of unsigned 8 bit integers:
 
-```ry
+```stellar
 type Point = (uint8, uint8);
 
 fun main() {
@@ -344,7 +344,7 @@ fun main() {
 > **NOTE**:
 > Type aliases **cannot** be used to qualify type's constructor:
 >
-> ```ry
+> ```stellar
 > struct A(uint32);
 > type B = A;
 >
@@ -357,7 +357,7 @@ fun main() {
 > **NOTE**:
 > Type aliases **cannot** be used to qualify interfaces:
 >
-> ```ry
+> ```stellar
 > type MyToString = ToString; // invalid
 >
 > fun foo[T](s: S) where S: MyToString {}
@@ -366,7 +366,7 @@ fun main() {
 > **NOTE**:
 > Type aliases **cannot** be used to call static methods on:
 >
-> ```ry
+> ```stellar
 > type MyToString = String;
 >
 > fun main() {
@@ -393,7 +393,7 @@ FunctionParameter  = Pattern ":" Type
 
 Example:
 
-```ry
+```stellar
 fun answer_to_life_the_universe_and_everything(): uint32 {
     42
 }
@@ -403,7 +403,7 @@ fun answer_to_life_the_universe_and_everything(): uint32 {
 
 Function parameters are irrefutable patterns, so any pattern that is valid in an else-less let binding is also valid as a parameter:
 
-```ry
+```stellar
 fun first((value, _): (int32, int32)): int32 { value }
 ```
 
@@ -417,14 +417,14 @@ Method = Function .
 
 A generic function allows one or more parameterized types to appear in its signature. Each type parameter must be explicitly declared in an bracket-enclosed and comma-separated list, following the function name.
 
-```ry
+```stellar
 fun foo[A, B](a: A, b: B) where A: ToString { ... }
 ```
 
 > **NOTE**:
-> Function overloading is not supported in Ry.
+> Function overloading is not supported in Stellar.
 >
-> ```ry
+> ```stellar
 > fun foo(A { a }: A) {}
 > fun foo() {} // invalid
 > ```
@@ -432,7 +432,7 @@ fun foo[A, B](a: A, b: B) where A: ToString { ... }
 > **NOTE**:
 > Functions with names `_` cannot exist, because `_` is not a valid identifier.
 >
-> ```ry
+> ```stellar
 > fun _() { println("test") }
 > ```
 
@@ -458,7 +458,7 @@ A _struct_ is a nominal struct type defined with the keyword `struct`.
 
 An example of a _struct_ module item and its use:
 
-```ry
+```stellar
 struct Point {
     x: int32,
     y: int32
@@ -475,7 +475,7 @@ fun main() {
 
 A tuple struct is a nominal tuple type, also defined with the keyword `struct`. For example:
 
-```ry
+```stellar
 struct Point(int32, int32) {
   fun new(x: int32, y: int32): Self {
     Self(x, y)
@@ -505,7 +505,7 @@ Enumerations are declared with the keyword `enum`.
 
 An example of an enum item and its use:
 
-```ry
+```stellar
 enum Animal {
     Dog,
     Cat
@@ -519,7 +519,7 @@ fun main() {
 
 Enum constructors can have either named or unnamed fields:
 
-```ry
+```stellar
 enum Animal {
     Dog(String, float64),
     Cat { name: String, weight: float64 },
@@ -546,7 +546,7 @@ enum Fieldless {
 > **NOTE**:
 > Enum items don't have visibilities!
 >
-> ```ry
+> ```stellar
 > pub enum Option[T] {
 >   pub None, // invalid
 >   Some(T),
@@ -565,7 +565,7 @@ Interfaces are declared with the keyword `interface`.
 Interface methods may omit the function body by replacing it with a semicolon. This indicates that the implementation must define the method's body.
 If the interface method defines a body, this definition acts as a default for any implementation which does not override it.
 
-```ry
+```stellar
 interface ToString {
     fun to_string(self): String;
 }
@@ -575,7 +575,7 @@ interface ToString {
 
 Type parameters can be specified for a interface to make it generic. These appear after the interface name, using the same syntax used in generic functions:
 
-```ry
+```stellar
 interface Iterator[T] {
     fun next(self): Option[T]
 }
@@ -591,21 +591,21 @@ The interface with a super interface is called a sub interface of its super inte
 
 The following is an example of declaring `Shape` to be a super interface of `Circle`.
 
-```ry
+```stellar
 interface Shape { fun area(self): float64; }
 interface Circle : Shape { fun radius(self): float64; }
 ```
 
 And the following is the same example, except using where clauses.
 
-```ry
+```stellar
 interface Shape { fun area(self): float64; }
 interface Circle where Self: Shape { fun radius(self): float64; }
 ```
 
 This next example gives radius a default implementation using the `area` function from `Shape`.
 
-```ry
+```stellar
 interface Circle where Self: Shape {
     fun radius(self): float64 {
         // A = pi * r^2
@@ -618,7 +618,7 @@ interface Circle where Self: Shape {
 
 This next example calls a super interface method on a generic parameter.
 
-```ry
+```stellar
 fun print_area_and_radius[C: Circle](c: C) {
     println(c.area());
     println(c.radius());
@@ -636,7 +636,7 @@ let nonsense = circle.radius() * circle.area();
 
 Function or method declarations without a body only allow identifier or `_` wild card patterns. All irrefutable patterns are allowed as long as there is a body:
 
-```ry
+```stellar
 interface T {
     fun f1((a, b): (int32, int32)) {}
     fun f2(_: (int32, int32));
@@ -648,7 +648,7 @@ interface T {
 
 All methods in public interface are public. All method in private interface are private! So `pub` in methods is invalid!
 
-```ry
+```stellar
 pub interface Foo {
     pub fun foo(); // invalid
 }
@@ -665,7 +665,7 @@ Imports are used to qualify long names from other modules, packages, etc.
 
 Examples:
 
-```ry
+```stellar
 import std.io;
 import std.fs as stdfs;
 ```
@@ -695,7 +695,7 @@ Any variables introduced by a variable declaration are visible from the point of
 
 The pattern inside the let statement must be **irrefutable**.
 
-```ry
+```stellar
 let [a, b] = [1, 2];
 let (a, b, _) = (1, 2, 3);
 let a = 3;
@@ -713,7 +713,7 @@ An expression statement is one that evaluates an expression and ignores its resu
 
 An expression that consists of only a block expression or control flow expression, if used in a context where a statement is permitted, can omit the trailing semicolon. This can cause an ambiguity between it being parsed as a standalone statement and as a part of another expression; in this case, it is parsed as a statement.
 
-```ry
+```stellar
 v.pop();
 
 if v.is_empty() {
@@ -727,7 +727,7 @@ if v.is_empty() {
 
 When the trailing semicolon is omitted, the result must be type `()`.
 
-```ry
+```stellar
 fun foo(): int32 {
     if true {
         1
@@ -745,7 +745,7 @@ DeferStatement = "defer" Expression ";" .
 
 Defer statements are used to defer the execution of a function until the end of the enclosing block scope and are denoted with the keyword `defer`:
 
-```ry
+```stellar
 defer file.close();
 defer { println("deferred") };
 ```
@@ -760,7 +760,7 @@ ReturnStatement = "return" Expression ";" .
 
 Return statements are denoted with the keyword `return`. Evaluating a return expression moves its argument into the designated output location for the current function call, destroys the current function activation frame, and transfers control to the caller frame:
 
-```ry
+```stellar
 fun factorial(n: uint32): uint32 {
     if n < 2 {
         1
@@ -778,7 +778,7 @@ BreakStatement = "break" ";" .
 
 Break statements are denoted with the keyword `break`. When break is encountered, execution of the associated loop body is immediately terminated, for example:
 
-```ry
+```stellar
 fun main() {
     let a = 3;
 
@@ -802,7 +802,7 @@ ContinueStatement = "continue" ";" .
 
 Continue statements are denoted with the keyword `continue`. When continue is encountered, the current iteration of the associated loop body is immediately terminated, returning control to the loop head. In the case of a while loop, the head is the conditional expression controlling the loop. In the case of a for loop, the head is the call-expression controlling the loop.
 
-```ry
+```stellar
 fun main() {
     let a = 0;
 
@@ -843,7 +843,7 @@ Statements      = [ Statement { "," Statement } [ "," ] ] .
 
 A block expression, or block, is a control flow expression and anonymous namespace scope for items and variable declarations. As a control flow expression, a block sequentially executes its component non-item declaration statements and then its final optional expression. As an anonymous namespace scope, variables declared by let statements are in scope from the next statement until the end of the block.
 
-```ry
+```stellar
 let a = {
   let b = 3;
   b++;
@@ -902,7 +902,7 @@ ListExpression = "[" [ Expression { "," Expression } [ "," ] ] "]" .
 
 List expressions construct lists. The syntax is a comma-separated list of expressions of uniform type enclosed in square brackets. This produces an list containing each of these values in the order they are written.
 
-```ry
+```stellar
 let x = [1, 2, 3];
 let y = ["a", "b", "c"];
 let empty = [];

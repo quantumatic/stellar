@@ -1,6 +1,6 @@
 {
 	"$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
-	"name": "Ry programming language",
+	"name": "Stellar programming language",
 	"patterns": [
 		{
 			"include": "#keywords"
@@ -8,46 +8,50 @@
 		{
 			"include": "#strings"
 		},
-        {
-            "include": "#numbers"
-        }
+		{
+			"include": "#numbers"
+		}
 	],
 	"repository": {
 		"keywords": {
-			"patterns": [{
-				"name": "keyword.control.ry",
-				"match": "\\b(if|else|while|return|fun|pub|struct|enum|impl|interface|import|var|defer)\\b"
-			},
-            {
-                "name": "storage.modifier",
-                "match": "\\b(i8|i16|i32|i64|u8|u16|u32|u64|f8|f16|f32|f64|as|string|char|some|none|ok|err|result|complex32|complex64)"
-            },
-            {
-                "name": "support.function.ry",
-                "match": "\\b[a-zA-Z_]\\w*(?=\\s*\\()"
-            }
-        ]},
+			"patterns": [
+				{
+					"name": "keyword.control.stellar",
+					"match": "\\b(if|else|while|return|fun|pub|struct|enum|impl|interface|import|var|defer)\\b"
+				},
+				{
+					"name": "storage.modifier",
+					"match": "\\b(i8|i16|i32|i64|u8|u16|u32|u64|f8|f16|f32|f64|as|string|char|some|none|ok|err|result|complex32|complex64)"
+				},
+				{
+					"name": "support.function.stellar",
+					"match": "\\b[a-zA-Z_]\\w*(?=\\s*\\()"
+				}
+			]
+		},
 		"strings": {
-			"name": "string.quoted.double.ry",
+			"name": "string.quoted.double.stellar",
 			"begin": "\"",
 			"end": "\"",
 			"patterns": [
 				{
-					"name": "constant.character.escape.ry",
+					"name": "constant.character.escape.stellar",
 					"match": "\\\\."
 				}
 			]
 		},
-        "numbers": {
-            "patterns": [{
-                "name": "constant.numeric",
-                "match": "\b(?:([1-9][0-9]*)|(0[0-7]*)|0x([0-9A-F]+)|0b([01]+))\b"
-            },
-            {
-                "name": "constant.numeric",
-                "match": "/^([-+]?\\d*\\.?\\d+)(?:[eE]([-+]?\\d+))?$/"
-            }
-        ]}
+		"numbers": {
+			"patterns": [
+				{
+					"name": "constant.numeric",
+					"match": "\b(?:([1-9][0-9]*)|(0[0-7]*)|0x([0-9A-F]+)|0b([01]+))\b"
+				},
+				{
+					"name": "constant.numeric",
+					"match": "/^([-+]?\\d*\\.?\\d+)(?:[eE]([-+]?\\d+))?$/"
+				}
+			]
+		}
 	},
-	"scopeName": "source.ry"
+	"scopeName": "source.stellar"
 }

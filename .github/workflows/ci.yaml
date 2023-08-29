@@ -10,7 +10,7 @@ permissions:
 
 env:
   CARGO_TERM_COLOR: always
-  RUSTFLAGS: "-D warnings"
+  RUSTFLAGS: '-D warnings'
   CARGO_INCREMENTAL: 0
   CARGO_PROFILE_DEV_DEBUG: 0
   CARGO_PROFILE_TEST_DEBUG: 0
@@ -74,11 +74,11 @@ jobs:
         with:
           key: v1-${{ matrix.target }}
 
-      - name: Install Ry
+      - name: Install Stellar
         uses: actions-rs/cargo@v1
         with:
           command: install
-          args: "--path crates/ry --target ${{ matrix.target }} --debug --locked"
+          args: '--path crates/stellar --target ${{ matrix.target }} --debug --locked'
           use-cross: ${{ matrix.use-cross }}
         if: ${{ matrix.run-integration-tests }}
 
@@ -86,7 +86,7 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: test
-          args: "--workspace --target ${{ matrix.target }}"
+          args: '--workspace --target ${{ matrix.target }}'
           use-cross: ${{ matrix.use-cross }}
 
   rustfmt:
@@ -137,7 +137,6 @@ jobs:
         with:
           command: sort
           args: --check --workspace
-
 
   validate-deps:
     name: validate-deps

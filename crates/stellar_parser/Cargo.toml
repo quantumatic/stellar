@@ -1,0 +1,20 @@
+[package]
+name = "stellar_parser"
+version = "0.1.0"
+edition = "2021"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/quantumatic/stellar"
+authors = ["Adi Salimgereyev <adisalimgereev@gmail.com>"]
+readme = "../../README.md"
+description = "Implements syntax parser for the Stellar programming language."
+
+[dependencies]
+parking_lot = "0.12.1"
+stellar_ast = { path = "../stellar_ast" }
+stellar_diagnostics = { path = "../stellar_diagnostics" }
+stellar_english_commons = { path = "../stellar_english_commons" }
+stellar_filesystem = { path = "../stellar_filesystem" }
+stellar_interner = { path = "../stellar_interner" }
+stellar_lexer = { path = "../stellar_lexer" }
+stellar_stable_likely = { path = "../stellar_stable_likely" }
+tracing = "0.1.29"

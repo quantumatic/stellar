@@ -2,21 +2,21 @@ An open source programming language for web development with expressive type sys
 
 # Structure of the source code
 
-Ry source code is divided into several crates:
+Stellar source code is divided into several crates:
 
-- `ry` - CLI.
-- `ry_ast` - Defines AST nodes, token struct, implements AST serialization.
-- `ry_ast_lowering` - Implements lowering AST to HIR.
-- `ry_diagnostics` - Implements beautiful diagnostics emittion.
-- `ry_filesystem` - Implements some utility functions for easier work with the OS and in-memory filesystem.
-- `ry_fx_hash` - Implements fx hash algorithm and defines `FxHashMap` and `FxHashSet`.
-- `ry_hir` - Defines HIR nodes.
-- `ry_interner` - Implements different strings interners.
-- `ry_lexer` - Implements the lexer.
-- `ry_llvm_codegen` - Implements the code generation.
-- `ry_manifest` - Implements the toml manifest parser.
-- `ry_name_resolution` - Implements name resolution.
-- `ry_parser` - Implements the parser.
-- `ry_stable_likely` - Brings likely and unlikely intrinsics to stable Rust.
-- `ry_thir` - Defines typed HIR nodes.
-- `ry_typechecker` - Implements type checking.
+- `stellar` - CLI.
+- `stellar_ast` - Defines AST nodes, token struct, implements AST serialization.
+- `stellar_ast_lowering` - Implements lowering AST to HIR.
+- `stellar_diagnostics` - Implements beautiful diagnostics emittion.
+- `stellar_filesystem` - Implements some utility functions for easier work with the OS and in-memory filesystem.
+- `stellar_fx_hash` - Implements fx hash algorithm and defines `FxHashMap` and `FxHashSet`.
+- `stellar_hir` - Defines HIR nodes.
+- `stellar_interner` - Implements different strings interners.
+- `stellar_lexer` - Implements the lexer.
+- `stellar_llvm_codegen` - Implements the code generation.
+- `stellar_manifest` - Implements the toml manifest parser.
+- `stellar_name_resolution` - Implements name resolution.
+- `stellar_parser` - Implements the parser.
+- `stellar_stable_likely` - Brings likely and unlikely intrinsics to stable Rust.
+- `stellar_thir` - Defines typed HIR nodes.
+- `stellar_typechecker` - Implements type checking.

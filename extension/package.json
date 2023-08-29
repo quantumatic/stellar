@@ -1,7 +1,7 @@
 {
-  "name": "ry",
-  "displayName": "Ry",
-  "description": "Ry programming language",
+  "name": "stellar",
+  "displayName": "Stellar",
+  "description": "Stellar programming language",
   "version": "0.0.1",
   "engines": {
     "vscode": "^1.76.0"
@@ -10,16 +10,25 @@
     "Programming Languages"
   ],
   "contributes": {
-    "languages": [{
-      "id": "ry",
-      "aliases": ["Ry programming language", "ry"],
-      "extensions": [".ry"],
-      "configuration": "./language-configuration.json"
-    }],
-    "grammars": [{
-      "language": "ry",
-      "scopeName": "source.ry",
-      "path": "./syntaxes/ry.tmLanguage.json"
-    }]
+    "languages": [
+      {
+        "id": "stellar",
+        "aliases": [
+          "Stellar programming language",
+          "stellar"
+        ],
+        "extensions": [
+          ".stellar"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "stellar",
+        "scopeName": "source.stellar",
+        "path": "./syntaxes/stellar.tmLanguage.json"
+      }
+    ]
   }
 }

@@ -2,30 +2,28 @@
 <img width="80%" src="./additional/icon/banner.png">
 </p>
 
-Ry is an attempt of a [teenager](https://github.com/abs0luty) to create his own programming language and write its compiler in Rust. You can view it as a toy project. I view it as a showcase of what can a single young developer achieve if he is passionate about it!
+Stellar is an attempt of a [teenager](https://github.com/abs0luty) to create his own programming language and write its compiler in Rust. You can view it as a toy project. I view it as a showcase of what can a single young developer achieve if he is passionate about it!
 
 <p align="center">
 <details>
   <summary>We're on Discord and Telegram!</summary>
-  We have a <a href="https://discord.gg/re29xvSV2">Discord server</a> and a <a href="https://t.me/ry_lang">Telegram group</a>.
+  We have a <a href="https://discord.gg/re29xvSV2">Discord server</a> and a <a href="https://t.me/stellar_lang">Telegram group</a>.
 </details>
 </p>
 
-Table of contents
-=================
+# Table of contents
 
 <!--ts-->
+
 - [Introduction](#introduction)
 - [Installation](#installation)
 - [Overview](#overview)
 - [Roadmap](#roadmap)
 <!--te-->
 
+# Introduction
 
-Introduction
-=================
-
-Ry is an open source programming language for web development with expressive type system and easy-to-learn syntax that makes it easy to build reliable and efficient software.
+Stellar is an open source programming language for web development with expressive type system and easy-to-learn syntax that makes it easy to build reliable and efficient software.
 
 Example of hello world program:
 
@@ -35,23 +33,21 @@ pub fun main() {
 }
 ```
 
-Installation
-=================
+# Installation
 
 ## Compiling from source code
 
 You need to have Rust installed on your system. Then run:
 
 ```
-cargo install --path crates/ry
+cargo install --path crates/stellar
 ```
 
-Overview
-=================
+# Overview
 
 ## Pattern matching
 
-Ry supports matching patterns by having a `match` expression:
+Stellar supports matching patterns by having a `match` expression:
 
 ```
 match tuple {
@@ -81,7 +77,7 @@ let Person {
 
 ## Everything is expression
 
-Ry follows "everything is expression" philosophy. So `if`, `match`, `while`, etc. are expressions:
+Stellar follows "everything is expression" philosophy. So `if`, `match`, `while`, etc. are expressions:
 
 ```
 fun factorial(n: uint32): uint32 {
@@ -93,7 +89,7 @@ fun factorial(n: uint32): uint32 {
 }
 ```
 
-Ry supports function types:
+Stellar supports function types:
 
 ```
 fun do_stuff_with(a: uint32, b: uint32, fn: fun (uint32, uint32)) {
@@ -146,7 +142,7 @@ fun main() {
 }
 ```
 
-Ry also supports tuple-like struct types and enum items:
+Stellar also supports tuple-like struct types and enum items:
 
 ```
 pub struct MyStringWrapper(pub String);
@@ -159,45 +155,43 @@ let MyStringWrapper(str) = wrapper;
 println(str);
 ```
 
+# Roadmap
 
-Roadmap
-=================
-
-![roadmap](https://github.com/quantumatic/ry/assets/68709264/21e8b205-57b2-46d9-b82f-c3a0be30a55a)
+![roadmap](https://github.com/quantumatic/stellar/assets/68709264/21e8b205-57b2-46d9-b82f-c3a0be30a55a)
 
 ## 0.1.0
 
-* No runtime yet (no gc and async)
-* Simple Cranelift codegen
-* No standard library
-* No package managment
-* No documentation generation
+- No runtime yet (no gc and async)
+- Simple Cranelift codegen
+- No standard library
+- No package managment
+- No documentation generation
 
 ## 0.2.0
 
-* Official website
-* Package manager backend
-* Package manager website
-* Package manager client in the compiler
-* Caching results of type checking and compilation in a compiler
-* Documentation generation
-* GC
+- Official website
+- Package manager backend
+- Package manager website
+- Package manager client in the compiler
+- Caching results of type checking and compilation in a compiler
+- Documentation generation
+- GC
 
 ## 0.3.0
 
-* LLVM codegen
+- LLVM codegen
 
 ## 0.4.0
 
-* Official docker image
-* Start of the Standard library
-* LSP server written in Rust
-* LSP client for neovim and vscode (for a while)
+- Official docker image
+- Start of the Standard library
+- LSP server written in Rust
+- LSP client for neovim and vscode (for a while)
 
 ## 0.5.0
 
-* Async runtime and more builtin types into a compiler
-* More improvements into standart library
+- Async runtime and more builtin types into a compiler
+- More improvements into standart library
 
 ## 0.6.0 - 0.29.9
 
@@ -206,5 +200,3 @@ Small pathway into the release stage! A lot of stuff like metaprogramming, optim
 ## 1.0.0
 
 Release (4-5 are required years to achieve that!)
-
-

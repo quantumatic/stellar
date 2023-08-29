@@ -1,0 +1,25 @@
+[package]
+name = "stellar_typechecker"
+version = "0.1.0"
+edition = "2021"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/quantumatic/stellar"
+authors = ["Adi Salimgereyev <adisalimgereev@gmail.com>"]
+readme = "../../README.md"
+description = "Implements type checking compilation stage for the Stellar programming language."
+
+[dependencies]
+derive_more = "0.99.17"
+itertools = "0.11.0"
+parking_lot = "0.12.1"
+stellar_ast = { path = "../stellar_ast" }
+stellar_ast_lowering = { path = "../stellar_ast_lowering" }
+stellar_diagnostics = { path = "../stellar_diagnostics" }
+stellar_filesystem = { path = "../stellar_filesystem" }
+stellar_fx_hash = { path = "../stellar_fx_hash" }
+stellar_hir = { path = "../stellar_hir" }
+stellar_interner = { path = "../stellar_interner" }
+stellar_name_resolution = { path = "../stellar_name_resolution" }
+stellar_parser = { path = "../stellar_parser" }
+stellar_stable_likely = { path = "../stellar_stable_likely" }
+stellar_thir = { path = "../stellar_thir" }

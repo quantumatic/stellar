@@ -1,0 +1,14 @@
+[package]
+name = "stellar_english_commons"
+version = "0.1.0"
+edition = "2021"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/quantumatic/stellar"
+authors = ["Adi Salimgereyev <adisalimgereev@gmail.com>"]
+readme = "../../README.md"
+description = "Implements some utility functions for working with english grammar rules in diagnostics and more."
+
+[dependencies]
+once_cell = "1.18.0"
+stellar_fx_hash = { path = "../stellar_fx_hash" }
+stellar_stable_likely = { path = "../stellar_stable_likely" }

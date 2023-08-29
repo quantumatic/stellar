@@ -1,1 +1,1 @@
-# Ry language support for VSCode.
+# Stellar language support for VSCode.
