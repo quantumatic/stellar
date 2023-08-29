@@ -2,8 +2,10 @@
     <img width="40%" src="../additional/icon/banner.png">
 </p>
 
+# Table of contents
+
 <table>
-<tr><td width=50% valign=top>
+<tr><td width=33%  valign=top>
 
 - [Introduction](#introduction)
 - [Notation](#notation)
@@ -24,7 +26,7 @@
     - [Function parameters](#function-parameters)
     - [Generic functions](#generic-functions)
   - [Struct](#struct)
-  - [Enumeration](#enumeration)
+  - [Enumerations](#enumerations)
   - [Interfaces](#interfaces)
     - [Generic interfaces](#generic-interfaces)
     - [Super interfaces](#super-interfaces)
@@ -32,7 +34,7 @@
     - [Method visibility](#method-visibility)
   - [Imports](#imports)
 
-</td><td width=50% valign=top>
+</td><td width=33%  valign=top>
 
 - [Expressions and statements](#statements-and-expressions)
   - [Statements](#statements)
@@ -64,11 +66,39 @@
     - Underscore expressions
     - Lambda expressions
 
-</td></tr>
-<tr><td width=50% valign=top>
+</td><td width=33%  valign=top>
 
-</td><td width=50% valign=top>
-
+- Patterns
+  - Literal patterns
+  - Identifier patterns
+  - Wildcard patterns
+  - Rest patterns
+  - Struct patterns
+  - Tuple patterns
+  - List patterns
+  - Grouped patterns
+  - Path patterns
+- Type system
+  - Types
+    - Boolean type
+    - Numeric types
+    - String type
+    - Never type
+    - Tuple types
+    - List types
+    - Struct types
+    - Enumerated types
+    - Function types
+    - Interface object types
+    - Underscore type
+  - Type layout
+  - Predicates
+- Names
+  - Namespaces
+  - Scopes
+  - Path
+  - Visibility
+  
 </td></tr>
 </table>
 
