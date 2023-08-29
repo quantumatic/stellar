@@ -12,9 +12,9 @@ description = "Defines AST for the Stellar programming language."
 colorize = "0.1.0"
 derive_more = "0.99.17"
 phf = { version = "0.11.1", features = ["macros"] }
+serde = { version = "1.0.183", features = ["derive"], optional = true }
 stellar_filesystem = { path = "../stellar_filesystem" }
 stellar_interner = { path = "../stellar_interner" }
-serde = { version = "1.0.183", features = ["derive"], optional = true }
 
 [features]
 serde = ["dep:serde", "stellar_filesystem/serde"]

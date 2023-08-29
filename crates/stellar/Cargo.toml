@@ -12,6 +12,8 @@ description = "Implements CLI for the Stellar programming language."
 clap = { version = "4.1.4", features = ["derive"] }
 leftpad-str = "9.9.9"
 parking_lot = "0.12.1"
+serde = { version = "1.0.160", features = ["derive"] }
+serde_json = "1.0.96"
 stellar_ast = { path = "../stellar_ast" }
 stellar_ast_lowering = { path = "../stellar_ast_lowering" }
 stellar_diagnostics = { path = "../stellar_diagnostics" }
@@ -22,8 +24,6 @@ stellar_interner = { path = "../stellar_interner" }
 stellar_lexer = { path = "../stellar_lexer" }
 stellar_manifest = { path = "../stellar_manifest" }
 stellar_parser = { path = "../stellar_parser" }
-serde = { version = "1.0.160", features = ["derive"] }
-serde_json = "1.0.96"
 termcolor = "1.2.0"
 tracing-subscriber = { version = "0.3.2", features = ["fmt", "env-filter"] }
 

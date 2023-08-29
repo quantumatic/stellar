@@ -9,10 +9,10 @@ readme = "../../README.md"
 description = "Implements diagnostics for the Stellar programming language."
 
 [dependencies]
+serde = { version = "1.0.183", optional = true, features = ["derive"] }
 stellar_filesystem = { path = "../stellar_filesystem" }
 stellar_fx_hash = { path = "../stellar_fx_hash" }
 stellar_interner = { path = "../stellar_interner" }
-serde = { version = "1.0.183", optional = true, features = ["derive"] }
 termcolor = "1.2.0"
 unicode-width = "0.1.10"
 

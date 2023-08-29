@@ -12,8 +12,8 @@ description = "Implements identifier interner for the Stellar programming langua
 derive_more = "0.99.17"
 hashbrown = "0.14.0"
 itertools = { version = "0.11.0", optional = true }
-stellar_fx_hash = { path = "../stellar_fx_hash" }
 serde = { version = "1.0.183", features = ["derive"], optional = true }
+stellar_fx_hash = { path = "../stellar_fx_hash" }
 
 [features]
 serde = ["dep:serde"]

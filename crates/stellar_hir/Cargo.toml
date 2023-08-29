@@ -9,10 +9,10 @@ readme = "../../README.md"
 description = "Defines HIR for the Stellar programming language."
 
 [dependencies]
+serde = { version = "1.0.183", features = ["derive"], optional = true }
 stellar_ast = { path = "../stellar_ast" }
 stellar_filesystem = { path = "../stellar_filesystem" }
 stellar_interner = { path = "../stellar_interner" }
-serde = { version = "1.0.183", features = ["derive"], optional = true }
 
 [features]
 serde = ["dep:serde", "stellar_ast/serde"]
