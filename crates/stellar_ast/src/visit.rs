@@ -260,8 +260,9 @@ pub trait Visitor {
             }
             Pattern::Literal(literal) => self.visit_literal_pattern(literal),
             Pattern::NegativeNumericLiteral(minus_number_literal) => {
-                self.visit_minus_number_literal_pattern(minus_number_literal)
+                self.visit_minus_number_literal_pattern(minus_number_literal);
             }
+
             Pattern::Or {
                 location,
                 left,
