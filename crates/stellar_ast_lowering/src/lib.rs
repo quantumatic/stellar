@@ -306,8 +306,10 @@ impl<'d> LoweringContext<'d> {
 
     fn lower_pattern(&mut self, ast: stellar_ast::Pattern) -> stellar_hir::Pattern {
         match ast {
-            stellar_ast::Pattern::Grouped { location, inner } => {
-                self.add_diagnostic(UnnecessaryGroupedPattern::new(location));
+            stellar_ast::Pattern::Grouped { inner, .. } => {
+                if let stellar_ast::Pattern::Grouped { location, .. } = *inner {
+                    self.add_diagnostic(UnnecessaryGroupedPattern::new(location));
+                }
 
                 self.lower_pattern(*inner)
             }

@@ -63,14 +63,14 @@
   - [Wildcard patterns](#wildcard-patterns)
   - [Rest patterns](#rest-patterns)
   - [Struct patterns](#struct-patterns)
-  - Tuple patterns
+  - [Tuple patterns](#tuple-patterns)
   - Tuple struct patterns
   - List patterns
-  - Grouped patterns
+  - [Grouped patterns](#grouped-patterns)
   - Path patterns
-- Type system
-  - Types
-    - Boolean type
+- [Type system](#type-system)
+  - [Types](#types)
+    - [Boolean type](#boolean-type)
     - Numeric types
     - String type
     - Never type
@@ -1085,9 +1085,9 @@ let a = 0;
 (_, a) = p;
 ```
 
-## Patterns
+# Patterns
 
-### Literal patterns
+## Literal patterns
 
 ```ebnf
 LiteralPattern = Literal | "-" float_lit | "-" int_lit .
@@ -1111,7 +1111,7 @@ match a {
 }
 ```
 
-### Identifier patterns
+## Identifier patterns
 
 ```ebnf
 IdentifierPattern = identifier [ "@" Pattern ] .
@@ -1131,7 +1131,7 @@ match x {
 }
 ```
 
-### Wildcard patterns
+## Wildcard patterns
 
 ```ebnf
 WildcardPattern = "_" .
@@ -1149,7 +1149,7 @@ let real_part = |r: f64, _: f64| { r };
 let RGBA { r: red, g: green, b: blue, a: _ } = color;
 ```
 
-### Rest patterns
+## Rest patterns
 
 ```ebnf
 RestPattern = ".." .
@@ -1165,7 +1165,7 @@ match list {
 }
 ```
 
-### Struct patterns
+## Struct patterns
 
 ```ebnf
 StructPattern      = Path "[" GenericArguments "]"
@@ -1186,7 +1186,7 @@ match s {
 }
 ```
 
-### Tuple patterns
+## Tuple patterns
 
 ```ebnf
 TuplePattern = "(" RestPattern ")"
@@ -1205,3 +1205,126 @@ The tuple pattern is refutable when one of its subpatterns is refutable.
 let pair = (10, "ten");
 let (a, b) = pair;
 ```
+
+## Grouped patterns
+
+```ebnf
+GroupedPattern = "(" Pattern ")" .
+```
+
+Enclosing a pattern in parentheses can be used to explicitly control the precedence of compound patterns.
+
+```stellar
+match a {
+    a @ b | a @ c -> (), // same as @ (b | a @ c)
+    (a @ b) | a @ c -> ()
+    _ -> (),
+}
+```
+
+# Type system
+
+## Types
+
+### Boolean type
+
+```stellar
+let b: bool = true;
+```
+
+The boolean type or bool is a primitive data type that can take on one of two values, called `true` and `false`.
+
+Values of this type may be created using a literal expression using the keywords `true` and `false` corresponding to the value of the same name.
+
+#### Operations on boolean values
+
+##### Logical not
+
+| `b`     | `!b`    |
+| ------- | ------- |
+| `true`  | `false` |
+| `false` | `true`  |
+
+#### Logical or
+
+| `a`     | `b`     | `a | b` |
+| ------- | ------- | ------- |
+| `true`  | `true`  | `true`  |
+| `true`  | `false` | `true`  |
+| `false` | `true`  | `true`  |
+| `false` | `false` | `false` |
+
+#### Logical and
+
+| `a`     | `b`     | `a & b` |
+| ------- | ------- | ------- |
+| `true`  | `true`  | `true`  |
+| `true`  | `false` | `false` |
+| `false` | `true`  | `false` |
+| `false` | `false` | `false` |
+
+#### Logical xor
+
+| `a`     | `b`     | `a ^ b` |
+| ------- | ------- | ------- |
+| `true`  | `true`  | `false` |
+| `true`  | `false` | `true`  |
+| `false` | `true`  | `true`  |
+| `false` | `false` | `false` |
+
+#### Comparisons
+
+| `a`     | `b`     | `a == b` |
+| ------- | ------- | -------- |
+| `true`  | `true`  | `true`   |
+| `true`  | `false` | `false`  |
+| `false` | `true`  | `false`  |
+| `false` | `false` | `true`   |
+
+| `a`     | `b`     | `a > b` |
+| ------- | ------- | ------- |
+| `true`  | `true`  | `false` |
+| `true`  | `false` | `true`  |
+| `false` | `true`  | `false` |
+| `false` | `false` | `false` |
+
+- `a != b` is the same as `!(a == b)`
+- `a >= b` is the same as `a == b | a > b`
+- `a < b` is the same as `!(a >= b)`
+- `a <= b` is the same as `a == b | a < b`
+
+### Numeric types
+
+#### Integers
+
+The unsigned integer types consist of:
+
+| Type      | Size in bytes | Minimum value | Maximum value       |
+| --------- | ------------- | ------------- | ------------------- |
+| `uint8`   | 1             | 0             | 2<sup>8</sup> - 1   |
+| `uint16`  | 2             | 0             | 2<sup>16</sup> - 1  |
+| `uint32`  | 4             | 0             | 2<sup>32</sup> - 1  |
+| `uint64`  | 8             | 0             | 2<sup>64</sup> - 1  |
+| `uint128` | 16            | 0             | 2<sup>128</sup> - 1 |
+
+The signed two's complement integer types consist of:
+
+| Type     | Size in bytes | Minimum value    | Maximum value       |
+| -------- | ------------- | ---------------- | ------------------- |
+| `int8`   | 1             | -2<sup>7</sup>   | 2<sup>7</sup> - 1   |
+| `int16`  | 2             | -2<sup>15</sup>  | 2<sup>15</sup> - 1  |
+| `int32`  | 4             | -2<sup>31</sup>  | 2<sup>31</sup> - 1  |
+| `int64`  | 8             | -2<sup>63</sup>  | 2<sup>63</sup> - 1  |
+| `int128` | 16            | -2<sup>127</sup> | 2<sup>127</sup> - 1 |
+
+#### Floating-point types
+
+The IEEE 754-2008 "binary32" and "binary64" floating-point types are `float32` and `float64`, respectively.
+
+#### Machine-dependent types
+
+The `usize` type is an unsigned integer type with the same number of bits as the platform's pointer type. It can represent every memory address in the process.
+
+The `isize` type is a signed integer type with the same number of bits as the platform's pointer type. The theoretical upper bound on object and array size is the maximum `isize` value. This ensures that `isize` can be used to calculate differences between pointers into an object or array and can address every byte within an object along with one byte past the end.
+
+`usize` and `isize` are **at least** 16-bits wide.

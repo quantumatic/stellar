@@ -388,6 +388,12 @@ impl Pattern {
     pub const fn is_rest(&self) -> bool {
         matches!(self, Self::Rest { .. })
     }
+
+    #[inline(always)]
+    #[must_use]
+    pub const fn is_grouped(&self) -> bool {
+        matches!(self, Self::Grouped { .. })
+    }
 }
 
 /// A pattern used to match a struct field, e.g. `citizenship: "USA"`, `name` and `..` in
