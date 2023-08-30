@@ -75,8 +75,7 @@ use itertools::traits::HomogeneousTuple;
 #[cfg(feature = "tuples")]
 use itertools::Itertools;
 #[cfg(feature = "serde")]
-use serde::{Deserialize, Serialize};
-use serde::{Deserializer, Serializer};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 extern crate alloc;
 
@@ -85,7 +84,7 @@ use alloc::{string::String, vec::Vec};
 use derive_more::Display;
 use hashbrown::{hash_map::RawEntryMut, HashMap};
 use lazy_static::lazy_static;
-use parking_lot::Mutex;
+use parking_lot::RwLock;
 use stellar_fx_hash::FxHasher;
 
 /// Represents unique symbol corresponding to some interned identifier.
@@ -97,21 +96,21 @@ impl IdentifierID {
     #[inline(always)]
     #[must_use]
     pub fn from(string: impl AsRef<str>) -> Self {
-        IDENTIFIER_INTERNER.lock().get_or_intern(string)
+        IDENTIFIER_INTERNER.write().get_or_intern(string)
     }
 
     /// Gets the interned string by ID.
     #[inline(always)]
     #[must_use]
     pub fn resolve_or_panic(self) -> String {
-        IDENTIFIER_INTERNER.lock().resolved_owned_or_panic(self)
+        IDENTIFIER_INTERNER.read().resolved_owned_or_panic(self)
     }
 
     /// Gets the interned string by ID.
     #[inline(always)]
     #[must_use]
     pub fn resolve(self) -> Option<String> {
-        IDENTIFIER_INTERNER.lock().resolve_owned(self)
+        IDENTIFIER_INTERNER.read().resolve_owned(self)
     }
 }
 
@@ -119,7 +118,7 @@ impl FromStr for IdentifierID {
     type Err = ();
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Ok(IDENTIFIER_INTERNER.lock().get_or_intern(s))
+        Ok(Self::from(s))
     }
 }
 
@@ -520,8 +519,8 @@ struct Span {
 pub struct IdentifierInterner(Interner<IdentifierID>);
 
 lazy_static! {
-    static ref IDENTIFIER_INTERNER: Mutex<IdentifierInterner> =
-        Mutex::new(IdentifierInterner::new());
+    static ref IDENTIFIER_INTERNER: RwLock<IdentifierInterner> =
+        RwLock::new(IdentifierInterner::new());
 }
 
 macro_rules! define_builtin_identifiers {
@@ -677,7 +676,7 @@ impl IdentifierInterner {
 pub struct PathInterner(Interner<PathID>);
 
 lazy_static! {
-    static ref PATH_INTERNER: Mutex<PathInterner> = Mutex::new(PathInterner::new());
+    static ref PATH_INTERNER: RwLock<PathInterner> = RwLock::new(PathInterner::new());
 }
 
 /// ID of a path in the [`PathInterner`].
@@ -689,21 +688,21 @@ impl PathID {
     #[inline(always)]
     #[must_use]
     pub fn from(path: impl AsRef<Path>) -> Self {
-        PATH_INTERNER.lock().get_or_intern(path)
+        PATH_INTERNER.write().get_or_intern(path)
     }
 
     /// Resolves the given path by ID.
     #[inline(always)]
     #[must_use]
     pub fn resolve(self) -> Option<PathBuf> {
-        PATH_INTERNER.lock().resolve_owned(self)
+        PATH_INTERNER.read().resolve_owned(self)
     }
 
     /// Resolves the given path by ID.
     #[inline(always)]
     #[must_use]
     pub fn resolve_or_panic(self) -> PathBuf {
-        PATH_INTERNER.lock().resolve_owned_or_panic(self)
+        PATH_INTERNER.read().resolve_owned_or_panic(self)
     }
 }
 

@@ -15,7 +15,7 @@ use stellar_interner::PathID;
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct Location {
     /// ID of the source file.
-    pub file_path_id: PathID,
+    pub filepath_id: PathID,
 
     /// Offset of starting byte in the source text.
     pub start: ByteOffset,
@@ -99,7 +99,7 @@ impl ByteOffset {
     #[must_use]
     pub const fn next_byte_location_at(self, file_path_id: PathID) -> Location {
         Location {
-            file_path_id,
+            filepath_id: file_path_id,
             start: self,
             end: Self(self.0 + 1),
         }
@@ -110,7 +110,7 @@ impl ByteOffset {
     #[must_use]
     pub const fn previous_byte_location_at(self, file_path_id: PathID) -> Location {
         Location {
-            file_path_id,
+            filepath_id: file_path_id,
             start: Self(self.0 - 1),
             end: self,
         }
@@ -124,7 +124,7 @@ impl ByteOffset {
 /// because this can result in undefined behavior with diagnostics and
 /// debug information!
 pub const DUMMY_LOCATION: Location = Location {
-    file_path_id: PathID(0),
+    filepath_id: PathID(0),
     start: ByteOffset(0),
     end: ByteOffset(0),
 };
@@ -160,7 +160,7 @@ impl Location {
     #[inline(always)]
     #[must_use]
     pub const fn start_byte_location(self) -> Self {
-        self.start.next_byte_location_at(self.file_path_id)
+        self.start.next_byte_location_at(self.filepath_id)
     }
 
     /// Returns location of the last byte corresponding to the
@@ -187,7 +187,7 @@ impl Location {
     #[inline(always)]
     #[must_use]
     pub const fn end_byte_location(self) -> Self {
-        self.end.previous_byte_location_at(self.file_path_id)
+        self.end.previous_byte_location_at(self.filepath_id)
     }
 }
 

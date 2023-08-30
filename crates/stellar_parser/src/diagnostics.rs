@@ -74,7 +74,7 @@ define_diagnostics! {
         code { "E001" }
         message { format!("expected {}, found {}", self.expected, self.got.raw) }
         labels {
-            primary self.offset.next_byte_location_at(self.got.location.file_path_id) => {
+            primary self.offset.next_byte_location_at(self.got.location.filepath_id) => {
                 format!("expected {}", self.expected)
             },
             secondary self.got.location => { "unexpected token" }

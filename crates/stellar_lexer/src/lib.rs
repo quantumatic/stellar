@@ -227,7 +227,7 @@ impl<'s> Lexer<'s> {
     /// and with the lexer's currently processed file path id.
     const fn make_location(&self, start: ByteOffset, end: ByteOffset) -> Location {
         Location {
-            file_path_id: self.filepath,
+            filepath_id: self.filepath,
             start,
             end,
         }

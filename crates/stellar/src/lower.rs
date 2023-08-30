@@ -30,7 +30,7 @@ pub fn command(filepath: &str) {
 
             now = Instant::now();
 
-            let hir = ast.lower(path_id, &diagnostics);
+            let hir = ast.lower(&diagnostics);
 
             log_with_left_padded_prefix("Lowered", format!("in {}s", now.elapsed().as_secs_f64()));
 

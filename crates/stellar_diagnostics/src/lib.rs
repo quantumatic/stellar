@@ -407,11 +407,11 @@ pub trait LocationExt {
 impl LocationExt for Location {
     #[inline(always)]
     fn to_primary_label(self) -> Label<PathID> {
-        Label::primary(self.file_path_id, self)
+        Label::primary(self.filepath_id, self)
     }
 
     #[inline(always)]
     fn to_secondary_label(self) -> Label<PathID> {
-        Label::secondary(self.file_path_id, self)
+        Label::secondary(self.filepath_id, self)
     }
 }

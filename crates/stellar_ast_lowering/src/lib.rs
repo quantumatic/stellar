@@ -23,13 +23,13 @@ mod diagnostics;
 pub trait LowerExt {
     /// Converts a given AST into HIR.
     #[must_use]
-    fn lower(self, file_path_id: PathID, diagnostics: &RwLock<Diagnostics>) -> stellar_hir::Module;
+    fn lower(self, diagnostics: &RwLock<Diagnostics>) -> stellar_hir::Module;
 }
 
 impl LowerExt for stellar_ast::Module {
     #[inline(always)]
-    fn lower(self, file_path_id: PathID, diagnostics: &RwLock<Diagnostics>) -> stellar_hir::Module {
-        LoweringContext::new(file_path_id, diagnostics).lower(self)
+    fn lower(self, diagnostics: &RwLock<Diagnostics>) -> stellar_hir::Module {
+        LoweringContext::new(self.filepath, diagnostics).lower(self)
     }
 }
 
@@ -38,7 +38,7 @@ impl LowerExt for stellar_ast::Module {
 /// See [crate-level docs](crate) for more details.
 #[derive(Debug, Clone, Copy)]
 struct LoweringContext<'d> {
-    file_path_id: PathID,
+    filepath_id: PathID,
     diagnostics: &'d RwLock<Diagnostics>,
 }
 
@@ -46,9 +46,9 @@ impl<'d> LoweringContext<'d> {
     /// Creates a new lowering context.
     #[inline(always)]
     #[must_use]
-    const fn new(file_path_id: PathID, diagnostics: &'d RwLock<Diagnostics>) -> Self {
+    const fn new(filepath_id: PathID, diagnostics: &'d RwLock<Diagnostics>) -> Self {
         Self {
-            file_path_id,
+            filepath_id,
             diagnostics,
         }
     }
@@ -57,12 +57,12 @@ impl<'d> LoweringContext<'d> {
     fn add_diagnostic(&mut self, diagnostic: impl BuildDiagnostic) {
         self.diagnostics
             .write()
-            .add_single_file_diagnostic(self.file_path_id, diagnostic);
+            .add_single_file_diagnostic(self.filepath_id, diagnostic);
     }
 
     /// Converts a given AST into HIR.
     #[must_use]
-    pub fn lower(&mut self, ast: stellar_ast::Module) -> stellar_hir::Module {
+    fn lower(&mut self, ast: stellar_ast::Module) -> stellar_hir::Module {
         let mut lowered = stellar_hir::Module {
             filepath: ast.filepath,
             items: vec![],
@@ -77,7 +77,7 @@ impl<'d> LoweringContext<'d> {
     }
 
     /// Converts a given module item AST into HIR.
-    pub fn lower_module_item(&mut self, ast: stellar_ast::ModuleItem) -> stellar_hir::ModuleItem {
+    fn lower_module_item(&mut self, ast: stellar_ast::ModuleItem) -> stellar_hir::ModuleItem {
         match ast {
             stellar_ast::ModuleItem::Enum(stellar_ast::Enum {
                 visibility,

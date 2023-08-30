@@ -375,7 +375,7 @@ impl<'s, 'd> ParseState<'s, 'd> {
     #[inline(always)]
     pub(crate) const fn make_location(&self, start: ByteOffset, end: ByteOffset) -> Location {
         Location {
-            file_path_id: self.lexer.filepath,
+            filepath_id: self.lexer.filepath,
             start,
             end,
         }
