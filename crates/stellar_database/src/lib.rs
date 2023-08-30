@@ -422,6 +422,8 @@ macro_rules! db_methods {
         $(
             paste! {
                 #[doc = "Returns an immutable reference to " $what " data by its ID."]
+                #[doc = ""]
+                #[doc = "_This function is automatically generated using a macro!_"]
                 #[inline(always)]
                 #[must_use]
                 pub fn [<get_ $what>](&self, id: $id_ty) -> Option<&$data_ty> {
@@ -429,6 +431,8 @@ macro_rules! db_methods {
                 }
 
                 #[doc = "Returns a mutable reference to " $what " data by its ID."]
+                #[doc = ""]
+                #[doc = "_This function is automatically generated using a macro!_"]
                 #[inline(always)]
                 #[must_use]
                 pub fn [<get_ $what _mut>](&mut self, id: $id_ty) -> Option<&mut $data_ty> {
@@ -438,6 +442,8 @@ macro_rules! db_methods {
                 #[doc = "Returns an immutable reference to " $what " data by its ID."]
                 #[doc = "# Panics"]
                 #[doc = "Panics if " $what " with the given ID is not present in the database storage."]
+                #[doc = ""]
+                #[doc = "_This function is automatically generated using a macro!_"]
                 #[inline(always)]
                 #[must_use]
                 pub fn [<get_ $what _or_panic>](&self, id: $id_ty) -> &$data_ty {
@@ -447,6 +453,8 @@ macro_rules! db_methods {
                 #[doc = "Returns a mutable reference to " $what " data by its ID."]
                 #[doc = "# Panics"]
                 #[doc = "Panics if " $what " with the given ID is not present in the database storage."]
+                #[doc = ""]
+                #[doc = "_This function is automatically generated using a macro!_"]
                 #[inline(always)]
                 #[must_use]
                 pub fn [<get_ $what _mut_or_panic>](&mut self, id: $id_ty) -> &mut $data_ty {
@@ -454,6 +462,8 @@ macro_rules! db_methods {
                 }
 
                 #[doc = "Returns whether " $what " with a given ID is in the database storage."]
+                #[doc = ""]
+                #[doc = "_This function is automatically generated using a macro!_"]
                 #[inline(always)]
                 #[must_use]
                 pub fn [<contains_ $what>](&self, id: $id_ty) -> bool {
@@ -461,6 +471,8 @@ macro_rules! db_methods {
                 }
 
                 #[doc = "Adds a " $what " to the database storage."]
+                #[doc = ""]
+                #[doc = "_This function is automatically generated using a macro!_"]
                 #[inline(always)]
                 #[must_use]
                 pub fn [<add_ $what>](&mut self, [<$what _>]: $data_ty) -> $id_ty {

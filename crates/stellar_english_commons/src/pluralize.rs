@@ -1,4 +1,4 @@
-//! Provides a [`pluralize`] function to convert singular nouns to plural ones.
+//! Provides a [`PluralizeExt`] trait to convert singular nouns to plural ones.
 
 use once_cell::sync::Lazy;
 use stellar_fx_hash::{FxHashMap, FxHashSet};
@@ -10,7 +10,7 @@ static IRREGULAR_NOUNS: Lazy<FxHashMap<&'static str, &'static str>> =
 
 /// Provides [`PluralizeExt::pluralize()`] method, to convert a given singular
 /// noun into a plural noun.
-trait PluralizeExt {
+pub trait PluralizeExt {
     /// Converts a given singular noun into a plural noun.
     ///
     /// # Panics
