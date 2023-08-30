@@ -71,7 +71,7 @@
 - [Type system](#type-system)
   - [Types](#types)
     - [Boolean type](#boolean-type)
-    - Numeric types
+    - [Numeric types](#numeric-types)
     - String type
     - Never type
     - Tuple types
@@ -1247,12 +1247,12 @@ Values of this type may be created using a literal expression using the keywords
 
 #### Logical or
 
-| `a`     | `b`     | `a | b` |
-| ------- | ------- | ------- |
-| `true`  | `true`  | `true`  |
-| `true`  | `false` | `true`  |
-| `false` | `true`  | `true`  |
-| `false` | `false` | `false` |
+| `a`     | `b`     | `a \| b` |
+| ------- | ------- | -------- |
+| `true`  | `true`  | `true`   |
+| `true`  | `false` | `true`   |
+| `false` | `true`  | `true`   |
+| `false` | `false` | `false`  |
 
 #### Logical and
 
@@ -1328,3 +1328,27 @@ The `usize` type is an unsigned integer type with the same number of bits as the
 The `isize` type is a signed integer type with the same number of bits as the platform's pointer type. The theoretical upper bound on object and array size is the maximum `isize` value. This ensures that `isize` can be used to calculate differences between pointers into an object or array and can address every byte within an object along with one byte past the end.
 
 `usize` and `isize` are **at least** 16-bits wide.
+
+## Tuple types
+
+Tuple types are a family of **structural types** for heterogeneous lists of other types.
+
+> **Structural types** are always equivalent if their internal types are equivalent. For a nominal version of tuples, see tuple structs.
+
+The syntax for a tuple type is a parenthesized, comma-separated list of types. 1-ary tuples require a comma after their element type to be disambiguated with a parenthesized type.
+
+A tuple type has a number of fields equal to the length of the list of types. This number of fields determines the arity of the tuple. A tuple with `n` fields is called an n-ary tuple. For example, a tuple with 2 fields is a 2-ary tuple.
+
+Fields of tuples are named using increasing numeric names matching their position in the list of types. The first field is `0`. The second field is `1`. And so on. The type of each field is the type of the same position in the tuple's list of types.
+
+For convenience and historical reasons, the tuple type with no fields (`()`) is often called unit or the _unit type_. Its one value is also called _unit_ or the _unit value_.
+
+Some examples of tuple types:
+
+- `()` (unit type)
+- `(float64, float64)`
+- `(String, float32)`
+- `(int32, String)`
+- `(int32, (float64,), List[String], Option[bool])`
+
+Values of this type are constructed using a [tuple expression](#tuple-expressions). Furthermore, various expressions will produce the unit value if there is no other meaningful value for it to evaluate to. Tuple fields can be using [pattern matching](#tuple-patterns).
