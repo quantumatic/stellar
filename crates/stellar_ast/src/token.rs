@@ -123,7 +123,7 @@ macro_rules! define_keywords {
             pub fn get_keyword(string: impl AsRef<str>) -> Option<Keyword> {
                 match string.as_ref() {
                     $(
-                        stringify!([<$keyword:camel>]) => Some(Keyword::[<$keyword:camel>]),
+                        stringify!($keyword) => Some(Keyword::[<$keyword:camel>]),
                     )*
                     _ => None,
                 }
