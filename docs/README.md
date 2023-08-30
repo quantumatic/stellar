@@ -64,6 +64,7 @@
   - [Rest patterns](#rest-patterns)
   - [Struct patterns](#struct-patterns)
   - Tuple patterns
+  - Tuple struct patterns
   - List patterns
   - Grouped patterns
   - Path patterns
@@ -1183,4 +1184,24 @@ match s {
     Point { x: 10, .. } -> (),
     Point { .. } -> (),
 }
+```
+
+### Tuple patterns
+
+```ebnf
+TuplePattern = "(" RestPattern ")"
+             | "(" ")"
+             | "(" Pattern "," ")"
+             | "(" Pattern "," Pattern { "," Pattern } [ "," ] ")" .
+```
+
+Tuple patterns match tuple values that match all criteria defined by its subpatterns. They are also used to destructure a tuple.
+
+The form `(..)` with a single RestPattern is a special form that does not require a comma, and matches a tuple of any size.
+
+The tuple pattern is refutable when one of its subpatterns is refutable.
+
+```stellar
+let pair = (10, "ten");
+let (a, b) = pair;
 ```

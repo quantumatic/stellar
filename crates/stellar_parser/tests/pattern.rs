@@ -8,6 +8,8 @@ tests_using! {
     identifier1 -> "foo",
     identifier2 -> "foo @ [1, ..]",
     tuple -> "(1, 2, _)",
+    tuple2 -> "(1,)",
+    tuple3 -> "(..)",
     list -> "[1, .., 3]",
     struct_ -> "Person { name: \"John\", age, .. }",
     or -> "Some(_) | None"

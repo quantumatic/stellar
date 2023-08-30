@@ -382,6 +382,12 @@ impl Pattern {
             | Self::Wildcard { location } => *location,
         }
     }
+
+    #[inline(always)]
+    #[must_use]
+    pub const fn is_rest(&self) -> bool {
+        matches!(self, Self::Rest { .. })
+    }
 }
 
 /// A pattern used to match a struct field, e.g. `citizenship: "USA"`, `name` and `..` in

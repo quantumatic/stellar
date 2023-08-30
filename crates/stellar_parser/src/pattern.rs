@@ -234,9 +234,10 @@ impl Parse for GroupedOrTuplePatternParser {
 
         match (elements.next(), elements.next()) {
             (Some(element), None) => {
-                if state
-                    .resolve_location(state.location_from(element.location().end))
-                    .contains(',')
+                if element.is_rest()
+                    | state
+                        .resolve_location(state.location_from(element.location().end))
+                        .contains(',')
                 {
                     Some(Pattern::Tuple {
                         location,
