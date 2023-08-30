@@ -91,7 +91,7 @@ impl Parse for PatternExceptOrParser {
                         None
                     }
                 }
-                .map(|literal| Pattern::NegativeNumericLiteral(literal))
+                .map(Pattern::NegativeNumericLiteral)
             }
             RawToken::Punctuator(Punctuator::Underscore) => {
                 state.advance();

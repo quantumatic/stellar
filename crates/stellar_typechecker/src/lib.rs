@@ -1,8 +1,6 @@
 use stellar_database::{Database, ModuleData};
 use stellar_interner::{IdentifierID, PathID};
 
-mod database;
-
 pub fn module_name(path: PathID) -> IdentifierID {
     IdentifierID::from(
         path.resolve_or_panic()
