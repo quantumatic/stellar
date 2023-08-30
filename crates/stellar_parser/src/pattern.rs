@@ -1,10 +1,13 @@
 use stellar_ast::{
     token::{Punctuator, RawToken},
-    Path, Pattern, StructFieldPattern,
+    NegativeNumericLiteral, Path, Pattern, StructFieldPattern,
 };
 
 use crate::{
-    diagnostics::UnexpectedToken, list::ListParser, literal::LiteralParser, path::PathParser,
+    diagnostics::{FloatOverflow, IntegerOverflow, UnexpectedToken},
+    list::ListParser,
+    literal::LiteralParser,
+    path::PathParser,
     Parse, ParseState,
 };
 
@@ -44,7 +47,52 @@ impl Parse for PatternExceptOrParser {
             | RawToken::IntegerLiteral
             | RawToken::FloatLiteral
             | RawToken::TrueBoolLiteral
-            | RawToken::FalseBoolLiteral => Some(Pattern::Literal(LiteralParser.parse(state)?)),
+            | RawToken::FalseBoolLiteral => LiteralParser.parse(state).map(Pattern::Literal),
+            RawToken::Punctuator(Punctuator::Minus) => {
+                state.advance();
+
+                match state.next_token.raw {
+                    RawToken::IntegerLiteral => {
+                        state.advance();
+
+                        if let Ok(value) = state.resolve_current().replace('_', "").parse::<u64>() {
+                            Some(NegativeNumericLiteral::Integer {
+                                value,
+                                location: state.current_token.location,
+                            })
+                        } else {
+                            state
+                                .add_diagnostic(IntegerOverflow::new(state.current_token.location));
+
+                            None
+                        }
+                    }
+                    RawToken::FloatLiteral => {
+                        state.advance();
+
+                        if let Ok(value) = state.resolve_current().replace('_', "").parse::<f64>() {
+                            Some(NegativeNumericLiteral::Float {
+                                value,
+                                location: state.current_token.location,
+                            })
+                        } else {
+                            state.add_diagnostic(FloatOverflow::new(state.current_token.location));
+
+                            None
+                        }
+                    }
+                    _ => {
+                        state.add_diagnostic(UnexpectedToken::new(
+                            state.current_token.location.end,
+                            state.next_token,
+                            "numeric literal",
+                        ));
+
+                        None
+                    }
+                }
+                .map(|literal| Pattern::NegativeNumericLiteral(literal))
+            }
             RawToken::Punctuator(Punctuator::Underscore) => {
                 state.advance();
 
@@ -108,7 +156,7 @@ impl Parse for PatternExceptOrParser {
                 state.add_diagnostic(UnexpectedToken::new(
                     state.current_token.location.end,
                     state.next_token,
-                    "expression",
+                    "pattern",
                 ));
                 None
             }

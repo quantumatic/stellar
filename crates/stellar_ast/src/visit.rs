@@ -19,10 +19,10 @@ use stellar_filesystem::location::Location;
 
 use crate::{
     BinaryOperator, Enum, Expression, Function, GenericParameter, IdentifierAST, ImportPath,
-    Interface, LambdaFunctionParameter, Literal, MatchExpressionItem, Module, ModuleItem, Path,
-    Pattern, PostfixOperator, PrefixOperator, Statement, Struct, StructField,
-    StructFieldExpression, StructFieldPattern, TupleField, TupleLikeStruct, Type, TypeAlias,
-    TypeConstructor, WherePredicate,
+    Interface, LambdaFunctionParameter, Literal, MatchExpressionItem, Module, ModuleItem,
+    NegativeNumericLiteral, Path, Pattern, PostfixOperator, PrefixOperator, Statement, Struct,
+    StructField, StructFieldExpression, StructFieldPattern, TupleField, TupleLikeStruct, Type,
+    TypeAlias, TypeConstructor, WherePredicate,
 };
 
 /// Allows to traverse AST.
@@ -259,6 +259,9 @@ pub trait Visitor {
                 self.visit_list_pattern(*location, inner_patterns);
             }
             Pattern::Literal(literal) => self.visit_literal_pattern(literal),
+            Pattern::NegativeNumericLiteral(minus_number_literal) => {
+                self.visit_minus_number_literal_pattern(minus_number_literal)
+            }
             Pattern::Or {
                 location,
                 left,
@@ -313,6 +316,13 @@ pub trait Visitor {
 
     /// Visits a literal pattern.
     fn visit_literal_pattern(&mut self, literal: &Literal) {}
+
+    /// Visits a minus number literal pattern.
+    fn visit_minus_number_literal_pattern(
+        &mut self,
+        minus_number_literal: &NegativeNumericLiteral,
+    ) {
+    }
 
     /// Visits an or pattern.
     fn visit_or_pattern(&mut self, left: &Pattern, right: &Pattern) {

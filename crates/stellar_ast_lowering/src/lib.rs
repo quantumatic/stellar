@@ -6,7 +6,7 @@
 //! * removes parenthesized expressions, types and grouped patterns.
 //! * converts `loop {}` into `while true {}`.
 //! * converts `interface A[T]: B[T] + C` into `interface A[T] where Self: B[T] + C`.
-//! * converts `fun (A, B)` into `fun (A, B): ()` (adds unit type into function return types).
+//! * converts `1uint8` into `1 as uint8`.
 //!
 //! See the [`stellar_hir`] crate for more details.
 
@@ -14,7 +14,7 @@ use diagnostics::{UnnecessaryGroupedPattern, UnnecessaryParenthesizedExpression}
 use parking_lot::RwLock;
 use stellar_ast::IdentifierAST;
 use stellar_diagnostics::{BuildDiagnostic, Diagnostics};
-use stellar_filesystem::location::{Location, DUMMY_LOCATION};
+use stellar_filesystem::location::Location;
 use stellar_interner::{builtin_identifiers::BIG_SELF, PathID};
 
 mod diagnostics;
@@ -313,6 +313,9 @@ impl<'d> LoweringContext<'d> {
                 }
 
                 self.lower_pattern(*inner)
+            }
+            stellar_ast::Pattern::NegativeNumericLiteral(literal) => {
+                stellar_hir::Pattern::NegativeNumericLiteral(literal)
             }
             stellar_ast::Pattern::Wildcard { location } => {
                 stellar_hir::Pattern::Wildcard { location }
@@ -818,12 +821,7 @@ impl<'d> LoweringContext<'d> {
                     .into_iter()
                     .map(|ty| self.lower_type(ty))
                     .collect(),
-                return_type: Box::new(return_type.map(|ty| self.lower_type(*ty)).unwrap_or(
-                    stellar_hir::Type::Tuple {
-                        location: DUMMY_LOCATION,
-                        element_types: vec![],
-                    },
-                )),
+                return_type: return_type.map(|ty| Box::new(self.lower_type(*ty))),
             },
             stellar_ast::Type::Constructor(constructor) => {
                 stellar_hir::Type::Constructor(self.lower_type_constructor(constructor))

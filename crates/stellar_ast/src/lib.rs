@@ -278,6 +278,16 @@ pub struct TypeConstructor {
     pub arguments: Vec<Type>,
 }
 
+#[derive(Debug, PartialEq, Clone, Copy)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", serde(tag = "kind"))]
+pub enum NegativeNumericLiteral {
+    #[cfg_attr(feature = "serde", serde(rename = "float"))]
+    Float { location: Location, value: f64 },
+    #[cfg_attr(feature = "serde", serde(rename = "integer"))]
+    Integer { location: Location, value: u64 },
+}
+
 /// A pattern, e.g. `Some(x)`, `None`, `a @ [3, ..]`, `[1, .., 3]`, `(1, \"hello\")`, `3.2`.
 #[derive(Debug, PartialEq, Clone)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
@@ -286,6 +296,10 @@ pub enum Pattern {
     /// A literal pattern, e.g. `3.14`, `'a'`, `true`.
     #[cfg_attr(feature = "serde", serde(rename = "literal_pattern"))]
     Literal(Literal),
+
+    /// A negative numeric literal, e.g. `-3`, `-2.0`.
+    #[cfg_attr(feature = "serde", serde(rename = "negative_numeric_literal"))]
+    NegativeNumericLiteral(NegativeNumericLiteral),
 
     /// An identifier pattern, e.g. `f`, `list @ [3, ..]`.
     #[cfg_attr(feature = "serde", serde(rename = "identifier_pattern"))]
@@ -368,6 +382,10 @@ impl Pattern {
                 | Literal::String { location, .. }
                 | Literal::Integer { location, .. }
                 | Literal::Float { location, .. },
+            )
+            | Self::NegativeNumericLiteral(
+                NegativeNumericLiteral::Float { location, .. }
+                | NegativeNumericLiteral::Integer { location, .. },
             )
             | Self::Grouped { location, .. }
             | Self::Identifier { location, .. }

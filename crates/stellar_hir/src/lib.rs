@@ -182,8 +182,8 @@
 
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
-use stellar_ast::ModuleItemKind;
 pub use stellar_ast::{IdentifierAST, ImportPath, Literal, Path, Visibility};
+use stellar_ast::{ModuleItemKind, NegativeNumericLiteral};
 use stellar_filesystem::location::Location;
 use stellar_interner::{IdentifierID, PathID};
 
@@ -204,6 +204,10 @@ pub enum Pattern {
     /// A literal pattern, e.g. `3.14`, `'a'`, `true`.
     #[cfg_attr(feature = "serde", serde(rename = "literal_pattern"))]
     Literal(Literal),
+
+    /// A negative numeric literal pattern, e.g. `-3`.
+    #[cfg_attr(feature = "serde", serde(rename = "negative_numeric_literal_pattern"))]
+    NegativeNumericLiteral(NegativeNumericLiteral),
 
     /// An identifier pattern, e.g. `f`, `list @ [3, ..]`.
     #[cfg_attr(feature = "serde", serde(rename = "identifier_pattern"))]
@@ -274,6 +278,10 @@ impl Pattern {
     pub const fn location(&self) -> Location {
         match self {
             Self::Identifier { location, .. }
+            | Self::NegativeNumericLiteral(
+                NegativeNumericLiteral::Float { location, .. }
+                | NegativeNumericLiteral::Integer { location, .. },
+            )
             | Self::List { location, .. }
             | Self::Or { location, .. }
             | Self::Rest { location, .. }
@@ -333,7 +341,7 @@ pub enum Type {
     Function {
         location: Location,
         parameter_types: Vec<Self>,
-        return_type: Box<Self>,
+        return_type: Option<Box<Self>>,
     },
 
     /// An underscore type, e.g. `_`.
