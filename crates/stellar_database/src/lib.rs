@@ -351,7 +351,10 @@ impl ModuleData {
     #[inline(always)]
     #[must_use]
     pub fn alloc(db: &mut Database, name: IdentifierID, filepath: PathID) -> ModuleID {
-        db.add_module(Self::new(name, filepath))
+        let id = db.add_module(Self::new(name, filepath));
+        db.module_mappings.insert(filepath, id);
+
+        id
     }
 
     /// Creates a new module data object.
@@ -405,6 +408,7 @@ pub struct ModuleID(pub usize);
 /// Storage for Stellar compiler entities.
 #[derive(Default)]
 pub struct Database {
+    module_mappings: FxHashMap<PathID, ModuleID>,
     modules: Vec<ModuleData>,
     enums: Vec<EnumData>,
     enum_items: Vec<EnumItemData>,

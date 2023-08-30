@@ -629,14 +629,31 @@ impl<'s> Lexer<'s> {
         }
     }
 
-    /// Tokenizes either an identifier or a keyword.
-    fn tokenize_identifier_or_keyword(&mut self) -> Token {
+    /// Tokenizes either an identifier, a keyword or an underscore.
+    fn tokenize_identifier_keyword_or_underscore(&mut self) -> Token {
         let start_location = self.offset;
         let name = self.advance_while(start_location, |current, _| is_id_continue(current));
+
+        if name == "_" {
+            return Token {
+                raw: RawToken::Punctuator(Punctuator::Underscore),
+                location: self.location_from(start_location),
+            };
+        }
 
         if let Some(reserved) = get_keyword(name) {
             Token {
                 raw: reserved.into(),
+                location: self.location_from(start_location),
+            }
+        } else if name == "true" {
+            Token {
+                raw: RawToken::TrueBoolLiteral,
+                location: self.location_from(start_location),
+            }
+        } else if name == "false" {
+            Token {
+                raw: RawToken::FalseBoolLiteral,
                 location: self.location_from(start_location),
             }
         } else {
@@ -737,15 +754,13 @@ impl<'s> Lexer<'s> {
 
             ('.', '.') => self.advance_twice_with(Punctuator::DoubleDot),
 
-            ('_', _) => self.advance_with(Punctuator::Underscore),
-
             _ => {
                 if self.current.is_ascii_digit()
                     || (self.current == '.' && self.next.is_ascii_digit())
                 {
                     return self.tokenize_number();
                 } else if is_id_start(self.current) {
-                    return self.tokenize_identifier_or_keyword();
+                    return self.tokenize_identifier_keyword_or_underscore();
                 } else if self.current == '.' {
                     return self.advance_with(Punctuator::Dot);
                 }

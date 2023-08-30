@@ -14,12 +14,9 @@ itertools = "0.11.0"
 parking_lot = "0.12.1"
 paste = "1.0.14"
 stellar_ast = { path = "../stellar_ast" }
-stellar_ast_lowering = { path = "../stellar_ast_lowering" }
 stellar_diagnostics = { path = "../stellar_diagnostics" }
 stellar_filesystem = { path = "../stellar_filesystem" }
 stellar_fx_hash = { path = "../stellar_fx_hash" }
-stellar_hir = { path = "../stellar_hir" }
 stellar_interner = { path = "../stellar_interner" }
 stellar_parser = { path = "../stellar_parser" }
-stellar_stable_likely = { path = "../stellar_stable_likely" }
 stellar_thir = { path = "../stellar_thir" }

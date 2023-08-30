@@ -166,8 +166,7 @@ impl<'s> CollectDefinitions<'s> {
 
 #[cfg(test)]
 mod tests {
-    use stellar_ast_lowering::LowerExt;
-    use stellar_database::ModuleData;
+    use stellar_ast_lowering::LowerToHir;
     use stellar_interner::{IdentifierID, PathID};
     use stellar_parser::parse_module;
 
@@ -177,29 +176,25 @@ mod tests {
     fn test_enum() {
         let state = State::new();
         let filepath_id = PathID::from("test.stellar");
+        let source_code = "enum A {}\nenum B {}";
 
-        let module_id = ModuleData::alloc(
-            &mut state.db().write(),
-            IdentifierID::from("test"),
-            filepath_id,
+        let hir = &LowerToHir::run_all(
+            &state,
+            vec![parse_module(filepath_id, source_code, state.diagnostics())],
         );
 
-        let source_code = "enum A {}\nenum B {}";
-        let hir =
-            parse_module(filepath_id, source_code, state.diagnostics()).lower(state.diagnostics());
-
-        CollectDefinitions::run_all(&state, &[(module_id, hir)]);
+        CollectDefinitions::run_all(&state, hir);
 
         assert!(state
             .db()
             .read()
-            .get_module_or_panic(module_id)
+            .get_module_or_panic(hir[0].0)
             .get_symbol_or_panic(IdentifierID::from("A"))
             .is_enum());
         assert!(state
             .db()
             .read()
-            .get_module_or_panic(module_id)
+            .get_module_or_panic(hir[0].0)
             .get_symbol_or_panic(IdentifierID::from("B"))
             .is_enum());
         assert!(state.diagnostics().read().is_ok());
@@ -209,18 +204,15 @@ mod tests {
     fn test_duplicate_definition() {
         let state = State::new();
         let filepath_id = PathID::from("test.stellar");
-
-        let module_id = ModuleData::alloc(
-            &mut state.db().write(),
-            IdentifierID::from("test"),
-            filepath_id,
-        );
-
         let source_code = "enum A {}\nenum A {}";
-        let hir =
-            parse_module(filepath_id, source_code, state.diagnostics()).lower(state.diagnostics());
 
-        CollectDefinitions::run_all(&state, &[(module_id, hir)]);
+        CollectDefinitions::run_all(
+            &state,
+            &LowerToHir::run_all(
+                &state,
+                vec![parse_module(filepath_id, source_code, state.diagnostics())],
+            ),
+        );
 
         assert_eq!(
             state.diagnostics().read().file_diagnostics[0].code,
@@ -232,23 +224,19 @@ mod tests {
     fn test_function() {
         let state = State::new();
         let filepath_id = PathID::from("test.stellar");
+        let source_code = "fun a() {}";
 
-        let module_id = ModuleData::alloc(
-            &mut state.db().write(),
-            IdentifierID::from("test"),
-            filepath_id,
+        let hir = &LowerToHir::run_all(
+            &state,
+            vec![parse_module(filepath_id, source_code, state.diagnostics())],
         );
 
-        let source_code = "fun a() {}";
-        let hir =
-            parse_module(filepath_id, source_code, state.diagnostics()).lower(state.diagnostics());
-
-        CollectDefinitions::run_all(&state, &[(module_id, hir)]);
+        CollectDefinitions::run_all(&state, hir);
 
         assert!(state
             .db()
             .read()
-            .get_module_or_panic(module_id)
+            .get_module_or_panic(hir[0].0)
             .get_symbol_or_panic(IdentifierID::from("a"))
             .is_function());
         assert!(state.diagnostics().read().is_ok());
@@ -258,23 +246,19 @@ mod tests {
     fn test_struct() {
         let state = State::new();
         let filepath_id = PathID::from("test.stellar");
+        let source_code = "struct A {}";
 
-        let module_id = ModuleData::alloc(
-            &mut state.db().write(),
-            IdentifierID::from("test"),
-            filepath_id,
+        let hir = &LowerToHir::run_all(
+            &state,
+            vec![parse_module(filepath_id, source_code, state.diagnostics())],
         );
 
-        let source_code = "struct A {}";
-        let hir =
-            parse_module(filepath_id, source_code, state.diagnostics()).lower(state.diagnostics());
-
-        CollectDefinitions::run_all(&state, &[(module_id, hir)]);
+        CollectDefinitions::run_all(&state, hir);
 
         assert!(state
             .db()
             .read()
-            .get_module_or_panic(module_id)
+            .get_module_or_panic(hir[0].0)
             .get_symbol_or_panic(IdentifierID::from("A"))
             .is_struct());
         assert!(state.diagnostics().read().is_ok());
@@ -284,23 +268,19 @@ mod tests {
     fn test_interface() {
         let state = State::new();
         let filepath_id = PathID::from("test.stellar");
+        let source_code = "interface A {}";
 
-        let module_id = ModuleData::alloc(
-            &mut state.db().write(),
-            IdentifierID::from("test"),
-            filepath_id,
+        let hir = &LowerToHir::run_all(
+            &state,
+            vec![parse_module(filepath_id, source_code, state.diagnostics())],
         );
 
-        let source_code = "interface A {}";
-        let hir =
-            parse_module(filepath_id, source_code, state.diagnostics()).lower(state.diagnostics());
-
-        CollectDefinitions::run_all(&state, &[(module_id, hir)]);
+        CollectDefinitions::run_all(&state, hir);
 
         assert!(state
             .db()
             .read()
-            .get_module_or_panic(module_id)
+            .get_module_or_panic(hir[0].0)
             .get_symbol_or_panic(IdentifierID::from("A"))
             .is_interface());
         assert!(state.diagnostics().read().is_ok());

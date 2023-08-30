@@ -85,10 +85,26 @@ enum Commands {
         #[arg(long)]
         show_locations: bool,
     },
-    #[command(about = "Parses a given source file and get its AST")]
+    #[command(about = "Tokenizes a given source file")]
+    Tokenize {
+        filepath: String,
+        #[arg(long)]
+        show_locations: bool,
+    },
+    #[command(about = "Tokenizes a given source file")]
+    Scan {
+        filepath: String,
+        #[arg(long)]
+        show_locations: bool,
+    },
+    #[command(about = "Parses a given source file and serializes its AST")]
     Ast { filepath: String },
-    #[command(about = "Parses a given source file, lower its AST and return output HIR")]
+    #[command(about = "Parses a given source file and serializes its AST")]
+    Parse { filepath: String },
+    #[command(about = "Parses a given source file, lower its AST and serializes HIR")]
     Hir { filepath: String },
+    #[command(about = "Parses a given source file, lower its AST and serializes HIR")]
+    LowerAst { filepath: String },
     #[command(about = "Parses a given manifest file")]
     ParseManifest { filepath: String },
     #[command(about = "Creates a new package")]
@@ -116,11 +132,19 @@ fn main() {
         Commands::Lex {
             filepath,
             show_locations,
+        }
+        | Commands::Tokenize {
+            filepath,
+            show_locations,
+        }
+        | Commands::Scan {
+            filepath,
+            show_locations,
         } => lex::command(&filepath, show_locations),
-        Commands::Ast { filepath } => {
+        Commands::Ast { filepath } | Commands::Parse { filepath } => {
             parse::command(&filepath);
         }
-        Commands::Hir { filepath } => {
+        Commands::Hir { filepath } | Commands::LowerAst { filepath } => {
             lower::command(&filepath);
         }
         Commands::ParseManifest { filepath } => {

@@ -24,6 +24,7 @@ stellar_interner = { path = "../stellar_interner" }
 stellar_lexer = { path = "../stellar_lexer" }
 stellar_manifest = { path = "../stellar_manifest" }
 stellar_parser = { path = "../stellar_parser" }
+stellar_database = { path = "../stellar_database" }
 termcolor = "1.2.0"
 tracing-subscriber = { version = "0.3.2", features = ["fmt", "env-filter"] }
 
