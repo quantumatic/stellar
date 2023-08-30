@@ -145,7 +145,6 @@ impl CollectDefinitions {
             alias.name,
             self.module,
         );
-
         self.check_for_duplicate_definition(alias.name);
 
         self.state

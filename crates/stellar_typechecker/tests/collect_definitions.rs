@@ -148,7 +148,7 @@ fn test_interface() {
 fn test_type_alias() {
     let state = Arc::new(State::new());
     let filepath_id = PathID::from("test.sr");
-    let source_code = "type A = int8";
+    let source_code = "type A = int8;";
 
     let hir = &LowerToHir::run_all(
         state.clone(),

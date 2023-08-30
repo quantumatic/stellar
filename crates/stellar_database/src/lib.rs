@@ -146,6 +146,7 @@ impl Symbol {
 }
 
 /// A data that Stellar compiler has about an enum.
+#[derive(Debug)]
 pub struct EnumData {
     pub visibility: Visibility,
     pub name: IdentifierAST,
@@ -190,6 +191,7 @@ impl EnumData {
 pub struct EnumID(pub usize);
 
 /// A data that Stellar compiler has about a struct.
+#[derive(Debug)]
 pub struct StructData {
     pub visibility: Visibility,
     pub name: IdentifierAST,
@@ -232,6 +234,7 @@ impl StructData {
 pub struct StructID(pub usize);
 
 /// A data that Stellar compiler has about a function.
+#[derive(Debug)]
 pub struct TupleLikeStructData {
     pub visibility: Visibility,
     pub name: IdentifierAST,
@@ -270,6 +273,7 @@ impl TupleLikeStructData {
 pub struct TupleLikeStructID(pub usize);
 
 /// A data that Stellar compiler has about a field.
+#[derive(Debug)]
 pub struct FieldData {
     pub visibility: Visibility,
     pub name: IdentifierAST,
@@ -302,9 +306,11 @@ impl FieldData {
 }
 
 /// A unique ID that maps to [`FieldData`].
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
 pub struct FieldID(pub usize);
 
 /// A data that Stellar compiler has about a predicate.
+#[derive(Debug)]
 pub struct PredicateData {
     pub ty: Type,
     pub bounds: Vec<TypeConstructor>,
@@ -327,9 +333,11 @@ impl PredicateData {
 }
 
 /// A unique ID that maps to [`PredicateData`].
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
 pub struct PredicateID(pub usize);
 
 /// A data that Stellar compiler has about an enum item.
+#[derive(Debug)]
 pub struct EnumItemData {
     pub name: IdentifierAST,
     pub module: ModuleID,
@@ -356,6 +364,7 @@ impl EnumItemData {
 pub struct EnumItemID(pub usize);
 
 /// A data that Stellar compiler has about a function.
+#[derive(Debug)]
 pub struct FunctionData {
     pub name: IdentifierAST,
     pub visibility: Visibility,
@@ -392,6 +401,7 @@ impl FunctionData {
 }
 
 /// A data that Stellar compiler has about an interface.
+#[derive(Debug)]
 pub struct InterfaceData {
     pub visibility: Visibility,
     pub name: IdentifierAST,
@@ -432,6 +442,7 @@ impl InterfaceData {
 pub struct InterfaceID(pub usize);
 
 /// A data that Stellar compiler has about a module.
+#[derive(Debug)]
 pub struct TypeAliasData {
     pub visibility: Visibility,
     pub name: IdentifierAST,
@@ -470,6 +481,7 @@ impl TypeAliasData {
 pub struct TypeAliasID(pub usize);
 
 /// A data that Stellar compiler has about a module.
+#[derive(Debug)]
 pub struct ModuleData {
     pub name: IdentifierID,
     pub filepath: PathID,
@@ -535,7 +547,7 @@ impl ModuleData {
 pub struct ModuleID(pub usize);
 
 /// Storage for Stellar compiler entities.
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct Database {
     modules: Vec<ModuleData>,
     enums: Vec<EnumData>,
