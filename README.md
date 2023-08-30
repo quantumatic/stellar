@@ -2,7 +2,7 @@
 <img width="80%" src="./additional/icon/banner.png">
 </p>
 
-Stellar is an attempt of a [teenager](https://github.com/abs0luty) to create his own programming language and write its compiler in Rust. You can view it as a toy project. I view it as a showcase of what can a single young developer achieve if he is passionate about it!
+Stellar is the language to make your programs both easy and fast!
 
 <p align="center">
 <details>
@@ -11,13 +11,14 @@ Stellar is an attempt of a [teenager](https://github.com/abs0luty) to create his
 </details>
 </p>
 
+Reference of Stellar can be found [here](https://quantumatic.github.io/stellar).
+
 # Table of contents
 
 <!--ts-->
 
 - [Introduction](#introduction)
 - [Installation](#installation)
-- [Overview](#overview)
 - [Roadmap](#roadmap)
 <!--te-->
 
@@ -41,118 +42,6 @@ You need to have Rust installed on your system. Then run:
 
 ```
 cargo install --path crates/stellar
-```
-
-# Overview
-
-## Pattern matching
-
-Stellar supports matching patterns by having a `match` expression:
-
-```
-match tuple {
-    (1, ..) -> {
-        println("First element is 1");
-    }
-    (.., 'b', true) | (.., 'a', true) -> {
-        println("Second element is 'b' or 'a', and third element is true");
-    }
-    (.., false) -> {
-        println("Third element is false");
-    }
-    _ -> {
-        println("Default case");
-    }
-}
-```
-
-Pattern matching can also be used in `let` statement for destructuring:
-
-```
-let Person {
-    name,
-    age,
-} = get_person();
-```
-
-## Everything is expression
-
-Stellar follows "everything is expression" philosophy. So `if`, `match`, `while`, etc. are expressions:
-
-```
-fun factorial(n: uint32): uint32 {
-    if n < 2 {
-        1
-    } else {
-        factorial(n - 1) * n
-    }
-}
-```
-
-Stellar supports function types:
-
-```
-fun do_stuff_with(a: uint32, b: uint32, fn: fun (uint32, uint32)) {
-    fn(a, b)
-}
-```
-
-The language also has an analog of sum types: _enums_:
-
-```
-enum Result[T, E] {
-    Ok(T),
-    Err(E)
-
-    fun ok(self): Option[T] {
-        match self {
-            Self.Ok(t) -> Option.Some(t),
-            _ -> Option.None,
-        }
-    }
-}
-```
-
-and error propagation:
-
-```
-fun safe_div[T](a: T, b: T): Option[T] where T: Numeric {
-    if b == 0 {
-        None
-    } else {
-        Some(a / b)
-    }
-}
-
-fun main() {
-    let a = safe_div(1, 1)?;
-    assert(a == 1);
-
-    safe_div(1, 0)?;
-}
-```
-
-If you want to have to deal with dynamic dispatch, you can use `dyn` type:
-
-```
-fun main() {
-    let to_string = 3 as dyn ToString;
-
-    assert(to_string.to_string() == "3");
-}
-```
-
-Stellar also supports tuple-like struct types and enum items:
-
-```
-pub struct MyStringWrapper(pub String);
-```
-
-You can access their inner values using pattern matching:
-
-```
-let MyStringWrapper(str) = wrapper;
-println(str);
 ```
 
 # Roadmap
