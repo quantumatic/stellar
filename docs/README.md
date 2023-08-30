@@ -1099,13 +1099,13 @@ Literal patterns match exactly the same value as what is created by the literal.
 let a = 5;
 
 match a {
-    5 => {
+    5 -> {
         println("a is 5");
     }
-    2 | 4 => {
+    2 | 4 -> {
         println("a is 2 or 4");
     }
-    _ => {
+    _ -> {
         println("a is neither 2 nor 4");
     }
 }
@@ -1125,9 +1125,9 @@ Patterns that consist of only an identifier and optionally a pattern that identi
 let x = [2];
 
 match x {
-    a @ [_, _] => { println(a); }
-    a @ [_] => { println(a); }
-    _ => { println("Not matched"); }
+    a @ [_, _] -> { println(a); }
+    a @ [_] -> { println(a); }
+    _ -> { println("Not matched"); }
 }
 ```
 
@@ -1161,7 +1161,7 @@ The rest pattern (the `..` token) acts as a variable-length pattern which matche
 match list {
     [] -> println("list is empty"),
     [one] -> println("list has one element: " + one),
-    [head, tail @ ..] => println("head: " + head + " tail: " + tail),
+    [head, tail @ ..] -> println("head: " + head + " tail: " + tail),
 }
 ```
 
