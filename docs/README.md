@@ -48,21 +48,21 @@
     - Tuple expressions
     - Type argument qualification expressions
     - [Cast expressions](#cast-expressions)
-    - Loop expressions
-    - While expressions
-    - If expressions
-    - Match expressions
-    - Struct expressions
+    - [Loop expressions](#loop-expressions)
+    - [While expressions](#while-expressions)
+    - [If expressions](#if-expressions)
+    - [Match expressions](#match-expressions)
+    - [Struct expressions](#struct-expressions)
     - Field access expressions
-    - Call expressions
-    - Underscore expressions
+    - [Call expressions](#call-expressions)
+    - [Underscore expressions](#underscore-expressions)
     - Lambda expressions
-- Patterns
-  - Literal patterns
-  - Identifier patterns
-  - Wildcard patterns
-  - Rest patterns
-  - Struct patterns
+- [Patterns](#patterns)
+  - [Literal patterns](#literal-patterns)
+  - [Identifier patterns](#identifier-patterns)
+  - [Wildcard patterns](#wildcard-patterns)
+  - [Rest patterns](#rest-patterns)
+  - [Struct patterns](#struct-patterns)
   - Tuple patterns
   - List patterns
   - Grouped patterns
@@ -958,3 +958,229 @@ A table of all possible type casts:
 | Integer type     | `bool` or `char`     | Integer to primitive cast | `0 as bool`          |
 | `A`              | `A`                  | Type to itself cast       | `"hello" as String`  |
 | `A`              | `dyn T` where `A: T` | Cast to interface object  | `1 as dyn ToString`  |
+
+### Loop expressions
+
+```ebnf
+LoopExpression = "loop" StatementsBlock .
+```
+
+A `loop` expression repeats execution of its body continuously: `loop { println("hi!"); }`.
+
+### While expressions
+
+```ebnf
+WhileExpression = "while" ExpressionExceptStruct StatementsBlock .
+```
+
+A while loop begins by evaluating the boolean loop conditional operand. If the loop conditional operand evaluates to true, the loop body block executes, then control returns to the loop conditional operand. If the loop conditional expression evaluates to false, the while expression completes.
+
+An example:
+
+```stellar
+let i = 0;
+
+while i < 10 {
+    println("hello");
+    i++;
+}
+```
+
+### If expressions
+
+```ebnf
+IfExpression = "if" ExpressionExceptStruct StatementsBlock
+               [ "else" (StatementsBlock | IfExpression) ] .
+```
+
+An `if` expression is a conditional branch in program control. The syntax of an `if` expression is a condition operand, followed by a consequent block, any number of `else if` conditions and blocks, and an optional trailing `else` block. The condition operands must have the boolean type. If a condition operand evaluates to `true`, the consequent block is executed and any subsequent else `if` or `else` block is skipped. If a condition operand evaluates to `false`, the consequent block is skipped and any subsequent `else if` condition is evaluated. If all `if` and `else if` conditions evaluate to `false` then any `else` block is executed. An if expression evaluates to the same value as the executed block, or `()` if no block is evaluated. An `if` expression must have the same type in all situations.
+
+```stellar
+if x == 4 {
+    println("x is 4");
+} else if x == 5 {
+    println("x is 5");
+} else {
+    println("x is neither 4 nor 5");
+}
+
+let y = if 12 * 15 > 150 {
+    "Bigger"
+} else {
+    "Smaller"
+};
+```
+
+### Match expressions
+
+```ebnf
+MatchExpression = "match" ExpressionExceptStruct "{" [ MatchArm { "," MatchArm } [ "," ] ] "}" .
+MatchArm        = Pattern "->" Expression .
+```
+
+A `match` expression branches on a pattern. The exact form of matching that occurs depends on the pattern. A `match` expression has a scrutinee expression, which is the value to compare to the patterns. The scrutinee expression and the patterns must have the same type.
+
+An example of a match expression:
+
+```stellar
+match (1, 2, 4) {
+    (2, ..) -> {
+        println("First element is 2");
+    }
+    (_, 2, _) -> {
+        println("Second element is 2");
+    }
+    (.., 2) -> {
+        println("Third element is 2");
+    }
+    _ -> {
+        println("I don't know where is 2");
+    }
+}
+```
+
+### Struct expressions
+
+```ebnf
+StructExpression           = Path "[" GenericArguments "]"
+                             "{" [ StructExpressionField { "," StructExpressionField } [ "," ] ] "}" .
+StructExpressionField      = identifier [ ":" Expression ] .
+```
+
+A struct expression creates a struct, enum, or union value. It consists of a path to a struct, enum variant, or union item followed by the values for the fields of the item. There are three forms of struct expressions: struct, tuple, and unit.
+
+The following are examples of struct expressions:
+
+```
+let y = 0.0;
+let a = Point { x: 10.0, y };
+let u = game.User { name: "Joe", age: 35, score: 100_000 };
+```
+
+### Call expressions
+
+```ebnf
+CallExpression = Expression "(" [ Expression { "," Expression } [ "," ] ] ")" .
+```
+
+A call expression calls a function. The syntax of a call expression is an expression, called the function operand, followed by a parenthesized comma-separated list of expression, called the argument operands:
+
+```stellar
+let a = (|| "Stellar")();
+let b = add(1, 2);
+```
+
+### Underscore expressions
+
+```ebnf
+UnderscoreExpression = "_" .
+```
+
+Underscore expressions, denoted with the symbol `_`, are used to signify a placeholder in a destructuring assignment. They may only appear in the left-hand side of an assignment.
+
+```stellar
+let p = (1, 2);
+let a = 0;
+(_, a) = p;
+```
+
+## Patterns
+
+### Literal patterns
+
+```ebnf
+LiteralPattern = Literal | "-" float_lit | "-" int_lit .
+```
+
+Literal patterns match exactly the same value as what is created by the literal. Since negative numbers are not literals, literal patterns also accept an optional minus sign before the literal, which acts like the negation operator.
+
+```stellar
+let a = 5;
+
+match a {
+    5 => {
+        println("a is 5");
+    }
+    2 | 4 => {
+        println("a is 2 or 4");
+    }
+    _ => {
+        println("a is neither 2 nor 4");
+    }
+}
+```
+
+### Identifier patterns
+
+```ebnf
+IdentifierPattern = identifier [ "@" Pattern ] .
+```
+
+Identifier patterns bind the value they match to a variable. The identifier must be unique within the pattern. The variable will shadow any variables of the same name in scope. The scope of the new binding depends on the context of where the pattern is used (such as match arm).
+
+Patterns that consist of only an identifier and optionally a pattern that identifier is bound to.
+
+```
+let x = [2];
+
+match x {
+    a @ [_, _] => { println(a); }
+    a @ [_] => { println(a); }
+    _ => { println("Not matched"); }
+}
+```
+
+### Wildcard patterns
+
+```ebnf
+WildcardPattern = "_" .
+```
+
+The wildcard pattern (an underscore symbol) matches any value. It is used to ignore values when they don't matter. Inside other patterns it matches a single data field (as opposed to the `..` which matches the remaining fields).
+
+```stellar
+let (a, _) = (1, x); // the x is always matched by `_`
+
+// ignore a function/closure param
+let real_part = |r: f64, _: f64| { r };
+
+// ignore a field from a struct
+let RGBA { r: red, g: green, b: blue, a: _ } = color;
+```
+
+### Rest patterns
+
+```ebnf
+RestPattern = ".." .
+```
+
+The rest pattern (the `..` token) acts as a variable-length pattern which matches zero or more elements that haven't been matched already before and after. It may only be used in tuple, tuple struct, and list patterns, and may only appear once as one of the elements in those patterns. It is also allowed in an identifier pattern for list patterns only. The rest pattern is always irrefutable.
+
+```stellar
+match list {
+    [] -> println("list is empty"),
+    [one] -> println("list has one element: " + one),
+    [head, tail @ ..] => println("head: " + head + " tail: " + tail),
+}
+```
+
+### Struct patterns
+
+```ebnf
+StructPattern      = Path "[" GenericArguments "]"
+                     "{" [ StructPatternField { "," StructPatternField } [ "," ] ] "}" .
+StructPatternField = identifier [ ":" Pattern ] .
+```
+
+Struct patterns match struct values that match all criteria defined by its subpatterns. They are also used to destructure a struct.
+
+```stellar
+let Person { name, age, .. } = get_person();
+
+match s {
+    Point { x: 10, y: 20 } -> (),
+    Point { y: 10, x: 20 } -> (), // order doesn't matter
+    Point { x: 10, .. } -> (),
+    Point { .. } -> (),
+}
+```
