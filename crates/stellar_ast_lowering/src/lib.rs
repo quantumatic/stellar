@@ -9,6 +9,10 @@
 //! * converts `1uint8` into `1 as uint8`.
 //!
 //! See the [`stellar_hir`] crate for more details.
+#![doc(
+    html_logo_url = "https://raw.githubusercontent.com/quantumatic/stellar/main/additional/icon/stellar.png",
+    html_favicon_url = "https://raw.githubusercontent.com/quantumatic/stellar/main/additional/icon/stellar.png"
+)]
 
 use diagnostics::{UnnecessaryGroupedPattern, UnnecessaryParenthesizedExpression};
 use parking_lot::RwLock;

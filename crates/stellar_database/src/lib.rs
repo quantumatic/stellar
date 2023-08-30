@@ -1,4 +1,8 @@
 #![allow(warnings)]
+#![doc(
+    html_logo_url = "https://raw.githubusercontent.com/quantumatic/stellar/main/additional/icon/stellar.png",
+    html_favicon_url = "https://raw.githubusercontent.com/quantumatic/stellar/main/additional/icon/stellar.png"
+)]
 
 use parking_lot::RwLock;
 use paste::paste;
@@ -9,6 +13,7 @@ use stellar_fx_hash::FxHashMap;
 use stellar_interner::{IdentifierID, PathID};
 use stellar_thir::ty::{Type, TypeConstructor};
 
+/// A symbol unique ID.
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
 pub enum Symbol {
     Module(ModuleID),
@@ -19,26 +24,42 @@ pub enum Symbol {
 }
 
 impl Symbol {
-    pub fn is_module(self) -> bool {
+    /// Returns `true` if the symbol is a module.
+    #[inline(always)]
+    #[must_use]
+    pub const fn is_module(self) -> bool {
         matches!(self, Self::Module(_))
     }
 
+    /// Returns `true` if the symbol is an enum.
+    #[inline(always)]
+    #[must_use]
     pub fn is_enum(self) -> bool {
         matches!(self, Self::Enum(_))
     }
 
+    /// Returns `true` if the symbol is a struct.
+    #[inline(always)]
+    #[must_use]
     pub fn is_struct(self) -> bool {
         matches!(self, Self::Struct(_))
     }
 
+    /// Returns `true` if the symbol is a function.
+    #[inline(always)]
+    #[must_use]
     pub fn is_function(self) -> bool {
         matches!(self, Self::Function(_))
     }
 
+    /// Returns `true` if the symbol is an interface.
+    #[inline(always)]
+    #[must_use]
     pub fn is_interface(self) -> bool {
         matches!(self, Self::Interface(_))
     }
 
+    /// Returns the name of the symbol.
     #[inline(always)]
     #[must_use]
     pub fn name(self, db: &Database) -> Option<IdentifierAST> {
@@ -51,24 +72,34 @@ impl Symbol {
         }
     }
 
+    /// Returns the name's identifier ID of the symbol.
     #[inline(always)]
     #[must_use]
     pub fn name_id(self, db: &Database) -> Option<IdentifierID> {
         self.name(db).map(|name| name.id)
     }
 
+    /// Returns the name's identifier ID location of the symbol.
+    ///
+    /// # Panics
+    /// Panics if the symbol doesn't have a name.
     #[inline(always)]
     #[must_use]
     pub fn name_id_or_panic(self, db: &Database) -> IdentifierID {
         self.name_id(db).unwrap()
     }
 
+    /// Returns the name's location of the symbol.
     #[inline(always)]
     #[must_use]
     pub fn name_location(self, db: &Database) -> Option<Location> {
         self.name(db).map(|name| name.location)
     }
 
+    /// Returns the name's location of the symbol.
+    ///
+    /// # Panics
+    /// Panics if the symbol doesn't have a name.
     #[inline(always)]
     #[must_use]
     pub fn name_location_or_panic(self, db: &Database) -> Location {
@@ -76,6 +107,7 @@ impl Symbol {
     }
 }
 
+/// A data that Stellar compiler has about an enum.
 pub struct EnumData {
     pub visibility: Visibility,
     pub name: IdentifierAST,
@@ -87,6 +119,9 @@ pub struct EnumData {
 }
 
 impl EnumData {
+    /// Creates a new enum data object in the database and returns its ID.
+    #[inline(always)]
+    #[must_use]
     pub fn alloc(
         db: &mut Database,
         visibility: Visibility,
@@ -96,6 +131,9 @@ impl EnumData {
         db.add_enum(Self::new(visibility, name, module))
     }
 
+    /// Creates a new enum data object.
+    #[inline(always)]
+    #[must_use]
     pub fn new(visibility: Visibility, name: IdentifierAST, module: ModuleID) -> Self {
         Self {
             visibility,
@@ -109,9 +147,11 @@ impl EnumData {
     }
 }
 
+/// A unique ID that maps to [`EnumData`].
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
 pub struct EnumID(pub usize);
 
+/// A data that Stellar compiler has about a struct.
 pub struct StructData {
     pub visibility: Visibility,
     pub name: IdentifierAST,
@@ -122,6 +162,9 @@ pub struct StructData {
 }
 
 impl StructData {
+    /// Creates a new struct data object in the database and returns its ID.
+    #[inline(always)]
+    #[must_use]
     pub fn alloc(
         db: &mut Database,
         visibility: Visibility,
@@ -131,6 +174,9 @@ impl StructData {
         db.add_struct(Self::new(visibility, name, module))
     }
 
+    /// Creates a new struct data object.
+    #[inline(always)]
+    #[must_use]
     pub fn new(visibility: Visibility, name: IdentifierAST, module: ModuleID) -> Self {
         Self {
             visibility,
@@ -143,9 +189,11 @@ impl StructData {
     }
 }
 
+/// A unique ID that maps to [`StructData`].
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
 pub struct StructID(pub usize);
 
+/// A data that Stellar compiler has about a field.
 pub struct FieldData {
     pub visibility: Visibility,
     pub name: IdentifierAST,
@@ -153,6 +201,9 @@ pub struct FieldData {
 }
 
 impl FieldData {
+    /// Creates a new field data object in the database and returns its ID.
+    #[inline(always)]
+    #[must_use]
     pub fn alloc(
         db: &mut Database,
         visibility: Visibility,
@@ -162,6 +213,9 @@ impl FieldData {
         db.add_field(Self::new(visibility, name, ty))
     }
 
+    /// Creates a new field data object.
+    #[inline(always)]
+    #[must_use]
     pub fn new(visibility: Visibility, name: IdentifierAST, ty: Type) -> Self {
         Self {
             visibility,
@@ -171,41 +225,57 @@ impl FieldData {
     }
 }
 
+/// A unique ID that maps to [`FieldData`].
 pub struct FieldID(pub usize);
 
+/// A data that Stellar compiler has about a predicate.
 pub struct PredicateData {
     pub ty: Type,
     pub bounds: Vec<TypeConstructor>,
 }
 
 impl PredicateData {
+    /// Creates a new predicate data object in the database and returns its ID.
+    #[inline(always)]
+    #[must_use]
     pub fn alloc(db: &mut Database, ty: Type, bounds: Vec<TypeConstructor>) -> PredicateID {
         db.add_predicate(Self::new(ty, bounds))
     }
 
+    /// Creates a new predicate data object.
+    #[inline(always)]
+    #[must_use]
     pub fn new(ty: Type, bounds: Vec<TypeConstructor>) -> Self {
         Self { ty, bounds }
     }
 }
 
+/// A unique ID that maps to [`PredicateData`].
 pub struct PredicateID(pub usize);
 
+/// A data that Stellar compiler has about an enum item.
 pub struct EnumItemData {
     pub name: IdentifierID,
 }
 
+/// A unique ID that maps to [`EnumItemData`].
 pub struct EnumItemID(pub usize);
 
+/// A data that Stellar compiler has about a function.
 pub struct FunctionData {
     pub name: IdentifierAST,
     pub visibility: Visibility,
     pub module: ModuleID,
 }
 
+/// A unique ID that maps to [`FunctionData`].
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
 pub struct FunctionID(pub usize);
 
 impl FunctionData {
+    /// Creates a new function data object in the database and returns its ID.
+    #[inline(always)]
+    #[must_use]
     pub fn alloc(
         db: &mut Database,
         name: IdentifierAST,
@@ -215,6 +285,9 @@ impl FunctionData {
         db.add_function(Self::new(name, visibility, module))
     }
 
+    /// Creates a new function data object.
+    #[inline(always)]
+    #[must_use]
     pub fn new(name: IdentifierAST, visibility: Visibility, module: ModuleID) -> Self {
         Self {
             name,
@@ -224,6 +297,7 @@ impl FunctionData {
     }
 }
 
+/// A data that Stellar compiler has about an interface.
 pub struct InterfaceData {
     pub visibility: Visibility,
     pub name: IdentifierAST,
@@ -233,6 +307,9 @@ pub struct InterfaceData {
 }
 
 impl InterfaceData {
+    /// Creates a new interface data object in the database and returns its ID.
+    #[inline(always)]
+    #[must_use]
     pub fn alloc(
         db: &mut Database,
         visibility: Visibility,
@@ -242,6 +319,9 @@ impl InterfaceData {
         db.add_interface(Self::new(visibility, name, module))
     }
 
+    /// Creates a new interface data object.
+    #[inline(always)]
+    #[must_use]
     pub fn new(visibility: Visibility, name: IdentifierAST, module: ModuleID) -> Self {
         Self {
             visibility,
@@ -253,9 +333,11 @@ impl InterfaceData {
     }
 }
 
+/// A unique ID that maps to [`InterfaceData`].
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
 pub struct InterfaceID(pub usize);
 
+/// A data that Stellar compiler has about a module.
 pub struct ModuleData {
     pub name: IdentifierID,
     pub filepath: PathID,
@@ -265,10 +347,16 @@ pub struct ModuleData {
 }
 
 impl ModuleData {
+    /// Creates a new module data object in the database and returns its ID.
+    #[inline(always)]
+    #[must_use]
     pub fn alloc(db: &mut Database, name: IdentifierID, filepath: PathID) -> ModuleID {
         db.add_module(Self::new(name, filepath))
     }
 
+    /// Creates a new module data object.
+    #[inline(always)]
+    #[must_use]
     pub fn new(name: IdentifierID, filepath: PathID) -> Self {
         Self {
             name,
@@ -279,26 +367,42 @@ impl ModuleData {
         }
     }
 
+    /// Resolves a symbol in the module.
+    #[inline(always)]
+    #[must_use]
     pub fn get_symbol(&self, id: IdentifierID) -> Option<Symbol> {
         self.symbols.get(&id).copied()
     }
 
+    /// Resolves a symbol in the module.
+    ///
+    /// # Panics
+    /// Panics if the symbol cannot be resolved.
+    #[inline(always)]
+    #[must_use]
     pub fn get_symbol_or_panic(&self, id: IdentifierID) -> Symbol {
         self.get_symbol(id).unwrap()
     }
 
+    /// Adds a symbol to the module.
+    #[inline(always)]
     pub fn add_symbol(&mut self, name: IdentifierID, symbol: Symbol) {
         self.symbols.insert(name, symbol);
     }
 
+    /// Checks if a symbol is contained in the module.
+    #[inline(always)]
+    #[must_use]
     pub fn contains_symbol(&self, id: IdentifierID) -> bool {
         self.symbols.contains_key(&id)
     }
 }
 
+/// A unique ID that maps to [`ModuleData`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct ModuleID(pub usize);
 
+/// Storage for Stellar compiler entities.
 #[derive(Default)]
 pub struct Database {
     modules: Vec<ModuleData>,
@@ -370,6 +474,9 @@ macro_rules! db_methods {
 }
 
 impl Database {
+    /// Creates a new empty database.
+    #[inline(always)]
+    #[must_use]
     pub fn new() -> Self {
         Self::default()
     }
@@ -387,6 +494,7 @@ impl Database {
     }
 }
 
+/// Contains database and diagnostics.
 #[derive(Default)]
 pub struct State {
     db: RwLock<Database>,
@@ -394,21 +502,24 @@ pub struct State {
 }
 
 impl State {
+    /// Creates a new empty state.
     #[inline(always)]
     #[must_use]
     pub fn new() -> Self {
         Self::default()
     }
 
+    /// Returns a reference to database.
     #[inline(always)]
     #[must_use]
     pub const fn db(&self) -> &RwLock<Database> {
         &self.db
     }
 
+    /// Returns a reference to database.
     #[inline(always)]
     #[must_use]
-    pub fn diagnostics(&self) -> &RwLock<Diagnostics> {
+    pub const fn diagnostics(&self) -> &RwLock<Diagnostics> {
         &self.diagnostics
     }
 }

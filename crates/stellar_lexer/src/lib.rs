@@ -7,7 +7,7 @@
 
 #![doc(
     html_logo_url = "https://raw.githubusercontent.com/quantumatic/stellar/main/additional/icon/stellar.png",
-    html_favicon_url = "https://raw.githubusercontent.com/quantumatic/stellar/main/additional/stellaron/stellar.png"
+    html_favicon_url = "https://raw.githubusercontent.com/quantumatic/stellar/main/additional/icon/stellar.png"
 )]
 #![warn(missing_docs, clippy::dbg_macro)]
 #![warn(

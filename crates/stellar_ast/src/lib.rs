@@ -92,8 +92,8 @@
 //! [`stellar_parser`]: ../stellar_parser/index.html
 
 #![doc(
-    html_logo_url = "https://raw.githubusercontent.com/quantumatic/stellar/main/additional/stellaron/stellar.png",
-    html_favicon_url = "https://raw.githubusercontent.com/quantumatic/stellar/main/additional/stellaron/stellar.png"
+    html_logo_url = "https://raw.githubusercontent.com/quantumatic/stellar/main/additional/icon/stellar.png",
+    html_favicon_url = "https://raw.githubusercontent.com/quantumatic/stellar/main/additional/icon/stellar.png"
 )]
 #![warn(clippy::dbg_macro)]
 #![warn(
