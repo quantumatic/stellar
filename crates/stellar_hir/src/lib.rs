@@ -31,7 +31,7 @@
 //!                         "start": 4,
 //!                         "end": 8
 //!                     },
-//!                     "id": 21
+//!                     "id": "main"
 //!                 },
 //!                 "generic_parameters": [],
 //!                 "parameters": [],
@@ -74,7 +74,7 @@
 //!                                             "start": 32,
 //!                                             "end": 39
 //!                                         },
-//!                                         "id": 22
+//!                                         "id": "println"
 //!                                     },
 //!                                     "arguments": [
 //!                                         {
@@ -185,7 +185,7 @@ use serde::{Deserialize, Serialize};
 use stellar_ast::ModuleItemKind;
 pub use stellar_ast::{IdentifierAST, ImportPath, Literal, Path, Visibility};
 use stellar_filesystem::location::Location;
-use stellar_interner::IdentifierID;
+use stellar_interner::{IdentifierID, PathID};
 
 /// A type constructor, e.g. `Option[T]`.
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
@@ -1030,6 +1030,8 @@ pub struct NotSelfFunctionParameter {
 #[derive(Debug, PartialEq, Clone)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct Module {
+    pub filepath: PathID,
+
     pub items: Vec<ModuleItem>,
 
     #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]

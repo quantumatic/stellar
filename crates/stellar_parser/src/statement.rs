@@ -18,7 +18,7 @@ pub(crate) struct StatementParserResult {
 impl Parse for StatementParser {
     type Output = Option<StatementParserResult>;
 
-    fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
+    fn parse(self, state: &mut ParseState<'_, '_>) -> Self::Output {
         let (statement, last_expression_in_block) = match state.next_token.raw {
             RawToken::Keyword(Keyword::Return) => (ReturnStatementParser.parse(state)?, false),
             RawToken::Keyword(Keyword::Defer) => (DeferStatementParser.parse(state)?, false),
@@ -52,7 +52,7 @@ pub(crate) struct ExpressionStatementParserResult {
 impl Parse for ExpressionStatementParser {
     type Output = Option<ExpressionStatementParserResult>;
 
-    fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
+    fn parse(self, state: &mut ParseState<'_, '_>) -> Self::Output {
         let expression = ExpressionParser::new().in_statements_block().parse(state)?;
 
         let (last_expression_in_block, has_semicolon) = if expression.with_block() {
@@ -84,7 +84,7 @@ pub(crate) struct StatementsBlockParser;
 impl Parse for StatementsBlockParser {
     type Output = Option<Vec<Statement>>;
 
-    fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
+    fn parse(self, state: &mut ParseState<'_, '_>) -> Self::Output {
         state.consume(Punctuator::OpenBrace)?;
 
         let mut block = vec![];
@@ -132,7 +132,7 @@ struct DeferStatementParser;
 impl Parse for DeferStatementParser {
     type Output = Option<Statement>;
 
-    fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
+    fn parse(self, state: &mut ParseState<'_, '_>) -> Self::Output {
         state.advance();
 
         let call = ExpressionParser::default().parse(state)?;
@@ -148,7 +148,7 @@ struct ReturnStatementParser;
 impl Parse for ReturnStatementParser {
     type Output = Option<Statement>;
 
-    fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
+    fn parse(self, state: &mut ParseState<'_, '_>) -> Self::Output {
         state.advance();
 
         let expression = ExpressionParser::default().parse(state)?;
@@ -164,7 +164,7 @@ struct LetStatementParser;
 impl Parse for LetStatementParser {
     type Output = Option<Statement>;
 
-    fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
+    fn parse(self, state: &mut ParseState<'_, '_>) -> Self::Output {
         state.advance();
 
         let pattern = PatternParser.parse(state)?;
@@ -192,7 +192,7 @@ struct ContinueStatementParser;
 impl Parse for ContinueStatementParser {
     type Output = Option<Statement>;
 
-    fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
+    fn parse(self, state: &mut ParseState<'_, '_>) -> Self::Output {
         state.advance();
 
         let location = state.current_token.location;
@@ -208,7 +208,7 @@ struct BreakStatementParser;
 impl Parse for BreakStatementParser {
     type Output = Option<Statement>;
 
-    fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
+    fn parse(self, state: &mut ParseState<'_, '_>) -> Self::Output {
         state.advance();
 
         let location = state.current_token.location;

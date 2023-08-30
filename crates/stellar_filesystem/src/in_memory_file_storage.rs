@@ -3,27 +3,23 @@
 use std::io;
 
 use stellar_fx_hash::FxHashMap;
-use stellar_interner::{PathID, PathInterner};
+use stellar_interner::PathID;
 
 use crate::in_memory_file::InMemoryFile;
 
 /// In memory file storage. The storage can be used for example when emitting
 /// some diagnostics, to avoid rereading the same file multiple times.
-#[derive(Debug, Clone)]
-pub struct InMemoryFileStorage<'p> {
-    path_interner: &'p PathInterner,
+#[derive(Debug, Clone, Default)]
+pub struct InMemoryFileStorage {
     storage: FxHashMap<PathID, InMemoryFile>,
 }
 
-impl<'p> InMemoryFileStorage<'p> {
+impl InMemoryFileStorage {
     /// Creates an empty storage.
     #[inline(always)]
     #[must_use]
-    pub fn new(path_interner: &'p PathInterner) -> Self {
-        Self {
-            path_interner,
-            storage: FxHashMap::default(),
-        }
+    pub fn new() -> Self {
+        Self::default()
     }
 
     /// Adds a file into the storage.
@@ -38,7 +34,7 @@ impl<'p> InMemoryFileStorage<'p> {
     /// If the file contents cannot be read.
     #[inline(always)]
     pub fn read_and_add_file(&mut self, path_id: PathID) -> Result<(), io::Error> {
-        let file = InMemoryFile::new_from_path_id(self.path_interner, path_id)?;
+        let file = InMemoryFile::new_from_path_id(path_id)?;
         self.add_file(path_id, file);
 
         Ok(())
@@ -52,7 +48,7 @@ impl<'p> InMemoryFileStorage<'p> {
     pub fn read_and_add_file_or_panic(&mut self, path_id: PathID) {
         self.storage.insert(
             path_id,
-            InMemoryFile::new_or_panic(self.path_interner.resolve_or_panic(path_id)),
+            InMemoryFile::new_or_panic(path_id.resolve_or_panic()),
         );
     }
 
@@ -84,7 +80,7 @@ impl<'p> InMemoryFileStorage<'p> {
     #[inline(always)]
     #[must_use]
     pub fn read_and_add_file_if_not_exists_or_panic(&mut self, path_id: PathID) -> InMemoryFile {
-        InMemoryFile::new_or_panic(self.path_interner.resolve_or_panic(path_id))
+        InMemoryFile::new_or_panic(path_id.resolve_or_panic())
     }
 
     /// Resolves a file from the storage by its path id.

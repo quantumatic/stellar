@@ -45,11 +45,8 @@ impl InMemoryFile {
     /// # Errors
     /// If the source of the file cannot be read.
     #[inline(always)]
-    pub fn new_from_path_id(
-        path_interner: &PathInterner,
-        path_id: PathID,
-    ) -> Result<Self, io::Error> {
-        Self::new(path_interner.resolve_or_panic(path_id))
+    pub fn new_from_path_id(path_id: PathID) -> Result<Self, io::Error> {
+        Self::new(path_id.resolve_or_panic())
     }
 
     /// Creates a new [`InMemoryFile`] and panics if its contents

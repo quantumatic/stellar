@@ -90,7 +90,7 @@ use stellar_ast::{
 };
 use stellar_diagnostics::{BuildDiagnostic, Diagnostics};
 use stellar_filesystem::location::{ByteOffset, Location, LocationIndex};
-use stellar_interner::{IdentifierInterner, PathID, PathInterner};
+use stellar_interner::PathID;
 use stellar_lexer::Lexer;
 use stellar_stable_likely::unlikely;
 use tracing::trace;
@@ -99,9 +99,9 @@ use crate::diagnostics::UnexpectedToken;
 
 /// Represents a parse state.
 #[derive(Debug)]
-pub struct ParseState<'s, 'd, 'i> {
+pub struct ParseState<'s, 'd> {
     /// Lexer that is used for parsing.
-    lexer: Lexer<'s, 'i>,
+    lexer: Lexer<'s>,
 
     /// Current token.
     current_token: Token,
@@ -118,7 +118,7 @@ pub trait Parse: Sized {
     type Output;
 
     /// Parse AST node of type [`Self::Output`].
-    fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output;
+    fn parse(self, state: &mut ParseState<'_, '_>) -> Self::Output;
 }
 
 /// Represents AST node that can optionally be parsed. Optionally
@@ -138,7 +138,7 @@ pub trait OptionallyParse: Sized {
     /// Optionally parse AST node of type [`Self::Output`].
     ///
     /// For more information, see [`OptionallyParse`].
-    fn optionally_parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output;
+    fn optionally_parse(self, state: &mut ParseState<'_, '_>) -> Self::Output;
 }
 
 /// Read and parse a Stellar module.
@@ -150,41 +150,29 @@ pub trait OptionallyParse: Sized {
 /// Panics if the file path cannot be resolved in the path storage.
 #[inline(always)]
 pub fn read_and_parse_module(
-    path_interner: &PathInterner,
-    file_path_id: PathID,
+    filepath: PathID,
     diagnostics: &RwLock<Diagnostics>,
-    identifier_interner: &RwLock<IdentifierInterner>,
 ) -> Result<Module, io::Error> {
     Ok(parse_module_using(ParseState::new(
-        file_path_id,
-        &fs::read_to_string(path_interner.resolve_or_panic(file_path_id))?,
+        filepath,
+        &fs::read_to_string(filepath.resolve_or_panic())?,
         diagnostics,
-        identifier_interner,
     )))
 }
 
 /// Parse a Stellar module.
 #[inline(always)]
 #[must_use]
-pub fn parse_module(
-    file_path_id: PathID,
-    source: &str,
-    diagnostics: &RwLock<Diagnostics>,
-    identifier_interner: &RwLock<IdentifierInterner>,
-) -> Module {
-    parse_module_using(ParseState::new(
-        file_path_id,
-        source,
-        diagnostics,
-        identifier_interner,
-    ))
+pub fn parse_module(filepath: PathID, source: &str, diagnostics: &RwLock<Diagnostics>) -> Module {
+    parse_module_using(ParseState::new(filepath, source, diagnostics))
 }
 
 /// Parse a Stellar module using a given parse state.
 #[inline(always)]
 #[must_use]
-pub fn parse_module_using(mut state: ParseState<'_, '_, '_>) -> Module {
+pub fn parse_module_using(mut state: ParseState<'_, '_>) -> Module {
     Module {
+        filepath: state.lexer.filepath,
         docstring: state.consume_module_docstring(),
         items: ItemsParser.parse(&mut state),
     }
@@ -194,23 +182,17 @@ pub fn parse_module_using(mut state: ParseState<'_, '_, '_>) -> Module {
 #[inline(always)]
 #[must_use]
 pub fn parse_item(
-    file_path_id: PathID,
+    filepath: PathID,
     source: impl AsRef<str>,
     diagnostics: &RwLock<Diagnostics>,
-    identifier_interner: &RwLock<IdentifierInterner>,
 ) -> Option<ModuleItem> {
-    parse_item_using(&mut ParseState::new(
-        file_path_id,
-        source.as_ref(),
-        diagnostics,
-        identifier_interner,
-    ))
+    parse_item_using(&mut ParseState::new(filepath, source.as_ref(), diagnostics))
 }
 
 /// Parse an item.
 #[inline(always)]
 #[must_use]
-pub fn parse_item_using(state: &mut ParseState<'_, '_, '_>) -> Option<ModuleItem> {
+pub fn parse_item_using(state: &mut ParseState<'_, '_>) -> Option<ModuleItem> {
     ItemParser.parse(state)
 }
 
@@ -218,23 +200,17 @@ pub fn parse_item_using(state: &mut ParseState<'_, '_, '_>) -> Option<ModuleItem
 #[inline(always)]
 #[must_use]
 pub fn parse_expression(
-    file_path_id: PathID,
+    filepath: PathID,
     source: impl AsRef<str>,
     diagnostics: &RwLock<Diagnostics>,
-    identifier_interner: &RwLock<IdentifierInterner>,
 ) -> Option<Expression> {
-    parse_expression_using(&mut ParseState::new(
-        file_path_id,
-        source.as_ref(),
-        diagnostics,
-        identifier_interner,
-    ))
+    parse_expression_using(&mut ParseState::new(filepath, source.as_ref(), diagnostics))
 }
 
 /// Parse an expression.
 #[inline(always)]
 #[must_use]
-pub fn parse_expression_using(state: &mut ParseState<'_, '_, '_>) -> Option<Expression> {
+pub fn parse_expression_using(state: &mut ParseState<'_, '_>) -> Option<Expression> {
     ExpressionParser::default().parse(state)
 }
 
@@ -242,23 +218,17 @@ pub fn parse_expression_using(state: &mut ParseState<'_, '_, '_>) -> Option<Expr
 #[inline(always)]
 #[must_use]
 pub fn parse_statement(
-    file_path_id: PathID,
+    filepath: PathID,
     source: impl AsRef<str>,
     diagnostics: &RwLock<Diagnostics>,
-    identifier_interner: &RwLock<IdentifierInterner>,
 ) -> Option<Statement> {
-    parse_statement_using(&mut ParseState::new(
-        file_path_id,
-        source.as_ref(),
-        diagnostics,
-        identifier_interner,
-    ))
+    parse_statement_using(&mut ParseState::new(filepath, source.as_ref(), diagnostics))
 }
 
 /// Parse a statement.
 #[inline(always)]
 #[must_use]
-pub fn parse_statement_using(state: &mut ParseState<'_, '_, '_>) -> Option<Statement> {
+pub fn parse_statement_using(state: &mut ParseState<'_, '_>) -> Option<Statement> {
     StatementParser.parse(state).map(|s| s.statement)
 }
 
@@ -266,23 +236,17 @@ pub fn parse_statement_using(state: &mut ParseState<'_, '_, '_>) -> Option<State
 #[inline(always)]
 #[must_use]
 pub fn parse_type(
-    file_path_id: PathID,
+    filepath: PathID,
     source: impl AsRef<str>,
     diagnostics: &RwLock<Diagnostics>,
-    identifier_interner: &RwLock<IdentifierInterner>,
 ) -> Option<Type> {
-    parse_type_using(&mut ParseState::new(
-        file_path_id,
-        source.as_ref(),
-        diagnostics,
-        identifier_interner,
-    ))
+    parse_type_using(&mut ParseState::new(filepath, source.as_ref(), diagnostics))
 }
 
 /// Parse a type.
 #[inline(always)]
 #[must_use]
-pub fn parse_type_using(state: &mut ParseState<'_, '_, '_>) -> Option<Type> {
+pub fn parse_type_using(state: &mut ParseState<'_, '_>) -> Option<Type> {
     TypeParser.parse(state)
 }
 
@@ -290,36 +254,29 @@ pub fn parse_type_using(state: &mut ParseState<'_, '_, '_>) -> Option<Type> {
 #[inline(always)]
 #[must_use]
 pub fn parse_pattern(
-    file_path_id: PathID,
+    filepath: PathID,
     source: impl AsRef<str>,
     diagnostics: &RwLock<Diagnostics>,
-    identifier_interner: &RwLock<IdentifierInterner>,
 ) -> Option<Pattern> {
-    parse_pattern_using(&mut ParseState::new(
-        file_path_id,
-        source.as_ref(),
-        diagnostics,
-        identifier_interner,
-    ))
+    parse_pattern_using(&mut ParseState::new(filepath, source.as_ref(), diagnostics))
 }
 
 /// Parse a pattern.
 #[inline(always)]
 #[must_use]
-pub fn parse_pattern_using(state: &mut ParseState<'_, '_, '_>) -> Option<Pattern> {
+pub fn parse_pattern_using(state: &mut ParseState<'_, '_>) -> Option<Pattern> {
     PatternParser.parse(state)
 }
 
-impl<'s, 'd, 'i> ParseState<'s, 'd, 'i> {
+impl<'s, 'd> ParseState<'s, 'd> {
     /// Creates an initial parse state from file source.
     #[must_use]
     pub fn new(
         file_path_id: PathID,
         source: &'s str,
         diagnostics: &'d RwLock<Diagnostics>,
-        identifier_interner: &'i RwLock<IdentifierInterner>,
     ) -> Self {
-        let mut lexer = Lexer::new(file_path_id, source, identifier_interner);
+        let mut lexer = Lexer::new(file_path_id, source);
 
         let current_token = lexer.next_no_comments();
         trace!(
@@ -418,7 +375,7 @@ impl<'s, 'd, 'i> ParseState<'s, 'd, 'i> {
     #[inline(always)]
     pub(crate) const fn make_location(&self, start: ByteOffset, end: ByteOffset) -> Location {
         Location {
-            file_path_id: self.lexer.file_path_id,
+            file_path_id: self.lexer.filepath,
             start,
             end,
         }
@@ -503,7 +460,7 @@ impl<'s, 'd, 'i> ParseState<'s, 'd, 'i> {
     pub(crate) fn add_diagnostic(&mut self, diagnostic: impl BuildDiagnostic) {
         self.diagnostics
             .write()
-            .add_single_file_diagnostic(self.lexer.file_path_id, diagnostic);
+            .add_single_file_diagnostic(self.lexer.filepath, diagnostic);
     }
 }
 
@@ -512,7 +469,7 @@ pub(crate) struct VisibilityParser;
 impl Parse for VisibilityParser {
     type Output = Visibility;
 
-    fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
+    fn parse(self, state: &mut ParseState<'_, '_>) -> Self::Output {
         if state.next_token.raw == Keyword::Pub {
             state.advance();
 

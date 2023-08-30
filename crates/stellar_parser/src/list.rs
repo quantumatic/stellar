@@ -7,7 +7,7 @@ use crate::{diagnostics::UnexpectedToken, Parse, ParseState};
 
 pub(crate) struct ListParser<'a, P, E>
 where
-    P: for<'s, 'd, 'i> Fn(&mut ParseState<'s, 'd, 'i>) -> Option<E>,
+    P: for<'s, 'd> Fn(&mut ParseState<'s, 'd>) -> Option<E>,
 {
     closing_tokens: &'a [RawToken],
     parse_element_fn: P,
@@ -15,7 +15,7 @@ where
 
 impl<'a, P, E> ListParser<'a, P, E>
 where
-    P: for<'s, 'd, 'i> Fn(&mut ParseState<'s, 'd, 'i>) -> Option<E>,
+    P: for<'s, 'd> Fn(&mut ParseState<'s, 'd>) -> Option<E>,
 {
     #[must_use]
     pub(crate) const fn new(closing_tokens: &'a [RawToken], parse_element_fn: P) -> Self {
@@ -28,11 +28,11 @@ where
 
 impl<P, E> Parse for ListParser<'_, P, E>
 where
-    P: for<'s, 'd, 'i> Fn(&mut ParseState<'s, 'd, 'i>) -> Option<E>,
+    P: for<'s, 'd> Fn(&mut ParseState<'s, 'd>) -> Option<E>,
 {
     type Output = Option<Vec<E>>;
 
-    fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
+    fn parse(self, state: &mut ParseState<'_, '_>) -> Self::Output {
         let mut result = vec![];
 
         // For instance: `(` `)` - empty list.

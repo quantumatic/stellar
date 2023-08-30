@@ -71,7 +71,7 @@ impl ExpressionParser {
 impl Parse for ExpressionParser {
     type Output = Option<Expression>;
 
-    fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
+    fn parse(self, state: &mut ParseState<'_, '_>) -> Self::Output {
         let mut left = PrimaryExpressionParser {
             in_statements_block: self.in_statements_block,
             prohibit_struct_expressions: self.prohibit_struct_expressions,
@@ -122,7 +122,7 @@ struct WhileExpressionParser;
 impl Parse for WhileExpressionParser {
     type Output = Option<Expression>;
 
-    fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
+    fn parse(self, state: &mut ParseState<'_, '_>) -> Self::Output {
         let start = state.next_token.location.start;
         state.advance(); // `while`
 
@@ -145,7 +145,7 @@ struct MatchExpressionParser;
 impl Parse for MatchExpressionParser {
     type Output = Option<Expression>;
 
-    fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
+    fn parse(self, state: &mut ParseState<'_, '_>) -> Self::Output {
         let start = state.next_token.location.start;
         state.advance(); // `match`
 
@@ -168,7 +168,7 @@ struct MatchExpressionBlockParser;
 impl Parse for MatchExpressionBlockParser {
     type Output = Option<Vec<MatchExpressionItem>>;
 
-    fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
+    fn parse(self, state: &mut ParseState<'_, '_>) -> Self::Output {
         state.consume(Punctuator::OpenBrace)?;
 
         let units = ListParser::new(&[RawToken::from(Punctuator::CloseBrace)], |state| {
@@ -187,7 +187,7 @@ struct MatchExpressionUnitParser;
 impl Parse for MatchExpressionUnitParser {
     type Output = Option<MatchExpressionItem>;
 
-    fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
+    fn parse(self, state: &mut ParseState<'_, '_>) -> Self::Output {
         let left = PatternParser.parse(state)?;
 
         state.consume(Punctuator::Arrow)?;
@@ -206,7 +206,7 @@ struct PrimaryExpressionParser {
 impl Parse for PrimaryExpressionParser {
     type Output = Option<Expression>;
 
-    fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
+    fn parse(self, state: &mut ParseState<'_, '_>) -> Self::Output {
         match state.next_token.raw {
             RawToken::IntegerLiteral
             | RawToken::FloatLiteral
@@ -285,7 +285,7 @@ struct GenericArgumentsExpressionParser {
 impl Parse for GenericArgumentsExpressionParser {
     type Output = Option<Expression>;
 
-    fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
+    fn parse(self, state: &mut ParseState<'_, '_>) -> Self::Output {
         let arguments = TypeArgumentsParser.parse(state)?;
 
         Some(Expression::TypeArguments {
@@ -303,7 +303,7 @@ struct FieldAccessExpressionParser {
 impl Parse for FieldAccessExpressionParser {
     type Output = Option<Expression>;
 
-    fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
+    fn parse(self, state: &mut ParseState<'_, '_>) -> Self::Output {
         state.advance(); // `.`
 
         let right = state.consume_identifier()?;
@@ -322,7 +322,7 @@ struct PrefixExpressionParser {
 impl Parse for PrefixExpressionParser {
     type Output = Option<Expression>;
 
-    fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
+    fn parse(self, state: &mut ParseState<'_, '_>) -> Self::Output {
         let operator_token = state.next_token;
         let operator: PrefixOperator = PrefixOperator {
             location: operator_token.location,
@@ -350,7 +350,7 @@ struct PostfixExpressionParser {
 impl Parse for PostfixExpressionParser {
     type Output = Option<Expression>;
 
-    fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
+    fn parse(self, state: &mut ParseState<'_, '_>) -> Self::Output {
         state.advance();
 
         let operator: PostfixOperator = PostfixOperator {
@@ -371,7 +371,7 @@ struct ParenthesizedOrTupleExpressionParser;
 impl Parse for ParenthesizedOrTupleExpressionParser {
     type Output = Option<Expression>;
 
-    fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
+    fn parse(self, state: &mut ParseState<'_, '_>) -> Self::Output {
         let start = state.next_token.location.start;
         state.advance();
 
@@ -429,7 +429,7 @@ struct IfExpressionParser;
 impl Parse for IfExpressionParser {
     type Output = Option<Expression>;
 
-    fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
+    fn parse(self, state: &mut ParseState<'_, '_>) -> Self::Output {
         let start = state.next_token.location.start;
         state.advance(); // `if`
 
@@ -476,7 +476,7 @@ struct CastExpressionParser {
 impl Parse for CastExpressionParser {
     type Output = Option<Expression>;
 
-    fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
+    fn parse(self, state: &mut ParseState<'_, '_>) -> Self::Output {
         state.advance();
 
         let right = TypeParser.parse(state)?;
@@ -496,7 +496,7 @@ struct CallExpressionParser {
 impl Parse for CallExpressionParser {
     type Output = Option<Expression>;
 
-    fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
+    fn parse(self, state: &mut ParseState<'_, '_>) -> Self::Output {
         state.advance(); // `(`
 
         let arguments = ListParser::new(&[RawToken::from(Punctuator::CloseParent)], |state| {
@@ -522,7 +522,7 @@ struct BinaryExpressionParser {
 impl Parse for BinaryExpressionParser {
     type Output = Option<Expression>;
 
-    fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
+    fn parse(self, state: &mut ParseState<'_, '_>) -> Self::Output {
         let operator_token = state.next_token;
         let operator: BinaryOperator = BinaryOperator {
             location: operator_token.location,
@@ -551,7 +551,7 @@ struct ListExpressionParser;
 impl Parse for ListExpressionParser {
     type Output = Option<Expression>;
 
-    fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
+    fn parse(self, state: &mut ParseState<'_, '_>) -> Self::Output {
         let start = state.next_token.location.start;
 
         state.advance();
@@ -577,7 +577,7 @@ struct StructExpressionParser {
 impl Parse for StructExpressionParser {
     type Output = Option<Expression>;
 
-    fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
+    fn parse(self, state: &mut ParseState<'_, '_>) -> Self::Output {
         state.advance(); // `{`
 
         let fields = ListParser::new(&[RawToken::from(Punctuator::CloseBrace)], |state| {
@@ -600,7 +600,7 @@ struct StructFieldExpressionParser;
 impl Parse for StructFieldExpressionParser {
     type Output = Option<StructFieldExpression>;
 
-    fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
+    fn parse(self, state: &mut ParseState<'_, '_>) -> Self::Output {
         let name = state.consume_identifier()?;
 
         let value = if state.next_token.raw == Punctuator::Colon {
@@ -619,7 +619,7 @@ struct StatementsBlockExpressionParser;
 impl Parse for StatementsBlockExpressionParser {
     type Output = Option<Expression>;
 
-    fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
+    fn parse(self, state: &mut ParseState<'_, '_>) -> Self::Output {
         let start = state.next_token.location.start;
         let block = StatementsBlockParser.parse(state)?;
 
@@ -635,7 +635,7 @@ struct LambdaExpressionParser;
 impl Parse for LambdaExpressionParser {
     type Output = Option<Expression>;
 
-    fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
+    fn parse(self, state: &mut ParseState<'_, '_>) -> Self::Output {
         let start = state.next_token.location.start;
 
         state.advance(); // `|` or `||`
@@ -687,7 +687,7 @@ struct LoopExpressionParser;
 impl Parse for LoopExpressionParser {
     type Output = Option<Expression>;
 
-    fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
+    fn parse(self, state: &mut ParseState<'_, '_>) -> Self::Output {
         state.advance(); // `loop`
 
         let location = state.current_token.location;

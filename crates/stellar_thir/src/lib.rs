@@ -61,7 +61,7 @@
 )]
 
 use generic_parameter_scope::GenericParameterScope;
-use stellar_ast::{IdentifierAST, Literal, Path, Visibility};
+use stellar_ast::{IdentifierAST, Literal, Visibility};
 use stellar_filesystem::location::Location;
 use stellar_fx_hash::FxHashMap;
 use stellar_hir as _;
@@ -88,7 +88,7 @@ pub enum Pattern {
     /// A struct pattern, e.g. `Person { name, age, .. }`.
     Struct {
         location: Location,
-        path: Path,
+        path: stellar_ast::Path,
         fields: Vec<StructFieldPattern>,
         ty: Type,
     },
@@ -97,7 +97,7 @@ pub enum Pattern {
     /// e.g. `Some(x)`, `A()`.
     TupleLike {
         location: Location,
-        path: Path,
+        path: stellar_ast::Path,
         inner_patterns: Vec<Self>,
         ty: Type,
     },
@@ -110,7 +110,7 @@ pub enum Pattern {
     },
 
     /// A path pattern.
-    Path { path: Path, ty: Type },
+    Path { path: stellar_ast::Path, ty: Type },
 
     /// A list pattern, e.g. `[1, .., 10]`.
     List {
@@ -145,7 +145,7 @@ impl Pattern {
             | Self::Tuple { location, .. }
             | Self::TupleLike { location, .. }
             | Self::Path {
-                path: Path { location, .. },
+                path: stellar_ast::Path { location, .. },
                 ..
             } => *location,
             Self::Literal { literal, .. } => literal.location(),
@@ -518,4 +518,34 @@ pub enum ModuleItem {
         methods: FxHashMap<IdentifierID, Function>,
     },
     Function(Function),
+}
+
+/// Path - a list of identifiers separated by commas. The main difference
+/// between this struct and [`stellar_ast::Path`] is that the former doesn't store
+/// locations of identifiers.
+#[derive(Debug, PartialEq, Eq, Clone, Hash)]
+pub struct Path {
+    /// List of semantic symbols.
+    pub identifiers: Vec<IdentifierID>,
+}
+
+/// Macro, that can be used to construct a path in tests:
+///
+/// # Example
+///
+/// ```
+/// use stellar_thir::{path, Path};
+/// use stellar_interner::IdentifierID;
+///
+/// let a = IdentifierID(2);
+/// let b = IdentifierID(3);
+/// assert_eq!(path!(a, b), Path { identifiers: vec![a, b] });
+/// ```
+#[macro_export]
+macro_rules! path {
+    ($($id:expr),*) => {
+        $crate::Path {
+            identifiers: vec![$($id),*]
+        }
+    };
 }

@@ -9,7 +9,6 @@ readme = "../../README.md"
 description = "Lexer for the Stellar programming language."
 
 [dependencies]
-parking_lot = "0.12.1"
 stellar_ast = { path = "../stellar_ast" }
 stellar_filesystem = { path = "../stellar_filesystem" }
 stellar_interner = { path = "../stellar_interner" }

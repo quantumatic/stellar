@@ -266,7 +266,7 @@ impl From<LineTooLargeError> for Error {
     }
 }
 
-impl<'a> Files<'a> for InMemoryFileStorage<'a> {
+impl<'a> Files<'a> for InMemoryFileStorage {
     type FileId = PathID;
 
     type Name = String;

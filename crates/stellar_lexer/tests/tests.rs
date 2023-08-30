@@ -1,17 +1,14 @@
 #[cfg(test)]
 mod tests {
     use stellar_ast::token::{RawLexError, RawToken::*};
-    use stellar_interner::{IdentifierInterner, DUMMY_PATH_ID};
+    use stellar_interner::DUMMY_PATH_ID;
     use stellar_lexer::Lexer;
 
     macro_rules! lexer_test {
         ($name:ident, $source:expr, $expected:pat) => {
             #[test]
             fn $name() {
-                use parking_lot::RwLock;
-
-                let identifier_interner = RwLock::new(IdentifierInterner::new());
-                let mut lexer = Lexer::new(DUMMY_PATH_ID, $source, &identifier_interner);
+                let mut lexer = Lexer::new(DUMMY_PATH_ID, $source);
                 assert!(matches!(lexer.next_token().raw, $expected));
             }
         };

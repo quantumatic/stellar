@@ -1,34 +1,24 @@
-use std::{io::Write, path::PathBuf, time::Instant};
+use std::{io::Write, time::Instant};
 
 use parking_lot::RwLock;
 use stellar_diagnostics::diagnostic::Diagnostic;
 use stellar_diagnostics::{Diagnostics, DiagnosticsEmitter};
 use stellar_filesystem::file_utils::make_unique_file;
-use stellar_interner::{IdentifierInterner, PathInterner};
+use stellar_interner::PathID;
 use stellar_parser::read_and_parse_module;
 
 use crate::prefix::log_with_left_padded_prefix;
 
-pub fn command(path_str: &str) {
-    let mut path_interner = PathInterner::new();
-    let identifier_interner = RwLock::new(IdentifierInterner::new());
-
-    let file_path_id = path_interner.get_or_intern(PathBuf::from(path_str));
-
+pub fn command(filepath: &str) {
     let diagnostics = RwLock::new(Diagnostics::new());
-    let mut diagnostics_emitter = DiagnosticsEmitter::new(&path_interner);
+    let mut diagnostics_emitter = DiagnosticsEmitter::new();
 
     let now = Instant::now();
 
-    match read_and_parse_module(
-        &path_interner,
-        file_path_id,
-        &diagnostics,
-        &identifier_interner,
-    ) {
+    match read_and_parse_module(PathID::from(filepath), &diagnostics) {
         Err(..) => {
             diagnostics_emitter.emit_context_free_diagnostic(
-                &Diagnostic::error().with_message(format!("cannot read the file {path_str}")),
+                &Diagnostic::error().with_message(format!("cannot read the file {filepath}")),
             );
         }
         Ok(ast) => {

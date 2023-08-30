@@ -5,7 +5,7 @@ use stellar_filesystem::location::{ByteOffset, Location};
 
 use crate::{is_id_start, Lexer};
 
-impl Lexer<'_, '_> {
+impl Lexer<'_> {
     pub(crate) fn tokenize_number(&mut self) -> Token {
         let start_offset = self.offset;
 
@@ -129,7 +129,7 @@ impl Lexer<'_, '_> {
             if number_kind == NumberKind::Int {
                 return Token {
                     raw: RawToken::Error(RawLexError::InvalidDigit),
-                    location: invalid_digit_offset.next_byte_location_at(self.file_path_id),
+                    location: invalid_digit_offset.next_byte_location_at(self.filepath),
                 };
             }
         }

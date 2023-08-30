@@ -2,12 +2,10 @@ use std::fs;
 
 use stellar_diagnostics::diagnostic::Diagnostic;
 use stellar_diagnostics::DiagnosticsEmitter;
-use stellar_interner::PathInterner;
 use stellar_manifest::parse_manifest;
 
 pub fn command(filepath: &str) {
-    let path_interner = PathInterner::new();
-    let diagnostics_emitter = DiagnosticsEmitter::new(&path_interner);
+    let diagnostics_emitter = DiagnosticsEmitter::new();
 
     match fs::read_to_string(filepath) {
         Err(..) => {

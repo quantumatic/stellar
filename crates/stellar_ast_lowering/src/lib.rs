@@ -64,6 +64,7 @@ impl<'d> LoweringContext<'d> {
     #[must_use]
     pub fn lower(&mut self, ast: stellar_ast::Module) -> stellar_hir::Module {
         let mut lowered = stellar_hir::Module {
+            filepath: ast.filepath,
             items: vec![],
             docstring: ast.docstring,
         };

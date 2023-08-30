@@ -5,7 +5,8 @@ use std::fmt::Display;
 use derive_more::Display;
 use stellar_filesystem::location::Location;
 use stellar_interner::{builtin_identifiers, IdentifierID};
-use stellar_name_resolution::Path;
+
+use crate::Path;
 
 /// A raw representation of types in the Stellar programming language.
 ///

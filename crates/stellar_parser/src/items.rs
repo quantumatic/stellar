@@ -30,7 +30,7 @@ struct ImportParser {
 impl Parse for ImportParser {
     type Output = Option<ModuleItem>;
 
-    fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
+    fn parse(self, state: &mut ParseState<'_, '_>) -> Self::Output {
         let start = state.next_token.location.start;
 
         if let Visibility::Public(location) = self.visibility {
@@ -61,7 +61,7 @@ struct StructFieldParser {
 impl Parse for StructFieldParser {
     type Output = Option<StructField>;
 
-    fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
+    fn parse(self, state: &mut ParseState<'_, '_>) -> Self::Output {
         let name = state.consume_identifier()?;
 
         state.consume(Punctuator::Colon)?;
@@ -82,7 +82,7 @@ struct StructFieldsParser;
 impl Parse for StructFieldsParser {
     type Output = Option<Vec<StructField>>;
 
-    fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
+    fn parse(self, state: &mut ParseState<'_, '_>) -> Self::Output {
         state.consume(Punctuator::OpenBrace)?;
 
         let fields = ListParser::new(&[RawToken::from(Punctuator::CloseBrace)], |state| {
@@ -108,7 +108,7 @@ struct StructParser {
 impl Parse for StructParser {
     type Output = Option<ModuleItem>;
 
-    fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
+    fn parse(self, state: &mut ParseState<'_, '_>) -> Self::Output {
         state.advance();
 
         let name = state.consume_identifier()?;
@@ -274,7 +274,7 @@ struct NotSelfFunctionParameterParser;
 impl Parse for NotSelfFunctionParameterParser {
     type Output = Option<NotSelfFunctionParameter>;
 
-    fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
+    fn parse(self, state: &mut ParseState<'_, '_>) -> Self::Output {
         let pattern = PatternParser.parse(state)?;
 
         state.consume(Punctuator::Colon)?;
@@ -293,7 +293,7 @@ struct FunctionParser {
 impl Parse for FunctionParser {
     type Output = Option<Function>;
 
-    fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
+    fn parse(self, state: &mut ParseState<'_, '_>) -> Self::Output {
         state.consume(Keyword::Fun)?;
 
         let name = state.consume_identifier()?;
@@ -378,7 +378,7 @@ struct TypeAliasParser {
 impl Parse for TypeAliasParser {
     type Output = Option<ModuleItem>;
 
-    fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
+    fn parse(self, state: &mut ParseState<'_, '_>) -> Self::Output {
         state.advance();
 
         let name = state.consume_identifier()?;
@@ -408,7 +408,7 @@ struct InterfaceParser {
 impl Parse for InterfaceParser {
     type Output = Option<ModuleItem>;
 
-    fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
+    fn parse(self, state: &mut ParseState<'_, '_>) -> Self::Output {
         state.advance();
 
         let name = state.consume_identifier()?;
@@ -497,7 +497,7 @@ macro_rules! possibly_recover {
 impl Parse for EnumParser {
     type Output = Option<ModuleItem>;
 
-    fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
+    fn parse(self, state: &mut ParseState<'_, '_>) -> Self::Output {
         state.advance();
 
         let name = state.consume_identifier()?;
@@ -575,7 +575,7 @@ struct EnumItemParser;
 impl Parse for EnumItemParser {
     type Output = Option<EnumItem>;
 
-    fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
+    fn parse(self, state: &mut ParseState<'_, '_>) -> Self::Output {
         let docstring = state.consume_local_docstring();
 
         let name = state.consume_identifier()?;
@@ -602,7 +602,7 @@ struct EnumItemStructParser {
 impl Parse for EnumItemStructParser {
     type Output = Option<EnumItem>;
 
-    fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
+    fn parse(self, state: &mut ParseState<'_, '_>) -> Self::Output {
         let fields = StructFieldsParser.parse(state)?;
 
         Some(EnumItem::Struct {
@@ -618,7 +618,7 @@ struct TupleFieldsParser;
 impl Parse for TupleFieldsParser {
     type Output = Option<Vec<TupleField>>;
 
-    fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
+    fn parse(self, state: &mut ParseState<'_, '_>) -> Self::Output {
         state.advance(); // `(`
 
         let fields = ListParser::new(&[RawToken::from(Punctuator::CloseParent)], |state| {
@@ -640,7 +640,7 @@ pub(crate) struct ItemsParser;
 impl Parse for ItemsParser {
     type Output = Vec<ModuleItem>;
 
-    fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
+    fn parse(self, state: &mut ParseState<'_, '_>) -> Self::Output {
         let mut items = vec![];
 
         while state.next_token.raw != RawToken::EndOfFile {
@@ -654,7 +654,7 @@ impl Parse for ItemsParser {
 }
 
 impl ItemParser {
-    fn goto_next_valid_item(state: &mut ParseState<'_, '_, '_>) {
+    fn goto_next_valid_item(state: &mut ParseState<'_, '_>) {
         loop {
             match state.next_token.raw {
                 RawToken::Keyword(
@@ -676,7 +676,7 @@ pub(crate) struct ItemParser;
 impl Parse for ItemParser {
     type Output = Option<ModuleItem>;
 
-    fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
+    fn parse(self, state: &mut ParseState<'_, '_>) -> Self::Output {
         let docstring = state.consume_local_docstring();
         let visibility = VisibilityParser.parse(state);
 

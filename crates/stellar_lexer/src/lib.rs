@@ -67,10 +67,9 @@
 
 use std::{mem, str::Chars, string::String};
 
-use parking_lot::RwLock;
 use stellar_ast::token::{get_keyword, LexError, Punctuator, RawLexError, RawToken, Token};
 use stellar_filesystem::location::{ByteOffset, Location};
-use stellar_interner::{IdentifierID, IdentifierInterner, PathID};
+use stellar_interner::{IdentifierID, PathID};
 use stellar_stable_likely::unlikely;
 
 mod number;
@@ -81,13 +80,10 @@ mod number;
 /// ```
 /// use stellar_lexer::Lexer;
 /// use stellar_ast::token::{Token, RawToken::EndOfFile};
-/// use stellar_interner::IdentifierInterner;
 /// use stellar_filesystem::location::{Location, ByteOffset};
 /// use stellar_interner::DUMMY_PATH_ID;
-/// use parking_lot::RwLock;
 ///
-/// let mut identifier_interner = RwLock::new(IdentifierInterner::default());
-/// let mut lexer = Lexer::new(DUMMY_PATH_ID, "", &identifier_interner);
+/// let mut lexer = Lexer::new(DUMMY_PATH_ID, "");
 ///
 /// assert_eq!(
 ///     lexer.next_token(),
@@ -107,11 +103,9 @@ mod number;
 /// ```
 /// use stellar_lexer::Lexer;
 /// use stellar_ast::token::{RawLexError, RawToken::Error};
-/// use stellar_interner::{IdentifierInterner, DUMMY_PATH_ID};
-/// use parking_lot::RwLock;
+/// use stellar_interner::DUMMY_PATH_ID;
 ///
-/// let mut identifier_interner = RwLock::new(IdentifierInterner::default());
-/// let mut lexer = Lexer::new(DUMMY_PATH_ID, "١", &identifier_interner);
+/// let mut lexer = Lexer::new(DUMMY_PATH_ID, "١");
 ///
 /// assert_eq!(lexer.next_token().raw, Error(RawLexError::UnexpectedChar));
 /// ```
@@ -124,15 +118,12 @@ mod number;
 /// [`EndOfFile`]: stellar_ast::token::RawToken::EndOfFile
 /// [`Error`]: stellar_ast::token::RawToken::Error
 #[derive(Debug)]
-pub struct Lexer<'s, 'i> {
+pub struct Lexer<'s> {
     /// ID of the path of the file being scanned.
-    pub file_path_id: PathID,
+    pub filepath: PathID,
 
     /// Content of the file being scanned.
     pub source: &'s str,
-
-    /// Identifier interner.
-    pub identifier_interner: &'i RwLock<IdentifierInterner>,
 
     /// Current character.
     current: char,
@@ -153,27 +144,22 @@ pub struct Lexer<'s, 'i> {
     scanned_string: String,
 }
 
-impl<'s, 'i> Lexer<'s, 'i> {
+impl<'s> Lexer<'s> {
     /// Creates a new [`Lexer`] instance.
     #[inline(always)]
     #[must_use]
-    pub fn new(
-        file_path_id: PathID,
-        source: &'s str,
-        identifier_interner: &'i RwLock<IdentifierInterner>,
-    ) -> Self {
+    pub fn new(filepath: PathID, source: &'s str) -> Self {
         let mut chars = source.chars();
 
         let current = chars.next().unwrap_or('\0');
         let next = chars.next().unwrap_or('\0');
 
         Self {
-            file_path_id,
+            filepath,
             source,
             current,
             next,
             chars,
-            identifier_interner,
             offset: ByteOffset(0),
             scanned_identifier: IdentifierID(0),
             scanned_char: '\0',
@@ -241,7 +227,7 @@ impl<'s, 'i> Lexer<'s, 'i> {
     /// and with the lexer's currently processed file path id.
     const fn make_location(&self, start: ByteOffset, end: ByteOffset) -> Location {
         Location {
-            file_path_id: self.file_path_id,
+            file_path_id: self.filepath,
             start,
             end,
         }
@@ -598,7 +584,7 @@ impl<'s, 'i> Lexer<'s, 'i> {
 
         self.advance();
 
-        self.scanned_identifier = self.identifier_interner.write().get_or_intern(name);
+        self.scanned_identifier = IdentifierID::from(name);
 
         Token {
             raw: RawToken::Identifier,
@@ -654,7 +640,8 @@ impl<'s, 'i> Lexer<'s, 'i> {
                 location: self.location_from(start_location),
             }
         } else {
-            self.scanned_identifier = self.identifier_interner.write().get_or_intern(name);
+            self.scanned_identifier = IdentifierID::from(name);
+
             Token {
                 raw: RawToken::Identifier,
                 location: self.location_from(start_location),

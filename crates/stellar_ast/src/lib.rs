@@ -34,7 +34,7 @@
 //!                         "start": 4,
 //!                         "end": 8
 //!                     },
-//!                     "id": 21
+//!                     "id": "main"
 //!                 },
 //!                 "generic_parameters": [],
 //!                 "parameters": [],
@@ -57,7 +57,7 @@
 //!                                 "start": 15,
 //!                                 "end": 22
 //!                             },
-//!                             "id": 22
+//!                             "id": "println"
 //!                         },
 //!                         "arguments": [
 //!                             {
@@ -162,6 +162,7 @@ use serde::Serializer;
 use serde::{Deserialize, Serialize};
 use stellar_filesystem::location::Location;
 use stellar_interner::IdentifierID;
+use stellar_interner::PathID;
 use token::{Punctuator, RawToken};
 
 pub mod precedence;
@@ -1427,6 +1428,8 @@ pub struct NotSelfFunctionParameter {
 #[derive(Debug, PartialEq, Clone)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct Module {
+    pub filepath: PathID,
+
     pub items: Vec<ModuleItem>,
 
     #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]

@@ -74,7 +74,7 @@ use std::fmt::Display;
 use stellar_filesystem::in_memory_file_storage::InMemoryFileStorage;
 use stellar_filesystem::location::Location;
 use stellar_fx_hash::FxHashSet;
-use stellar_interner::{PathID, PathInterner};
+use stellar_interner::PathID;
 
 use crate::diagnostic::Label;
 use crate::{
@@ -88,7 +88,7 @@ use crate::{
 
 /// Stores basic information for reporting diagnostics.
 #[derive(Debug)]
-pub struct DiagnosticsEmitter<'p> {
+pub struct DiagnosticsEmitter {
     /// The stream in which diagnostics is reported into.
     writer: StandardStream,
 
@@ -96,7 +96,14 @@ pub struct DiagnosticsEmitter<'p> {
     config: Config,
 
     /// The files that are involved in the diagnostics are temporarily stored here.
-    file_storage: InMemoryFileStorage<'p>,
+    file_storage: InMemoryFileStorage,
+}
+
+impl Default for DiagnosticsEmitter {
+    #[inline(always)]
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 /// Multi file diagnostic.
@@ -255,15 +262,15 @@ impl Files<'_> for EmptyDiagnosticsManager {
     }
 }
 
-impl<'p> DiagnosticsEmitter<'p> {
+impl DiagnosticsEmitter {
     /// Create a new [`DiagnosticsEmitter`] instance.
     #[inline(always)]
     #[must_use]
-    pub fn new(path_interner: &'p PathInterner) -> Self {
+    pub fn new() -> Self {
         Self {
             writer: StandardStream::stderr(ColorChoice::Always),
             config: Config::default(),
-            file_storage: InMemoryFileStorage::new(path_interner),
+            file_storage: InMemoryFileStorage::new(),
         }
     }
 

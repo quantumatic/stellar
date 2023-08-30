@@ -13,7 +13,7 @@ pub(crate) struct PatternParser;
 impl Parse for PatternParser {
     type Output = Option<Pattern>;
 
-    fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
+    fn parse(self, state: &mut ParseState<'_, '_>) -> Self::Output {
         let left = PatternExceptOrParser.parse(state)?;
 
         if state.next_token.raw == Punctuator::Or {
@@ -37,7 +37,7 @@ struct PatternExceptOrParser;
 impl Parse for PatternExceptOrParser {
     type Output = Option<Pattern>;
 
-    fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
+    fn parse(self, state: &mut ParseState<'_, '_>) -> Self::Output {
         match state.next_token.raw {
             RawToken::StringLiteral
             | RawToken::CharLiteral
@@ -123,7 +123,7 @@ struct StructPatternParser {
 impl Parse for StructPatternParser {
     type Output = Option<Pattern>;
 
-    fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
+    fn parse(self, state: &mut ParseState<'_, '_>) -> Self::Output {
         state.advance(); // `{`
 
         let fields = ListParser::new(&[RawToken::from(Punctuator::CloseBrace)], |state| {
@@ -168,7 +168,7 @@ struct ListPatternParser;
 impl Parse for ListPatternParser {
     type Output = Option<Pattern>;
 
-    fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
+    fn parse(self, state: &mut ParseState<'_, '_>) -> Self::Output {
         let start = state.next_token.location.start;
         state.advance();
 
@@ -194,7 +194,7 @@ struct TupleLikePatternParser {
 impl Parse for TupleLikePatternParser {
     type Output = Option<Pattern>;
 
-    fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
+    fn parse(self, state: &mut ParseState<'_, '_>) -> Self::Output {
         state.advance(); // `(`
 
         let inner_patterns = ListParser::new(&[RawToken::from(Punctuator::CloseParent)], |state| {
@@ -217,7 +217,7 @@ struct GroupedOrTuplePatternParser;
 impl Parse for GroupedOrTuplePatternParser {
     type Output = Option<Pattern>;
 
-    fn parse(self, state: &mut ParseState<'_, '_, '_>) -> Self::Output {
+    fn parse(self, state: &mut ParseState<'_, '_>) -> Self::Output {
         let start = state.next_token.location.start;
         state.advance();
 

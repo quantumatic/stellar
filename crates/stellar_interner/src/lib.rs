@@ -67,7 +67,7 @@ use std::{
     hash::{BuildHasher, Hash, Hasher},
     marker::PhantomData,
     path::{Path, PathBuf},
-    str::from_utf8_unchecked,
+    str::{from_utf8_unchecked, FromStr},
 };
 
 #[cfg(feature = "tuples")]
@@ -76,6 +76,7 @@ use itertools::traits::HomogeneousTuple;
 use itertools::Itertools;
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
+use serde::{Deserializer, Serializer};
 
 extern crate alloc;
 
@@ -83,12 +84,64 @@ use alloc::{string::String, vec::Vec};
 
 use derive_more::Display;
 use hashbrown::{hash_map::RawEntryMut, HashMap};
+use lazy_static::lazy_static;
+use parking_lot::Mutex;
 use stellar_fx_hash::FxHasher;
 
 /// Represents unique symbol corresponding to some interned identifier.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct IdentifierID(pub usize);
+
+impl IdentifierID {
+    /// Interns a string.
+    #[inline(always)]
+    #[must_use]
+    pub fn from(string: impl AsRef<str>) -> Self {
+        IDENTIFIER_INTERNER.lock().get_or_intern(string)
+    }
+
+    /// Gets the interned string by ID.
+    #[inline(always)]
+    #[must_use]
+    pub fn resolve_or_panic(self) -> String {
+        IDENTIFIER_INTERNER.lock().resolved_owned_or_panic(self)
+    }
+
+    /// Gets the interned string by ID.
+    #[inline(always)]
+    #[must_use]
+    pub fn resolve(self) -> Option<String> {
+        IDENTIFIER_INTERNER.lock().resolve_owned(self)
+    }
+}
+
+impl FromStr for IdentifierID {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(IDENTIFIER_INTERNER.lock().get_or_intern(s))
+    }
+}
+
+#[cfg(feature = "serde")]
+impl Serialize for IdentifierID {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_str(&self.resolve_or_panic())
+    }
+}
+
+#[cfg(feature = "serde")]
+impl<'de> Deserialize<'de> for IdentifierID {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        Ok(Self::from(String::deserialize(deserializer)?))
+    }
+}
 
 impl SymbolID for IdentifierID {
     #[inline(always)]
@@ -466,6 +519,11 @@ struct Span {
 #[derive(Debug, Clone, Default)]
 pub struct IdentifierInterner(Interner<IdentifierID>);
 
+lazy_static! {
+    static ref IDENTIFIER_INTERNER: Mutex<IdentifierInterner> =
+        Mutex::new(IdentifierInterner::new());
+}
+
 macro_rules! define_builtin_identifiers {
     ($($id_name:ident = $value:literal => $id:literal),+) => {
         /// Defines all builtin identifiers (that are automatically interned by
@@ -581,8 +639,33 @@ impl IdentifierInterner {
     /// ```
     #[inline(always)]
     #[must_use]
-    pub fn resolve(&self, symbol: IdentifierID) -> Option<&str> {
-        self.0.resolve(symbol)
+    pub fn resolve(&self, id: IdentifierID) -> Option<&str> {
+        self.0.resolve(id)
+    }
+
+    /// Returns the string for the given identifier if any.
+    ///
+    /// # Panics
+    /// If the identifier is not yet interned.
+    #[inline(always)]
+    #[must_use]
+    pub fn resolve_or_panic(&self, id: IdentifierID) -> &str {
+        self.resolve(id)
+            .unwrap_or_else(|| panic!("Failed to resolve identifier with ID: {id:?}"))
+    }
+
+    /// Returns the string for the given identifier if any.
+    #[inline(always)]
+    #[must_use]
+    pub fn resolve_owned(&self, id: IdentifierID) -> Option<String> {
+        self.resolve(id).map(ToOwned::to_owned)
+    }
+
+    /// Returns the string for the given identifier if any.
+    #[inline(always)]
+    #[must_use]
+    pub fn resolved_owned_or_panic(&self, id: IdentifierID) -> String {
+        self.resolve_or_panic(id).to_owned()
     }
 }
 
@@ -593,10 +676,64 @@ impl IdentifierInterner {
 #[derive(Debug, Clone)]
 pub struct PathInterner(Interner<PathID>);
 
+lazy_static! {
+    static ref PATH_INTERNER: Mutex<PathInterner> = Mutex::new(PathInterner::new());
+}
+
 /// ID of a path in the [`PathInterner`].
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Display, Hash)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct PathID(pub usize);
+
+impl PathID {
+    /// Interns the given path and returns its ID.
+    #[inline(always)]
+    #[must_use]
+    pub fn from(path: impl AsRef<Path>) -> Self {
+        PATH_INTERNER.lock().get_or_intern(path)
+    }
+
+    /// Resolves the given path by ID.
+    #[inline(always)]
+    #[must_use]
+    pub fn resolve(self) -> Option<PathBuf> {
+        PATH_INTERNER.lock().resolve_owned(self)
+    }
+
+    /// Resolves the given path by ID.
+    #[inline(always)]
+    #[must_use]
+    pub fn resolve_or_panic(self) -> PathBuf {
+        PATH_INTERNER.lock().resolve_owned_or_panic(self)
+    }
+}
+
+impl FromStr for PathID {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(Self::from(s))
+    }
+}
+
+#[cfg(feature = "serde")]
+impl Serialize for PathID {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_str(self.resolve_or_panic().to_str().unwrap())
+    }
+}
+
+#[cfg(feature = "serde")]
+impl<'de> Deserialize<'de> for PathID {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        Ok(Self::from(String::deserialize(deserializer)?))
+    }
+}
 
 impl SymbolID for PathID {
     #[inline(always)]
