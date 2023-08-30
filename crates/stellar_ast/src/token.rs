@@ -1,6 +1,7 @@
 //! Defines a [`Token`] which represents grammatical unit of Stellar source text.
 
 use derive_more::Display;
+use paste::paste;
 use stellar_filesystem::location::Location;
 
 use crate::precedence::Precedence;
@@ -94,36 +95,38 @@ pub enum NumberKind {
 }
 
 macro_rules! define_keywords {
-    {$($value:literal => $keyword:ident),*} => {
-        /// This enum represents a set of keywords used in the Stellar programming language.
-        /// Each variant of the enum corresponds to a specific keyword.
-        #[derive(Debug, PartialEq, Eq, Clone, Copy)]
-        pub enum Keyword {
-            $(
-                #[doc = concat!("Keyword `", $value, "`.")]
-                $keyword,
-            )*
-        }
+    {$($keyword:ident),*} => {
+        paste! {
+            /// This enum represents a set of keywords used in the Stellar programming language.
+            /// Each variant of the enum corresponds to a specific keyword.
+            #[derive(Debug, PartialEq, Eq, Clone, Copy)]
+            pub enum Keyword {
+                $(
+                    #[doc = "Keyword `" $keyword "`."]
+                    [<$keyword:camel>],
+                )*
+            }
 
-        use std::fmt::Display;
+            use std::fmt::Display;
 
-        impl Display for Keyword {
-            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-                match self {
-                    $(
-                        Self::$keyword => write!(f, "`{}`", $value),
-                    )*
+            impl Display for Keyword {
+                fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                    match self {
+                        $(
+                            Self::[<$keyword:camel>] => write!(f, "`{}`", stringify!($keyword)),
+                        )*
+                    }
                 }
             }
-        }
 
-        /// Convert a string into a keyword.
-        pub fn get_keyword(string: impl AsRef<str>) -> Option<Keyword> {
-            match string.as_ref() {
-                $(
-                    $value => Some(Keyword::$keyword),
-                )*
-                _ => None,
+            /// Convert a string into a keyword.
+            pub fn get_keyword(string: impl AsRef<str>) -> Option<Keyword> {
+                match string.as_ref() {
+                    $(
+                        stringify!([<$keyword:camel>]) => Some(Keyword::[<$keyword:camel>]),
+                    )*
+                    _ => None,
+                }
             }
         }
     };
@@ -167,14 +170,9 @@ macro_rules! define_punctuators {
 }
 
 define_keywords! {
-    "as" => As, "defer" => Defer, "else" => Else,
-    "enum" => Enum, "for" => For, "fun" => Fun,
-    "if" => If, "pub" => Pub, "return" => Return,
-    "struct" => Struct, "type" => Type, "let" => Let,
-    "where" => Where, "while" => While, "match" => Match,
-    "import" => Import, "break" => Break, "continue" => Continue,
-    "dyn" => Dyn, "loop" => Loop, "interface" => Interface,
-    "implements" => Implements
+    as, defer, else, enum, for, fun, if, pub, return,
+    struct, type, let, where, while, match, import, break,
+    continue, dyn, loop, interface, implements
 }
 
 define_punctuators! {

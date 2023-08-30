@@ -3,6 +3,7 @@
 use std::fmt::Display;
 
 use derive_more::Display;
+use paste::paste;
 use stellar_filesystem::location::Location;
 use stellar_interner::{builtin_identifiers, IdentifierID};
 
@@ -141,6 +142,7 @@ pub enum TypeVariable {
 
         /// Path to the type that contains the correspoding generic parameter.
         origin_type_path: Path,
+
         /// Location of the corresponding generic parameter name.
         origin_location: Location,
 
@@ -175,24 +177,23 @@ pub struct TypeVariableID(pub usize);
 /// The macro, automates the process of generating functions
 /// for getting builtin primitive types.
 macro_rules! generate_builtin_primitive_types {
-    ($($name:ident => $symbol:ident),*) => {
-        $(
-            #[inline(always)]
-            #[must_use]
-            #[doc = concat!("Returns a `", stringify!($name), "` type.")]
-            pub fn $name() -> Type {
-                Type::new_primitive(builtin_identifiers::$symbol)
-            }
-        )*
+    ($($name:ident),*) => {
+        paste! {
+            $(
+                #[inline(always)]
+                #[must_use]
+                #[doc = "Returns a `" $name "` type."]
+                pub fn $name() -> Type {
+                    Type::new_primitive(builtin_identifiers::[<$name:upper>])
+                }
+            )*
+        }
     };
 }
 
 generate_builtin_primitive_types! {
-    int8 => INT8, int16 => INT16, int32 => INT32, int64 => INT64,
-    uint8 => UINT8, uint16 => UINT16, uint32 => UINT32, uint64 => UINT64,
-    float32 => FLOAT32, float64 => FLOAT64,
-
-    char => CHAR, string => STRING
+    int8, int16, int32, int64, uint8, uint16, uint32, uint64,
+    float32, float64, char, string
 }
 
 /// A type constructor: `List[uint32]`, `uint32`, `String`.
