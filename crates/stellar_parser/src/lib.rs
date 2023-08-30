@@ -271,12 +271,8 @@ pub fn parse_pattern_using(state: &mut ParseState<'_, '_>) -> Option<Pattern> {
 impl<'s, 'd> ParseState<'s, 'd> {
     /// Creates an initial parse state from file source.
     #[must_use]
-    pub fn new(
-        file_path_id: PathID,
-        source: &'s str,
-        diagnostics: &'d RwLock<Diagnostics>,
-    ) -> Self {
-        let mut lexer = Lexer::new(file_path_id, source);
+    pub fn new(filepath_id: PathID, source: &'s str, diagnostics: &'d RwLock<Diagnostics>) -> Self {
+        let mut lexer = Lexer::new(filepath_id, source);
 
         let current_token = lexer.next_no_comments();
         trace!(

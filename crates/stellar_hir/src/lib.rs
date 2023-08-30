@@ -27,7 +27,7 @@
 //!                 },
 //!                 "name": {
 //!                     "location": {
-//!                         "file_path_id": 1,
+//!                         "filepath_id": 1,
 //!                         "start": 4,
 //!                         "end": 8
 //!                     },
@@ -43,7 +43,7 @@
 //!                     "expression": {
 //!                         "kind": "while_expression",
 //!                         "location": {
-//!                             "file_path_id": 1,
+//!                             "filepath_id": 1,
 //!                             "start": 17,
 //!                             "end": 21
 //!                         },
@@ -52,7 +52,7 @@
 //!                             "literal_kind": "boolean",
 //!                             "value": true,
 //!                             "location": {
-//!                                 "file_path_id": 1,
+//!                                 "filepath_id": 1,
 //!                                 "start": 17,
 //!                                 "end": 21
 //!                             }
@@ -63,14 +63,14 @@
 //!                                 "expression": {
 //!                                     "kind": "call_expression",
 //!                                     "location": {
-//!                                         "file_path_id": 1,
+//!                                         "filepath_id": 1,
 //!                                         "start": 32,
 //!                                         "end": 65
 //!                                     },
 //!                                     "callee": {
 //!                                         "kind": "identifier_expression",
 //!                                         "location": {
-//!                                             "file_path_id": 1,
+//!                                             "filepath_id": 1,
 //!                                             "start": 32,
 //!                                             "end": 39
 //!                                         },
@@ -82,7 +82,7 @@
 //!                                             "literal_kind": "string",
 //!                                             "value": "printing this forever!",
 //!                                             "location": {
-//!                                                 "file_path_id": 1,
+//!                                                 "filepath_id": 1,
 //!                                                 "start": 40,
 //!                                                 "end": 64
 //!                                             }
@@ -106,7 +106,7 @@
 //! ```json
 //!                         "kind": "while_expression",
 //!                         "location": {
-//!                             "file_path_id": 1,
+//!                             "filepath_id": 1,
 //!                             "start": 17,
 //!                             "end": 21
 //!                         },
@@ -115,7 +115,7 @@
 //!                             "literal_kind": "boolean",
 //!                             "value": true,
 //!                             "location": {
-//!                                 "file_path_id": 1,
+//!                                 "filepath_id": 1,
 //!                                 "start": 17,
 //!                                 "end": 21
 //!                             }

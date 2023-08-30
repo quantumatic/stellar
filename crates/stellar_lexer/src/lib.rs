@@ -90,7 +90,7 @@ mod number;
 ///     Token {
 ///         raw: EndOfFile,
 ///         location: Location {
-///             file_path_id: DUMMY_PATH_ID,
+///             filepath_id: DUMMY_PATH_ID,
 ///             start: ByteOffset(0),
 ///             end: ByteOffset(1)
 ///         }

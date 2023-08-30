@@ -151,10 +151,10 @@ impl Diagnostics {
     #[inline(always)]
     pub fn add_single_file_diagnostic(
         &mut self,
-        file_path_id: PathID,
+        filepath_id: PathID,
         diagnostic: impl BuildDiagnostic,
     ) {
-        self.files_involved.insert(file_path_id);
+        self.files_involved.insert(filepath_id);
         self.file_diagnostics.push(diagnostic.build());
     }
 
@@ -162,10 +162,10 @@ impl Diagnostics {
     #[inline(always)]
     pub fn add_single_file_diagnostics(
         &mut self,
-        file_path_id: PathID,
+        filepath_id: PathID,
         diagnostic: impl IntoIterator<Item = impl BuildDiagnostic>,
     ) {
-        self.files_involved.insert(file_path_id);
+        self.files_involved.insert(filepath_id);
         self.file_diagnostics
             .extend(diagnostic.into_iter().map(BuildDiagnostic::build));
     }
@@ -347,8 +347,8 @@ impl DiagnosticsEmitter {
         &mut self,
         files_involved: impl IntoIterator<Item = &'a PathID>,
     ) {
-        for file_path_id in files_involved {
-            self.file_storage.read_and_add_file_or_panic(*file_path_id);
+        for filepath_id in files_involved {
+            self.file_storage.read_and_add_file_or_panic(*filepath_id);
         }
     }
 

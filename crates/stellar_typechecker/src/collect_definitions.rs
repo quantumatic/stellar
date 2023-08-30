@@ -1,4 +1,6 @@
-use stellar_database::{EnumData, FunctionData, ModuleID, State, StructData, Symbol};
+use stellar_database::{
+    EnumData, FunctionData, InterfaceData, ModuleID, State, StructData, Symbol,
+};
 
 use crate::diagnostics::DuplicateModuleItem;
 
@@ -8,7 +10,10 @@ pub struct CollectDefinitions<'s> {
 }
 
 impl<'s> CollectDefinitions<'s> {
-    pub fn run_all(state: &'s State, modules: &Vec<(ModuleID, stellar_hir::Module)>) {
+    pub fn run_all<'a>(
+        state: &'s State,
+        modules: impl IntoIterator<Item = &'a (ModuleID, stellar_hir::Module)>,
+    ) {
         for module in modules {
             CollectDefinitions {
                 state,
@@ -24,6 +29,7 @@ impl<'s> CollectDefinitions<'s> {
                 stellar_hir::ModuleItem::Enum(enum_) => self.define_enum(enum_),
                 stellar_hir::ModuleItem::Function(function) => self.define_function(function),
                 stellar_hir::ModuleItem::Struct(struct_) => self.define_struct(struct_),
+                stellar_hir::ModuleItem::Interface(interface) => self.define_interface(interface),
                 _ => {}
             }
         }
@@ -124,6 +130,38 @@ impl<'s> CollectDefinitions<'s> {
             .get_module_mut_or_panic(self.module_id)
             .add_symbol(struct_.name.id, Symbol::Struct(id))
     }
+
+    fn define_interface(&self, interface: &stellar_hir::Interface) {
+        let id = InterfaceData::alloc(
+            &mut self.state.db().write(),
+            interface.visibility,
+            interface.name,
+            self.module_id,
+        );
+
+        if let Some(symbol) = self
+            .state
+            .db()
+            .read()
+            .get_module_or_panic(self.module_id)
+            .get_symbol(interface.name.id)
+        {
+            self.state.diagnostics().write().add_single_file_diagnostic(
+                interface.name.location.filepath_id,
+                DuplicateModuleItem::new(
+                    interface.name.id.resolve_or_panic(),
+                    symbol.name_location_or_panic(&self.state.db().read()),
+                    interface.name.location,
+                ),
+            )
+        }
+
+        self.state
+            .db()
+            .write()
+            .get_module_mut_or_panic(self.module_id)
+            .add_symbol(interface.name.id, Symbol::Interface(id));
+    }
 }
 
 #[cfg(test)]
@@ -150,9 +188,7 @@ mod tests {
         let hir =
             parse_module(filepath_id, source_code, state.diagnostics()).lower(state.diagnostics());
 
-        let modules = vec![(module_id, hir)];
-
-        CollectDefinitions::run_all(&state, &modules);
+        CollectDefinitions::run_all(&state, &[(module_id, hir)]);
 
         assert!(state
             .db()
@@ -184,9 +220,7 @@ mod tests {
         let hir =
             parse_module(filepath_id, source_code, state.diagnostics()).lower(state.diagnostics());
 
-        let modules = vec![(module_id, hir)];
-
-        CollectDefinitions::run_all(&state, &modules);
+        CollectDefinitions::run_all(&state, &[(module_id, hir)]);
 
         assert_eq!(
             state.diagnostics().read().file_diagnostics[0].code,
@@ -209,9 +243,7 @@ mod tests {
         let hir =
             parse_module(filepath_id, source_code, state.diagnostics()).lower(state.diagnostics());
 
-        let modules = vec![(module_id, hir)];
-
-        CollectDefinitions::run_all(&state, &modules);
+        CollectDefinitions::run_all(&state, &[(module_id, hir)]);
 
         assert!(state
             .db()
@@ -237,9 +269,7 @@ mod tests {
         let hir =
             parse_module(filepath_id, source_code, state.diagnostics()).lower(state.diagnostics());
 
-        let modules = vec![(module_id, hir)];
-
-        CollectDefinitions::run_all(&state, &modules);
+        CollectDefinitions::run_all(&state, &[(module_id, hir)]);
 
         assert!(state
             .db()
@@ -247,5 +277,32 @@ mod tests {
             .get_module_or_panic(module_id)
             .get_symbol_or_panic(IdentifierID::from("A"))
             .is_struct());
+        assert!(state.diagnostics().read().is_ok());
+    }
+
+    #[test]
+    fn test_interface() {
+        let state = State::new();
+        let filepath_id = PathID::from("test.stellar");
+
+        let module_id = ModuleData::alloc(
+            &mut state.db().write(),
+            IdentifierID::from("test"),
+            filepath_id,
+        );
+
+        let source_code = "interface A {}";
+        let hir =
+            parse_module(filepath_id, source_code, state.diagnostics()).lower(state.diagnostics());
+
+        CollectDefinitions::run_all(&state, &[(module_id, hir)]);
+
+        assert!(state
+            .db()
+            .read()
+            .get_module_or_panic(module_id)
+            .get_symbol_or_panic(IdentifierID::from("A"))
+            .is_interface());
+        assert!(state.diagnostics().read().is_ok());
     }
 }

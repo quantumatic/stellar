@@ -97,9 +97,9 @@ impl ByteOffset {
     /// Returns location of the next byte relative to the current offset.
     #[inline(always)]
     #[must_use]
-    pub const fn next_byte_location_at(self, file_path_id: PathID) -> Location {
+    pub const fn next_byte_location_at(self, filepath_id: PathID) -> Location {
         Location {
-            filepath_id: file_path_id,
+            filepath_id: filepath_id,
             start: self,
             end: Self(self.0 + 1),
         }
@@ -108,9 +108,9 @@ impl ByteOffset {
     /// Returns location of the previous byte relative to the current offset.
     #[inline(always)]
     #[must_use]
-    pub const fn previous_byte_location_at(self, file_path_id: PathID) -> Location {
+    pub const fn previous_byte_location_at(self, filepath_id: PathID) -> Location {
         Location {
-            filepath_id: file_path_id,
+            filepath_id: filepath_id,
             start: Self(self.0 - 1),
             end: self,
         }
@@ -143,7 +143,7 @@ impl Location {
     /// # use stellar_filesystem::location::{Location, LocationIndex, ByteOffset};
     /// # use stellar_interner::DUMMY_PATH_ID;
     /// let location = Location {
-    ///     file_path_id: DUMMY_PATH_ID,
+    ///     filepath_id: DUMMY_PATH_ID,
     ///     start: ByteOffset(0),
     ///     end: ByteOffset(3)
     /// };
@@ -151,7 +151,7 @@ impl Location {
     /// assert_eq!(
     ///     location.start_byte_location(),
     ///     Location {
-    ///         file_path_id: DUMMY_PATH_ID,
+    ///         filepath_id: DUMMY_PATH_ID,
     ///         start: ByteOffset(0),
     ///         end: ByteOffset(1)
     ///     }
@@ -170,7 +170,7 @@ impl Location {
     /// # use stellar_filesystem::location::{Location, LocationIndex, ByteOffset};
     /// # use stellar_interner::DUMMY_PATH_ID;
     /// let location = Location {
-    ///     file_path_id: DUMMY_PATH_ID,
+    ///     filepath_id: DUMMY_PATH_ID,
     ///     start: ByteOffset(0),
     ///     end: ByteOffset(3)
     /// };
@@ -178,7 +178,7 @@ impl Location {
     /// assert_eq!(
     ///     location.end_byte_location(),
     ///     Location {
-    ///         file_path_id: DUMMY_PATH_ID,
+    ///         filepath_id: DUMMY_PATH_ID,
     ///         start: ByteOffset(2),
     ///         end: ByteOffset(3)
     ///     }
@@ -215,7 +215,7 @@ pub trait LocationIndex {
     /// # use stellar_filesystem::location::{Location, LocationIndex, ByteOffset};
     /// # use stellar_interner::DUMMY_PATH_ID;
     /// let location = Location {
-    ///     file_path_id: DUMMY_PATH_ID,
+    ///     filepath_id: DUMMY_PATH_ID,
     ///     start: ByteOffset(0),
     ///     end: ByteOffset(3)
     /// };

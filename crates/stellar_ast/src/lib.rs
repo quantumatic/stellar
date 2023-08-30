@@ -30,7 +30,7 @@
 //!                 },
 //!                 "name": {
 //!                     "location": {
-//!                         "file_path_id": 1,
+//!                         "filepath_id": 1,
 //!                         "start": 4,
 //!                         "end": 8
 //!                     },
@@ -46,14 +46,14 @@
 //!                     "expression": {
 //!                         "kind": "call_expression",
 //!                         "location": {
-//!                             "file_path_id": 1,
+//!                             "filepath_id": 1,
 //!                             "start": 15,
 //!                             "end": 37
 //!                         },
 //!                         "callee": {
 //!                             "kind": "identifier_expression",
 //!                             "location": {
-//!                                 "file_path_id": 1,
+//!                                 "filepath_id": 1,
 //!                                 "start": 15,
 //!                                 "end": 22
 //!                             },
@@ -65,7 +65,7 @@
 //!                                 "literal_kind": "string",
 //!                                 "value": "hello world",
 //!                                 "location": {
-//!                                     "file_path_id": 1,
+//!                                     "filepath_id": 1,
 //!                                     "start": 23,
 //!                                     "end": 36
 //!                                 }
