@@ -12,6 +12,8 @@ description = "Implements type checking compilation stage for the Stellar progra
 derive_more = "0.99.17"
 itertools = "0.11.0"
 parking_lot = "0.12.1"
+rayon = "1.7.0"
+scoped_threadpool = "0.1.9"
 stellar_ast = { path = "../stellar_ast" }
 stellar_ast_lowering = { path = "../stellar_ast_lowering" }
 stellar_database = { path = "../stellar_database" }
@@ -23,5 +25,3 @@ stellar_interner = { path = "../stellar_interner" }
 stellar_parser = { path = "../stellar_parser" }
 stellar_stable_likely = { path = "../stellar_stable_likely" }
 stellar_thir = { path = "../stellar_thir" }
-rayon = "1.7.0"
-scoped_threadpool = "0.1.9"
