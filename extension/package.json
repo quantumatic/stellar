@@ -18,7 +18,7 @@
           "stellar"
         ],
         "extensions": [
-          ".stellar"
+          ".sr"
         ],
         "configuration": "./language-configuration.json"
       }
@@ -26,7 +26,7 @@
     "grammars": [
       {
         "language": "stellar",
-        "scopeName": "source.stellar",
+        "scopeName": "source.sr",
         "path": "./syntaxes/stellar.tmLanguage.json"
       }
     ]

@@ -20,4 +20,24 @@ define_diagnostics! {
         }
         notes {}
     }
+
+    diagnostic(error) DuplicateEnumItem(
+        self,
+        enum_name: String,
+        item_name: String,
+        first_definition_location: Location,
+        second_definition_location: Location
+    ) {
+        code { "E006" }
+        message { format!("duplicate definition of the enum item `{}` in `{}`", self.item_name, self.enum_name) }
+        labels {
+            primary self.first_definition_location => {
+                format!("first definition of `{}`", self.item_name)
+            },
+            secondary self.second_definition_location => {
+                format!("second, conflicting definition of `{}`", self.item_name)
+            }
+        }
+        notes {}
+    }
 }

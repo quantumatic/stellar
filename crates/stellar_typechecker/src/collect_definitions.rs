@@ -1,12 +1,13 @@
+use stellar_ast::IdentifierAST;
 use stellar_database::{
-    EnumData, FunctionData, InterfaceData, ModuleID, State, StructData, Symbol,
+    EnumData, EnumItemData, FunctionData, InterfaceData, ModuleID, State, StructData, Symbol,
 };
 
-use crate::diagnostics::DuplicateModuleItem;
+use crate::diagnostics::{DuplicateEnumItem, DuplicateModuleItem};
 
 pub struct CollectDefinitions<'s> {
     state: &'s State,
-    module_id: ModuleID,
+    module: ModuleID,
 }
 
 impl<'s> CollectDefinitions<'s> {
@@ -17,7 +18,7 @@ impl<'s> CollectDefinitions<'s> {
         for module in modules {
             CollectDefinitions {
                 state,
-                module_id: module.0,
+                module: module.0,
             }
             .run(&module.1);
         }
@@ -36,131 +37,113 @@ impl<'s> CollectDefinitions<'s> {
     }
 
     fn define_enum(&self, enum_: &stellar_hir::Enum) {
-        let id = EnumData::alloc(
-            &mut self.state.db().write(),
-            enum_.visibility,
-            enum_.name,
-            self.module_id,
-        );
+        let mut enum_data = EnumData::new(enum_.visibility, enum_.name, self.module);
 
-        if let Some(symbol) = self
-            .state
-            .db()
-            .read()
-            .get_module_or_panic(self.module_id)
-            .get_symbol(enum_.name.id)
-        {
-            self.state.diagnostics().write().add_single_file_diagnostic(
-                enum_.name.location.filepath_id,
-                DuplicateModuleItem::new(
-                    enum_.name.id.resolve_or_panic(),
-                    symbol.name_location_or_panic(&self.state.db().read()),
-                    enum_.name.location,
-                ),
+        for item in &enum_.items {
+            let name = item.name();
+
+            self.check_for_duplicate_enum_item(&enum_data, name);
+
+            enum_data.items.insert(
+                name.id,
+                EnumItemData::alloc(&mut self.state.db_lock_write(), name, self.module),
             );
         }
 
+        self.check_for_duplicate_definition(enum_.name);
+
+        let id = self.state.db_lock_write().add_enum(enum_data);
+
         self.state
-            .db()
-            .write()
-            .get_module_mut_or_panic(self.module_id)
+            .db_lock_write()
+            .get_module_mut_or_panic(self.module)
             .add_symbol(enum_.name.id, Symbol::Enum(id));
     }
 
     fn define_function(&self, function: &stellar_hir::Function) {
         let id = FunctionData::alloc(
-            &mut self.state.db().write(),
+            &mut self.state.db_lock_write(),
             function.signature.name,
             function.signature.visibility,
-            self.module_id,
+            self.module,
         );
 
-        if let Some(symbol) = self
-            .state
-            .db()
-            .read()
-            .get_module_or_panic(self.module_id)
-            .get_symbol(function.signature.name.id)
-        {
-            self.state.diagnostics().write().add_single_file_diagnostic(
-                function.signature.name.location.filepath_id,
-                DuplicateModuleItem::new(
-                    function.signature.name.id.resolve_or_panic(),
-                    symbol.name_location_or_panic(&self.state.db().read()),
-                    function.signature.name.location,
-                ),
-            );
-        }
+        self.check_for_duplicate_definition(function.signature.name);
 
         self.state
-            .db()
-            .write()
-            .get_module_mut_or_panic(self.module_id)
+            .db_lock_write()
+            .get_module_mut_or_panic(self.module)
             .add_symbol(function.signature.name.id, Symbol::Function(id));
     }
 
     fn define_struct(&self, struct_: &stellar_hir::Struct) {
         let id = StructData::alloc(
-            &mut self.state.db().write(),
+            &mut self.state.db_lock_write(),
             struct_.visibility,
             struct_.name,
-            self.module_id,
+            self.module,
         );
 
-        if let Some(symbol) = self
-            .state
-            .db()
-            .read()
-            .get_module_or_panic(self.module_id)
-            .get_symbol(struct_.name.id)
-        {
-            self.state.diagnostics().write().add_single_file_diagnostic(
-                struct_.name.location.filepath_id,
-                DuplicateModuleItem::new(
-                    struct_.name.id.resolve_or_panic(),
-                    symbol.name_location_or_panic(&self.state.db().read()),
-                    struct_.name.location,
-                ),
-            );
-        }
+        self.check_for_duplicate_definition(struct_.name);
 
         self.state
-            .db()
-            .write()
-            .get_module_mut_or_panic(self.module_id)
+            .db_lock_write()
+            .get_module_mut_or_panic(self.module)
             .add_symbol(struct_.name.id, Symbol::Struct(id))
     }
 
     fn define_interface(&self, interface: &stellar_hir::Interface) {
         let id = InterfaceData::alloc(
-            &mut self.state.db().write(),
+            &mut self.state.db_lock_write(),
             interface.visibility,
             interface.name,
-            self.module_id,
+            self.module,
         );
 
-        if let Some(symbol) = self
-            .state
-            .db()
-            .read()
-            .get_module_or_panic(self.module_id)
-            .get_symbol(interface.name.id)
-        {
-            self.state.diagnostics().write().add_single_file_diagnostic(
-                interface.name.location.filepath_id,
-                DuplicateModuleItem::new(
-                    interface.name.id.resolve_or_panic(),
-                    symbol.name_location_or_panic(&self.state.db().read()),
-                    interface.name.location,
-                ),
-            )
-        }
+        self.check_for_duplicate_definition(interface.name);
 
         self.state
-            .db()
-            .write()
-            .get_module_mut_or_panic(self.module_id)
+            .db_lock_write()
+            .get_module_mut_or_panic(self.module)
             .add_symbol(interface.name.id, Symbol::Interface(id));
+    }
+
+    fn check_for_duplicate_definition(&self, name: IdentifierAST) {
+        if let Some(symbol) = self
+            .state
+            .db_lock()
+            .get_module_or_panic(self.module)
+            .get_symbol(name.id)
+        {
+            self.state.diagnostics().write().add_single_file_diagnostic(
+                name.location.filepath_id,
+                DuplicateModuleItem::new(
+                    name.id.resolve_or_panic(),
+                    symbol.name_location_or_panic(&self.state.db_lock()),
+                    name.location,
+                ),
+            );
+        }
+    }
+
+    fn check_for_duplicate_enum_item(&self, enum_data: &EnumData, item_name: IdentifierAST) {
+        if let Some(id) = enum_data.items.get(&item_name.id) {
+            self.state
+                .diagnostics_lock_write()
+                .add_single_file_diagnostic(
+                    item_name.location.filepath_id,
+                    DuplicateEnumItem::new(
+                        enum_data.name.id.resolve_or_panic(),
+                        item_name.id.resolve_or_panic(),
+                        self.state
+                            .db_lock()
+                            .get_enum_item_or_panic(*id)
+                            .name
+                            .location,
+                        item_name.location,
+                    ),
+                );
+        }
     }
 }
 
@@ -175,7 +158,7 @@ mod tests {
     #[test]
     fn test_enum() {
         let state = State::new();
-        let filepath_id = PathID::from("test.stellar");
+        let filepath_id = PathID::from("test.sr");
         let source_code = "enum A {}\nenum B {}";
 
         let hir = &LowerToHir::run_all(
@@ -186,24 +169,22 @@ mod tests {
         CollectDefinitions::run_all(&state, hir);
 
         assert!(state
-            .db()
-            .read()
+            .db_lock()
             .get_module_or_panic(hir[0].0)
             .get_symbol_or_panic(IdentifierID::from("A"))
             .is_enum());
         assert!(state
-            .db()
-            .read()
+            .db_lock()
             .get_module_or_panic(hir[0].0)
             .get_symbol_or_panic(IdentifierID::from("B"))
             .is_enum());
-        assert!(state.diagnostics().read().is_ok());
+        assert!(state.diagnostics_inner().is_ok());
     }
 
     #[test]
     fn test_duplicate_definition() {
         let state = State::new();
-        let filepath_id = PathID::from("test.stellar");
+        let filepath_id = PathID::from("test.sr");
         let source_code = "enum A {}\nenum A {}";
 
         CollectDefinitions::run_all(
@@ -215,15 +196,42 @@ mod tests {
         );
 
         assert_eq!(
-            state.diagnostics().read().file_diagnostics[0].code,
+            state.diagnostics_inner().file_diagnostics[0].code,
             Some("E005".to_owned())
         );
     }
 
     #[test]
+    fn test_enum_items() {
+        let state = State::new();
+        let filepath_id = PathID::from("test.sr");
+        let source_code = "enum A { A, B, C }";
+
+        let hir = &LowerToHir::run_all(
+            &state,
+            vec![parse_module(filepath_id, source_code, state.diagnostics())],
+        );
+
+        CollectDefinitions::run_all(&state, hir);
+
+        let db = state.db_lock();
+        let items = &db
+            .get_enum_or_panic(
+                db.get_module_or_panic(hir[0].0)
+                    .get_symbol_or_panic(IdentifierID::from("A"))
+                    .get_enum_or_panic(),
+            )
+            .items;
+
+        assert!(items.contains_key(&IdentifierID::from("A")));
+        assert!(items.contains_key(&IdentifierID::from("B")));
+        assert!(items.contains_key(&IdentifierID::from("C")));
+    }
+
+    #[test]
     fn test_function() {
         let state = State::new();
-        let filepath_id = PathID::from("test.stellar");
+        let filepath_id = PathID::from("test.sr");
         let source_code = "fun a() {}";
 
         let hir = &LowerToHir::run_all(
@@ -234,18 +242,17 @@ mod tests {
         CollectDefinitions::run_all(&state, hir);
 
         assert!(state
-            .db()
-            .read()
+            .db_lock()
             .get_module_or_panic(hir[0].0)
             .get_symbol_or_panic(IdentifierID::from("a"))
             .is_function());
-        assert!(state.diagnostics().read().is_ok());
+        assert!(state.diagnostics_inner().is_ok());
     }
 
     #[test]
     fn test_struct() {
         let state = State::new();
-        let filepath_id = PathID::from("test.stellar");
+        let filepath_id = PathID::from("test.sr");
         let source_code = "struct A {}";
 
         let hir = &LowerToHir::run_all(
@@ -256,18 +263,17 @@ mod tests {
         CollectDefinitions::run_all(&state, hir);
 
         assert!(state
-            .db()
-            .read()
+            .db_lock()
             .get_module_or_panic(hir[0].0)
             .get_symbol_or_panic(IdentifierID::from("A"))
             .is_struct());
-        assert!(state.diagnostics().read().is_ok());
+        assert!(state.diagnostics_inner().is_ok());
     }
 
     #[test]
     fn test_interface() {
         let state = State::new();
-        let filepath_id = PathID::from("test.stellar");
+        let filepath_id = PathID::from("test.sr");
         let source_code = "interface A {}";
 
         let hir = &LowerToHir::run_all(
@@ -278,11 +284,10 @@ mod tests {
         CollectDefinitions::run_all(&state, hir);
 
         assert!(state
-            .db()
-            .read()
+            .db_lock()
             .get_module_or_panic(hir[0].0)
             .get_symbol_or_panic(IdentifierID::from("A"))
             .is_interface());
-        assert!(state.diagnostics().read().is_ok());
+        assert!(state.diagnostics_inner().is_ok());
     }
 }

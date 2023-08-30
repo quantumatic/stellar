@@ -100,7 +100,7 @@ impl InMemoryFile {
     /// # use std::path::Path;
     /// # use stellar_filesystem::in_memory_file::InMemoryFile;
     /// let file = InMemoryFile::new_from_source(
-    ///     Path::new("test.stellar"),
+    ///     Path::new("test.sr"),
     ///     "fun main() {
     ///     println(\"Hello, world!\");
     /// }".to_owned(),
@@ -127,7 +127,7 @@ impl InMemoryFile {
     /// # use std::path::Path;
     /// # use stellar_filesystem::in_memory_file::InMemoryFile;
     /// let file = InMemoryFile::new_from_source(
-    ///     Path::new("test.stellar"),
+    ///     Path::new("test.sr"),
     ///     "fun main() {
     ///     println(\"Hello, world!\");
     /// }".to_owned(),
@@ -163,7 +163,7 @@ impl InMemoryFile {
     /// # use std::path::Path;
     /// # use stellar_filesystem::in_memory_file::InMemoryFile;
     /// let file = InMemoryFile::new_from_source(
-    ///     Path::new("test.stellar"),
+    ///     Path::new("test.sr"),
     ///     "fun main() {
     ///     println(\"Hello, world!\");
     /// }".to_owned(),

@@ -16,7 +16,7 @@
 		"keywords": {
 			"patterns": [
 				{
-					"name": "keyword.control.stellar",
+					"name": "keyword.control.sr",
 					"match": "\\b(if|else|while|return|fun|pub|struct|enum|impl|interface|import|var|defer)\\b"
 				},
 				{
@@ -24,18 +24,18 @@
 					"match": "\\b(i8|i16|i32|i64|u8|u16|u32|u64|f8|f16|f32|f64|as|string|char|some|none|ok|err|result|complex32|complex64)"
 				},
 				{
-					"name": "support.function.stellar",
+					"name": "support.function.sr",
 					"match": "\\b[a-zA-Z_]\\w*(?=\\s*\\()"
 				}
 			]
 		},
 		"strings": {
-			"name": "string.quoted.double.stellar",
+			"name": "string.quoted.double.sr",
 			"begin": "\"",
 			"end": "\"",
 			"patterns": [
 				{
-					"name": "constant.character.escape.stellar",
+					"name": "constant.character.escape.sr",
 					"match": "\\\\."
 				}
 			]
@@ -53,5 +53,5 @@
 			]
 		}
 	},
-	"scopeName": "source.stellar"
+	"scopeName": "source.sr"
 }

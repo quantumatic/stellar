@@ -54,16 +54,15 @@ pub fn command(package_name: &str) {
         exit(1);
     });
 
-    let mut main_file =
-        File::create(format!("{package_name}/bin/main.stellar")).unwrap_or_else(|_| {
-            log_with_prefix("error", ": cannot create `bin/main.stellar`");
-            exit(1);
-        });
+    let mut main_file = File::create(format!("{package_name}/bin/main.sr")).unwrap_or_else(|_| {
+        log_with_prefix("error", ": cannot create `bin/main.sr`");
+        exit(1);
+    });
 
     main_file
         .write_all(b"fun main() {\n  println(\"Hello, world!\");\n}")
         .unwrap_or_else(|_| {
-            log_with_prefix("error", ": cannot write to `bin/main.stellar`");
+            log_with_prefix("error", ": cannot write to `bin/main.sr`");
             exit(1);
         });
 
