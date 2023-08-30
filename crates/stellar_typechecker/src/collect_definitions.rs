@@ -1,27 +1,37 @@
+use std::sync::Arc;
+
+use rayon::{
+    prelude::{IntoParallelRefIterator, ParallelIterator},
+    slice::ParallelSlice,
+};
 use stellar_ast::IdentifierAST;
 use stellar_database::{
     EnumData, EnumItemData, FunctionData, InterfaceData, ModuleID, State, StructData, Symbol,
+    TupleLikeStructData, TypeAliasData,
 };
 
 use crate::diagnostics::{DuplicateEnumItem, DuplicateModuleItem};
 
-pub struct CollectDefinitions<'s> {
-    state: &'s State,
+pub struct CollectDefinitions {
+    state: Arc<State>,
     module: ModuleID,
 }
 
-impl<'s> CollectDefinitions<'s> {
-    pub fn run_all<'a>(
-        state: &'s State,
-        modules: impl IntoIterator<Item = &'a (ModuleID, stellar_hir::Module)>,
-    ) {
-        for module in modules {
-            CollectDefinitions {
-                state,
-                module: module.0,
-            }
-            .run(&module.1);
-        }
+impl CollectDefinitions {
+    pub fn run_all(state: Arc<State>, modules: &[Arc<(ModuleID, stellar_hir::Module)>]) {
+        modules
+            .par_chunks(state.config().threads_amount)
+            .for_each(|chunk| {
+                let state = state.clone();
+
+                chunk.par_iter().for_each(|module| {
+                    CollectDefinitions {
+                        state: state.clone(),
+                        module: module.0,
+                    }
+                    .run(&module.1);
+                })
+            });
     }
 
     fn run(self, module: &stellar_hir::Module) {
@@ -31,6 +41,10 @@ impl<'s> CollectDefinitions<'s> {
                 stellar_hir::ModuleItem::Function(function) => self.define_function(function),
                 stellar_hir::ModuleItem::Struct(struct_) => self.define_struct(struct_),
                 stellar_hir::ModuleItem::Interface(interface) => self.define_interface(interface),
+                stellar_hir::ModuleItem::TupleLikeStruct(struct_) => {
+                    self.define_tuple_like_struct(struct_)
+                }
+                stellar_hir::ModuleItem::TypeAlias(alias) => self.define_type_alias(alias),
                 _ => {}
             }
         }
@@ -92,6 +106,22 @@ impl<'s> CollectDefinitions<'s> {
             .add_symbol(struct_.name.id, Symbol::Struct(id))
     }
 
+    fn define_tuple_like_struct(&self, struct_: &stellar_hir::TupleLikeStruct) {
+        let id = TupleLikeStructData::alloc(
+            &mut self.state.db_lock_write(),
+            struct_.visibility,
+            struct_.name,
+            self.module,
+        );
+
+        self.check_for_duplicate_definition(struct_.name);
+
+        self.state
+            .db_lock_write()
+            .get_module_mut_or_panic(self.module)
+            .add_symbol(struct_.name.id, Symbol::TupleLikeStruct(id))
+    }
+
     fn define_interface(&self, interface: &stellar_hir::Interface) {
         let id = InterfaceData::alloc(
             &mut self.state.db_lock_write(),
@@ -106,6 +136,22 @@ impl<'s> CollectDefinitions<'s> {
             .db_lock_write()
             .get_module_mut_or_panic(self.module)
             .add_symbol(interface.name.id, Symbol::Interface(id));
+    }
+
+    fn define_type_alias(&self, alias: &stellar_hir::TypeAlias) {
+        let id = TypeAliasData::alloc(
+            &mut self.state.db_lock_write(),
+            alias.visibility,
+            alias.name,
+            self.module,
+        );
+
+        self.check_for_duplicate_definition(alias.name);
+
+        self.state
+            .db_lock_write()
+            .get_module_mut_or_panic(self.module)
+            .add_symbol(alias.name.id, Symbol::TypeAlias(id));
     }
 
     fn check_for_duplicate_definition(&self, name: IdentifierAST) {

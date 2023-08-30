@@ -84,7 +84,15 @@ macro_rules! define_symbol_struct {
     };
 }
 
-define_symbol_struct!(module, enum, struct, function, interface);
+define_symbol_struct!(
+    module,
+    enum,
+    struct,
+    function,
+    interface,
+    tuple_like_struct,
+    type_alias
+);
 
 impl Symbol {
     /// Returns the name of the symbol.
@@ -97,6 +105,8 @@ impl Symbol {
             Self::Struct(id) => db.get_struct(id).map(|s| s.name),
             Self::Function(id) => db.get_function(id).map(|f| f.name),
             Self::Interface(id) => db.get_interface(id).map(|i| i.name),
+            Self::TupleLikeStruct(id) => db.get_tuple_like_struct(id).map(|s| s.name),
+            Self::TypeAlias(id) => db.get_type_alias(id).map(|a| a.name),
         }
     }
 
@@ -220,6 +230,44 @@ impl StructData {
 /// A unique ID that maps to [`StructData`].
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
 pub struct StructID(pub usize);
+
+/// A data that Stellar compiler has about a function.
+pub struct TupleLikeStructData {
+    pub visibility: Visibility,
+    pub name: IdentifierAST,
+    pub fields: Vec<(Visibility, Type)>,
+    pub module: ModuleID,
+}
+
+impl TupleLikeStructData {
+    /// Creates a new tuple-like struct data object in the database and returns its ID.
+    #[inline(always)]
+    #[must_use]
+    pub fn alloc(
+        db: &mut Database,
+        visibility: Visibility,
+        name: IdentifierAST,
+        module: ModuleID,
+    ) -> TupleLikeStructID {
+        db.add_tuple_like_struct(Self::new(visibility, name, module))
+    }
+
+    /// Creates a new tuple-like struct data object.
+    #[inline(always)]
+    #[must_use]
+    pub fn new(visibility: Visibility, name: IdentifierAST, module: ModuleID) -> Self {
+        Self {
+            visibility,
+            name,
+            fields: Vec::new(),
+            module,
+        }
+    }
+}
+
+/// A unique ID that maps to [`TupleLikeStructData`].
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
+pub struct TupleLikeStructID(pub usize);
 
 /// A data that Stellar compiler has about a field.
 pub struct FieldData {
@@ -384,6 +432,44 @@ impl InterfaceData {
 pub struct InterfaceID(pub usize);
 
 /// A data that Stellar compiler has about a module.
+pub struct TypeAliasData {
+    pub visibility: Visibility,
+    pub name: IdentifierAST,
+    pub ty: Type,
+    pub module: ModuleID,
+}
+
+impl TypeAliasData {
+    /// Creates a new type alias data object in the database and returns its ID.
+    #[inline(always)]
+    #[must_use]
+    pub fn alloc(
+        db: &mut Database,
+        visibility: Visibility,
+        name: IdentifierAST,
+        module: ModuleID,
+    ) -> TypeAliasID {
+        db.add_type_alias(Self::new(visibility, name, module))
+    }
+
+    /// Creates a new type alias data object.
+    #[inline(always)]
+    #[must_use]
+    pub fn new(visibility: Visibility, name: IdentifierAST, module: ModuleID) -> Self {
+        Self {
+            visibility,
+            name,
+            ty: Type::Unknown,
+            module,
+        }
+    }
+}
+
+/// A unique ID that maps to [`TypeAliasData`].
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
+pub struct TypeAliasID(pub usize);
+
+/// A data that Stellar compiler has about a module.
 pub struct ModuleData {
     pub name: IdentifierID,
     pub filepath: PathID,
@@ -456,14 +542,16 @@ pub struct Database {
     enum_items: Vec<EnumItemData>,
     predicates: Vec<PredicateData>,
     structs: Vec<StructData>,
+    tuple_like_structs: Vec<TupleLikeStructData>,
     fields: Vec<FieldData>,
     functions: Vec<FunctionData>,
     interfaces: Vec<InterfaceData>,
+    type_aliases: Vec<TypeAliasData>,
 }
 
 macro_rules! db_methods {
     (
-        $($what:ident: $id_ty:ty => $data_ty:ty),*
+        $($what:ident($whats:ident): $id_ty:ty => $data_ty:ty),*
     ) => {
         $(
             paste! {
@@ -473,7 +561,7 @@ macro_rules! db_methods {
                 #[inline(always)]
                 #[must_use]
                 pub fn [<get_ $what>](&self, id: $id_ty) -> Option<&$data_ty> {
-                    self.[<$what s>].get(id.0)
+                    self.$whats.get(id.0)
                 }
 
                 #[doc = "Returns a mutable reference to " $what " data by its ID."]
@@ -482,7 +570,7 @@ macro_rules! db_methods {
                 #[inline(always)]
                 #[must_use]
                 pub fn [<get_ $what _mut>](&mut self, id: $id_ty) -> Option<&mut $data_ty> {
-                    self.[<$what s>].get_mut(id.0)
+                    self.$whats.get_mut(id.0)
                 }
 
                 #[doc = "Returns an immutable reference to " $what " data by its ID."]
@@ -493,7 +581,7 @@ macro_rules! db_methods {
                 #[inline(always)]
                 #[must_use]
                 pub fn [<get_ $what _or_panic>](&self, id: $id_ty) -> &$data_ty {
-                    self.[<$what s>].get(id.0).unwrap()
+                    self.$whats.get(id.0).unwrap()
                 }
 
                 #[doc = "Returns a mutable reference to " $what " data by its ID."]
@@ -504,7 +592,7 @@ macro_rules! db_methods {
                 #[inline(always)]
                 #[must_use]
                 pub fn [<get_ $what _mut_or_panic>](&mut self, id: $id_ty) -> &mut $data_ty {
-                    self.[<$what s>].get_mut(id.0).unwrap()
+                    self.$whats.get_mut(id.0).unwrap()
                 }
 
                 #[doc = "Returns whether " $what " with a given ID is in the database storage."]
@@ -513,7 +601,7 @@ macro_rules! db_methods {
                 #[inline(always)]
                 #[must_use]
                 pub fn [<contains_ $what>](&self, id: $id_ty) -> bool {
-                    id.0 < self.[<$what s>].len()
+                    id.0 < self.$whats.len()
                 }
 
                 #[doc = "Adds a " $what " to the database storage."]
@@ -522,9 +610,9 @@ macro_rules! db_methods {
                 #[inline(always)]
                 #[must_use]
                 pub fn [<add_ $what>](&mut self, [<$what _>]: $data_ty) -> $id_ty {
-                    self.[<$what s>].push([<$what _>]);
+                    self.$whats.push([<$what _>]);
 
-                    $id_ty(self.[<$what s>].len() - 1)
+                    $id_ty(self.$whats.len() - 1)
                 }
             }
         )*
@@ -541,14 +629,19 @@ impl Database {
 
     // reduces the size of code in hundreds of times!
     db_methods! {
-        module: ModuleID => ModuleData,
-        enum: EnumID => EnumData,
-        struct: StructID => StructData,
-        function: FunctionID => FunctionData,
-        interface: InterfaceID => InterfaceData,
-        predicate: PredicateID => PredicateData,
-        enum_item: EnumItemID => EnumItemData,
-        field: FieldID => FieldData
+        module(modules): ModuleID => ModuleData,
+        enum(enums): EnumID => EnumData,
+        struct(structs): StructID => StructData,
+
+        tuple_like_struct(tuple_like_structs):
+            TupleLikeStructID => TupleLikeStructData,
+
+        type_alias(type_aliases): TypeAliasID => TypeAliasData,
+        function(functions): FunctionID => FunctionData,
+        interface(interfaces): InterfaceID => InterfaceData,
+        predicate(predicates): PredicateID => PredicateData,
+        enum_item(enum_items): EnumItemID => EnumItemData,
+        field(fields): FieldID => FieldData
     }
 }
 
@@ -557,6 +650,33 @@ impl Database {
 pub struct State {
     db: RwLock<Database>,
     diagnostics: RwLock<Diagnostics>,
+    config: Config,
+}
+
+pub struct Config {
+    pub threads_amount: usize,
+}
+
+impl Default for Config {
+    #[inline(always)]
+    fn default() -> Self {
+        Self { threads_amount: 1 }
+    }
+}
+
+impl Config {
+    #[inline(always)]
+    #[must_use]
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    #[inline(always)]
+    #[must_use]
+    pub fn with_threads_amount(mut self, threads_amount: usize) -> usize {
+        self.threads_amount = threads_amount;
+        self.threads_amount
+    }
 }
 
 impl State {
@@ -565,6 +685,19 @@ impl State {
     #[must_use]
     pub fn new() -> Self {
         Self::default()
+    }
+
+    #[inline(always)]
+    #[must_use]
+    pub fn with_config(mut self, config: Config) -> Self {
+        self.config = config;
+        self
+    }
+
+    #[inline(always)]
+    #[must_use]
+    pub fn config(&self) -> &Config {
+        &self.config
     }
 
     /// Returns a reference to database.

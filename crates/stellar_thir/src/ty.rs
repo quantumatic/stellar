@@ -22,6 +22,10 @@ pub enum Type {
     #[cfg_attr(feature = "serde", serde(rename = "unit_type"))]
     Unit,
 
+    /// An unknown type.
+    #[cfg_attr(feature = "serde", serde(rename = "unknown_type"))]
+    Unknown,
+
     /// A type constructor: `List[uint32]`, `uint32`, `String`.
     ///
     /// Anything that has name and optionally have generic arguments.
@@ -82,6 +86,10 @@ pub enum TypeKind {
     #[display(fmt = "unit type")]
     Unit,
 
+    /// An unknown type.
+    #[display(fmt = "unknown type")]
+    Unknown,
+
     /// A type constructor: `List[uint32]`, `uint32`, `String`.
     ///
     /// Anything that has name and optionally have generic arguments.
@@ -125,6 +133,7 @@ impl Type {
             Self::Variable(..) => TypeKind::Variable,
             Self::InterfaceObject { .. } => TypeKind::InterfaceObject,
             Self::Unit => TypeKind::Unit,
+            Self::Unknown => TypeKind::Unknown,
         }
     }
 }

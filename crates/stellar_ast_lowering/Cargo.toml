@@ -17,3 +17,4 @@ stellar_diagnostics = { path = "../stellar_diagnostics" }
 stellar_filesystem = { path = "../stellar_filesystem" }
 stellar_hir = { path = "../stellar_hir" }
 stellar_interner = { path = "../stellar_interner" }
+rayon = "1.7.0"

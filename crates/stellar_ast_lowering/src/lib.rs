@@ -15,6 +15,8 @@
     html_favicon_url = "https://raw.githubusercontent.com/quantumatic/stellar/main/additional/icon/stellar.png"
 )]
 
+use std::sync::Arc;
+
 use diagnostics::{UnnecessaryGroupedPattern, UnnecessaryParenthesizedExpression};
 use stellar_ast::IdentifierAST;
 use stellar_database::{ModuleData, ModuleID, State};
@@ -24,44 +26,44 @@ use stellar_interner::{builtin_identifiers::BIG_SELF, IdentifierID, PathID};
 
 mod diagnostics;
 
-pub struct LowerToHir<'s> {
-    state: &'s State,
+pub struct LowerToHir {
+    state: Arc<State>,
     filepath: PathID,
 }
 
-fn module_name(filepath_id: PathID) -> IdentifierID {
-    IdentifierID::from(
-        filepath_id
-            .resolve_or_panic()
-            .file_stem()
-            .unwrap()
-            .to_str()
-            .unwrap(),
-    )
-}
-
-impl<'s> LowerToHir<'s> {
+impl LowerToHir {
     pub fn run_all(
-        state: &'s State,
+        state: Arc<State>,
         modules: Vec<stellar_ast::Module>,
-    ) -> Vec<(ModuleID, stellar_hir::Module)> {
+    ) -> Vec<Arc<(ModuleID, stellar_hir::Module)>> {
         modules
             .into_iter()
             .map(|module| {
+                fn module_name(filepath_id: PathID) -> IdentifierID {
+                    IdentifierID::from(
+                        filepath_id
+                            .resolve_or_panic()
+                            .file_stem()
+                            .unwrap()
+                            .to_str()
+                            .unwrap(),
+                    )
+                }
+
                 let id = ModuleData::alloc(
                     &mut state.db().write(),
                     module_name(module.filepath),
                     module.filepath,
                 );
 
-                (
+                Arc::new((
                     id,
                     LowerToHir {
-                        state,
+                        state: state.clone(),
                         filepath: module.filepath,
                     }
                     .run(module),
-                )
+                ))
             })
             .collect()
     }
