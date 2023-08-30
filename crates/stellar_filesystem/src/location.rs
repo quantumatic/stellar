@@ -99,7 +99,7 @@ impl ByteOffset {
     #[must_use]
     pub const fn next_byte_location_at(self, filepath_id: PathID) -> Location {
         Location {
-            filepath_id: filepath_id,
+            filepath_id,
             start: self,
             end: Self(self.0 + 1),
         }
@@ -110,7 +110,7 @@ impl ByteOffset {
     #[must_use]
     pub const fn previous_byte_location_at(self, filepath_id: PathID) -> Location {
         Location {
-            filepath_id: filepath_id,
+            filepath_id,
             start: Self(self.0 - 1),
             end: self,
         }
