@@ -12,8 +12,8 @@ description = "Crates, responsible for desugaring AST and instantiating types."
 parking_lot = "0.12.1"
 phf = { version = "0.11.1", features = ["macros"] }
 stellar_ast = { path = "../stellar_ast" }
+stellar_database = { path = "../stellar_database" }
 stellar_diagnostics = { path = "../stellar_diagnostics" }
 stellar_filesystem = { path = "../stellar_filesystem" }
 stellar_hir = { path = "../stellar_hir" }
 stellar_interner = { path = "../stellar_interner" }
-stellar_database = { path = "../stellar_database" }

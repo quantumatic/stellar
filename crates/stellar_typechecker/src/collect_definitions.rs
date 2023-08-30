@@ -216,11 +216,9 @@ mod tests {
 
         let db = state.db_lock();
         let items = &db
-            .get_enum_or_panic(
-                db.get_module_or_panic(hir[0].0)
-                    .get_symbol_or_panic(IdentifierID::from("A"))
-                    .get_enum_or_panic(),
-            )
+            .get_module_or_panic(hir[0].0)
+            .get_symbol_or_panic(IdentifierID::from("A"))
+            .get_enum_or_panic(&db)
             .items;
 
         assert!(items.contains_key(&IdentifierID::from("A")));
