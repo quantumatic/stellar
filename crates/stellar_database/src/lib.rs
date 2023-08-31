@@ -336,6 +336,133 @@ impl PredicateData {
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
 pub struct PredicateID(pub usize);
 
+/// A data that Stellar compiler has about a generic parameter scope.
+#[derive(Default, PartialEq, Clone, Debug)]
+pub struct GenericParameterScopeData {
+    /// A parent scope, for example:
+    ///
+    /// ```stellar
+    /// interface Foo[T] { // self.parent = Scope { parent: None, parameters: [T] }
+    ///     fun bar[M]();  // self = Scope { parent: ..., parameters: [M] }
+    /// }
+    /// ```
+    pub parent_scope: Option<GenericParameterScopeID>,
+
+    /// A map of generic parameters in the scope.
+    pub parameters: FxHashMap<IdentifierID, GenericParameterID>,
+}
+
+impl GenericParameterScopeData {
+    /// Creates a new empty generic parameter scope.
+    #[inline(always)]
+    #[must_use]
+    pub fn new(parent_scope: Option<GenericParameterScopeID>) -> Self {
+        Self {
+            parent_scope,
+            parameters: FxHashMap::default(),
+        }
+    }
+
+    /// Adds a generic parameter into the scope.
+    #[inline(always)]
+    pub fn add_generic_parameter(
+        &mut self,
+        parameter_name: IdentifierID,
+        parameter: GenericParameterID,
+    ) {
+        self.parameters.insert(parameter_name, parameter);
+    }
+
+    /// Resolves a data about generic parameter in the scope.
+    ///
+    /// **Note**: the method shouldn't be used to check if the parameter exists
+    /// in the scope. Use the [`contains()`] method.
+    ///
+    /// [`contains()`]: GenericParameterScopeData::contains
+    #[must_use]
+    pub fn resolve(
+        &self,
+        db: &Database,
+        parameter_name: IdentifierID,
+    ) -> Option<GenericParameterID> {
+        if let Some(parameter_id) = self.parameters.get(&parameter_name) {
+            Some(*parameter_id)
+        } else if let Some(parent_scope_id) = &self.parent_scope {
+            db.get_generic_parameter_scope_or_panic(*parent_scope_id)
+                .resolve(db, parameter_name)
+        } else {
+            None
+        }
+    }
+
+    /// Checks if the generic parameter exists in the scope.
+    #[must_use]
+    pub fn contains(&self, db: &Database, parameter_name: IdentifierID) -> bool {
+        self.parameters.contains_key(&parameter_name)
+            || if let Some(parent_scope_id) = &self.parent_scope {
+                db.get_generic_parameter_scope_or_panic(*parent_scope_id)
+                    .contains(db, parameter_name)
+            } else {
+                false
+            }
+    }
+}
+
+/// A unique ID that maps to [`GenericParameterScopeData`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct GenericParameterScopeID(pub usize);
+
+impl GenericParameterScopeID {
+    /// Resolves a data about generic parameter in the scope.
+    ///
+    /// **Note**: the method shouldn't be used to check if the parameter exists
+    /// in the scope. Use the [`contains()`] method.
+    ///
+    /// [`contains()`]: GenericParameterScopeID::contains
+    #[inline(always)]
+    #[must_use]
+    pub fn resolve(
+        &self,
+        db: &Database,
+        parameter_name: IdentifierID,
+    ) -> Option<GenericParameterID> {
+        db.get_generic_parameter_scope_or_panic(*self)
+            .resolve(db, parameter_name)
+    }
+
+    /// Checks if the generic parameter exists in the scope.
+    #[inline(always)]
+    #[must_use]
+    pub fn contains(&self, db: &Database, parameter_name: IdentifierID) -> bool {
+        db.get_generic_parameter_scope_or_panic(*self)
+            .contains(db, parameter_name)
+    }
+}
+
+/// Data, that the Stellar compiler has about a generic parameter.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct GenericParameterData {
+    /// Location of the name of the generic parameter.
+    ///
+    /// ```txt
+    /// foo[T: ToString = String]
+    ///     ^
+    /// ```
+    pub location: Location,
+
+    /// Default value of the generic parameter.
+    ///
+    /// ```txt
+    /// foo[T: ToString = String]
+    ///                   ^^^^^^
+    /// ```
+    pub default_value: Option<Type>,
+}
+
+/// A unique ID that maps to [`GenericParameterData`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct GenericParameterID(pub usize);
+
 /// A data that Stellar compiler has about an enum item.
 #[derive(Debug)]
 pub struct EnumItemData {
@@ -559,6 +686,8 @@ pub struct Database {
     functions: Vec<FunctionData>,
     interfaces: Vec<InterfaceData>,
     type_aliases: Vec<TypeAliasData>,
+    generic_parameter_scopes: Vec<GenericParameterScopeData>,
+    generic_parameters: Vec<GenericParameterData>,
 }
 
 macro_rules! db_methods {
@@ -644,16 +773,17 @@ impl Database {
         module(modules): ModuleID => ModuleData,
         enum(enums): EnumID => EnumData,
         struct(structs): StructID => StructData,
-
         tuple_like_struct(tuple_like_structs):
             TupleLikeStructID => TupleLikeStructData,
-
         type_alias(type_aliases): TypeAliasID => TypeAliasData,
         function(functions): FunctionID => FunctionData,
         interface(interfaces): InterfaceID => InterfaceData,
         predicate(predicates): PredicateID => PredicateData,
         enum_item(enum_items): EnumItemID => EnumItemData,
-        field(fields): FieldID => FieldData
+        field(fields): FieldID => FieldData,
+        generic_parameter_scope(generic_parameter_scopes): GenericParameterScopeID =>
+            GenericParameterScopeData,
+        generic_parameter(generic_parameters): GenericParameterID => GenericParameterData
     }
 }
 

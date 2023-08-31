@@ -22,8 +22,6 @@ impl CollectDefinitions {
         modules
             .par_chunks(state.config().threads_amount)
             .for_each(|chunk| {
-                let state = state.clone();
-
                 chunk.par_iter().for_each(|module| {
                     CollectDefinitions {
                         state: state.clone(),
