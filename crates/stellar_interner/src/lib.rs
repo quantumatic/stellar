@@ -63,6 +63,7 @@
 )]
 
 use std::{
+    fmt::Display,
     hash::BuildHasherDefault,
     hash::{BuildHasher, Hash, Hasher},
     marker::PhantomData,
@@ -81,7 +82,6 @@ extern crate alloc;
 
 use alloc::{string::String, vec::Vec};
 
-use derive_more::Display;
 use hashbrown::{hash_map::RawEntryMut, HashMap};
 use lazy_static::lazy_static;
 use parking_lot::RwLock;
@@ -111,6 +111,13 @@ impl IdentifierID {
     #[must_use]
     pub fn resolve(self) -> Option<String> {
         IDENTIFIER_INTERNER.read().resolve_owned(self)
+    }
+}
+
+impl Display for IdentifierID {
+    #[inline(always)]
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.resolve_or_panic().fmt(f)
     }
 }
 
@@ -680,7 +687,7 @@ lazy_static! {
 }
 
 /// ID of a path in the [`PathInterner`].
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Display, Hash)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct PathID(pub usize);
 
 impl PathID {
@@ -703,6 +710,12 @@ impl PathID {
     #[must_use]
     pub fn resolve_or_panic(self) -> PathBuf {
         PATH_INTERNER.read().resolve_owned_or_panic(self)
+    }
+}
+
+impl Display for PathID {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.resolve_or_panic().display())
     }
 }
 

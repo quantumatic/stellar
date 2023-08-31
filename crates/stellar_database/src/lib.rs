@@ -4,6 +4,7 @@
     html_favicon_url = "https://raw.githubusercontent.com/quantumatic/stellar/main/additional/icon/stellar.png"
 )]
 
+use derive_more::Display;
 use parking_lot::{RawRwLock, RwLock, RwLockReadGuard, RwLockWriteGuard};
 use paste::paste;
 use stellar_ast::{IdentifierAST, Path, Visibility};
@@ -670,7 +671,7 @@ impl ModuleData {
 }
 
 /// A unique ID that maps to [`ModuleData`].
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Display)]
 pub struct ModuleID(pub usize);
 
 /// Storage for Stellar compiler entities.

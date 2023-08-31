@@ -57,10 +57,10 @@
     clippy::significant_drop_tightening
 )]
 
-use std::env;
-
 use clap::{Parser, Subcommand};
 
+#[cfg(feature = "debug")]
+mod debug_collect_definitions;
 mod lex;
 mod lower;
 mod new;
@@ -113,19 +113,27 @@ enum Commands {
     CompilerVersion,
     #[command(about = "Prints current version of the standart library")]
     StdVersion,
+    #[cfg(feature = "debug")]
+    #[command(about = "Debug mode: debug collect definitions")]
+    DebugCollectDefinitions { filepath: String },
     #[command(about = "Prints current version of the package manager (Stellar repository)")]
     PackageManagerVersion,
 }
 
 fn main() {
+    #[cfg(feature = "debug")]
     tracing_subscriber::fmt()
         .with_writer(std::io::stderr)
-        .with_env_filter(env::var("RY_LOG").unwrap_or_else(|_| "off".to_owned()))
+        .with_env_filter(std::env::var("STELLAR_LOG").unwrap_or_else(|_| "off".to_owned()))
         .without_time()
-        .with_ansi(false)
+        .with_level(false)
         .init();
 
     match Cli::parse().command {
+        #[cfg(feature = "debug")]
+        Commands::DebugCollectDefinitions { filepath } => {
+            debug_collect_definitions::command(&filepath)
+        }
         Commands::CompilerVersion => version::compiler_version_command(),
         Commands::StdVersion => version::std_version_command(),
         Commands::PackageManagerVersion => version::package_manager_version_command(),

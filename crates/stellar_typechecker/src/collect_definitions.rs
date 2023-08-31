@@ -9,6 +9,8 @@ use stellar_database::{
     EnumData, EnumItemData, FunctionData, InterfaceData, ModuleID, State, StructData, Symbol,
     TupleLikeStructData, TypeAliasData,
 };
+#[cfg(feature = "debug")]
+use tracing::trace;
 
 use crate::diagnostics::{DuplicateEnumItem, DuplicateModuleItem};
 
@@ -33,6 +35,15 @@ impl CollectDefinitions {
     }
 
     fn run(self, module: &stellar_hir::Module) {
+        #[cfg(feature = "debug")]
+        trace!(
+            "collect_definitions_in(module = {})",
+            self.state
+                .db_lock()
+                .get_module_or_panic(self.module)
+                .filepath
+        );
+
         for item in &module.items {
             match item {
                 stellar_hir::ModuleItem::Enum(enum_) => self.define_enum(enum_),
@@ -49,10 +60,31 @@ impl CollectDefinitions {
     }
 
     fn define_enum(&self, enum_: &stellar_hir::Enum) {
+        #[cfg(feature = "debug")]
+        trace!(
+            "define_enum(name = {}, module = {})",
+            enum_.name.id,
+            self.state
+                .db_lock()
+                .get_module_or_panic(self.module)
+                .filepath
+        );
+
         let mut enum_data = EnumData::new(enum_.visibility, enum_.name, self.module);
 
         for item in &enum_.items {
             let name = item.name();
+
+            #[cfg(feature = "debug")]
+            trace!(
+                "define_enum_item(enum_name = {}, item_name = {}, module = {})",
+                enum_.name.id,
+                name.id,
+                self.state
+                    .db_lock()
+                    .get_module_or_panic(self.module)
+                    .filepath
+            );
 
             self.check_for_duplicate_enum_item(&enum_data, name);
 
@@ -73,6 +105,16 @@ impl CollectDefinitions {
     }
 
     fn define_function(&self, function: &stellar_hir::Function) {
+        #[cfg(feature = "debug")]
+        trace!(
+            "define_function(name = {}, module = {})",
+            function.signature.name.id,
+            self.state
+                .db_lock()
+                .get_module_or_panic(self.module)
+                .filepath
+        );
+
         let id = FunctionData::alloc(
             &mut self.state.db_lock_write(),
             function.signature.name,
@@ -89,6 +131,16 @@ impl CollectDefinitions {
     }
 
     fn define_struct(&self, struct_: &stellar_hir::Struct) {
+        #[cfg(feature = "debug")]
+        trace!(
+            "define_struct(name = {}, module = {})",
+            struct_.name.id,
+            self.state
+                .db_lock()
+                .get_module_or_panic(self.module)
+                .filepath
+        );
+
         let id = StructData::alloc(
             &mut self.state.db_lock_write(),
             struct_.visibility,
@@ -105,6 +157,16 @@ impl CollectDefinitions {
     }
 
     fn define_tuple_like_struct(&self, struct_: &stellar_hir::TupleLikeStruct) {
+        #[cfg(feature = "debug")]
+        trace!(
+            "define_tuple_like_struct(name = {}, module = {})",
+            struct_.name.id,
+            self.state
+                .db_lock()
+                .get_module_or_panic(self.module)
+                .filepath
+        );
+
         let id = TupleLikeStructData::alloc(
             &mut self.state.db_lock_write(),
             struct_.visibility,
@@ -121,6 +183,16 @@ impl CollectDefinitions {
     }
 
     fn define_interface(&self, interface: &stellar_hir::Interface) {
+        #[cfg(feature = "debug")]
+        trace!(
+            "define_interface(name = {}, module = {})",
+            interface.name.id,
+            self.state
+                .db_lock()
+                .get_module_or_panic(self.module)
+                .filepath
+        );
+
         let id = InterfaceData::alloc(
             &mut self.state.db_lock_write(),
             interface.visibility,
@@ -137,6 +209,16 @@ impl CollectDefinitions {
     }
 
     fn define_type_alias(&self, alias: &stellar_hir::TypeAlias) {
+        #[cfg(feature = "debug")]
+        trace!(
+            "define_type_alias(name = {}, module = {})",
+            alias.name.id,
+            self.state
+                .db_lock()
+                .get_module_or_panic(self.module)
+                .filepath
+        );
+
         let id = TypeAliasData::alloc(
             &mut self.state.db_lock_write(),
             alias.visibility,

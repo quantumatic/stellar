@@ -17,4 +17,3 @@ stellar_filesystem = { path = "../stellar_filesystem" }
 stellar_interner = { path = "../stellar_interner" }
 stellar_lexer = { path = "../stellar_lexer" }
 stellar_stable_likely = { path = "../stellar_stable_likely" }
-tracing = "0.1.29"

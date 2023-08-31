@@ -93,7 +93,6 @@ use stellar_filesystem::location::{ByteOffset, Location, LocationIndex};
 use stellar_interner::PathID;
 use stellar_lexer::Lexer;
 use stellar_stable_likely::unlikely;
-use tracing::trace;
 
 use crate::diagnostics::UnexpectedToken;
 
@@ -275,12 +274,6 @@ impl<'s, 'd> ParseState<'s, 'd> {
         let mut lexer = Lexer::new(filepath_id, source);
 
         let current_token = lexer.next_no_comments();
-        trace!(
-            "next_token: {} at {}",
-            current_token.raw,
-            current_token.location
-        );
-
         let next_token = current_token;
 
         let mut state = Self {
@@ -325,23 +318,10 @@ impl<'s, 'd> ParseState<'s, 'd> {
 
         self.current_token = self.next_token;
         self.next_token = self.lexer.next_no_comments();
-
-        trace!(
-            "next_token: {} at {}",
-            self.next_token.raw,
-            self.next_token.location
-        );
     }
 
     /// Checks if the next token is [`expected`].
     fn expect(&mut self, expected: RawToken) -> Option<()> {
-        trace!(
-            "excepted {} to be {} at: {}",
-            self.next_token.raw,
-            expected,
-            self.next_token.location
-        );
-
         if unlikely(self.next_token.raw.is_error()) {
             return None;
         }
@@ -387,12 +367,6 @@ impl<'s, 'd> ParseState<'s, 'd> {
     /// Checks if the next token is identifiers, advances the parse state and if
     /// everything is ok, returns the identifier symbol.
     fn consume_identifier(&mut self) -> Option<IdentifierAST> {
-        trace!(
-            "expected next_token {} to be an identifier at: {}",
-            self.next_token.raw,
-            self.next_token.location
-        );
-
         let locationned_symbol = if self.next_token.raw == RawToken::Identifier {
             IdentifierAST {
                 location: self.next_token.location,
@@ -422,9 +396,6 @@ impl<'s, 'd> ParseState<'s, 'd> {
 
                 module_docstring.push_str(self.resolve_location(self.current_token.location));
             }
-
-            trace!("consumed module level docstring");
-
             Some(module_docstring)
         } else {
             None
@@ -441,9 +412,6 @@ impl<'s, 'd> ParseState<'s, 'd> {
 
                 local_docstring.push_str(self.resolve_location(self.current_token.location));
             }
-
-            trace!("consumed docstring");
-
             Some(local_docstring)
         } else {
             None

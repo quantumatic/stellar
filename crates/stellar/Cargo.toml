@@ -25,10 +25,17 @@ stellar_interner = { path = "../stellar_interner" }
 stellar_lexer = { path = "../stellar_lexer" }
 stellar_manifest = { path = "../stellar_manifest" }
 stellar_parser = { path = "../stellar_parser" }
+stellar_typechecker = { path = "../stellar_typechecker" }
 termcolor = "1.2.0"
-tracing-subscriber = { version = "0.3.2", features = ["fmt", "env-filter"] }
+tracing-subscriber = { version = "0.3.2", features = [
+    "fmt",
+    "env-filter",
+], optional = true }
 
 [profile.release]
 opt-level = 3
 overflow-checks = false
 debug-assertions = false
+
+[features]
+debug = ["dep:tracing-subscriber"]
