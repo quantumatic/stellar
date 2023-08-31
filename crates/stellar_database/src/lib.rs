@@ -163,12 +163,12 @@ impl EnumData {
     #[inline(always)]
     #[must_use]
     pub fn alloc(
-        db: &mut Database,
+        db: &RwLock<Database>,
         visibility: Visibility,
         name: IdentifierAST,
         module: ModuleID,
     ) -> EnumID {
-        db.add_enum(Self::new(visibility, name, module))
+        db.write().add_enum(Self::new(visibility, name, module))
     }
 
     /// Creates a new enum data object.
@@ -207,12 +207,12 @@ impl StructData {
     #[inline(always)]
     #[must_use]
     pub fn alloc(
-        db: &mut Database,
+        db: &RwLock<Database>,
         visibility: Visibility,
         name: IdentifierAST,
         module: ModuleID,
     ) -> StructID {
-        db.add_struct(Self::new(visibility, name, module))
+        db.write().add_struct(Self::new(visibility, name, module))
     }
 
     /// Creates a new struct data object.
@@ -248,12 +248,13 @@ impl TupleLikeStructData {
     #[inline(always)]
     #[must_use]
     pub fn alloc(
-        db: &mut Database,
+        db: &RwLock<Database>,
         visibility: Visibility,
         name: IdentifierAST,
         module: ModuleID,
     ) -> TupleLikeStructID {
-        db.add_tuple_like_struct(Self::new(visibility, name, module))
+        db.write()
+            .add_tuple_like_struct(Self::new(visibility, name, module))
     }
 
     /// Creates a new tuple-like struct data object.
@@ -286,12 +287,12 @@ impl FieldData {
     #[inline(always)]
     #[must_use]
     pub fn alloc(
-        db: &mut Database,
+        db: &RwLock<Database>,
         visibility: Visibility,
         name: IdentifierAST,
         ty: Type,
     ) -> FieldID {
-        db.add_field(Self::new(visibility, name, ty))
+        db.write().add_field(Self::new(visibility, name, ty))
     }
 
     /// Creates a new field data object.
@@ -321,8 +322,8 @@ impl PredicateData {
     /// Creates a new predicate data object in the database and returns its ID.
     #[inline(always)]
     #[must_use]
-    pub fn alloc(db: &mut Database, ty: Type, bounds: Vec<TypeConstructor>) -> PredicateID {
-        db.add_predicate(Self::new(ty, bounds))
+    pub fn alloc(db: &RwLock<Database>, ty: Type, bounds: Vec<TypeConstructor>) -> PredicateID {
+        db.write().add_predicate(Self::new(ty, bounds))
     }
 
     /// Creates a new predicate data object.
@@ -475,8 +476,8 @@ impl EnumItemData {
     /// Creates a new enum item data object in the database and returns its ID.
     #[inline(always)]
     #[must_use]
-    pub fn alloc(db: &mut Database, name: IdentifierAST, module: ModuleID) -> EnumItemID {
-        db.add_enum_item(Self::new(name, module))
+    pub fn alloc(db: &RwLock<Database>, name: IdentifierAST, module: ModuleID) -> EnumItemID {
+        db.write().add_enum_item(Self::new(name, module))
     }
 
     /// Creates a new enum item data object.
@@ -508,12 +509,12 @@ impl FunctionData {
     #[inline(always)]
     #[must_use]
     pub fn alloc(
-        db: &mut Database,
+        db: &RwLock<Database>,
         name: IdentifierAST,
         visibility: Visibility,
         module: ModuleID,
     ) -> FunctionID {
-        db.add_function(Self::new(name, visibility, module))
+        db.write().add_function(Self::new(name, visibility, module))
     }
 
     /// Creates a new function data object.
@@ -543,12 +544,13 @@ impl InterfaceData {
     #[inline(always)]
     #[must_use]
     pub fn alloc(
-        db: &mut Database,
+        db: &RwLock<Database>,
         visibility: Visibility,
         name: IdentifierAST,
         module: ModuleID,
     ) -> InterfaceID {
-        db.add_interface(Self::new(visibility, name, module))
+        db.write()
+            .add_interface(Self::new(visibility, name, module))
     }
 
     /// Creates a new interface data object.
@@ -583,12 +585,13 @@ impl TypeAliasData {
     #[inline(always)]
     #[must_use]
     pub fn alloc(
-        db: &mut Database,
+        db: &RwLock<Database>,
         visibility: Visibility,
         name: IdentifierAST,
         module: ModuleID,
     ) -> TypeAliasID {
-        db.add_type_alias(Self::new(visibility, name, module))
+        db.write()
+            .add_type_alias(Self::new(visibility, name, module))
     }
 
     /// Creates a new type alias data object.
@@ -622,8 +625,8 @@ impl ModuleData {
     /// Creates a new module data object in the database and returns its ID.
     #[inline(always)]
     #[must_use]
-    pub fn alloc(db: &mut Database, name: IdentifierID, filepath: PathID) -> ModuleID {
-        db.add_module(Self::new(name, filepath))
+    pub fn alloc(db: &RwLock<Database>, name: IdentifierID, filepath: PathID) -> ModuleID {
+        db.write().add_module(Self::new(name, filepath))
     }
 
     /// Creates a new module data object.
@@ -839,7 +842,7 @@ impl State {
 
     #[inline(always)]
     #[must_use]
-    pub fn config(&self) -> &Config {
+    pub const fn config(&self) -> &Config {
         &self.config
     }
 
@@ -877,7 +880,7 @@ impl State {
 
     #[inline(always)]
     #[must_use]
-    pub fn diagnostics_inner(self) -> Diagnostics {
+    pub fn into_diagnostics(self) -> Diagnostics {
         self.diagnostics.into_inner()
     }
 

@@ -7,12 +7,26 @@ use std::path::{Path, PathBuf};
 /// Allows to resolve basic paths like config storage and build directories for a given
 /// package path.
 #[derive(Debug, Clone)]
-pub struct PackagePathResolver<'path> {
+pub struct PackagePathResolver<'p> {
     /// The path of the package root.
-    pub root: &'path Path,
+    root: &'p Path,
 }
 
-impl PackagePathResolver<'_> {
+impl<'p> PackagePathResolver<'p> {
+    /// Constructs a new [`PackagePathResolver`].
+    #[inline(always)]
+    #[must_use]
+    pub const fn new(root: &'p Path) -> Self {
+        Self { root }
+    }
+
+    /// Returns the path of the package root.
+    #[inline(always)]
+    #[must_use]
+    pub const fn root(&self) -> &'p Path {
+        self.root
+    }
+
     /// Returns the path of the package README.
     #[inline(always)]
     #[must_use]
@@ -30,7 +44,7 @@ impl PackagePathResolver<'_> {
     /// Returns the path of the package source directory.
     #[inline(always)]
     #[must_use]
-    pub fn src_directory(&self) -> PathBuf {
+    pub fn source_directory(&self) -> PathBuf {
         self.root.join("src")
     }
 

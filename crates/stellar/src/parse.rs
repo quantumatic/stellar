@@ -1,8 +1,8 @@
 use std::{io::Write, time::Instant};
 
-use parking_lot::RwLock;
+use stellar_database::State;
 use stellar_diagnostics::diagnostic::Diagnostic;
-use stellar_diagnostics::{Diagnostics, DiagnosticsEmitter};
+use stellar_diagnostics::DiagnosticsEmitter;
 use stellar_filesystem::file_utils::make_unique_file;
 use stellar_interner::PathID;
 use stellar_parser::read_and_parse_module;
@@ -10,28 +10,27 @@ use stellar_parser::read_and_parse_module;
 use crate::prefix::log_with_left_padded_prefix;
 
 pub fn command(filepath: &str) {
-    let diagnostics = RwLock::new(Diagnostics::new());
     let mut diagnostics_emitter = DiagnosticsEmitter::new();
-
+    let state = State::new();
     let now = Instant::now();
 
-    match read_and_parse_module(PathID::from(filepath), &diagnostics) {
+    match read_and_parse_module(&state, PathID::from(filepath)) {
         Err(..) => {
             diagnostics_emitter.emit_context_free_diagnostic(
                 &Diagnostic::error().with_message(format!("cannot read the file {filepath}")),
             );
         }
-        Ok(ast) => {
+        Ok(parsed) => {
             let parsing_time = now.elapsed().as_secs_f64();
             log_with_left_padded_prefix("Parsed", format!("in {parsing_time}s"));
 
-            let diagnostics = diagnostics.into_inner();
+            let diagnostics = state.into_diagnostics();
 
             diagnostics_emitter.emit_global_diagnostics(&diagnostics);
 
             if diagnostics.is_ok() {
                 let now = Instant::now();
-                let ast_string = serde_json::to_string(&ast).unwrap();
+                let ast_string = serde_json::to_string(parsed.ast()).unwrap();
 
                 log_with_left_padded_prefix(
                     "Serialized",

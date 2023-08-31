@@ -19,51 +19,85 @@ use std::sync::Arc;
 
 use diagnostics::{UnnecessaryGroupedPattern, UnnecessaryParenthesizedExpression};
 use stellar_ast::IdentifierAST;
-use stellar_database::{ModuleData, ModuleID, State};
+use stellar_database::{ModuleID, State};
 use stellar_diagnostics::BuildDiagnostic;
 use stellar_filesystem::location::Location;
-use stellar_interner::{builtin_identifiers::BIG_SELF, IdentifierID, PathID};
+use stellar_interner::{builtin_identifiers::BIG_SELF, PathID};
+use stellar_parser::ParsedModule;
 
 mod diagnostics;
 
 pub struct LowerToHir {
     state: Arc<State>,
-    filepath: PathID,
+    filepath_id: PathID,
+}
+
+/// A lowered module.
+#[derive(Debug)]
+pub struct LoweredModule {
+    module_id: ModuleID,
+    hir: stellar_hir::Module,
+}
+
+impl LoweredModule {
+    /// Constructs a new lowered module.
+    #[inline(always)]
+    #[must_use]
+    pub const fn new(module_id: ModuleID, hir: stellar_hir::Module) -> Self {
+        Self { module_id, hir }
+    }
+
+    /// Returns the ID of the module in the database.
+    #[inline(always)]
+    #[must_use]
+    pub const fn module_id(&self) -> ModuleID {
+        self.module_id
+    }
+
+    /// Returns the HIR of the module.
+    #[inline(always)]
+    #[must_use]
+    pub const fn hir(&self) -> &stellar_hir::Module {
+        &self.hir
+    }
+
+    /// Returns the HIR of the module.
+    #[inline(always)]
+    #[must_use]
+    pub fn hir_mut(&mut self) -> &mut stellar_hir::Module {
+        &mut self.hir
+    }
+
+    /// Returns the HIR of the module.
+    #[inline(always)]
+    #[must_use]
+    pub fn into_hir(self) -> stellar_hir::Module {
+        self.hir
+    }
+}
+
+impl From<LoweredModule> for stellar_hir::Module {
+    #[inline(always)]
+    fn from(result: LoweredModule) -> Self {
+        result.into_hir()
+    }
 }
 
 impl LowerToHir {
-    pub fn run_all(
-        state: Arc<State>,
-        modules: Vec<stellar_ast::Module>,
-    ) -> Vec<Arc<(ModuleID, stellar_hir::Module)>> {
+    pub fn run_all(state: Arc<State>, modules: Vec<Arc<ParsedModule>>) -> Vec<Arc<LoweredModule>> {
         modules
             .into_iter()
-            .map(|module| {
-                fn module_name(filepath_id: PathID) -> IdentifierID {
-                    IdentifierID::from(
-                        filepath_id
-                            .resolve_or_panic()
-                            .file_stem()
-                            .unwrap()
-                            .to_str()
-                            .unwrap(),
-                    )
-                }
-
-                let id = ModuleData::alloc(
-                    &mut state.db().write(),
-                    module_name(module.filepath),
-                    module.filepath,
-                );
-
-                Arc::new((
-                    id,
-                    LowerToHir {
-                        state: state.clone(),
-                        filepath: module.filepath,
-                    }
-                    .run(module),
-                ))
+            .filter_map(|module| {
+                Arc::<_>::into_inner(module).map(|module| {
+                    Arc::new(LoweredModule::new(
+                        module.module_id(),
+                        LowerToHir {
+                            state: state.clone(),
+                            filepath_id: module.ast().filepath,
+                        }
+                        .run(module.into_ast()),
+                    ))
+                })
             })
             .collect()
     }
@@ -87,7 +121,7 @@ impl LowerToHir {
         self.state
             .diagnostics()
             .write()
-            .add_single_file_diagnostic(self.filepath, diagnostic);
+            .add_single_file_diagnostic(self.filepath_id, diagnostic);
     }
 
     /// Converts a given module item AST into HIR.

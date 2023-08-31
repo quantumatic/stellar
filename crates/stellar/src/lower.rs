@@ -19,7 +19,7 @@ pub fn command(filepath: &str) {
 
     let mut now = Instant::now();
 
-    match read_and_parse_module(path_id, state.diagnostics()) {
+    match read_and_parse_module(&state, path_id) {
         Err(..) => {
             diagnostics_emitter.emit_context_free_diagnostic(
                 &Diagnostic::error().with_message(format!("cannot read the file {filepath}")),
@@ -30,8 +30,8 @@ pub fn command(filepath: &str) {
 
             now = Instant::now();
 
-            let hir = LowerToHir::run_all(state.clone(), vec![ast]);
-            let hir = &hir.first().unwrap().1;
+            let hir = LowerToHir::run_all(state.clone(), vec![ast.into()]);
+            let hir = &hir.first().unwrap().hir();
 
             log_with_left_padded_prefix("Lowered", format!("in {}s", now.elapsed().as_secs_f64()));
 

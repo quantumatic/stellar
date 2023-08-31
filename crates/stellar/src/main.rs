@@ -115,7 +115,7 @@ enum Commands {
     StdVersion,
     #[cfg(feature = "debug")]
     #[command(about = "Debug mode: debug collect definitions")]
-    DebugCollectDefinitions { filepath: String },
+    DebugCollectDefinitions,
     #[command(about = "Prints current version of the package manager (Stellar repository)")]
     PackageManagerVersion,
 }
@@ -131,9 +131,7 @@ fn main() {
 
     match Cli::parse().command {
         #[cfg(feature = "debug")]
-        Commands::DebugCollectDefinitions { filepath } => {
-            debug_collect_definitions::command(&filepath)
-        }
+        Commands::DebugCollectDefinitions => debug_collect_definitions::command(),
         Commands::CompilerVersion => version::compiler_version_command(),
         Commands::StdVersion => version::std_version_command(),
         Commands::PackageManagerVersion => version::package_manager_version_command(),

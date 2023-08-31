@@ -12,21 +12,19 @@ fn test_enum() {
     let filepath_id = PathID::from("test.sr");
     let source_code = "enum A {}\nenum B {}";
 
-    let hir = &LowerToHir::run_all(
-        state.clone(),
-        vec![parse_module(filepath_id, source_code, state.diagnostics())],
-    );
+    let ast = parse_module(&state, filepath_id, source_code);
+    let hir = LowerToHir::run_all(state.clone(), vec![ast.into()]);
 
-    CollectDefinitions::run_all(state.clone(), hir);
+    CollectDefinitions::run_all(state.clone(), &hir);
 
     assert!(state
         .db_lock()
-        .get_module_or_panic(hir[0].0)
+        .get_module_or_panic(hir.first().unwrap().module_id())
         .get_symbol_or_panic(IdentifierID::from("A"))
         .is_enum());
     assert!(state
         .db_lock()
-        .get_module_or_panic(hir[0].0)
+        .get_module_or_panic(hir.first().unwrap().module_id())
         .get_symbol_or_panic(IdentifierID::from("B"))
         .is_enum());
     assert!(state.diagnostics_lock().is_ok());
@@ -38,17 +36,10 @@ fn test_duplicate_definition() {
     let filepath_id = PathID::from("test.sr");
     let source_code = "enum A {}\nenum A {}";
 
-    CollectDefinitions::run_all(
-        state.clone(),
-        &LowerToHir::run_all(
-            state.clone(),
-            vec![parse_module(
-                filepath_id,
-                source_code,
-                state.clone().diagnostics(),
-            )],
-        ),
-    );
+    let ast = parse_module(&state, filepath_id, source_code);
+    let hir = LowerToHir::run_all(state.clone(), vec![ast.into()]);
+
+    CollectDefinitions::run_all(state.clone(), &hir);
 
     assert_eq!(
         state.diagnostics_lock().file_diagnostics[0].code,
@@ -62,16 +53,14 @@ fn test_enum_items() {
     let filepath_id = PathID::from("test.sr");
     let source_code = "enum A { A, B, C }";
 
-    let hir = &LowerToHir::run_all(
-        state.clone(),
-        vec![parse_module(filepath_id, source_code, state.diagnostics())],
-    );
+    let ast = parse_module(&state, filepath_id, source_code);
+    let hir = LowerToHir::run_all(state.clone(), vec![ast.into()]);
 
-    CollectDefinitions::run_all(state.clone(), hir);
+    CollectDefinitions::run_all(state.clone(), &hir);
 
     let db = state.db_lock();
     let items = &db
-        .get_module_or_panic(hir[0].0)
+        .get_module_or_panic(hir.first().unwrap().module_id())
         .get_symbol_or_panic(IdentifierID::from("A"))
         .get_enum_or_panic(&db)
         .items;
@@ -87,16 +76,14 @@ fn test_function() {
     let filepath_id = PathID::from("test.sr");
     let source_code = "fun a() {}";
 
-    let hir = &LowerToHir::run_all(
-        state.clone(),
-        vec![parse_module(filepath_id, source_code, state.diagnostics())],
-    );
+    let ast = parse_module(&state, filepath_id, source_code);
+    let hir = LowerToHir::run_all(state.clone(), vec![ast.into()]);
 
-    CollectDefinitions::run_all(state.clone(), hir);
+    CollectDefinitions::run_all(state.clone(), &hir);
 
     assert!(state
         .db_lock()
-        .get_module_or_panic(hir[0].0)
+        .get_module_or_panic(hir.first().unwrap().module_id())
         .get_symbol_or_panic(IdentifierID::from("a"))
         .is_function());
     assert!(state.diagnostics_lock().is_ok());
@@ -108,16 +95,14 @@ fn test_struct() {
     let filepath_id = PathID::from("test.sr");
     let source_code = "struct A {}";
 
-    let hir = &LowerToHir::run_all(
-        state.clone(),
-        vec![parse_module(filepath_id, source_code, state.diagnostics())],
-    );
+    let ast = parse_module(&state, filepath_id, source_code);
+    let hir = LowerToHir::run_all(state.clone(), vec![ast.into()]);
 
-    CollectDefinitions::run_all(state.clone(), hir);
+    CollectDefinitions::run_all(state.clone(), &hir);
 
     assert!(state
         .db_lock()
-        .get_module_or_panic(hir[0].0)
+        .get_module_or_panic(hir.first().unwrap().module_id())
         .get_symbol_or_panic(IdentifierID::from("A"))
         .is_struct());
     assert!(state.diagnostics_lock().is_ok());
@@ -129,16 +114,14 @@ fn test_interface() {
     let filepath_id = PathID::from("test.sr");
     let source_code = "interface A {}";
 
-    let hir = &LowerToHir::run_all(
-        state.clone(),
-        vec![parse_module(filepath_id, source_code, state.diagnostics())],
-    );
+    let ast = parse_module(&state, filepath_id, source_code);
+    let hir = LowerToHir::run_all(state.clone(), vec![ast.into()]);
 
-    CollectDefinitions::run_all(state.clone(), hir);
+    CollectDefinitions::run_all(state.clone(), &hir);
 
     assert!(state
         .db_lock()
-        .get_module_or_panic(hir[0].0)
+        .get_module_or_panic(hir.first().unwrap().module_id())
         .get_symbol_or_panic(IdentifierID::from("A"))
         .is_interface());
     assert!(state.diagnostics_lock().is_ok());
@@ -150,16 +133,14 @@ fn test_type_alias() {
     let filepath_id = PathID::from("test.sr");
     let source_code = "type A = int8;";
 
-    let hir = &LowerToHir::run_all(
-        state.clone(),
-        vec![parse_module(filepath_id, source_code, state.diagnostics())],
-    );
+    let ast = parse_module(&state, filepath_id, source_code);
+    let hir = LowerToHir::run_all(state.clone(), vec![ast.into()]);
 
-    CollectDefinitions::run_all(state.clone(), hir);
+    CollectDefinitions::run_all(state.clone(), &hir);
 
     assert!(state
         .db_lock()
-        .get_module_or_panic(hir[0].0)
+        .get_module_or_panic(hir.first().unwrap().module_id())
         .get_symbol_or_panic(IdentifierID::from("A"))
         .is_type_alias());
     assert!(state.diagnostics_lock().is_ok());

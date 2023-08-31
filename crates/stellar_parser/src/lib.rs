@@ -75,7 +75,7 @@ mod pattern;
 mod statement;
 mod r#type;
 
-use std::{fs, io};
+use std::{fs, io, path::Path, sync::Arc};
 
 use diagnostics::LexErrorDiagnostic;
 pub use expression::ExpressionParser;
@@ -83,16 +83,22 @@ use items::{ItemParser, ItemsParser};
 use parking_lot::RwLock;
 use pattern::PatternParser;
 use r#type::TypeParser;
+use rayon::prelude::{IntoParallelIterator, ParallelBridge, ParallelIterator};
 use statement::StatementParser;
 use stellar_ast::{
     token::{Keyword, LexError, RawToken, Token},
     Expression, IdentifierAST, Module, ModuleItem, Pattern, Statement, Type, Visibility,
 };
+use stellar_database::{Database, ModuleData, ModuleID, State};
 use stellar_diagnostics::{BuildDiagnostic, Diagnostics};
-use stellar_filesystem::location::{ByteOffset, Location, LocationIndex};
-use stellar_interner::PathID;
+use stellar_filesystem::{
+    location::{ByteOffset, Location, LocationIndex},
+    path_resolver::PackagePathResolver,
+};
+use stellar_interner::{IdentifierID, PathID};
 use stellar_lexer::Lexer;
 use stellar_stable_likely::unlikely;
+use walkdir::WalkDir;
 
 use crate::diagnostics::UnexpectedToken;
 
@@ -140,6 +146,50 @@ pub trait OptionallyParse: Sized {
     fn optionally_parse(self, state: &mut ParseState<'_, '_>) -> Self::Output;
 }
 
+/// A structure returned by every module parsing function.
+#[derive(Debug)]
+pub struct ParsedModule {
+    module_id: ModuleID,
+    ast: Module,
+}
+
+impl ParsedModule {
+    /// Creates a new instance of [`ParsedModule`].
+    #[inline(always)]
+    #[must_use]
+    pub const fn new(module_id: ModuleID, ast: Module) -> Self {
+        Self { module_id, ast }
+    }
+
+    /// Returns the module AST.
+    #[inline(always)]
+    #[must_use]
+    pub const fn ast(&self) -> &Module {
+        &self.ast
+    }
+
+    /// Returns the ID of the module in database.
+    #[inline(always)]
+    #[must_use]
+    pub const fn module_id(&self) -> ModuleID {
+        self.module_id
+    }
+
+    /// Returns the module AST.
+    #[inline(always)]
+    #[must_use]
+    pub fn into_ast(self) -> Module {
+        self.ast
+    }
+
+    /// Returns the module AST.
+    #[inline(always)]
+    #[must_use]
+    pub fn ast_mut(&mut self) -> &mut Module {
+        &mut self.ast
+    }
+}
+
 /// Read and parse a Stellar module.
 ///
 /// # Errors
@@ -149,32 +199,56 @@ pub trait OptionallyParse: Sized {
 /// Panics if the file path cannot be resolved in the path storage.
 #[inline(always)]
 pub fn read_and_parse_module(
-    filepath: PathID,
-    diagnostics: &RwLock<Diagnostics>,
-) -> Result<Module, io::Error> {
-    Ok(parse_module_using(ParseState::new(
-        filepath,
-        &fs::read_to_string(filepath.resolve_or_panic())?,
-        diagnostics,
-    )))
+    state: &State,
+    filepath_id: PathID,
+) -> Result<ParsedModule, io::Error> {
+    Ok(parse_module_using(
+        state.db(),
+        ParseState::new(
+            filepath_id,
+            &fs::read_to_string(filepath_id.resolve_or_panic())?,
+            state.diagnostics(),
+        ),
+    ))
 }
 
 /// Parse a Stellar module.
 #[inline(always)]
 #[must_use]
-pub fn parse_module(filepath: PathID, source: &str, diagnostics: &RwLock<Diagnostics>) -> Module {
-    parse_module_using(ParseState::new(filepath, source, diagnostics))
+pub fn parse_module(state: &State, filepath_id: PathID, source: &str) -> ParsedModule {
+    parse_module_using(
+        state.db(),
+        ParseState::new(filepath_id, source, state.diagnostics()),
+    )
 }
 
 /// Parse a Stellar module using a given parse state.
 #[inline(always)]
 #[must_use]
-pub fn parse_module_using(mut state: ParseState<'_, '_>) -> Module {
-    Module {
-        filepath: state.lexer.filepath,
-        docstring: state.consume_module_docstring(),
-        items: ItemsParser.parse(&mut state),
+pub fn parse_module_using(db: &RwLock<Database>, mut state: ParseState<'_, '_>) -> ParsedModule {
+    fn module_name(filepath_id: PathID) -> IdentifierID {
+        IdentifierID::from(
+            filepath_id
+                .resolve_or_panic()
+                .file_stem()
+                .unwrap()
+                .to_str()
+                .unwrap(),
+        )
     }
+
+    ParsedModule::new(
+        ModuleData::alloc(
+            db,
+            module_name(state.lexer.filepath_id),
+            state.lexer.filepath_id,
+        ),
+        Module {
+            filepath: state.lexer.filepath_id,
+            docstring: state.consume_module_docstring(),
+            items: ItemsParser.parse(&mut state),
+        },
+    )
 }
 
 /// Parse an item.
@@ -267,6 +341,43 @@ pub fn parse_pattern_using(state: &mut ParseState<'_, '_>) -> Option<Pattern> {
     PatternParser.parse(state)
 }
 
+/// Traverses, reads and parses all package source files.
+///
+/// # Errors
+/// Returns an error if the package's source directory cannot be read.
+pub fn parse_package_source_files(
+    state: &State,
+    root: impl AsRef<Path>,
+) -> Result<Vec<Arc<ParsedModule>>, String> {
+    let root = root.as_ref();
+
+    let source_directory = PackagePathResolver::new(root).source_directory();
+
+    if !source_directory.exists() {
+        return Err(format!(
+            "cannot find package's source directory in {}",
+            root.display()
+        ));
+    }
+
+    Ok(
+        WalkDir::new(PackagePathResolver::new(root).source_directory())
+            .into_iter()
+            .filter_map(|entry| {
+                let Ok(entry) = entry else {
+                    return None;
+                };
+
+                read_and_parse_module(state, PathID::from(entry.path()))
+                    .ok()
+                    .map(Arc::new)
+            })
+            .par_bridge()
+            .into_par_iter()
+            .collect(),
+    )
+}
+
 impl<'s, 'd> ParseState<'s, 'd> {
     /// Creates an initial parse state from file source.
     #[must_use]
@@ -351,7 +462,7 @@ impl<'s, 'd> ParseState<'s, 'd> {
     #[inline(always)]
     pub(crate) const fn make_location(&self, start: ByteOffset, end: ByteOffset) -> Location {
         Location {
-            filepath_id: self.lexer.filepath,
+            filepath_id: self.lexer.filepath_id,
             start,
             end,
         }
@@ -424,7 +535,7 @@ impl<'s, 'd> ParseState<'s, 'd> {
     pub(crate) fn add_diagnostic(&mut self, diagnostic: impl BuildDiagnostic) {
         self.diagnostics
             .write()
-            .add_single_file_diagnostic(self.lexer.filepath, diagnostic);
+            .add_single_file_diagnostic(self.lexer.filepath_id, diagnostic);
     }
 }
 

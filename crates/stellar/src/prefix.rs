@@ -11,8 +11,8 @@ pub fn log_with_prefix(prefix: impl AsRef<str>, message: impl AsRef<str>) {
     let mut stdout = StandardStream::stdout(ColorChoice::Always);
 
     stdout
-        .set_color(ColorSpec::new().set_bold(true).set_fg(Some(Color::Blue)))
-        .expect("Cannot set fg color to blue for current log");
+        .set_color(ColorSpec::new().set_bold(true).set_fg(Some(Color::Cyan)))
+        .expect("Cannot set fg color to cyan for current log");
     write!(&mut stdout, "{}", prefix.as_ref()).expect("Cannot write the current log message");
     stdout
         .set_color(ColorSpec::new().set_bold(true).set_fg(Some(Color::White)))

@@ -4,6 +4,7 @@ members = [
     "crates/stellar_ast",
     "crates/stellar_ast_lowering",
     "crates/stellar_database",
+    "crates/stellar_depgraph",
     "crates/stellar_diagnostics",
     "crates/stellar_english_commons",
     "crates/stellar_filesystem",

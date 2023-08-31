@@ -1,10 +1,8 @@
 use std::sync::Arc;
 
-use rayon::{
-    prelude::{IntoParallelRefIterator, ParallelIterator},
-    slice::ParallelSlice,
-};
+use rayon::prelude::{IntoParallelRefIterator, ParallelIterator};
 use stellar_ast::IdentifierAST;
+use stellar_ast_lowering::LoweredModule;
 use stellar_database::{
     EnumData, EnumItemData, FunctionData, InterfaceData, ModuleID, State, StructData, Symbol,
     TupleLikeStructData, TypeAliasData,
@@ -16,22 +14,18 @@ use crate::diagnostics::{DuplicateEnumItem, DuplicateModuleItem};
 
 pub struct CollectDefinitions {
     state: Arc<State>,
-    module: ModuleID,
+    module_id: ModuleID,
 }
 
 impl CollectDefinitions {
-    pub fn run_all(state: Arc<State>, modules: &[Arc<(ModuleID, stellar_hir::Module)>]) {
-        modules
-            .par_chunks(state.config().threads_amount)
-            .for_each(|chunk| {
-                chunk.par_iter().for_each(|module| {
-                    CollectDefinitions {
-                        state: state.clone(),
-                        module: module.0,
-                    }
-                    .run(&module.1);
-                })
-            });
+    pub fn run_all(state: Arc<State>, modules: &[Arc<LoweredModule>]) {
+        modules.par_iter().for_each(|module| {
+            CollectDefinitions {
+                state: state.clone(),
+                module_id: module.module_id(),
+            }
+            .run(module.hir());
+        });
     }
 
     fn run(self, module: &stellar_hir::Module) {
@@ -40,7 +34,7 @@ impl CollectDefinitions {
             "collect_definitions_in(module = {})",
             self.state
                 .db_lock()
-                .get_module_or_panic(self.module)
+                .get_module_or_panic(self.module_id)
                 .filepath
         );
 
@@ -66,11 +60,11 @@ impl CollectDefinitions {
             enum_.name.id,
             self.state
                 .db_lock()
-                .get_module_or_panic(self.module)
+                .get_module_or_panic(self.module_id)
                 .filepath
         );
 
-        let mut enum_data = EnumData::new(enum_.visibility, enum_.name, self.module);
+        let mut enum_data = EnumData::new(enum_.visibility, enum_.name, self.module_id);
 
         for item in &enum_.items {
             let name = item.name();
@@ -82,7 +76,7 @@ impl CollectDefinitions {
                 name.id,
                 self.state
                     .db_lock()
-                    .get_module_or_panic(self.module)
+                    .get_module_or_panic(self.module_id)
                     .filepath
             );
 
@@ -90,7 +84,7 @@ impl CollectDefinitions {
 
             enum_data.items.insert(
                 name.id,
-                EnumItemData::alloc(&mut self.state.db_lock_write(), name, self.module),
+                EnumItemData::alloc(self.state.db(), name, self.module_id),
             );
         }
 
@@ -100,7 +94,7 @@ impl CollectDefinitions {
 
         self.state
             .db_lock_write()
-            .get_module_mut_or_panic(self.module)
+            .get_module_mut_or_panic(self.module_id)
             .add_symbol(enum_.name.id, Symbol::Enum(id));
     }
 
@@ -111,22 +105,22 @@ impl CollectDefinitions {
             function.signature.name.id,
             self.state
                 .db_lock()
-                .get_module_or_panic(self.module)
+                .get_module_or_panic(self.module_id)
                 .filepath
         );
 
         let id = FunctionData::alloc(
-            &mut self.state.db_lock_write(),
+            self.state.db(),
             function.signature.name,
             function.signature.visibility,
-            self.module,
+            self.module_id,
         );
 
         self.check_for_duplicate_definition(function.signature.name);
 
         self.state
             .db_lock_write()
-            .get_module_mut_or_panic(self.module)
+            .get_module_mut_or_panic(self.module_id)
             .add_symbol(function.signature.name.id, Symbol::Function(id));
     }
 
@@ -137,22 +131,22 @@ impl CollectDefinitions {
             struct_.name.id,
             self.state
                 .db_lock()
-                .get_module_or_panic(self.module)
+                .get_module_or_panic(self.module_id)
                 .filepath
         );
 
         let id = StructData::alloc(
-            &mut self.state.db_lock_write(),
+            self.state.db(),
             struct_.visibility,
             struct_.name,
-            self.module,
+            self.module_id,
         );
 
         self.check_for_duplicate_definition(struct_.name);
 
         self.state
             .db_lock_write()
-            .get_module_mut_or_panic(self.module)
+            .get_module_mut_or_panic(self.module_id)
             .add_symbol(struct_.name.id, Symbol::Struct(id))
     }
 
@@ -163,22 +157,22 @@ impl CollectDefinitions {
             struct_.name.id,
             self.state
                 .db_lock()
-                .get_module_or_panic(self.module)
+                .get_module_or_panic(self.module_id)
                 .filepath
         );
 
         let id = TupleLikeStructData::alloc(
-            &mut self.state.db_lock_write(),
+            self.state.db(),
             struct_.visibility,
             struct_.name,
-            self.module,
+            self.module_id,
         );
 
         self.check_for_duplicate_definition(struct_.name);
 
         self.state
             .db_lock_write()
-            .get_module_mut_or_panic(self.module)
+            .get_module_mut_or_panic(self.module_id)
             .add_symbol(struct_.name.id, Symbol::TupleLikeStruct(id))
     }
 
@@ -189,22 +183,22 @@ impl CollectDefinitions {
             interface.name.id,
             self.state
                 .db_lock()
-                .get_module_or_panic(self.module)
+                .get_module_or_panic(self.module_id)
                 .filepath
         );
 
         let id = InterfaceData::alloc(
-            &mut self.state.db_lock_write(),
+            self.state.db(),
             interface.visibility,
             interface.name,
-            self.module,
+            self.module_id,
         );
 
         self.check_for_duplicate_definition(interface.name);
 
         self.state
             .db_lock_write()
-            .get_module_mut_or_panic(self.module)
+            .get_module_mut_or_panic(self.module_id)
             .add_symbol(interface.name.id, Symbol::Interface(id));
     }
 
@@ -215,21 +209,21 @@ impl CollectDefinitions {
             alias.name.id,
             self.state
                 .db_lock()
-                .get_module_or_panic(self.module)
+                .get_module_or_panic(self.module_id)
                 .filepath
         );
 
         let id = TypeAliasData::alloc(
-            &mut self.state.db_lock_write(),
+            self.state.db(),
             alias.visibility,
             alias.name,
-            self.module,
+            self.module_id,
         );
         self.check_for_duplicate_definition(alias.name);
 
         self.state
             .db_lock_write()
-            .get_module_mut_or_panic(self.module)
+            .get_module_mut_or_panic(self.module_id)
             .add_symbol(alias.name.id, Symbol::TypeAlias(id));
     }
 
@@ -237,7 +231,7 @@ impl CollectDefinitions {
         if let Some(symbol) = self
             .state
             .db_lock()
-            .get_module_or_panic(self.module)
+            .get_module_or_panic(self.module_id)
             .get_symbol(name.id)
         {
             self.state.diagnostics().write().add_single_file_diagnostic(

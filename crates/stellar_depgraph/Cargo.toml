@@ -1,0 +1,10 @@
+[package]
+name = "stellar_depgraph"
+version = "0.1.0"
+edition = "2021"
+license = "MIT OR Apache-2.0"
+
+[dependencies]
+petgraph = "0.6.4"
+stellar_interner = { path = "../stellar_interner" }
+stellar_manifest = { path = "../stellar_manifest" }
