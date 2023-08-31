@@ -15,9 +15,8 @@ pub fn command() {
 
     match parse_package_source_files(&state, ".") {
         Err(err) => {
-            diagnostics_emitter.emit_context_free_diagnostic(
-                &Diagnostic::error().with_message(err),
-            );
+            diagnostics_emitter
+                .emit_context_free_diagnostic(&Diagnostic::error().with_message(err));
         }
         Ok(ast) => {
             log_with_left_padded_prefix(
