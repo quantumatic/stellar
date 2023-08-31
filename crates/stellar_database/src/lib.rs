@@ -439,7 +439,7 @@ impl GenericParameterScopeID {
     }
 }
 
-/// Data, that the Stellar compiler has about a generic parameter.
+/// A data, that the Stellar compiler has about a generic parameter.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GenericParameterData {
     /// Location of the name of the generic parameter.
