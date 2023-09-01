@@ -151,10 +151,10 @@ impl Diagnostics {
     #[inline(always)]
     pub fn add_single_file_diagnostic(
         &mut self,
-        filepath_id: PathID,
+        filepath: PathID,
         diagnostic: impl BuildDiagnostic,
     ) {
-        self.files_involved.insert(filepath_id);
+        self.files_involved.insert(filepath);
         self.file_diagnostics.push(diagnostic.build());
     }
 
@@ -162,10 +162,10 @@ impl Diagnostics {
     #[inline(always)]
     pub fn add_single_file_diagnostics(
         &mut self,
-        filepath_id: PathID,
+        filepath: PathID,
         diagnostic: impl IntoIterator<Item = impl BuildDiagnostic>,
     ) {
-        self.files_involved.insert(filepath_id);
+        self.files_involved.insert(filepath);
         self.file_diagnostics
             .extend(diagnostic.into_iter().map(BuildDiagnostic::build));
     }
@@ -347,8 +347,8 @@ impl DiagnosticsEmitter {
         &mut self,
         files_involved: impl IntoIterator<Item = &'a PathID>,
     ) {
-        for filepath_id in files_involved {
-            self.file_storage.read_and_add_file_or_panic(*filepath_id);
+        for filepath in files_involved {
+            self.file_storage.read_and_add_file_or_panic(*filepath);
         }
     }
 
@@ -407,11 +407,11 @@ pub trait LocationExt {
 impl LocationExt for Location {
     #[inline(always)]
     fn to_primary_label(self) -> Label<PathID> {
-        Label::primary(self.filepath_id, self)
+        Label::primary(self.filepath, self)
     }
 
     #[inline(always)]
     fn to_secondary_label(self) -> Label<PathID> {
-        Label::secondary(self.filepath_id, self)
+        Label::secondary(self.filepath, self)
     }
 }

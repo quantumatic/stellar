@@ -129,7 +129,7 @@ impl Lexer<'_> {
             if number_kind == NumberKind::Int {
                 return Token {
                     raw: RawToken::Error(RawLexError::InvalidDigit),
-                    location: invalid_digit_offset.next_byte_location_at(self.filepath_id),
+                    location: invalid_digit_offset.next_byte_location_at(self.filepath),
                 };
             }
         }

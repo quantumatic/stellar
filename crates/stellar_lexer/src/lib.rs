@@ -90,7 +90,7 @@ mod number;
 ///     Token {
 ///         raw: EndOfFile,
 ///         location: Location {
-///             filepath_id: DUMMY_PATH_ID,
+///             filepath: DUMMY_PATH_ID,
 ///             start: ByteOffset(0),
 ///             end: ByteOffset(1)
 ///         }
@@ -120,7 +120,7 @@ mod number;
 #[derive(Debug)]
 pub struct Lexer<'s> {
     /// ID of the path of the file being scanned.
-    pub filepath_id: PathID,
+    pub filepath: PathID,
 
     /// Content of the file being scanned.
     pub source: &'s str,
@@ -155,7 +155,7 @@ impl<'s> Lexer<'s> {
         let next = chars.next().unwrap_or('\0');
 
         Self {
-            filepath_id: filepath,
+            filepath,
             source,
             current,
             next,
@@ -227,7 +227,7 @@ impl<'s> Lexer<'s> {
     /// and with the lexer's currently processed file path id.
     const fn make_location(&self, start: ByteOffset, end: ByteOffset) -> Location {
         Location {
-            filepath_id: self.filepath_id,
+            filepath: self.filepath,
             start,
             end,
         }

@@ -91,6 +91,9 @@ use stellar_fx_hash::FxHasher;
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct IdentifierID(pub usize);
 
+/// ID of an identifier, that will never exist in the [`IdentifierInterner`].
+pub const DUMMY_IDENTIFIER_ID: IdentifierID = IdentifierID(0);
+
 impl IdentifierID {
     /// Interns a string.
     #[inline(always)]
@@ -151,13 +154,13 @@ impl<'de> Deserialize<'de> for IdentifierID {
 
 impl SymbolID for IdentifierID {
     #[inline(always)]
-    fn into_storage_index(self) -> usize {
-        self.0
+    fn to_storage_index(self) -> usize {
+        self.0 - 1
     }
 
     #[inline(always)]
     fn from_storage_index(index: usize) -> Self {
-        Self(index)
+        Self(index + 1)
     }
 }
 
@@ -166,7 +169,7 @@ impl SymbolID for IdentifierID {
 pub trait SymbolID: Copy {
     /// Returns an index of the symbol in the interner memory storage.
     #[must_use]
-    fn into_storage_index(self) -> usize;
+    fn to_storage_index(self) -> usize;
 
     /// Returns an interned symbol id from the index in the interner memory storage.
     #[must_use]
@@ -175,7 +178,7 @@ pub trait SymbolID: Copy {
 
 impl SymbolID for usize {
     #[inline(always)]
-    fn into_storage_index(self) -> usize {
+    fn to_storage_index(self) -> usize {
         self
     }
 
@@ -187,7 +190,7 @@ impl SymbolID for usize {
 
 impl SymbolID for u64 {
     #[inline(always)]
-    fn into_storage_index(self) -> usize {
+    fn to_storage_index(self) -> usize {
         usize::try_from(self).unwrap()
     }
 
@@ -199,7 +202,7 @@ impl SymbolID for u64 {
 
 impl SymbolID for u32 {
     #[inline(always)]
-    fn into_storage_index(self) -> usize {
+    fn to_storage_index(self) -> usize {
         usize::try_from(self).unwrap()
     }
 
@@ -322,12 +325,12 @@ where
     /// Returns the span for the given symbol if any.
     fn span_of(&self, symbol_id: S) -> Option<Span> {
         self.ends
-            .get(symbol_id.into_storage_index())
+            .get(symbol_id.to_storage_index())
             .copied()
             .map(|end| Span {
                 start: self
                     .ends
-                    .get(symbol_id.into_storage_index().wrapping_sub(1))
+                    .get(symbol_id.to_storage_index().wrapping_sub(1))
                     .copied()
                     .unwrap_or(0),
                 end,
@@ -336,10 +339,10 @@ where
 
     /// Returns the span for the given symbol if any, but without additional checks.
     unsafe fn unchecked_span_of(&self, symbol_id: S) -> Span {
-        let end = unsafe { *self.ends.get_unchecked(symbol_id.into_storage_index()) };
+        let end = unsafe { *self.ends.get_unchecked(symbol_id.to_storage_index()) };
         let start = self
             .ends
-            .get(symbol_id.into_storage_index().wrapping_sub(1))
+            .get(symbol_id.to_storage_index().wrapping_sub(1))
             .copied()
             .unwrap_or(0);
 
@@ -749,7 +752,7 @@ impl<'de> Deserialize<'de> for PathID {
 
 impl SymbolID for PathID {
     #[inline(always)]
-    fn into_storage_index(self) -> usize {
+    fn to_storage_index(self) -> usize {
         self.0 - 1
     }
 

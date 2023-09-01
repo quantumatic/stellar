@@ -36,7 +36,7 @@ pub fn command() {
 
             log("Analyzed", format!("in {}s", now.elapsed().as_secs_f64()));
 
-            let diagnostics = state.diagnostics_lock();
+            let diagnostics = state.diagnostics_read_lock();
 
             diagnostics_emitter.emit_global_diagnostics(&diagnostics);
         }

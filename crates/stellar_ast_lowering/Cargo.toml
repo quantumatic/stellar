@@ -9,7 +9,6 @@ readme = "../../README.md"
 description = "Crates, responsible for desugaring AST and instantiating types."
 
 [dependencies]
-tracing = { version = "0.1.37", optional = true }
 parking_lot = "0.12.1"
 phf = { version = "0.11.1", features = ["macros"] }
 rayon = "1.7.0"
@@ -20,6 +19,7 @@ stellar_filesystem = { path = "../stellar_filesystem" }
 stellar_hir = { path = "../stellar_hir" }
 stellar_interner = { path = "../stellar_interner" }
 stellar_parser = { path = "../stellar_parser" }
+tracing = { version = "0.1.37", optional = true }
 
 [features]
 debug = ["dep:tracing"]

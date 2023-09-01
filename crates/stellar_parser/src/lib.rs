@@ -91,7 +91,7 @@ use stellar_ast::{
     token::{Keyword, LexError, RawToken, Token},
     Expression, IdentifierAST, Module, ModuleItem, Pattern, Statement, Type, Visibility,
 };
-use stellar_database::{Database, ModuleData, ModuleID, State};
+use stellar_database::{ModuleData, ModuleID, State};
 use stellar_diagnostics::{BuildDiagnostic, Diagnostics};
 use stellar_filesystem::{
     location::{ByteOffset, Location, LocationIndex},
@@ -175,7 +175,7 @@ impl ParsedModule {
     /// Returns the ID of the module in database.
     #[inline(always)]
     #[must_use]
-    pub const fn module_id(&self) -> ModuleID {
+    pub const fn module(&self) -> ModuleID {
         self.module_id
     }
 
@@ -204,13 +204,15 @@ impl ParsedModule {
 #[inline(always)]
 pub fn read_and_parse_module(
     state: &State,
-    filepath_id: PathID,
+    module_name: IdentifierID,
+    filepath: PathID,
 ) -> Result<ParsedModule, io::Error> {
     Ok(parse_module_using(
-        state.db(),
+        state,
+        module_name,
         ParseState::new(
-            filepath_id,
-            &fs::read_to_string(filepath_id.resolve_or_panic())?,
+            filepath,
+            &fs::read_to_string(filepath.resolve_or_panic())?,
             state.diagnostics(),
         ),
     ))
@@ -219,38 +221,37 @@ pub fn read_and_parse_module(
 /// Parse a Stellar module.
 #[inline(always)]
 #[must_use]
-pub fn parse_module(state: &State, filepath_id: PathID, source: &str) -> ParsedModule {
+pub fn parse_module(
+    state: &State,
+    module_name: IdentifierID,
+    filepath: PathID,
+    source: &str,
+) -> ParsedModule {
     parse_module_using(
-        state.db(),
-        ParseState::new(filepath_id, source, state.diagnostics()),
+        state,
+        module_name,
+        ParseState::new(filepath, source, state.diagnostics()),
     )
 }
 
 /// Parse a Stellar module using a given parse state.
 #[inline(always)]
 #[must_use]
-pub fn parse_module_using(db: &RwLock<Database>, mut state: ParseState<'_, '_>) -> ParsedModule {
-    fn module_name(filepath_id: PathID) -> IdentifierID {
-        IdentifierID::from(
-            filepath_id
-                .resolve_or_panic()
-                .file_stem()
-                .unwrap()
-                .to_str()
-                .unwrap(),
-        )
-    }
-
+pub fn parse_module_using(
+    state: &State,
+    module_name: IdentifierID,
+    mut parse_state: ParseState<'_, '_>,
+) -> ParsedModule {
     ParsedModule::new(
         ModuleData::alloc(
-            db,
-            module_name(state.lexer.filepath_id),
-            state.lexer.filepath_id,
+            &mut state.db_write_lock(),
+            module_name,
+            parse_state.lexer.filepath,
         ),
         Module {
-            filepath: state.lexer.filepath_id,
-            docstring: state.consume_module_docstring(),
-            items: ItemsParser.parse(&mut state),
+            filepath: parse_state.lexer.filepath,
+            docstring: parse_state.consume_module_docstring(),
+            items: ItemsParser.parse(&mut parse_state),
         },
     )
 }
@@ -375,7 +376,18 @@ pub fn parse_package_source_files(
                 #[cfg(feature = "debug")]
                 let now = Instant::now();
 
-                let module = read_and_parse_module(state, PathID::from(entry.path()))
+                fn module_name(path: PathID) -> IdentifierID {
+                    IdentifierID::from(
+                        path.resolve_or_panic()
+                            .file_stem()
+                            .unwrap()
+                            .to_str()
+                            .unwrap(),
+                    )
+                }
+
+                let filepath = PathID::from(entry.path());
+                let module = read_and_parse_module(state, module_name(filepath), filepath)
                     .ok()
                     .map(Arc::new);
 
@@ -397,8 +409,8 @@ pub fn parse_package_source_files(
 impl<'s, 'd> ParseState<'s, 'd> {
     /// Creates an initial parse state from file source.
     #[must_use]
-    pub fn new(filepath_id: PathID, source: &'s str, diagnostics: &'d RwLock<Diagnostics>) -> Self {
-        let mut lexer = Lexer::new(filepath_id, source);
+    pub fn new(filepath: PathID, source: &'s str, diagnostics: &'d RwLock<Diagnostics>) -> Self {
+        let mut lexer = Lexer::new(filepath, source);
 
         let current_token = lexer.next_no_comments();
         let next_token = current_token;
@@ -478,7 +490,7 @@ impl<'s, 'd> ParseState<'s, 'd> {
     #[inline(always)]
     pub(crate) const fn make_location(&self, start: ByteOffset, end: ByteOffset) -> Location {
         Location {
-            filepath_id: self.lexer.filepath_id,
+            filepath: self.lexer.filepath,
             start,
             end,
         }
@@ -551,7 +563,7 @@ impl<'s, 'd> ParseState<'s, 'd> {
     pub(crate) fn add_diagnostic(&mut self, diagnostic: impl BuildDiagnostic) {
         self.diagnostics
             .write()
-            .add_single_file_diagnostic(self.lexer.filepath_id, diagnostic);
+            .add_single_file_diagnostic(self.lexer.filepath, diagnostic);
     }
 }
 

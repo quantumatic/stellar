@@ -46,6 +46,6 @@ impl Parse for ImportPathParser {
             None
         };
 
-        Some(ImportPath { path, r#as })
+        Some(ImportPath { path, as_: r#as })
     }
 }

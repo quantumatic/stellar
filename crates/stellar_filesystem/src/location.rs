@@ -14,8 +14,8 @@ use stellar_interner::PathID;
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct Location {
-    /// ID of the source file.
-    pub filepath_id: PathID,
+    /// Path of the source file.
+    pub filepath: PathID,
 
     /// Offset of starting byte in the source text.
     pub start: ByteOffset,
@@ -97,9 +97,9 @@ impl ByteOffset {
     /// Returns location of the next byte relative to the current offset.
     #[inline(always)]
     #[must_use]
-    pub const fn next_byte_location_at(self, filepath_id: PathID) -> Location {
+    pub const fn next_byte_location_at(self, filepath: PathID) -> Location {
         Location {
-            filepath_id,
+            filepath,
             start: self,
             end: Self(self.0 + 1),
         }
@@ -108,9 +108,9 @@ impl ByteOffset {
     /// Returns location of the previous byte relative to the current offset.
     #[inline(always)]
     #[must_use]
-    pub const fn previous_byte_location_at(self, filepath_id: PathID) -> Location {
+    pub const fn previous_byte_location_at(self, filepath: PathID) -> Location {
         Location {
-            filepath_id,
+            filepath,
             start: Self(self.0 - 1),
             end: self,
         }
@@ -124,7 +124,7 @@ impl ByteOffset {
 /// because this can result in undefined behavior with diagnostics and
 /// debug information!
 pub const DUMMY_LOCATION: Location = Location {
-    filepath_id: PathID(0),
+    filepath: PathID(0),
     start: ByteOffset(0),
     end: ByteOffset(0),
 };
@@ -143,7 +143,7 @@ impl Location {
     /// # use stellar_filesystem::location::{Location, LocationIndex, ByteOffset};
     /// # use stellar_interner::DUMMY_PATH_ID;
     /// let location = Location {
-    ///     filepath_id: DUMMY_PATH_ID,
+    ///     filepath: DUMMY_PATH_ID,
     ///     start: ByteOffset(0),
     ///     end: ByteOffset(3)
     /// };
@@ -151,7 +151,7 @@ impl Location {
     /// assert_eq!(
     ///     location.start_byte_location(),
     ///     Location {
-    ///         filepath_id: DUMMY_PATH_ID,
+    ///         filepath: DUMMY_PATH_ID,
     ///         start: ByteOffset(0),
     ///         end: ByteOffset(1)
     ///     }
@@ -160,7 +160,7 @@ impl Location {
     #[inline(always)]
     #[must_use]
     pub const fn start_byte_location(self) -> Self {
-        self.start.next_byte_location_at(self.filepath_id)
+        self.start.next_byte_location_at(self.filepath)
     }
 
     /// Returns location of the last byte corresponding to the
@@ -170,7 +170,7 @@ impl Location {
     /// # use stellar_filesystem::location::{Location, LocationIndex, ByteOffset};
     /// # use stellar_interner::DUMMY_PATH_ID;
     /// let location = Location {
-    ///     filepath_id: DUMMY_PATH_ID,
+    ///     filepath: DUMMY_PATH_ID,
     ///     start: ByteOffset(0),
     ///     end: ByteOffset(3)
     /// };
@@ -178,7 +178,7 @@ impl Location {
     /// assert_eq!(
     ///     location.end_byte_location(),
     ///     Location {
-    ///         filepath_id: DUMMY_PATH_ID,
+    ///         filepath: DUMMY_PATH_ID,
     ///         start: ByteOffset(2),
     ///         end: ByteOffset(3)
     ///     }
@@ -187,7 +187,7 @@ impl Location {
     #[inline(always)]
     #[must_use]
     pub const fn end_byte_location(self) -> Self {
-        self.end.previous_byte_location_at(self.filepath_id)
+        self.end.previous_byte_location_at(self.filepath)
     }
 }
 
@@ -215,7 +215,7 @@ pub trait LocationIndex {
     /// # use stellar_filesystem::location::{Location, LocationIndex, ByteOffset};
     /// # use stellar_interner::DUMMY_PATH_ID;
     /// let location = Location {
-    ///     filepath_id: DUMMY_PATH_ID,
+    ///     filepath: DUMMY_PATH_ID,
     ///     start: ByteOffset(0),
     ///     end: ByteOffset(3)
     /// };

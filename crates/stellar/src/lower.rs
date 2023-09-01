@@ -7,7 +7,7 @@ use stellar_database::State;
 use stellar_diagnostics::diagnostic::Diagnostic;
 use stellar_diagnostics::DiagnosticsEmitter;
 use stellar_filesystem::file_utils::make_unique_file;
-use stellar_interner::PathID;
+use stellar_interner::{PathID, DUMMY_IDENTIFIER_ID};
 use stellar_parser::read_and_parse_module;
 
 use crate::prefix::log;
@@ -15,11 +15,11 @@ use crate::prefix::log;
 pub fn command(filepath: &str) {
     let mut diagnostics_emitter = DiagnosticsEmitter::new();
     let state = Arc::new(State::new());
-    let path_id = PathID::from(filepath);
+    let filepath = PathID::from(filepath);
 
     let mut now = Instant::now();
 
-    match read_and_parse_module(&state, path_id) {
+    match read_and_parse_module(&state, DUMMY_IDENTIFIER_ID, filepath) {
         Err(..) => {
             diagnostics_emitter.emit_context_free_diagnostic(
                 &Diagnostic::error().with_message(format!("cannot read the file {filepath}")),

@@ -33,13 +33,13 @@ mod diagnostics;
 
 pub struct LowerToHir {
     state: Arc<State>,
-    filepath_id: PathID,
+    filepath: PathID,
 }
 
 /// A lowered module.
 #[derive(Debug)]
 pub struct LoweredModule {
-    module_id: ModuleID,
+    module: ModuleID,
     hir: stellar_hir::Module,
 }
 
@@ -47,15 +47,15 @@ impl LoweredModule {
     /// Constructs a new lowered module.
     #[inline(always)]
     #[must_use]
-    pub const fn new(module_id: ModuleID, hir: stellar_hir::Module) -> Self {
-        Self { module_id, hir }
+    pub const fn new(module: ModuleID, hir: stellar_hir::Module) -> Self {
+        Self { module, hir }
     }
 
     /// Returns the ID of the module in the database.
     #[inline(always)]
     #[must_use]
-    pub const fn module_id(&self) -> ModuleID {
-        self.module_id
+    pub const fn module(&self) -> ModuleID {
+        self.module
     }
 
     /// Returns the HIR of the module.
@@ -97,10 +97,10 @@ impl LowerToHir {
                     let now = Instant::now();
 
                     let module = LoweredModule::new(
-                        module.module_id(),
+                        module.module(),
                         LowerToHir {
                             state: state.clone(),
-                            filepath_id: module.ast().filepath,
+                            filepath: module.ast().filepath,
                         }
                         .run(module.into_ast()),
                     );
@@ -108,10 +108,7 @@ impl LowerToHir {
                     #[cfg(feature = "debug")]
                     trace!(
                         "lower_ast(module = '{}') <{} us>",
-                        state
-                            .db_lock()
-                            .get_module_or_panic(module.module_id())
-                            .filepath_id,
+                        module.module().filepath(&state.db_read_lock()),
                         now.elapsed().as_micros()
                     );
 
@@ -140,7 +137,7 @@ impl LowerToHir {
         self.state
             .diagnostics()
             .write()
-            .add_single_file_diagnostic(self.filepath_id, diagnostic);
+            .add_single_file_diagnostic(self.filepath, diagnostic);
     }
 
     /// Converts a given module item AST into HIR.

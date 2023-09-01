@@ -30,7 +30,7 @@
 //!                 },
 //!                 "name": {
 //!                     "location": {
-//!                         "filepath_id": "test.sr",
+//!                         "filepath": "test.sr",
 //!                         "start": 4,
 //!                         "end": 8
 //!                     },
@@ -46,14 +46,14 @@
 //!                     "expression": {
 //!                         "kind": "call_expression",
 //!                         "location": {
-//!                             "filepath_id": "test.sr",
+//!                             "filepath": "test.sr",
 //!                             "start": 15,
 //!                             "end": 37
 //!                         },
 //!                         "callee": {
 //!                             "kind": "identifier_expression",
 //!                             "location": {
-//!                                 "filepath_id": "test.sr",
+//!                                 "filepath": "test.sr",
 //!                                 "start": 15,
 //!                                 "end": 22
 //!                             },
@@ -65,7 +65,7 @@
 //!                                 "literal_kind": "string",
 //!                                 "value": "hello world",
 //!                                 "location": {
-//!                                     "filepath_id": "test.sr",
+//!                                     "filepath": "test.sr",
 //!                                     "start": 23,
 //!                                     "end": 36
 //!                                 }
@@ -266,7 +266,7 @@ pub struct ImportPath {
     pub path: Path,
 
     #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    pub r#as: Option<IdentifierAST>,
+    pub as_: Option<IdentifierAST>,
 }
 
 /// A type constructor, e.g. `Option[T]`.
