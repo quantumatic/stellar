@@ -680,6 +680,7 @@ pub struct ModuleID(pub usize);
 /// Storage for Stellar compiler entities.
 #[derive(Default, Debug)]
 pub struct Database {
+    packages: FxHashMap<IdentifierID, ModuleID>,
     modules: Vec<ModuleData>,
     enums: Vec<EnumData>,
     enum_items: Vec<EnumItemData>,
@@ -740,7 +741,7 @@ macro_rules! db_methods {
                     self.$whats.get_mut(id.0).unwrap()
                 }
 
-                #[doc = "Returns whether " $what " with a given ID is in the database storage."]
+                #[doc = "Returns whether " $what " with a given ID is present in the database storage."]
                 #[doc = ""]
                 #[doc = "_This function is automatically generated using a macro!_"]
                 #[inline(always)]
@@ -772,22 +773,53 @@ impl Database {
         Self::default()
     }
 
+    // Returns a package's root module ID data by package ID.
+    #[inline(always)]
+    #[must_use]
+    pub fn get_package_root_module_id(&self, package_name: IdentifierID) -> Option<ModuleID> {
+        self.packages.get(&package_name).copied()
+    }
+
+    /// Returns a package's root module ID data by package ID.
+    /// # Panics
+    /// Panics if the package information is not present in the database storage.
+    #[inline(always)]
+    #[must_use]
+    pub fn get_package_root_module_id_or_panic(&self, package_name: IdentifierID) -> ModuleID {
+        *self.packages.get(&package_name).unwrap()
+    }
+
+    /// Returns wether a package with a given name is present in the database storage.
+    #[inline(always)]
+    #[must_use]
+    pub fn contains_package(&self, package_name: IdentifierID) -> bool {
+        self.packages.contains_key(&package_name)
+    }
+
+    /// Adds a package to the database storage.
+    #[inline(always)]
+    #[must_use]
+    pub fn add_package(&mut self, package_name: IdentifierID, module_id: ModuleID) {
+        self.packages.insert(package_name, module_id);
+    }
+
     // reduces the size of code in hundreds of times!
     db_methods! {
-        module(modules): ModuleID => ModuleData,
-        enum(enums): EnumID => EnumData,
-        struct(structs): StructID => StructData,
+        module(modules):            ModuleID => ModuleData,
+        enum(enums):                EnumID => EnumData,
+        struct(structs):            StructID => StructData,
         tuple_like_struct(tuple_like_structs):
-            TupleLikeStructID => TupleLikeStructData,
-        type_alias(type_aliases): TypeAliasID => TypeAliasData,
-        function(functions): FunctionID => FunctionData,
-        interface(interfaces): InterfaceID => InterfaceData,
-        predicate(predicates): PredicateID => PredicateData,
-        enum_item(enum_items): EnumItemID => EnumItemData,
-        field(fields): FieldID => FieldData,
-        generic_parameter_scope(generic_parameter_scopes): GenericParameterScopeID =>
-            GenericParameterScopeData,
-        generic_parameter(generic_parameters): GenericParameterID => GenericParameterData
+                                    TupleLikeStructID => TupleLikeStructData,
+        type_alias(type_aliases):   TypeAliasID => TypeAliasData,
+        function(functions):        FunctionID => FunctionData,
+        interface(interfaces):      InterfaceID => InterfaceData,
+        predicate(predicates):      PredicateID => PredicateData,
+        enum_item(enum_items):      EnumItemID => EnumItemData,
+        field(fields):              FieldID =>   FieldData,
+        generic_parameter_scope(generic_parameter_scopes):
+                                    GenericParameterScopeID => GenericParameterScopeData,
+        generic_parameter(generic_parameters):
+                                    GenericParameterID => GenericParameterData
     }
 }
 
@@ -799,14 +831,12 @@ pub struct State {
     config: Config,
 }
 
-pub struct Config {
-    pub threads_amount: usize,
-}
+pub struct Config {}
 
 impl Default for Config {
     #[inline(always)]
     fn default() -> Self {
-        Self { threads_amount: 1 }
+        Self {}
     }
 }
 
@@ -815,13 +845,6 @@ impl Config {
     #[must_use]
     pub fn new() -> Self {
         Self::default()
-    }
-
-    #[inline(always)]
-    #[must_use]
-    pub fn with_threads_amount(mut self, threads_amount: usize) -> usize {
-        self.threads_amount = threads_amount;
-        self.threads_amount
     }
 }
 
@@ -833,6 +856,7 @@ impl State {
         Self::default()
     }
 
+    /// Builds a new state with given configuration.
     #[inline(always)]
     #[must_use]
     pub fn with_config(mut self, config: Config) -> Self {
@@ -840,56 +864,67 @@ impl State {
         self
     }
 
+    /// Returns a reference to config.
     #[inline(always)]
     #[must_use]
     pub const fn config(&self) -> &Config {
         &self.config
     }
 
-    /// Returns a reference to database.
+    /// Returns a reference to database read-write lock.
     #[inline(always)]
     #[must_use]
     pub const fn db(&self) -> &RwLock<Database> {
         &self.db
     }
 
+    /// Gives an ownership over database object inside the state.
     #[inline(always)]
     #[must_use]
     pub fn db_inner(self) -> Database {
         self.db.into_inner()
     }
 
+    /// Makes a read lock over database and returns RAII structure used
+    /// to release the shared read access of a lock when dropped.
     #[inline(always)]
     #[must_use]
     pub fn db_lock(&self) -> RwLockReadGuard<Database> {
         self.db.read()
     }
 
+    /// Makes a write lock over database and returns RAII structure used
+    /// to release the exclusive write access of a lock when dropped.
     #[inline(always)]
     #[must_use]
     pub fn db_lock_write(&self) -> RwLockWriteGuard<Database> {
         self.db.write()
     }
 
-    /// Returns a reference to database.
+    /// Returns a reference to diagnostics read-write lock.
     #[inline(always)]
     #[must_use]
     pub const fn diagnostics(&self) -> &RwLock<Diagnostics> {
         &self.diagnostics
     }
 
+    /// Gives an ownership over diagnostics object inside the state.
     #[inline(always)]
     #[must_use]
     pub fn into_diagnostics(self) -> Diagnostics {
         self.diagnostics.into_inner()
     }
 
+    /// Makes a read lock over diagnostics and returns RAII structure used
+    /// to release the shared read access of a lock when dropped.
     #[inline(always)]
     #[must_use]
     pub fn diagnostics_lock(&self) -> RwLockReadGuard<Diagnostics> {
         self.diagnostics.read()
     }
 
+    /// Makes a write lock over diagnostics and returns RAII structure used
+    /// to release the exclusive write access of a lock when dropped.
     #[inline(always)]
     #[must_use]
     pub fn diagnostics_lock_write(&self) -> RwLockWriteGuard<Diagnostics> {
