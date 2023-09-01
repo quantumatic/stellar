@@ -4,7 +4,7 @@ use std::{
     process::exit,
 };
 
-use crate::prefix::log_with_prefix;
+use crate::prefix::log;
 
 fn check_package_name(name: &str) -> Option<usize> {
     let mut chars = name.chars();
@@ -25,8 +25,8 @@ fn check_package_name(name: &str) -> Option<usize> {
 
 pub fn command(package_name: &str) {
     if let Some(e) = check_package_name(package_name) {
-        log_with_prefix("error", ": cannot create package with a given name");
-        log_with_prefix(
+        log("error", ": cannot create package with a given name");
+        log(
             "note",
             format!(
                 ": character `{}` doesn't correspond to the pattern: {}",
@@ -45,30 +45,30 @@ pub fn command(package_name: &str) {
     }
 
     fs::create_dir(package_name).unwrap_or_else(|_| {
-        log_with_prefix("error", ": cannot create package folder");
+        log("error", ": cannot create package folder");
         exit(1);
     });
 
     fs::create_dir(format!("{package_name}/bin")).unwrap_or_else(|_| {
-        log_with_prefix("error", ": cannot create `bin` package folder");
+        log("error", ": cannot create `bin` package folder");
         exit(1);
     });
 
     let mut main_file = File::create(format!("{package_name}/bin/main.sr")).unwrap_or_else(|_| {
-        log_with_prefix("error", ": cannot create `bin/main.sr`");
+        log("error", ": cannot create `bin/main.sr`");
         exit(1);
     });
 
     main_file
         .write_all(b"fun main() {\n  println(\"Hello, world!\");\n}")
         .unwrap_or_else(|_| {
-            log_with_prefix("error", ": cannot write to `bin/main.sr`");
+            log("error", ": cannot write to `bin/main.sr`");
             exit(1);
         });
 
     let mut package_file =
         File::create(format!("{package_name}/package.json")).unwrap_or_else(|_| {
-            log_with_prefix("error", ": cannot create `package.json`");
+            log("error", ": cannot create `package.json`");
             exit(1);
         });
 
@@ -84,9 +84,9 @@ pub fn command(package_name: &str) {
             .as_bytes(),
         )
         .unwrap_or_else(|_| {
-            log_with_prefix("error", ": cannot write to `package.json`");
+            log("error", ": cannot write to `package.json`");
             exit(1);
         });
 
-    log_with_prefix("   Created ", package_name);
+    log("   Created ", package_name);
 }

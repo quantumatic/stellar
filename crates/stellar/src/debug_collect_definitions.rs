@@ -6,7 +6,7 @@ use stellar_diagnostics::{diagnostic::Diagnostic, DiagnosticsEmitter};
 use stellar_parser::parse_package_source_files;
 use stellar_typechecker::collect_definitions::CollectDefinitions;
 
-use crate::prefix::log_with_left_padded_prefix;
+use crate::prefix::log;
 
 pub fn command() {
     let state = Arc::new(State::new());
@@ -19,7 +19,7 @@ pub fn command() {
                 .emit_context_free_diagnostic(&Diagnostic::error().with_message(err));
         }
         Ok(ast) => {
-            log_with_left_padded_prefix(
+            log(
                 format!("Parsed"),
                 format!("in {}s", now.elapsed().as_secs_f64()),
             );
@@ -28,13 +28,13 @@ pub fn command() {
 
             let hir = LowerToHir::run_all(state.clone(), ast);
 
-            log_with_left_padded_prefix("Lowered", format!("in {}s", now.elapsed().as_secs_f64()));
+            log("Lowered", format!("in {}s", now.elapsed().as_secs_f64()));
 
             now = Instant::now();
 
             CollectDefinitions::run_all(state.clone(), &hir);
 
-            log_with_left_padded_prefix("Analyzed", format!("in {}s", now.elapsed().as_secs_f64()));
+            log("Analyzed", format!("in {}s", now.elapsed().as_secs_f64()));
 
             let diagnostics = state.diagnostics_lock();
 

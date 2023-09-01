@@ -10,7 +10,7 @@ use stellar_filesystem::file_utils::make_unique_file;
 use stellar_interner::PathID;
 use stellar_parser::read_and_parse_module;
 
-use crate::prefix::log_with_left_padded_prefix;
+use crate::prefix::log;
 
 pub fn command(filepath: &str) {
     let mut diagnostics_emitter = DiagnosticsEmitter::new();
@@ -26,14 +26,14 @@ pub fn command(filepath: &str) {
             );
         }
         Ok(ast) => {
-            log_with_left_padded_prefix("Parsed", format!("in {}s", now.elapsed().as_secs_f64()));
+            log("Parsed", format!("in {}s", now.elapsed().as_secs_f64()));
 
             now = Instant::now();
 
             let hir = LowerToHir::run_all(state.clone(), vec![ast.into()]);
             let hir = &hir.first().unwrap().hir();
 
-            log_with_left_padded_prefix("Lowered", format!("in {}s", now.elapsed().as_secs_f64()));
+            log("Lowered", format!("in {}s", now.elapsed().as_secs_f64()));
 
             let diagnostics = state.diagnostics().read();
 
@@ -44,17 +44,14 @@ pub fn command(filepath: &str) {
 
                 let hir_string = serde_json::to_string(hir).unwrap();
 
-                log_with_left_padded_prefix(
-                    "Serialized",
-                    format!("in {}s", now.elapsed().as_secs_f64()),
-                );
+                log("Serialized", format!("in {}s", now.elapsed().as_secs_f64()));
 
                 let (filename, file) = make_unique_file("hir", "json");
                 file.expect("Cannot create `hir (n).json` file")
                     .write_all(hir_string.as_bytes())
                     .unwrap_or_else(|_| panic!("Cannot write to file {filename}"));
 
-                log_with_left_padded_prefix("Emitted", format!("HIR in `{filename}`"));
+                log("Emitted", format!("HIR in `{filename}`"));
             }
         }
     };

@@ -3,7 +3,7 @@ use std::{fs, process::exit};
 use stellar_interner::PathID;
 use stellar_lexer::Lexer;
 
-use crate::prefix::log_with_prefix;
+use crate::prefix::log;
 
 pub fn command(filepath: &str, show_locations: bool) {
     if let Ok(source) = fs::read_to_string(filepath) {
@@ -29,7 +29,7 @@ pub fn command(filepath: &str, show_locations: bool) {
             current_token_index += 1;
         }
     } else {
-        log_with_prefix("error", ": cannot read given file");
+        log("error", ": cannot read given file");
         exit(1);
     }
 }
