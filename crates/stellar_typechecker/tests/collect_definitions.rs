@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use stellar_ast_lowering::LowerToHir;
 use stellar_database::State;
 use stellar_interner::{IdentifierID, PathID, DUMMY_IDENTIFIER_ID};
@@ -8,14 +6,14 @@ use stellar_typechecker::collect_definitions::CollectDefinitions;
 
 #[test]
 fn test_enum() {
-    let state = Arc::new(State::new());
+    let state = State::new();
     let filepath = PathID::from("test.sr");
     let source_code = "enum A {}\nenum B {}";
 
     let ast = parse_module(&state, DUMMY_IDENTIFIER_ID, filepath, source_code);
-    let hir = LowerToHir::run_all(state.clone(), vec![ast.into()]);
+    let hir = LowerToHir::run_all(&state, vec![ast.into()]);
 
-    CollectDefinitions::run_all(state.clone(), &hir);
+    CollectDefinitions::run_all(&state, &hir);
 
     assert!(hir
         .first()
@@ -34,28 +32,28 @@ fn test_enum() {
 
 #[test]
 fn test_duplicate_definition() {
-    let state = Arc::new(State::new());
+    let state = State::new();
     let filepath = PathID::from("test.sr");
     let source_code = "enum A {}\nenum A {}";
 
     let ast = parse_module(&state, DUMMY_IDENTIFIER_ID, filepath, source_code);
-    let hir = LowerToHir::run_all(state.clone(), vec![ast.into()]);
+    let hir = LowerToHir::run_all(&state, vec![ast.into()]);
 
-    CollectDefinitions::run_all(state.clone(), &hir);
+    CollectDefinitions::run_all(&state, &hir);
 
     assert!(state.diagnostics_read_lock().is_fatal());
 }
 
 #[test]
 fn test_enum_items() {
-    let state = Arc::new(State::new());
+    let state = State::new();
     let filepath = PathID::from("test.sr");
     let source_code = "enum A { A, B, C }";
 
     let ast = parse_module(&state, DUMMY_IDENTIFIER_ID, filepath, source_code);
-    let hir = LowerToHir::run_all(state.clone(), vec![ast.into()]);
+    let hir = LowerToHir::run_all(&state, vec![ast.into()]);
 
-    CollectDefinitions::run_all(state.clone(), &hir);
+    CollectDefinitions::run_all(&state, &hir);
 
     let db = state.db_read_lock();
 
@@ -81,28 +79,28 @@ fn test_enum_items() {
 
 #[test]
 fn duplicate_enum_item_definitions() {
-    let state = Arc::new(State::new());
+    let state = State::new();
     let filepath = PathID::from("test.sr");
     let source_code = "enum A { A, A }";
 
     let ast = parse_module(&state, DUMMY_IDENTIFIER_ID, filepath, source_code);
-    let hir = LowerToHir::run_all(state.clone(), vec![ast.into()]);
+    let hir = LowerToHir::run_all(&state, vec![ast.into()]);
 
-    CollectDefinitions::run_all(state.clone(), &hir);
+    CollectDefinitions::run_all(&state, &hir);
 
     assert!(state.diagnostics_read_lock().is_fatal());
 }
 
 #[test]
 fn test_function() {
-    let state = Arc::new(State::new());
+    let state = State::new();
     let filepath = PathID::from("test.sr");
     let source_code = "fun a() {}";
 
     let ast = parse_module(&state, DUMMY_IDENTIFIER_ID, filepath, source_code);
-    let hir = LowerToHir::run_all(state.clone(), vec![ast.into()]);
+    let hir = LowerToHir::run_all(&state, vec![ast.into()]);
 
-    CollectDefinitions::run_all(state.clone(), &hir);
+    CollectDefinitions::run_all(&state, &hir);
 
     assert!(hir
         .first()
@@ -115,14 +113,14 @@ fn test_function() {
 
 #[test]
 fn test_struct() {
-    let state = Arc::new(State::new());
+    let state = State::new();
     let filepath = PathID::from("test.sr");
     let source_code = "struct A {}";
 
     let ast = parse_module(&state, DUMMY_IDENTIFIER_ID, filepath, source_code);
-    let hir = LowerToHir::run_all(state.clone(), vec![ast.into()]);
+    let hir = LowerToHir::run_all(&state, vec![ast.into()]);
 
-    CollectDefinitions::run_all(state.clone(), &hir);
+    CollectDefinitions::run_all(&state, &hir);
 
     assert!(hir
         .first()
@@ -135,14 +133,14 @@ fn test_struct() {
 
 #[test]
 fn test_interface() {
-    let state = Arc::new(State::new());
+    let state = State::new();
     let filepath = PathID::from("test.sr");
     let source_code = "interface A {}";
 
     let ast = parse_module(&state, DUMMY_IDENTIFIER_ID, filepath, source_code);
-    let hir = LowerToHir::run_all(state.clone(), vec![ast.into()]);
+    let hir = LowerToHir::run_all(&state, vec![ast.into()]);
 
-    CollectDefinitions::run_all(state.clone(), &hir);
+    CollectDefinitions::run_all(&state, &hir);
 
     assert!(hir
         .first()
@@ -155,14 +153,14 @@ fn test_interface() {
 
 #[test]
 fn test_type_alias() {
-    let state = Arc::new(State::new());
+    let state = State::new();
     let filepath = PathID::from("test.sr");
     let source_code = "type A = int8;";
 
     let ast = parse_module(&state, DUMMY_IDENTIFIER_ID, filepath, source_code);
-    let hir = LowerToHir::run_all(state.clone(), vec![ast.into()]);
+    let hir = LowerToHir::run_all(&state, vec![ast.into()]);
 
-    CollectDefinitions::run_all(state.clone(), &hir);
+    CollectDefinitions::run_all(&state, &hir);
 
     assert!(hir
         .first()

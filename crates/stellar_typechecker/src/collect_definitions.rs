@@ -14,16 +14,16 @@ use tracing::trace;
 
 use crate::diagnostics::{EnumItemDefinedMultipleTimes, ItemDefinedMultipleTimes};
 
-pub struct CollectDefinitions {
-    state: Arc<State>,
+pub struct CollectDefinitions<'s> {
+    state: &'s State,
     module: ModuleID,
 }
 
-impl CollectDefinitions {
-    pub fn run_all(state: Arc<State>, modules: &[Arc<LoweredModule>]) {
+impl<'s> CollectDefinitions<'s> {
+    pub fn run_all(state: &'s State, modules: &[Arc<LoweredModule>]) {
         modules.par_iter().for_each(|module| {
             Self {
-                state: state.clone(),
+                state,
                 module: module.module(),
             }
             .run(module.hir());

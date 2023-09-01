@@ -9,16 +9,16 @@ use stellar_filesystem::location::Location;
 
 use crate::resolve::resolve_global_path;
 
-pub struct ResolveImports {
-    state: Arc<State>,
+pub struct ResolveImports<'s> {
+    state: &'s State,
     module: ModuleID,
 }
 
-impl ResolveImports {
-    pub fn run_all(state: Arc<State>, modules: &[Arc<LoweredModule>]) {
+impl<'s> ResolveImports<'s> {
+    pub fn run_all(state: &'s State, modules: &[Arc<LoweredModule>]) {
         modules.par_iter().for_each(|module| {
             Self {
-                state: state.clone(),
+                state,
                 module: module.module(),
             }
             .run(module.hir());

@@ -1,4 +1,4 @@
-use std::{sync::Arc, time::Instant};
+use std::time::Instant;
 
 use stellar_ast_lowering::LowerToHir;
 use stellar_database::State;
@@ -9,7 +9,7 @@ use stellar_typechecker::collect_definitions::CollectDefinitions;
 use crate::prefix::log;
 
 pub fn command() {
-    let state = Arc::new(State::new());
+    let state = State::new();
     let mut diagnostics_emitter = DiagnosticsEmitter::new();
     let mut now = Instant::now();
 
@@ -26,13 +26,13 @@ pub fn command() {
 
             now = Instant::now();
 
-            let hir = LowerToHir::run_all(state.clone(), ast);
+            let hir = LowerToHir::run_all(&state, ast);
 
             log("Lowered", format!("in {}s", now.elapsed().as_secs_f64()));
 
             now = Instant::now();
 
-            CollectDefinitions::run_all(state.clone(), &hir);
+            CollectDefinitions::run_all(&state, &hir);
 
             log("Analyzed", format!("in {}s", now.elapsed().as_secs_f64()));
 

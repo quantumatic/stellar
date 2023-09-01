@@ -31,8 +31,8 @@ use tracing::trace;
 
 mod diagnostics;
 
-pub struct LowerToHir {
-    state: Arc<State>,
+pub struct LowerToHir<'s> {
+    state: &'s State,
     filepath: PathID,
 }
 
@@ -87,8 +87,8 @@ impl From<LoweredModule> for stellar_hir::Module {
     }
 }
 
-impl LowerToHir {
-    pub fn run_all(state: Arc<State>, modules: Vec<Arc<ParsedModule>>) -> Vec<Arc<LoweredModule>> {
+impl<'s> LowerToHir<'s> {
+    pub fn run_all(state: &'s State, modules: Vec<Arc<ParsedModule>>) -> Vec<Arc<LoweredModule>> {
         modules
             .into_iter()
             .filter_map(|module| {
@@ -99,7 +99,7 @@ impl LowerToHir {
                     let module = LoweredModule::new(
                         module.module(),
                         LowerToHir {
-                            state: state.clone(),
+                            state,
                             filepath: module.ast().filepath,
                         }
                         .run(module.into_ast()),

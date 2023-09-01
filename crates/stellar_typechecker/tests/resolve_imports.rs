@@ -10,7 +10,7 @@ use stellar_typechecker::{
 
 #[test]
 fn resolve_submodule_import_ok() {
-    let state = Arc::new(State::new());
+    let state = State::new();
     let submodule_ast = parse_module(&state, IdentifierID::from("b"), PathID::from("a/b.sr"), "");
 
     let root_ast = parse_module(
@@ -25,19 +25,16 @@ fn resolve_submodule_import_ok() {
 
     state.db_write_lock().add_package(root_ast.module());
 
-    let hir = LowerToHir::run_all(
-        state.clone(),
-        vec![Arc::new(root_ast), Arc::new(submodule_ast)],
-    );
+    let hir = LowerToHir::run_all(&state, vec![Arc::new(root_ast), Arc::new(submodule_ast)]);
 
-    ResolveImports::run_all(state.clone(), &hir);
+    ResolveImports::run_all(&state, &hir);
 
     assert!(state.diagnostics_read_lock().is_ok());
 }
 
 #[test]
 fn resolve_submodule_import_err() {
-    let state = Arc::new(State::new());
+    let state = State::new();
     let submodule_ast = parse_module(&state, IdentifierID::from("b"), PathID::from("a/b.sr"), "");
 
     let root_ast = parse_module(
@@ -52,19 +49,16 @@ fn resolve_submodule_import_err() {
 
     state.db_write_lock().add_package(root_ast.module());
 
-    let hir = LowerToHir::run_all(
-        state.clone(),
-        vec![Arc::new(root_ast), Arc::new(submodule_ast)],
-    );
+    let hir = LowerToHir::run_all(&state, vec![Arc::new(root_ast), Arc::new(submodule_ast)]);
 
-    ResolveImports::run_all(state.clone(), &hir);
+    ResolveImports::run_all(&state, &hir);
 
     assert!(state.diagnostics_read_lock().is_fatal());
 }
 
 #[test]
 fn resolve_module_item_ok() {
-    let state = Arc::new(State::new());
+    let state = State::new();
     let submodule_ast = parse_module(
         &state,
         IdentifierID::from("b"),
@@ -84,20 +78,17 @@ fn resolve_module_item_ok() {
 
     state.db_write_lock().add_package(root_ast.module());
 
-    let hir = LowerToHir::run_all(
-        state.clone(),
-        vec![Arc::new(root_ast), Arc::new(submodule_ast)],
-    );
+    let hir = LowerToHir::run_all(&state, vec![Arc::new(root_ast), Arc::new(submodule_ast)]);
 
-    CollectDefinitions::run_all(state.clone(), &hir);
-    ResolveImports::run_all(state.clone(), &hir);
+    CollectDefinitions::run_all(&state, &hir);
+    ResolveImports::run_all(&state, &hir);
 
     assert!(state.diagnostics_read_lock().is_ok());
 }
 
 #[test]
 fn resolve_module_item_err1() {
-    let state = Arc::new(State::new());
+    let state = State::new();
     let submodule_ast = parse_module(
         &state,
         IdentifierID::from("b"),
@@ -118,20 +109,17 @@ import a.b.foo2;",
 
     state.db_write_lock().add_package(root_ast.module());
 
-    let hir = LowerToHir::run_all(
-        state.clone(),
-        vec![Arc::new(root_ast), Arc::new(submodule_ast)],
-    );
+    let hir = LowerToHir::run_all(&state, vec![Arc::new(root_ast), Arc::new(submodule_ast)]);
 
-    CollectDefinitions::run_all(state.clone(), &hir);
-    ResolveImports::run_all(state.clone(), &hir);
+    CollectDefinitions::run_all(&state, &hir);
+    ResolveImports::run_all(&state, &hir);
 
     assert!(state.diagnostics_read_lock().is_fatal());
 }
 
 #[test]
 fn resolve_module_item_err2() {
-    let state = Arc::new(State::new());
+    let state = State::new();
     let submodule_ast = parse_module(
         &state,
         IdentifierID::from("b"),
@@ -151,13 +139,10 @@ fn resolve_module_item_err2() {
 
     state.db_write_lock().add_package(root_ast.module());
 
-    let hir = LowerToHir::run_all(
-        state.clone(),
-        vec![Arc::new(root_ast), Arc::new(submodule_ast)],
-    );
+    let hir = LowerToHir::run_all(&state, vec![Arc::new(root_ast), Arc::new(submodule_ast)]);
 
-    CollectDefinitions::run_all(state.clone(), &hir);
-    ResolveImports::run_all(state.clone(), &hir);
+    CollectDefinitions::run_all(&state, &hir);
+    ResolveImports::run_all(&state, &hir);
 
     assert!(state.diagnostics_read_lock().is_fatal());
 }

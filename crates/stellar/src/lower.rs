@@ -1,5 +1,4 @@
 use std::io::Write;
-use std::sync::Arc;
 use std::time::Instant;
 
 use stellar_ast_lowering::LowerToHir;
@@ -14,7 +13,7 @@ use crate::prefix::log;
 
 pub fn command(filepath: &str) {
     let mut diagnostics_emitter = DiagnosticsEmitter::new();
-    let state = Arc::new(State::new());
+    let state = State::new();
     let filepath = PathID::from(filepath);
 
     let mut now = Instant::now();
@@ -30,7 +29,7 @@ pub fn command(filepath: &str) {
 
             now = Instant::now();
 
-            let hir = LowerToHir::run_all(state.clone(), vec![ast.into()]);
+            let hir = LowerToHir::run_all(&state, vec![ast.into()]);
             let hir = &hir.first().unwrap().hir();
 
             log("Lowered", format!("in {}s", now.elapsed().as_secs_f64()));
