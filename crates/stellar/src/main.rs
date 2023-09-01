@@ -63,7 +63,6 @@ use clap::{Parser, Subcommand};
 mod debug_collect_definitions;
 mod lex;
 mod lower;
-mod new;
 mod parse;
 mod parse_manifest;
 mod prefix;
@@ -156,8 +155,8 @@ fn main() {
         Commands::ParseManifest { filepath } => {
             parse_manifest::command(&filepath);
         }
-        Commands::New { package_name } => {
-            new::command(&package_name);
+        Commands::New { package_name: _ } => {
+            todo!()
         }
     }
 }
