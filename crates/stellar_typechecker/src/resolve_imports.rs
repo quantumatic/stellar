@@ -37,7 +37,7 @@ impl<'s> ResolveImports<'s> {
         #[cfg(feature = "debug")]
         let now = Instant::now();
 
-        let Some(symbol) = resolve_global_path(&self.state, path) else {
+        let Some(symbol) = resolve_global_path(self.state, path) else {
             return;
         };
 
