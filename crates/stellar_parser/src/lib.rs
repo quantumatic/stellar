@@ -387,9 +387,7 @@ pub fn parse_package_source_files(
                 }
 
                 let filepath = PathID::from(entry.path());
-                let module = read_and_parse_module(state, module_name(filepath), filepath)
-                    .ok()
-                    .map(Arc::new);
+                let parsing_result = read_and_parse_module(state, module_name(filepath), filepath);
 
                 #[cfg(feature = "debug")]
                 trace!(
@@ -398,7 +396,7 @@ pub fn parse_package_source_files(
                     now.elapsed().as_micros()
                 );
 
-                module
+                parsing_result.ok().map(Arc::new)
             })
             .par_bridge()
             .into_par_iter()
