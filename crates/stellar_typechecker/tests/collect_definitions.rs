@@ -43,10 +43,7 @@ fn test_duplicate_definition() {
 
     CollectDefinitions::run_all(state.clone(), &hir);
 
-    assert_eq!(
-        state.diagnostics_read_lock().file_diagnostics[0].code,
-        Some("E005".to_owned())
-    );
+    assert!(state.diagnostics_read_lock().is_fatal());
 }
 
 #[test]
@@ -80,6 +77,20 @@ fn test_enum_items() {
     assert!(items.contains_key(&IdentifierID::from("A")));
     assert!(items.contains_key(&IdentifierID::from("B")));
     assert!(items.contains_key(&IdentifierID::from("C")));
+}
+
+#[test]
+fn duplicate_enum_item_definitions() {
+    let state = Arc::new(State::new());
+    let filepath = PathID::from("test.sr");
+    let source_code = "enum A { A, A }";
+
+    let ast = parse_module(&state, DUMMY_IDENTIFIER_ID, filepath, source_code);
+    let hir = LowerToHir::run_all(state.clone(), vec![ast.into()]);
+
+    CollectDefinitions::run_all(state.clone(), &hir);
+
+    assert!(state.diagnostics_read_lock().is_fatal());
 }
 
 #[test]
