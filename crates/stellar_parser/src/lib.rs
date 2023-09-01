@@ -354,6 +354,16 @@ pub fn parse_package_source_files(
     state: &State,
     root: impl AsRef<Path>,
 ) -> Result<Vec<Arc<ParsedModule>>, String> {
+    fn module_name(path: PathID) -> IdentifierID {
+        IdentifierID::from(
+            path.resolve_or_panic()
+                .file_stem()
+                .unwrap()
+                .to_str()
+                .unwrap(),
+        )
+    }
+
     let root = root.as_ref();
 
     let source_directory = PackagePathResolver::new(root).source_directory();
@@ -375,16 +385,6 @@ pub fn parse_package_source_files(
 
                 #[cfg(feature = "debug")]
                 let now = Instant::now();
-
-                fn module_name(path: PathID) -> IdentifierID {
-                    IdentifierID::from(
-                        path.resolve_or_panic()
-                            .file_stem()
-                            .unwrap()
-                            .to_str()
-                            .unwrap(),
-                    )
-                }
 
                 let filepath = PathID::from(entry.path());
                 let parsing_result = read_and_parse_module(state, module_name(filepath), filepath);
