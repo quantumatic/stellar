@@ -37,4 +37,9 @@ overflow-checks = false
 debug-assertions = false
 
 [features]
-debug = ["dep:tracing-subscriber"]
+debug = [
+    "dep:tracing-subscriber",
+    "stellar_typechecker/debug",
+    "stellar_ast_lowering/debug",
+    "stellar_parser/debug",
+]

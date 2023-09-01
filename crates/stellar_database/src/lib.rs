@@ -615,7 +615,7 @@ pub struct TypeAliasID(pub usize);
 #[derive(Debug)]
 pub struct ModuleData {
     pub name: IdentifierID,
-    pub filepath: PathID,
+    pub filepath_id: PathID,
     pub symbols: FxHashMap<IdentifierID, Symbol>,
     pub imports: FxHashMap<IdentifierID, Path>,
     pub resolved_imports: FxHashMap<IdentifierID, Symbol>,
@@ -635,7 +635,7 @@ impl ModuleData {
     pub fn new(name: IdentifierID, filepath: PathID) -> Self {
         Self {
             name,
-            filepath,
+            filepath_id: filepath,
             imports: FxHashMap::default(),
             resolved_imports: FxHashMap::default(),
             symbols: FxHashMap::default(),

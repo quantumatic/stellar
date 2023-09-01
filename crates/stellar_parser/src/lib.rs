@@ -75,6 +75,8 @@ mod pattern;
 mod statement;
 mod r#type;
 
+#[cfg(feature = "debug")]
+use std::time::Instant;
 use std::{fs, io, path::Path, sync::Arc};
 
 use diagnostics::LexErrorDiagnostic;
@@ -98,6 +100,8 @@ use stellar_filesystem::{
 use stellar_interner::{IdentifierID, PathID};
 use stellar_lexer::Lexer;
 use stellar_stable_likely::unlikely;
+#[cfg(feature = "debug")]
+use tracing::trace;
 use walkdir::WalkDir;
 
 use crate::diagnostics::UnexpectedToken;
@@ -368,9 +372,21 @@ pub fn parse_package_source_files(
                     return None;
                 };
 
-                read_and_parse_module(state, PathID::from(entry.path()))
+                #[cfg(feature = "debug")]
+                let now = Instant::now();
+
+                let module = read_and_parse_module(state, PathID::from(entry.path()))
                     .ok()
-                    .map(Arc::new)
+                    .map(Arc::new);
+
+                #[cfg(feature = "debug")]
+                trace!(
+                    "parse_module(module = '{}') <{} us>",
+                    entry.path().display(),
+                    now.elapsed().as_micros()
+                );
+
+                module
             })
             .par_bridge()
             .into_par_iter()

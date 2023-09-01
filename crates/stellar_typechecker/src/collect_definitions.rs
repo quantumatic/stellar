@@ -1,4 +1,6 @@
 use std::sync::Arc;
+#[cfg(feature = "debug")]
+use std::time::Instant;
 
 use rayon::prelude::{IntoParallelRefIterator, ParallelIterator};
 use stellar_ast::IdentifierAST;
@@ -30,13 +32,7 @@ impl CollectDefinitions {
 
     fn run(self, module: &stellar_hir::Module) {
         #[cfg(feature = "debug")]
-        trace!(
-            "collect_definitions_in(module = {})",
-            self.state
-                .db_lock()
-                .get_module_or_panic(self.module_id)
-                .filepath
-        );
+        let now = Instant::now();
 
         for item in &module.items {
             match item {
@@ -51,18 +47,21 @@ impl CollectDefinitions {
                 _ => {}
             }
         }
+
+        #[cfg(feature = "debug")]
+        trace!(
+            "collect_definitions_in(module = '{}') <{}us>",
+            self.state
+                .db_lock()
+                .get_module_or_panic(self.module_id)
+                .filepath_id,
+            now.elapsed().as_micros()
+        );
     }
 
     fn define_enum(&self, enum_: &stellar_hir::Enum) {
         #[cfg(feature = "debug")]
-        trace!(
-            "define_enum(name = {}, module = {})",
-            enum_.name.id,
-            self.state
-                .db_lock()
-                .get_module_or_panic(self.module_id)
-                .filepath
-        );
+        let now = Instant::now();
 
         let mut enum_data = EnumData::new(enum_.visibility, enum_.name, self.module_id);
 
@@ -70,15 +69,7 @@ impl CollectDefinitions {
             let name = item.name();
 
             #[cfg(feature = "debug")]
-            trace!(
-                "define_enum_item(enum_name = {}, item_name = {}, module = {})",
-                enum_.name.id,
-                name.id,
-                self.state
-                    .db_lock()
-                    .get_module_or_panic(self.module_id)
-                    .filepath
-            );
+            let now = Instant::now();
 
             self.check_for_duplicate_enum_item(&enum_data, name);
 
@@ -86,6 +77,18 @@ impl CollectDefinitions {
                 name.id,
                 EnumItemData::alloc(self.state.db(), name, self.module_id),
             );
+
+            #[cfg(feature = "debug")]
+            trace!(
+                "define_enum_item(enum_name = '{}', item_name = '{}', module = '{}') <{}us>",
+                enum_.name.id,
+                name.id,
+                self.state
+                    .db_lock()
+                    .get_module_or_panic(self.module_id)
+                    .filepath_id,
+                now.elapsed().as_micros()
+            )
         }
 
         self.check_for_duplicate_definition(enum_.name);
@@ -96,19 +99,20 @@ impl CollectDefinitions {
             .db_lock_write()
             .get_module_mut_or_panic(self.module_id)
             .add_symbol(enum_.name.id, Symbol::Enum(id));
-    }
 
-    fn define_function(&self, function: &stellar_hir::Function) {
         #[cfg(feature = "debug")]
         trace!(
-            "define_function(name = {}, module = {})",
-            function.signature.name.id,
+            "define_enum(name = '{}', module = '{}') <{}us>",
+            enum_.name.id,
             self.state
                 .db_lock()
                 .get_module_or_panic(self.module_id)
-                .filepath
-        );
+                .filepath_id,
+            now.elapsed().as_micros()
+        )
+    }
 
+    fn define_function(&self, function: &stellar_hir::Function) {
         let id = FunctionData::alloc(
             self.state.db(),
             function.signature.name,
@@ -125,16 +129,6 @@ impl CollectDefinitions {
     }
 
     fn define_struct(&self, struct_: &stellar_hir::Struct) {
-        #[cfg(feature = "debug")]
-        trace!(
-            "define_struct(name = {}, module = {})",
-            struct_.name.id,
-            self.state
-                .db_lock()
-                .get_module_or_panic(self.module_id)
-                .filepath
-        );
-
         let id = StructData::alloc(
             self.state.db(),
             struct_.visibility,
@@ -152,14 +146,7 @@ impl CollectDefinitions {
 
     fn define_tuple_like_struct(&self, struct_: &stellar_hir::TupleLikeStruct) {
         #[cfg(feature = "debug")]
-        trace!(
-            "define_tuple_like_struct(name = {}, module = {})",
-            struct_.name.id,
-            self.state
-                .db_lock()
-                .get_module_or_panic(self.module_id)
-                .filepath
-        );
+        let now = Instant::now();
 
         let id = TupleLikeStructData::alloc(
             self.state.db(),
@@ -173,19 +160,23 @@ impl CollectDefinitions {
         self.state
             .db_lock_write()
             .get_module_mut_or_panic(self.module_id)
-            .add_symbol(struct_.name.id, Symbol::TupleLikeStruct(id))
+            .add_symbol(struct_.name.id, Symbol::TupleLikeStruct(id));
+
+        #[cfg(feature = "debug")]
+        trace!(
+            "define_tuple_like_struct(name = '{}', module = '{}') <{} us>",
+            struct_.name.id,
+            self.state
+                .db_lock()
+                .get_module_or_panic(self.module_id)
+                .filepath_id,
+            now.elapsed().as_micros()
+        )
     }
 
     fn define_interface(&self, interface: &stellar_hir::Interface) {
         #[cfg(feature = "debug")]
-        trace!(
-            "define_interface(name = {}, module = {})",
-            interface.name.id,
-            self.state
-                .db_lock()
-                .get_module_or_panic(self.module_id)
-                .filepath
-        );
+        let now = Instant::now();
 
         let id = InterfaceData::alloc(
             self.state.db(),
@@ -200,18 +191,22 @@ impl CollectDefinitions {
             .db_lock_write()
             .get_module_mut_or_panic(self.module_id)
             .add_symbol(interface.name.id, Symbol::Interface(id));
+
+        #[cfg(feature = "debug")]
+        trace!(
+            "define_interface(name = '{}', module = '{}') <{} us>",
+            interface.name.id,
+            self.state
+                .db_lock()
+                .get_module_or_panic(self.module_id)
+                .filepath_id,
+            now.elapsed().as_micros()
+        )
     }
 
     fn define_type_alias(&self, alias: &stellar_hir::TypeAlias) {
         #[cfg(feature = "debug")]
-        trace!(
-            "define_type_alias(name = {}, module = {})",
-            alias.name.id,
-            self.state
-                .db_lock()
-                .get_module_or_panic(self.module_id)
-                .filepath
-        );
+        let now = Instant::now();
 
         let id = TypeAliasData::alloc(
             self.state.db(),
@@ -225,6 +220,17 @@ impl CollectDefinitions {
             .db_lock_write()
             .get_module_mut_or_panic(self.module_id)
             .add_symbol(alias.name.id, Symbol::TypeAlias(id));
+
+        #[cfg(feature = "debug")]
+        trace!(
+            "define_type_alias(name = '{}', module = '{}') <{} us>",
+            alias.name.id,
+            self.state
+                .db_lock()
+                .get_module_or_panic(self.module_id)
+                .filepath_id,
+            now.elapsed().as_micros()
+        );
     }
 
     fn check_for_duplicate_definition(&self, name: IdentifierAST) {

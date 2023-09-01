@@ -125,6 +125,8 @@ fn main() {
         .with_writer(std::io::stderr)
         .with_env_filter(std::env::var("STELLAR_LOG").unwrap_or_else(|_| "off".to_owned()))
         .without_time()
+        .with_ansi(false)
+        .with_target(false)
         .with_level(false)
         .init();
 

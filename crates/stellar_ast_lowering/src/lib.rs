@@ -16,6 +16,8 @@
 )]
 
 use std::sync::Arc;
+#[cfg(feature = "debug")]
+use std::time::Instant;
 
 use diagnostics::{UnnecessaryGroupedPattern, UnnecessaryParenthesizedExpression};
 use stellar_ast::IdentifierAST;
@@ -24,6 +26,8 @@ use stellar_diagnostics::BuildDiagnostic;
 use stellar_filesystem::location::Location;
 use stellar_interner::{builtin_identifiers::BIG_SELF, PathID};
 use stellar_parser::ParsedModule;
+#[cfg(feature = "debug")]
+use tracing::trace;
 
 mod diagnostics;
 
@@ -89,14 +93,29 @@ impl LowerToHir {
             .into_iter()
             .filter_map(|module| {
                 Arc::<_>::into_inner(module).map(|module| {
-                    Arc::new(LoweredModule::new(
+                    #[cfg(feature = "debug")]
+                    let now = Instant::now();
+
+                    let module = LoweredModule::new(
                         module.module_id(),
                         LowerToHir {
                             state: state.clone(),
                             filepath_id: module.ast().filepath,
                         }
                         .run(module.into_ast()),
-                    ))
+                    );
+
+                    #[cfg(feature = "debug")]
+                    trace!(
+                        "lower_ast(module = '{}') <{} us>",
+                        state
+                            .db_lock()
+                            .get_module_or_panic(module.module_id())
+                            .filepath_id,
+                        now.elapsed().as_micros()
+                    );
+
+                    Arc::new(module)
                 })
             })
             .collect()
