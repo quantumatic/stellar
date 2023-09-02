@@ -29,7 +29,7 @@ pub fn command(filepath: &str) {
 
             now = Instant::now();
 
-            let hir = LowerToHir::run_all(&mut state, vec![ast.into()]);
+            let hir = LowerToHir::run_all(&mut state, vec![ast]);
             let hir = &hir.first().unwrap().hir();
 
             log("Lowered", format!("in {}s", now.elapsed().as_secs_f64()));

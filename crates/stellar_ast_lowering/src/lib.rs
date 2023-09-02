@@ -15,7 +15,6 @@
     html_favicon_url = "https://raw.githubusercontent.com/quantumatic/stellar/main/additional/icon/stellar.png"
 )]
 
-use std::sync::Arc;
 #[cfg(feature = "debug")]
 use std::time::Instant;
 
@@ -88,32 +87,30 @@ impl From<LoweredModule> for stellar_hir::Module {
 }
 
 impl<'s> LowerToHir<'s> {
-    pub fn run_all(state: &'s mut State, modules: Vec<Arc<ParsedModule>>) -> Vec<LoweredModule> {
+    pub fn run_all(state: &'s mut State, modules: Vec<ParsedModule>) -> Vec<LoweredModule> {
         modules
             .into_iter()
-            .filter_map(|module| {
-                Arc::<_>::into_inner(module).map(|module| {
-                    #[cfg(feature = "debug")]
-                    let now = Instant::now();
+            .map(|module| {
+                #[cfg(feature = "debug")]
+                let now = Instant::now();
 
-                    let module = LoweredModule::new(
-                        module.module(),
-                        LowerToHir {
-                            state,
-                            filepath: module.ast().filepath,
-                        }
-                        .run(module.into_ast()),
-                    );
+                let module = LoweredModule::new(
+                    module.module(),
+                    LowerToHir {
+                        state,
+                        filepath: module.ast().filepath,
+                    }
+                    .run(module.into_ast()),
+                );
 
-                    #[cfg(feature = "debug")]
-                    trace!(
-                        "lower_ast(module = '{}') <{} us>",
-                        module.module().filepath(&state.db()),
-                        now.elapsed().as_micros()
-                    );
+                #[cfg(feature = "debug")]
+                trace!(
+                    "lower_ast(module = '{}') <{} us>",
+                    module.module().filepath(&state.db()),
+                    now.elapsed().as_micros()
+                );
 
-                    module
-                })
+                module
             })
             .collect()
     }
