@@ -19,13 +19,13 @@ pub struct CollectDefinitions<'s> {
 
 impl<'s> CollectDefinitions<'s> {
     pub fn run_all(state: &'s mut State, lowered_modules: &[LoweredModule]) {
-        for lowered_module in lowered_modules {
+        lowered_modules.iter().for_each(|lowered_module| {
             CollectDefinitions {
                 state,
                 module: lowered_module.module(),
             }
             .run(lowered_module.hir());
-        }
+        })
     }
 
     fn run(mut self, module: &stellar_hir::Module) {
