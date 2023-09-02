@@ -1,5 +1,7 @@
 #[cfg(feature = "debug")]
 use std::time::Instant;
+#[cfg(feature = "debug")]
+use tracing::trace;
 
 use stellar_ast_lowering::LoweredModule;
 use stellar_database::{ModuleID, State};
@@ -49,7 +51,7 @@ impl<'s> ResolveImports<'s> {
             .add_resolved_import(self.state.db_mut(), name, symbol);
 
         #[cfg(feature = "debug")]
-        println!(
+        trace!(
             "resolve_import(path = {:?}, module = {}) <{} us>",
             path,
             self.module,
