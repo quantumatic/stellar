@@ -77,7 +77,7 @@ pub type FxHashSet<V> = HashSet<V, BuildHasherDefault<FxHasher>>;
 /// A speedy hash algorithm for use within stellar. The hashmap in liballoc
 /// by default uses `SipHash` which isn't quite as speedy as we want. In the
 /// compiler we're not really worried about DOS attempts, so we use a fast
-/// non-cstellarptographic hash.
+/// non-cryptographic hash.
 ///
 /// This is the same as the algorithm used by Firefox -- which is a homespun
 /// one not based on any widely-known algorithm -- though modified to produce
