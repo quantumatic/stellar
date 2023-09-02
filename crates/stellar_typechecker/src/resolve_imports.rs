@@ -1,11 +1,11 @@
 #[cfg(feature = "debug")]
 use std::time::Instant;
-#[cfg(feature = "debug")]
-use tracing::trace;
 
 use stellar_ast_lowering::LoweredModule;
 use stellar_database::{ModuleID, State};
 use stellar_filesystem::location::Location;
+#[cfg(feature = "debug")]
+use tracing::trace;
 
 use crate::resolve::resolve_global_path;
 
