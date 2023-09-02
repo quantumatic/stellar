@@ -124,6 +124,13 @@ impl Display for IdentifierID {
     }
 }
 
+impl Into<String> for IdentifierID {
+    #[inline(always)]
+    fn into(self) -> String {
+        self.resolve_or_panic()
+    }
+}
+
 impl FromStr for IdentifierID {
     type Err = ();
 

@@ -211,7 +211,7 @@ impl<'s> CollectDefinitions<'s> {
     fn check_for_duplicate_definition(&mut self, name: IdentifierAST) {
         if let Some(symbol) = self.module.module_item_symbol(self.state.db(), name.id) {
             let diagnostic = ItemDefinedMultipleTimes::new(
-                name.id.resolve_or_panic(),
+                name.id,
                 symbol.name(self.state.db()).location,
                 name.location,
             );
@@ -225,8 +225,8 @@ impl<'s> CollectDefinitions<'s> {
     fn check_for_duplicate_enum_item(&mut self, enum_data: &EnumData, item_name: IdentifierAST) {
         if let Some(enum_item) = enum_data.items.get(&item_name.id) {
             let diagnostic = EnumItemDefinedMultipleTimes::new(
-                enum_data.name.id.resolve_or_panic(),
-                item_name.id.resolve_or_panic(),
+                enum_data.name.id,
+                item_name.id,
                 enum_item.name(self.state.db()).location,
                 item_name.location,
             );

@@ -13,10 +13,7 @@ pub fn resolve_global_path(state: &mut State, path: &stellar_ast::ImportPath) ->
     let Some(root_module) = state.db_mut().package_root_module(first_identifier.id) else {
         state.diagnostics_mut().add_single_file_diagnostic(
             first_identifier.location.filepath,
-            FailedToResolvePackage::new(
-                first_identifier.location,
-                first_identifier.id.resolve_or_panic(),
-            ),
+            FailedToResolvePackage::new(first_identifier.location, first_identifier.id),
         );
 
         return None;
@@ -74,9 +71,9 @@ fn resolve_symbol_in_module_namespace(
         state.diagnostics_mut().add_single_file_diagnostic(
             identifier.location.filepath,
             FailedToResolveNameInModule::new(
-                identifier.id.resolve_or_panic(),
+                identifier.id,
                 identifier.location,
-                first_identifier.id.resolve_or_panic(),
+                first_identifier.id,
                 first_identifier.location,
             ),
         );
