@@ -77,15 +77,13 @@ mod r#type;
 
 #[cfg(feature = "debug")]
 use std::time::Instant;
-use std::{fs, io, path::Path, sync::Arc};
+use std::{fs, io, path::Path};
 
 use diagnostics::LexErrorDiagnostic;
 pub use expression::ExpressionParser;
 use items::{ItemParser, ItemsParser};
-use parking_lot::RwLock;
 use pattern::PatternParser;
 use r#type::TypeParser;
-use rayon::prelude::{IntoParallelIterator, ParallelBridge, ParallelIterator};
 use statement::StatementParser;
 use stellar_ast::{
     token::{Keyword, LexError, RawToken, Token},
@@ -118,7 +116,7 @@ pub struct ParseState<'s, 'd> {
     next_token: Token,
 
     /// Diagnostics that is emitted during parsing.
-    diagnostics: &'d RwLock<Diagnostics>,
+    diagnostics: &'d mut Diagnostics,
 }
 
 /// Represents AST node that can be parsed.
@@ -153,7 +151,7 @@ pub trait OptionallyParse: Sized {
 /// A structure returned by every module parsing function.
 #[derive(Debug)]
 pub struct ParsedModule {
-    module_id: ModuleID,
+    module: ModuleID,
     ast: Module,
 }
 
@@ -162,7 +160,10 @@ impl ParsedModule {
     #[inline(always)]
     #[must_use]
     pub const fn new(module_id: ModuleID, ast: Module) -> Self {
-        Self { module_id, ast }
+        Self {
+            module: module_id,
+            ast,
+        }
     }
 
     /// Returns the module AST.
@@ -176,7 +177,7 @@ impl ParsedModule {
     #[inline(always)]
     #[must_use]
     pub const fn module(&self) -> ModuleID {
-        self.module_id
+        self.module
     }
 
     /// Returns the module AST.
@@ -203,51 +204,57 @@ impl ParsedModule {
 /// Panics if the file path cannot be resolved in the path storage.
 #[inline(always)]
 pub fn read_and_parse_module(
-    state: &State,
+    state: &mut State,
     module_name: IdentifierID,
     filepath: PathID,
 ) -> Result<ParsedModule, io::Error> {
-    Ok(parse_module_using(
-        state,
-        module_name,
-        ParseState::new(
-            filepath,
-            &fs::read_to_string(filepath.resolve_or_panic())?,
-            state.diagnostics(),
-        ),
-    ))
+    let module = ModuleData::alloc(state.db_mut(), module_name, filepath);
+    let source = fs::read_to_string(filepath.resolve_or_panic())?;
+
+    let mut parse_state = ParseState::new(filepath, &source, state.diagnostics_mut());
+
+    Ok(ParsedModule {
+        module,
+        ast: Module {
+            filepath: parse_state.lexer.filepath,
+            docstring: parse_state.consume_module_docstring(),
+            items: ItemsParser.parse(&mut parse_state),
+        },
+    })
 }
 
 /// Parse a Stellar module.
 #[inline(always)]
 #[must_use]
 pub fn parse_module(
-    state: &State,
+    state: &mut State,
     module_name: IdentifierID,
     filepath: PathID,
     source: &str,
 ) -> ParsedModule {
-    parse_module_using(
-        state,
-        module_name,
-        ParseState::new(filepath, source, state.diagnostics()),
-    )
+    let module = ModuleData::alloc(state.db_mut(), module_name, filepath);
+    let mut parse_state = ParseState::new(filepath, source, state.diagnostics_mut());
+
+    ParsedModule {
+        module,
+        ast: Module {
+            filepath: parse_state.lexer.filepath,
+            docstring: parse_state.consume_module_docstring(),
+            items: ItemsParser.parse(&mut parse_state),
+        },
+    }
 }
 
 /// Parse a Stellar module using a given parse state.
 #[inline(always)]
 #[must_use]
 pub fn parse_module_using(
-    state: &State,
+    state: &mut State,
     module_name: IdentifierID,
     mut parse_state: ParseState<'_, '_>,
 ) -> ParsedModule {
     ParsedModule::new(
-        ModuleData::alloc(
-            &mut state.db_write_lock(),
-            module_name,
-            parse_state.lexer.filepath,
-        ),
+        ModuleData::alloc(state.db_mut(), module_name, parse_state.lexer.filepath),
         Module {
             filepath: parse_state.lexer.filepath,
             docstring: parse_state.consume_module_docstring(),
@@ -262,7 +269,7 @@ pub fn parse_module_using(
 pub fn parse_item(
     filepath: PathID,
     source: impl AsRef<str>,
-    diagnostics: &RwLock<Diagnostics>,
+    diagnostics: &mut Diagnostics,
 ) -> Option<ModuleItem> {
     parse_item_using(&mut ParseState::new(filepath, source.as_ref(), diagnostics))
 }
@@ -280,7 +287,7 @@ pub fn parse_item_using(state: &mut ParseState<'_, '_>) -> Option<ModuleItem> {
 pub fn parse_expression(
     filepath: PathID,
     source: impl AsRef<str>,
-    diagnostics: &RwLock<Diagnostics>,
+    diagnostics: &mut Diagnostics,
 ) -> Option<Expression> {
     parse_expression_using(&mut ParseState::new(filepath, source.as_ref(), diagnostics))
 }
@@ -298,7 +305,7 @@ pub fn parse_expression_using(state: &mut ParseState<'_, '_>) -> Option<Expressi
 pub fn parse_statement(
     filepath: PathID,
     source: impl AsRef<str>,
-    diagnostics: &RwLock<Diagnostics>,
+    diagnostics: &mut Diagnostics,
 ) -> Option<Statement> {
     parse_statement_using(&mut ParseState::new(filepath, source.as_ref(), diagnostics))
 }
@@ -316,7 +323,7 @@ pub fn parse_statement_using(state: &mut ParseState<'_, '_>) -> Option<Statement
 pub fn parse_type(
     filepath: PathID,
     source: impl AsRef<str>,
-    diagnostics: &RwLock<Diagnostics>,
+    diagnostics: &mut Diagnostics,
 ) -> Option<Type> {
     parse_type_using(&mut ParseState::new(filepath, source.as_ref(), diagnostics))
 }
@@ -334,7 +341,7 @@ pub fn parse_type_using(state: &mut ParseState<'_, '_>) -> Option<Type> {
 pub fn parse_pattern(
     filepath: PathID,
     source: impl AsRef<str>,
-    diagnostics: &RwLock<Diagnostics>,
+    diagnostics: &mut Diagnostics,
 ) -> Option<Pattern> {
     parse_pattern_using(&mut ParseState::new(filepath, source.as_ref(), diagnostics))
 }
@@ -351,9 +358,9 @@ pub fn parse_pattern_using(state: &mut ParseState<'_, '_>) -> Option<Pattern> {
 /// # Errors
 /// Returns an error if the package's source directory cannot be read.
 pub fn parse_package_source_files(
-    state: &State,
+    state: &mut State,
     root: impl AsRef<Path>,
-) -> Result<Vec<Arc<ParsedModule>>, String> {
+) -> Result<Vec<ParsedModule>, String> {
     fn module_name(path: PathID) -> IdentifierID {
         IdentifierID::from(
             path.resolve_or_panic()
@@ -396,10 +403,8 @@ pub fn parse_package_source_files(
                     now.elapsed().as_micros()
                 );
 
-                parsing_result.ok().map(Arc::new)
+                parsing_result.ok()
             })
-            .par_bridge()
-            .into_par_iter()
             .collect(),
     )
 }
@@ -407,7 +412,7 @@ pub fn parse_package_source_files(
 impl<'s, 'd> ParseState<'s, 'd> {
     /// Creates an initial parse state from file source.
     #[must_use]
-    pub fn new(filepath: PathID, source: &'s str, diagnostics: &'d RwLock<Diagnostics>) -> Self {
+    pub fn new(filepath: PathID, source: &'s str, diagnostics: &'d mut Diagnostics) -> Self {
         let mut lexer = Lexer::new(filepath, source);
 
         let current_token = lexer.next_no_comments();
@@ -560,7 +565,6 @@ impl<'s, 'd> ParseState<'s, 'd> {
     #[allow(clippy::needless_pass_by_value)]
     pub(crate) fn add_diagnostic(&mut self, diagnostic: impl BuildDiagnostic) {
         self.diagnostics
-            .write()
             .add_single_file_diagnostic(self.lexer.filepath, diagnostic);
     }
 }

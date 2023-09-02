@@ -11,10 +11,10 @@ use crate::prefix::log;
 
 pub fn command(filepath: &str) {
     let mut diagnostics_emitter = DiagnosticsEmitter::new();
-    let state = State::new();
+    let mut state = State::new();
     let now = Instant::now();
 
-    match read_and_parse_module(&state, DUMMY_IDENTIFIER_ID, PathID::from(filepath)) {
+    match read_and_parse_module(&mut state, DUMMY_IDENTIFIER_ID, PathID::from(filepath)) {
         Err(..) => {
             diagnostics_emitter.emit_context_free_diagnostic(
                 &Diagnostic::error().with_message(format!("cannot read the file {filepath}")),

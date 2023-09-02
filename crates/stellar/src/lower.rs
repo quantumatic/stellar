@@ -13,12 +13,12 @@ use crate::prefix::log;
 
 pub fn command(filepath: &str) {
     let mut diagnostics_emitter = DiagnosticsEmitter::new();
-    let state = State::new();
+    let mut state = State::new();
     let filepath = PathID::from(filepath);
 
     let mut now = Instant::now();
 
-    match read_and_parse_module(&state, DUMMY_IDENTIFIER_ID, filepath) {
+    match read_and_parse_module(&mut state, DUMMY_IDENTIFIER_ID, filepath) {
         Err(..) => {
             diagnostics_emitter.emit_context_free_diagnostic(
                 &Diagnostic::error().with_message(format!("cannot read the file {filepath}")),
@@ -29,16 +29,14 @@ pub fn command(filepath: &str) {
 
             now = Instant::now();
 
-            let hir = LowerToHir::run_all(&state, vec![ast.into()]);
+            let hir = LowerToHir::run_all(&mut state, vec![ast.into()]);
             let hir = &hir.first().unwrap().hir();
 
             log("Lowered", format!("in {}s", now.elapsed().as_secs_f64()));
 
-            let diagnostics = state.diagnostics().read();
+            diagnostics_emitter.emit_global_diagnostics(state.diagnostics());
 
-            diagnostics_emitter.emit_global_diagnostics(&diagnostics);
-
-            if diagnostics.is_ok() {
+            if state.diagnostics().is_ok() {
                 now = Instant::now();
 
                 let hir_string = serde_json::to_string(hir).unwrap();

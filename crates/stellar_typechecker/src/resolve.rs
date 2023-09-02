@@ -6,15 +6,12 @@ use stellar_database::{ModuleID, State, Symbol};
 
 use crate::diagnostics::{FailedToResolveNameInModule, FailedToResolvePackage};
 
-pub fn resolve_global_path(state: &State, path: &stellar_ast::ImportPath) -> Option<Symbol> {
+pub fn resolve_global_path(state: &mut State, path: &stellar_ast::ImportPath) -> Option<Symbol> {
     let mut identifiers = path.path.identifiers.iter();
     let first_identifier = identifiers.next()?;
 
-    let Some(root_module) = state
-        .db_read_lock()
-        .package_root_module(first_identifier.id)
-    else {
-        state.diagnostics_write_lock().add_single_file_diagnostic(
+    let Some(root_module) = state.db_mut().package_root_module(first_identifier.id) else {
+        state.diagnostics_mut().add_single_file_diagnostic(
             first_identifier.location.filepath,
             FailedToResolvePackage::new(
                 first_identifier.location,
@@ -34,7 +31,7 @@ pub fn resolve_global_path(state: &State, path: &stellar_ast::ImportPath) -> Opt
 }
 
 fn resolve_global_path_by_first_symbol<'a>(
-    state: &State,
+    state: &mut State,
     symbol: Symbol,
     first_identifier: &'a IdentifierAST,
     identifiers: impl Iterator<Item = &'a IdentifierAST>,
@@ -48,7 +45,7 @@ fn resolve_global_path_by_first_symbol<'a>(
 }
 
 fn resolve_global_path_segment(
-    state: &State,
+    state: &mut State,
     symbol: Symbol,
     first_identifier: &IdentifierAST,
     identifier: &IdentifierAST,
@@ -62,19 +59,19 @@ fn resolve_global_path_segment(
 }
 
 fn resolve_symbol_in_module_namespace(
-    state: &State,
+    state: &mut State,
     module: ModuleID,
     first_identifier: &IdentifierAST,
     identifier: &IdentifierAST,
 ) -> Option<Symbol> {
     if let Some(symbol) = module
-        .submodule(&state.db_read_lock(), identifier.id)
+        .submodule(state.db(), identifier.id)
         .map(Symbol::Module)
-        .or(module.module_item_symbol(&state.db_read_lock(), identifier.id))
+        .or(module.module_item_symbol(state.db(), identifier.id))
     {
         Some(symbol)
     } else {
-        state.diagnostics_write_lock().add_single_file_diagnostic(
+        state.diagnostics_mut().add_single_file_diagnostic(
             identifier.location.filepath,
             FailedToResolveNameInModule::new(
                 identifier.id.resolve_or_panic(),

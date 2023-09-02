@@ -976,8 +976,8 @@ impl Database {
 /// Contains database and diagnostics.
 #[derive(Default)]
 pub struct State {
-    db: RwLock<Database>,
-    diagnostics: RwLock<Diagnostics>,
+    db: Database,
+    diagnostics: Diagnostics,
     config: Config,
 }
 
@@ -1021,63 +1021,45 @@ impl State {
         &self.config
     }
 
-    /// Returns a reference to database read-write lock.
+    /// Returns an immutable reference to a database object.
     #[inline(always)]
     #[must_use]
-    pub const fn db(&self) -> &RwLock<Database> {
+    pub const fn db(&self) -> &Database {
         &self.db
+    }
+
+    /// Returns a mutable reference to a database object.
+    #[inline(always)]
+    #[must_use]
+    pub fn db_mut(&mut self) -> &mut Database {
+        &mut self.db
     }
 
     /// Gives an ownership over database object inside the state.
     #[inline(always)]
     #[must_use]
-    pub fn db_inner(self) -> Database {
-        self.db.into_inner()
+    pub fn into_db(self) -> Database {
+        self.db
     }
 
-    /// Makes a read lock over database and returns RAII structure used
-    /// to release the shared read access of a lock when dropped.
+    /// Returns an immutable reference to diagnostics.
     #[inline(always)]
     #[must_use]
-    pub fn db_read_lock(&self) -> RwLockReadGuard<Database> {
-        self.db.read()
-    }
-
-    /// Makes a write lock over database and returns RAII structure used
-    /// to release the exclusive write access of a lock when dropped.
-    #[inline(always)]
-    #[must_use]
-    pub fn db_write_lock(&self) -> RwLockWriteGuard<Database> {
-        self.db.write()
-    }
-
-    /// Returns a reference to diagnostics read-write lock.
-    #[inline(always)]
-    #[must_use]
-    pub const fn diagnostics(&self) -> &RwLock<Diagnostics> {
+    pub const fn diagnostics(&self) -> &Diagnostics {
         &self.diagnostics
+    }
+
+    /// Returns a mutable reference to diagnostics.
+    #[inline(always)]
+    #[must_use]
+    pub fn diagnostics_mut(&mut self) -> &mut Diagnostics {
+        &mut self.diagnostics
     }
 
     /// Gives an ownership over diagnostics object inside the state.
     #[inline(always)]
     #[must_use]
     pub fn into_diagnostics(self) -> Diagnostics {
-        self.diagnostics.into_inner()
-    }
-
-    /// Makes a read lock over diagnostics and returns RAII structure used
-    /// to release the shared read access of a lock when dropped.
-    #[inline(always)]
-    #[must_use]
-    pub fn diagnostics_read_lock(&self) -> RwLockReadGuard<Diagnostics> {
-        self.diagnostics.read()
-    }
-
-    /// Makes a write lock over diagnostics and returns RAII structure used
-    /// to release the exclusive write access of a lock when dropped.
-    #[inline(always)]
-    #[must_use]
-    pub fn diagnostics_write_lock(&self) -> RwLockWriteGuard<Diagnostics> {
-        self.diagnostics.write()
+        self.diagnostics
     }
 }

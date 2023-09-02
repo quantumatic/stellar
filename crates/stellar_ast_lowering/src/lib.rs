@@ -32,7 +32,7 @@ use tracing::trace;
 mod diagnostics;
 
 pub struct LowerToHir<'s> {
-    state: &'s State,
+    state: &'s mut State,
     filepath: PathID,
 }
 
@@ -88,7 +88,7 @@ impl From<LoweredModule> for stellar_hir::Module {
 }
 
 impl<'s> LowerToHir<'s> {
-    pub fn run_all(state: &'s State, modules: Vec<Arc<ParsedModule>>) -> Vec<Arc<LoweredModule>> {
+    pub fn run_all(state: &'s mut State, modules: Vec<Arc<ParsedModule>>) -> Vec<LoweredModule> {
         modules
             .into_iter()
             .filter_map(|module| {
@@ -108,17 +108,17 @@ impl<'s> LowerToHir<'s> {
                     #[cfg(feature = "debug")]
                     trace!(
                         "lower_ast(module = '{}') <{} us>",
-                        module.module().filepath(&state.db_read_lock()),
+                        module.module().filepath(&state.db()),
                         now.elapsed().as_micros()
                     );
 
-                    Arc::new(module)
+                    module
                 })
             })
             .collect()
     }
 
-    fn run(&self, ast: stellar_ast::Module) -> stellar_hir::Module {
+    fn run(&mut self, ast: stellar_ast::Module) -> stellar_hir::Module {
         let mut lowered = stellar_hir::Module {
             filepath: ast.filepath,
             items: vec![],
@@ -133,15 +133,14 @@ impl<'s> LowerToHir<'s> {
     }
 
     #[inline(always)]
-    fn add_diagnostic(&self, diagnostic: impl BuildDiagnostic) {
+    fn add_diagnostic(&mut self, diagnostic: impl BuildDiagnostic) {
         self.state
-            .diagnostics()
-            .write()
+            .diagnostics_mut()
             .add_single_file_diagnostic(self.filepath, diagnostic);
     }
 
     /// Converts a given module item AST into HIR.
-    fn lower_module_item(&self, ast: stellar_ast::ModuleItem) -> stellar_hir::ModuleItem {
+    fn lower_module_item(&mut self, ast: stellar_ast::ModuleItem) -> stellar_hir::ModuleItem {
         match ast {
             stellar_ast::ModuleItem::Enum(stellar_ast::Enum {
                 visibility,
@@ -291,14 +290,14 @@ impl<'s> LowerToHir<'s> {
         }
     }
 
-    fn lower_function(&self, ast: stellar_ast::Function) -> stellar_hir::Function {
+    fn lower_function(&mut self, ast: stellar_ast::Function) -> stellar_hir::Function {
         stellar_hir::Function {
             signature: self.lower_function_signature(ast.signature),
             body: ast.body.map(|block| self.lower_statements_block(block)),
         }
     }
 
-    fn lower_enum_item(&self, ast: stellar_ast::EnumItem) -> stellar_hir::EnumItem {
+    fn lower_enum_item(&mut self, ast: stellar_ast::EnumItem) -> stellar_hir::EnumItem {
         match ast {
             stellar_ast::EnumItem::Just { name, docstring } => {
                 stellar_hir::EnumItem::Just { name, docstring }
@@ -330,7 +329,7 @@ impl<'s> LowerToHir<'s> {
         }
     }
     fn lower_statements_block(
-        &self,
+        &mut self,
         ast: Vec<stellar_ast::Statement>,
     ) -> Vec<stellar_hir::Statement> {
         ast.into_iter()
@@ -338,7 +337,7 @@ impl<'s> LowerToHir<'s> {
             .collect()
     }
 
-    fn lower_statement(&self, ast: stellar_ast::Statement) -> stellar_hir::Statement {
+    fn lower_statement(&mut self, ast: stellar_ast::Statement) -> stellar_hir::Statement {
         match ast {
             stellar_ast::Statement::Break { location } => {
                 stellar_hir::Statement::Break { location }
@@ -369,7 +368,7 @@ impl<'s> LowerToHir<'s> {
         }
     }
 
-    fn lower_pattern(&self, ast: stellar_ast::Pattern) -> stellar_hir::Pattern {
+    fn lower_pattern(&mut self, ast: stellar_ast::Pattern) -> stellar_hir::Pattern {
         match ast {
             stellar_ast::Pattern::Grouped { inner, .. } => {
                 if let stellar_ast::Pattern::Grouped { location, .. } = *inner {
@@ -450,7 +449,7 @@ impl<'s> LowerToHir<'s> {
     }
 
     fn lower_struct_field_pattern(
-        &self,
+        &mut self,
         ast: stellar_ast::StructFieldPattern,
     ) -> stellar_hir::StructFieldPattern {
         match ast {
@@ -469,7 +468,7 @@ impl<'s> LowerToHir<'s> {
         }
     }
 
-    fn lower_expression(&self, ast: stellar_ast::Expression) -> stellar_hir::Expression {
+    fn lower_expression(&mut self, ast: stellar_ast::Expression) -> stellar_hir::Expression {
         match ast {
             stellar_ast::Expression::Literal(literal) => stellar_hir::Expression::Literal(literal),
             stellar_ast::Expression::Identifier(identifier) => {
@@ -660,7 +659,7 @@ impl<'s> LowerToHir<'s> {
     }
 
     fn lower_match_expression_item(
-        &self,
+        &mut self,
         ast: stellar_ast::MatchExpressionItem,
     ) -> stellar_hir::MatchExpressionItem {
         if let stellar_ast::Expression::Parenthesized { location, .. } = ast.right {
@@ -674,7 +673,7 @@ impl<'s> LowerToHir<'s> {
     }
 
     fn lower_struct_field_expression(
-        &self,
+        &mut self,
         ast: stellar_ast::StructFieldExpression,
     ) -> stellar_hir::StructExpressionItem {
         stellar_hir::StructExpressionItem {
@@ -684,7 +683,7 @@ impl<'s> LowerToHir<'s> {
     }
 
     fn lower_lambda_function_parameter(
-        &self,
+        &mut self,
         ast: stellar_ast::LambdaFunctionParameter,
     ) -> stellar_hir::LambdaFunctionParameter {
         stellar_hir::LambdaFunctionParameter {
@@ -694,7 +693,7 @@ impl<'s> LowerToHir<'s> {
     }
 
     fn lower_if_blocks(
-        &self,
+        &mut self,
         if_blocks: Vec<(stellar_ast::Expression, Vec<stellar_ast::Statement>)>,
     ) -> Vec<(stellar_hir::Expression, Vec<stellar_hir::Statement>)> {
         if_blocks
@@ -704,7 +703,7 @@ impl<'s> LowerToHir<'s> {
     }
 
     fn lower_if_block(
-        &self,
+        &mut self,
         if_block: (stellar_ast::Expression, Vec<stellar_ast::Statement>),
     ) -> (stellar_hir::Expression, Vec<stellar_hir::Statement>) {
         if let stellar_ast::Expression::Parenthesized { location, .. } = if_block.0 {
@@ -717,14 +716,14 @@ impl<'s> LowerToHir<'s> {
         )
     }
 
-    fn lower_type_arguments(&self, ast: Vec<stellar_ast::Type>) -> Vec<stellar_hir::Type> {
+    fn lower_type_arguments(&mut self, ast: Vec<stellar_ast::Type>) -> Vec<stellar_hir::Type> {
         ast.into_iter()
             .map(|type_argument| self.lower_type(type_argument))
             .collect()
     }
 
     fn lower_function_signature(
-        &self,
+        &mut self,
         ast: stellar_ast::FunctionSignature,
     ) -> stellar_hir::FunctionSignature {
         stellar_hir::FunctionSignature {
@@ -743,7 +742,7 @@ impl<'s> LowerToHir<'s> {
     }
 
     fn lower_function_parameter(
-        &self,
+        &mut self,
         ast: stellar_ast::FunctionParameter,
     ) -> stellar_hir::FunctionParameter {
         match ast {
@@ -761,7 +760,7 @@ impl<'s> LowerToHir<'s> {
     }
 
     fn lower_not_self_function_parameter(
-        &self,
+        &mut self,
         ast: stellar_ast::NotSelfFunctionParameter,
     ) -> stellar_hir::NotSelfFunctionParameter {
         stellar_hir::NotSelfFunctionParameter {
@@ -771,7 +770,7 @@ impl<'s> LowerToHir<'s> {
     }
 
     fn lower_self_function_parameter(
-        &self,
+        &mut self,
         ast: stellar_ast::SelfFunctionParameter,
     ) -> stellar_hir::SelfFunctionParameter {
         stellar_hir::SelfFunctionParameter {
@@ -780,7 +779,7 @@ impl<'s> LowerToHir<'s> {
         }
     }
 
-    fn lower_type_alias(&self, ast: stellar_ast::TypeAlias) -> stellar_hir::TypeAlias {
+    fn lower_type_alias(&mut self, ast: stellar_ast::TypeAlias) -> stellar_hir::TypeAlias {
         stellar_hir::TypeAlias {
             visibility: ast.visibility,
             name: ast.name,
@@ -790,7 +789,7 @@ impl<'s> LowerToHir<'s> {
         }
     }
 
-    fn lower_struct_field(&self, ast: stellar_ast::StructField) -> stellar_hir::StructField {
+    fn lower_struct_field(&mut self, ast: stellar_ast::StructField) -> stellar_hir::StructField {
         stellar_hir::StructField {
             visibility: ast.visibility,
             name: ast.name,
@@ -799,7 +798,7 @@ impl<'s> LowerToHir<'s> {
         }
     }
 
-    fn lower_tuple_field(&self, ast: stellar_ast::TupleField) -> stellar_hir::TupleField {
+    fn lower_tuple_field(&mut self, ast: stellar_ast::TupleField) -> stellar_hir::TupleField {
         stellar_hir::TupleField {
             visibility: ast.visibility,
             ty: self.lower_type(ast.ty),
@@ -807,7 +806,7 @@ impl<'s> LowerToHir<'s> {
     }
 
     fn lower_generic_parameters(
-        &self,
+        &mut self,
         ast: Vec<stellar_ast::GenericParameter>,
     ) -> Vec<stellar_hir::GenericParameter> {
         ast.into_iter()
@@ -816,7 +815,7 @@ impl<'s> LowerToHir<'s> {
     }
 
     fn lower_generic_parameter(
-        &self,
+        &mut self,
         ast: stellar_ast::GenericParameter,
     ) -> stellar_hir::GenericParameter {
         stellar_hir::GenericParameter {
@@ -832,7 +831,7 @@ impl<'s> LowerToHir<'s> {
     }
 
     fn lower_where_predicates(
-        &self,
+        &mut self,
         ast: Vec<stellar_ast::WherePredicate>,
     ) -> Vec<stellar_hir::WherePredicate> {
         ast.into_iter()
@@ -841,7 +840,7 @@ impl<'s> LowerToHir<'s> {
     }
 
     fn lower_where_predicate(
-        &self,
+        &mut self,
         ast: stellar_ast::WherePredicate,
     ) -> stellar_hir::WherePredicate {
         stellar_hir::WherePredicate {
@@ -855,7 +854,7 @@ impl<'s> LowerToHir<'s> {
     }
 
     fn lower_type_constructor(
-        &self,
+        &mut self,
         ast: stellar_ast::TypeConstructor,
     ) -> stellar_hir::TypeConstructor {
         stellar_hir::TypeConstructor {
@@ -869,11 +868,11 @@ impl<'s> LowerToHir<'s> {
         }
     }
 
-    fn lower_underscore_type(&self, location: Location) -> stellar_hir::Type {
+    fn lower_underscore_type(&mut self, location: Location) -> stellar_hir::Type {
         stellar_hir::Type::Underscore { location }
     }
 
-    fn lower_type(&self, ast: stellar_ast::Type) -> stellar_hir::Type {
+    fn lower_type(&mut self, ast: stellar_ast::Type) -> stellar_hir::Type {
         match ast {
             stellar_ast::Type::Function {
                 location,
