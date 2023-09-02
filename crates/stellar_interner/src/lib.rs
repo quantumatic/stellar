@@ -563,17 +563,15 @@ macro_rules! define_builtin_identifiers {
 }
 
 define_builtin_identifiers! {
-    UNDERSCORE = 1 => "_",
+    INT8 = 1 => "int8", INT16 = 2 => "int16", INT32 = 3 => "int32", INT64 = 4 => "int64",
+    UINT8 = 5 => "uint8", UINT16 = 6 => "uint16", UINT32 = 7 => "uint32", UINT64 = 8 => "uint64",
+    FLOAT32 = 9 => "float32", FLOAT64 = 10 => "float64",
 
-    INT8 = 2 => "int8", INT16 = 3 => "int16", INT32 = 4 => "int32", INT64 = 5 => "int64",
-    UINT8 = 6 => "uint8", UINT16 = 7 => "uint16", UINT32 = 8 => "uint32", UINT64 = 9 => "uint64",
-    FLOAT32 = 10 => "float32", FLOAT64 = 11 => "float64",
+    ISIZE = 11 => "isize", USIZE = 12 => "usize",
+    BOOL = 13 => "bool", STRING = 14 => "String", LIST = 15 => "List",
 
-    ISIZE = 12 => "isize", USIZE = 13 => "usize",
-    BOOL = 14 => "bool", STRING = 15 => "String", LIST = 16 => "List",
-
-    CHAR = 17 => "char", SMALL_SELF = 18 => "self", BIG_SELF = 19 => "Self",
-    SIZE_OF = 20 => "sizeof", STD = 21 => "std"
+    CHAR = 16 => "char", SMALL_SELF = 17 => "self", BIG_SELF = 18 => "Self",
+    SIZE_OF = 19 => "sizeof", STD = 20 => "std"
 }
 
 impl IdentifierInterner {
