@@ -130,7 +130,7 @@ impl EnumData {
     #[inline(always)]
     #[must_use]
     pub fn alloc(db: &mut Database, signature: SignatureID) -> EnumID {
-        db.add_enum_module_item(Self::new(signature))
+        db.add_enum(Self::new(signature))
     }
 
     /// Creates a new enum data object.
@@ -154,26 +154,26 @@ impl EnumID {
     #[inline(always)]
     #[must_use]
     pub fn signature(self, db: &Database) -> SignatureID {
-        db.enum_module_item(self).signature
+        db.enum_(self).signature
     }
 
     /// Returns a list of items associated with the enum.
     #[inline(always)]
     #[must_use]
     pub fn items(self, db: &Database) -> &FxHashMap<IdentifierID, EnumItemID> {
-        &db.enum_module_item(self).items
+        &db.enum_(self).items
     }
 
     /// Returns `true` if an item with a given name is contained in the enum definition.
     #[inline(always)]
     #[must_use]
     pub fn contains_item(self, db: &Database, name: IdentifierID) -> bool {
-        db.enum_module_item(self).items.contains_key(&name)
+        db.enum_(self).items.contains_key(&name)
     }
 
     /// Returns an item with a given name.
     pub fn item(self, db: &Database, name: IdentifierID) -> Option<EnumItemID> {
-        db.enum_module_item(self).items.get(&name).copied()
+        db.enum_(self).items.get(&name).copied()
     }
 }
 
@@ -190,7 +190,7 @@ impl StructData {
     #[inline(always)]
     #[must_use]
     pub fn alloc(db: &mut Database, signature: SignatureID) -> StructID {
-        db.add_struct_module_item(Self::new(signature))
+        db.add_struct(Self::new(signature))
     }
 
     /// Creates a new struct data object.
@@ -214,14 +214,14 @@ impl StructID {
     #[inline(always)]
     #[must_use]
     pub fn signature(self, db: &Database) -> SignatureID {
-        db.struct_module_item(self).signature
+        db.struct_(self).signature
     }
 
     /// Returns a list of fields associated with the struct.
     #[inline(always)]
     #[must_use]
     pub fn fields(self, db: &Database) -> &FxHashMap<IdentifierID, FieldID> {
-        &db.struct_module_item(self).fields
+        &db.struct_(self).fields
     }
 }
 
@@ -444,6 +444,29 @@ pub struct GenericParameterData {
     ///                   ^^^^^^
     /// ```
     pub default_value: Option<Type>,
+}
+
+impl GenericParameterData {
+    /// Creates a new generic parameter data object in the database and returns its ID.
+    #[inline(always)]
+    #[must_use]
+    pub fn alloc(
+        db: &mut Database,
+        location: Location,
+        default_value: Option<Type>,
+    ) -> GenericParameterID {
+        db.add_generic_parameter(Self::new(location, default_value))
+    }
+
+    /// Creates a new generic parameter data object.
+    #[inline(always)]
+    #[must_use]
+    pub fn new(location: Location, default_value: Option<Type>) -> Self {
+        Self {
+            location,
+            default_value,
+        }
+    }
 }
 
 /// A unique ID that maps to [`GenericParameterData`].
@@ -878,15 +901,19 @@ pub struct Database {
     signatures: Vec<SignatureData>,
 }
 
-macro_rules! db_methods {
+macro_rules! __db_data_field {
     (
-        $($what:ident($whats:ident): $id_ty:ty => $data_ty:ty),*
+        {
+            name_singular: $what:ident,
+            name_plural: $whats:ident,
+            id_ty: $id_ty:ty,
+            data_ty: $data_ty:ty
+        }
     ) => {
-        $(
             paste! {
-                #[doc = "Returns an immutable reference to " $what " data by its ID."]
+                #[doc = "Returns an immutable reference to database object data by its ID."]
                 #[doc = "# Panics"]
-                #[doc = "Panics if " $what " with the given ID is not present in the database storage."]
+                #[doc = "Panics if an object with the given ID is not present in the database storage."]
                 #[doc = ""]
                 #[doc = "_This function is automatically generated using a macro!_"]
                 #[inline(always)]
@@ -895,9 +922,9 @@ macro_rules! db_methods {
                     &self.$whats[id.0]
                 }
 
-                #[doc = "Returns a mutable reference to " $what " data by its ID."]
+                #[doc = "Returns a mutable reference to database object data by its ID."]
                 #[doc = "# Panics"]
-                #[doc = "Panics if " $what " with the given ID is not present in the database storage."]
+                #[doc = "Panics if an object with the given ID is not present in the database storage."]
                 #[doc = ""]
                 #[doc = "_This function is automatically generated using a macro!_"]
                 #[inline(always)]
@@ -906,7 +933,7 @@ macro_rules! db_methods {
                     &mut self.$whats[id.0]
                 }
 
-                #[doc = "Returns whether " $what " with a given ID is present in the database storage."]
+                #[doc = "Returns whether a database object with a given ID is present in the database storage."]
                 #[doc = ""]
                 #[doc = "_This function is automatically generated using a macro!_"]
                 #[inline(always)]
@@ -915,7 +942,7 @@ macro_rules! db_methods {
                     id.0 < self.$whats.len()
                 }
 
-                #[doc = "Adds a " $what " to the database storage."]
+                #[doc = "Adds an object to the database storage."]
                 #[doc = ""]
                 #[doc = "_This function is automatically generated using a macro!_"]
                 #[inline(always)]
@@ -926,7 +953,65 @@ macro_rules! db_methods {
                     $id_ty(self.$whats.len() - 1)
                 }
             }
-        )*
+    };
+    (
+        {
+            reserved_name,
+            name_singular: $what:ident,
+            name_plural: $whats:ident,
+            id_ty: $id_ty:ty,
+            data_ty: $data_ty:ty
+        }
+    ) => {
+            paste! {
+                #[doc = "Returns an immutable reference to database object data by its ID."]
+                #[doc = "# Panics"]
+                #[doc = "Panics if an object with the given ID is not present in the database storage."]
+                #[doc = ""]
+                #[doc = "_This function is automatically generated using a macro!_"]
+                #[inline(always)]
+                #[must_use]
+                pub fn [<$what _>](&self, id: $id_ty) -> &$data_ty {
+                    &self.$whats[id.0]
+                }
+
+                #[doc = "Returns a mutable reference to database object data by its ID."]
+                #[doc = "# Panics"]
+                #[doc = "Panics if an object with the given ID is not present in the database storage."]
+                #[doc = ""]
+                #[doc = "_This function is automatically generated using a macro!_"]
+                #[inline(always)]
+                #[must_use]
+                pub fn [<$what _mut>](&mut self, id: $id_ty) -> &mut $data_ty {
+                    &mut self.$whats[id.0]
+                }
+
+                #[doc = "Returns whether a database object with a given ID is present in the database storage."]
+                #[doc = ""]
+                #[doc = "_This function is automatically generated using a macro!_"]
+                #[inline(always)]
+                #[must_use]
+                pub fn [<contains_ $what>](&self, id: $id_ty) -> bool {
+                    id.0 < self.$whats.len()
+                }
+
+                #[doc = "Adds an object to the database storage."]
+                #[doc = ""]
+                #[doc = "_This function is automatically generated using a macro!_"]
+                #[inline(always)]
+                #[must_use]
+                pub fn [<add_ $what>](&mut self, [<$what _>]: $data_ty) -> $id_ty {
+                    self.$whats.push([<$what _>]);
+
+                    $id_ty(self.$whats.len() - 1)
+                }
+            }
+    };
+}
+
+macro_rules! __db_data_fields {
+    ($($tt:tt),*) => {
+        $(__db_data_field! { $tt })*
     };
 }
 
@@ -968,26 +1053,87 @@ impl Database {
     }
 
     // reduces the size of code in hundreds of times!
-    db_methods! {
-        module(modules):            ModuleID => ModuleData,
-        enum_module_item(enums):
-                                    EnumID => EnumData,
-        struct_module_item(structs):
-                                    StructID => StructData,
-        tuple_like_struct(tuple_like_structs):
-                                    TupleLikeStructID => TupleLikeStructData,
-        type_alias(type_aliases):   TypeAliasID => TypeAliasData,
-        function(functions):        FunctionID => FunctionData,
-        interface(interfaces):      InterfaceID => InterfaceData,
-        predicate(predicates):      PredicateID => PredicateData,
-        enum_item(enum_items):      EnumItemID => EnumItemData,
-        field(fields):              FieldID => FieldData,
-        generic_parameter_scope(generic_parameter_scopes):
-                                    GenericParameterScopeID => GenericParameterScopeData,
-        generic_parameter(generic_parameters):
-                                    GenericParameterID => GenericParameterData,
-        signature(signatures):
-                                    SignatureID => SignatureData
+    __db_data_fields! {
+        {
+            name_singular: module,
+            name_plural: modules,
+            id_ty: ModuleID,
+            data_ty: ModuleData
+        },
+        {
+            reserved_name,
+            name_singular: enum,
+            name_plural: enums,
+            id_ty: EnumID,
+            data_ty: EnumData
+        },
+        {
+            name_singular: enum_item,
+            name_plural: enum_items,
+            id_ty: EnumItemID,
+            data_ty: EnumItemData
+        },
+        {
+            name_singular: predicate,
+            name_plural: predicates,
+            id_ty: PredicateID,
+            data_ty: PredicateData
+        },
+        {
+            reserved_name,
+            name_singular: struct,
+            name_plural: structs,
+            id_ty: StructID,
+            data_ty: StructData
+        },
+        {
+            name_singular: tuple_like_struct,
+            name_plural: tuple_like_structs,
+            id_ty: TupleLikeStructID,
+            data_ty: TupleLikeStructData
+        },
+        {
+            name_singular: field,
+            name_plural: fields,
+            id_ty: FieldID,
+            data_ty: FieldData
+        },
+        {
+            name_singular: function,
+            name_plural: functions,
+            id_ty: FunctionID,
+            data_ty: FunctionData
+        },
+        {
+            name_singular: type_alias,
+            name_plural: type_aliases,
+            id_ty: TypeAliasID,
+            data_ty: TypeAliasData
+        },
+        {
+            name_singular: interface,
+            name_plural: interfaces,
+            id_ty: InterfaceID,
+            data_ty: InterfaceData
+        },
+        {
+            name_singular: generic_parameter_scope,
+            name_plural: generic_parameter_scopes,
+            id_ty: GenericParameterScopeID,
+            data_ty: GenericParameterScopeData
+        },
+        {
+            name_singular: generic_parameter,
+            name_plural: generic_parameters,
+            id_ty: GenericParameterID,
+            data_ty: GenericParameterData
+        },
+        {
+            name_singular: signature,
+            name_plural: signatures,
+            id_ty: SignatureID,
+            data_ty: SignatureData
+        }
     }
 }
 
