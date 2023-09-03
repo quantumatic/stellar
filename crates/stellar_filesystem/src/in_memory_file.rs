@@ -4,7 +4,7 @@ use std::io;
 use std::ops::Range;
 use std::{cmp::Ordering, path::PathBuf};
 
-use stellar_interner::{PathID, PathInterner};
+use stellar_interner::PathID;
 
 use crate::location::{Location, LocationIndex};
 
@@ -45,8 +45,8 @@ impl InMemoryFile {
     /// # Errors
     /// If the source of the file cannot be read.
     #[inline(always)]
-    pub fn new_from_path_id(path_id: PathID) -> Result<Self, io::Error> {
-        Self::new(path_id.resolve_or_panic())
+    pub fn new_from_path(path: PathID) -> Result<Self, io::Error> {
+        Self::new(path.resolve_or_panic())
     }
 
     /// Creates a new [`InMemoryFile`] and panics if its contents
@@ -67,8 +67,8 @@ impl InMemoryFile {
     /// * If the source of the file cannot be read.
     #[inline(always)]
     #[must_use]
-    pub fn new_from_path_id_or_panic(path_interner: &PathInterner, path_id: PathID) -> Self {
-        Self::new_or_panic(path_interner.resolve_or_panic(path_id))
+    pub fn new_from_path_or_panic(path: PathID) -> Self {
+        Self::new_or_panic(path.resolve_or_panic())
     }
 
     /// Creates a new [`InMemoryFile`] with the given source.

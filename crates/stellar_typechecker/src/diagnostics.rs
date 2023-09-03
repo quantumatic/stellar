@@ -1,3 +1,4 @@
+use stellar_ast::IdentifierAST;
 use stellar_diagnostics::define_diagnostics;
 use stellar_filesystem::location::Location;
 
@@ -81,27 +82,6 @@ define_diagnostics! {
         }
     }
 
-    /// Diagnostic, that occurs when the compiler tries to resolve a submodule of a
-    /// particular package that doesn't exist.
-    diagnostic(error) FailedToResolveModule(
-        self,
-        module_name_location: Location,
-        module_name: String,
-        package_name_location: Location,
-        package_name: String
-    ) {
-        code { "E008" }
-        message { format!("failed to resolve the module `{}`", self.module_name) }
-        labels {
-            primary self.module_name_location => {""},
-            secondary self.package_name_location => {
-                format!("package `{}` doesn't contain the submodule `{}`",
-                    self.package_name, self.module_name)
-            }
-        }
-        notes {}
-    }
-
     /// Diagnostic, that occurs when the compiler tries to resolve a submodule of a particular package/module that doesn't exist.
     diagnostic(error) FailedToResolveNameInModule(
         self,
@@ -149,21 +129,19 @@ define_diagnostics! {
     /// ```
     diagnostic(error) ModuleItemsExceptEnumsDoNotServeAsNamespaces(
         self,
-        module_item_name: String,
-        module_item_name_location: Location,
-        name: String,
-        name_location: Location
+        module_item_name: IdentifierAST,
+        name: IdentifierAST
     ) {
         code { "E008" }
-        message { format!("failed to resolve the name `{}`", self.name) }
+        message { format!("failed to resolve the name `{}`", self.name.id) }
         labels {
-            primary self.name_location => {
+            primary self.name.location => {
                 format!("cannot find the name `{}` in the namespace `{}`",
-                    self.name, self.module_item_name)
+                    self.name.id, self.module_item_name.id)
             },
-            secondary self.module_item_name_location => {
-                format!("`{}` is not a module or a package, so it cannot directly contain individual names",
-                    self.module_item_name)
+            secondary self.module_item_name.location => {
+                format!("`{}` is not a module or an enum, so it cannot directly contain individual names",
+                    self.module_item_name.id)
             }
         }
         notes {
@@ -180,21 +158,19 @@ define_diagnostics! {
     /// ```
     diagnostic(error) EnumItemsDoNotServeAsNamespaces(
         self,
-        enum_item_name: String,
-        enum_item_name_location: Location,
-        name: String,
-        name_location: Location
+        enum_item_name: IdentifierAST,
+        name: IdentifierAST
     ) {
         code { "E008" }
-        message { format!("failed to resolve the name `{}`", self.name) }
+        message { format!("failed to resolve the name `{}`", self.name.id) }
         labels {
-            primary self.name_location => {
+            primary self.name.location => {
                 format!("cannot find the name `{}` in the namespace `{}`",
-                    self.name, self.enum_item_name)
+                    self.name.id, self.enum_item_name.id)
             },
-            secondary self.enum_item_name_location => {
-                format!("`{}` is not a module or a package, so it cannot directly contain individual names",
-                    self.enum_item_name)
+            secondary self.enum_item_name.location => {
+                format!("`{}` is not a module or an enum, so it cannot directly contain individual names",
+                    self.enum_item_name.id)
             }
         }
         notes {
@@ -202,16 +178,31 @@ define_diagnostics! {
         }
     }
 
+    diagnostic(error) FailedToResolveEnumItem(
+        self,
+        enum_name: IdentifierAST,
+        enum_item_name: IdentifierAST
+    ) {
+        code { "E008" }
+        message { format!("failed to resolve enum item `{}`", self.enum_item_name.id) }
+        labels {
+            primary self.enum_item_name.location => {
+                format!("cannot find the name `{}` in the definition of enum `{}`",
+                    self.enum_item_name.id, self.enum_name.id)
+            }
+        }
+        notes {}
+    }
+
     /// Diagnostic, that occurs when the compiler tries to resolve a name in a module scope.
     diagnostic(error) FailedToResolveName(
         self,
-        name: String,
-        location: Location
+        name: IdentifierAST
     ) {
         code { "E008" }
-        message { format!("failed to resolve the name `{}`", self.name) }
+        message { format!("failed to resolve the name `{}`", self.name.id) }
         labels {
-            primary self.location => {""}
+            primary self.name.location => {""}
         }
         notes {}
     }

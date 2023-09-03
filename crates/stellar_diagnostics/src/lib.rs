@@ -110,7 +110,7 @@ impl Default for DiagnosticsEmitter {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct MultiFileDiagnostic {
     /// ID-s of the paths of the files that the diagnostics belongs to.
-    pub path_ids: Vec<PathID>,
+    pub paths: Vec<PathID>,
 
     /// Diagnostic.
     pub diagnostic: Diagnostic<PathID>,

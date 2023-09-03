@@ -72,7 +72,8 @@ define_symbol_struct!(
     function,
     interface,
     tuple_like_struct,
-    type_alias
+    type_alias,
+    enum_item
 );
 
 impl Symbol {
@@ -91,6 +92,7 @@ impl Symbol {
             Self::Interface(interface) => interface.name(db),
             Self::TupleLikeStruct(struct_) => struct_.name(db),
             Self::TypeAlias(alias) => alias.name(db),
+            Self::EnumItem(item) => item.name(db),
         }
     }
 }
@@ -174,6 +176,18 @@ impl EnumID {
     #[must_use]
     pub fn items(self, db: &Database) -> &FxHashMap<IdentifierID, EnumItemID> {
         &db.enum_module_item(self).items
+    }
+
+    /// Returns `true` if an item with a given name is contained in the enum definition.
+    #[inline(always)]
+    #[must_use]
+    pub fn contains_item(self, db: &Database, name: IdentifierID) -> bool {
+        db.enum_module_item(self).items.contains_key(&name)
+    }
+
+    /// Returns an item with a given name.
+    pub fn item(self, db: &Database, name: IdentifierID) -> Option<EnumItemID> {
+        db.enum_module_item(self).items.get(&name).copied()
     }
 }
 

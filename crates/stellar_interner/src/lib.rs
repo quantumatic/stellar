@@ -124,10 +124,10 @@ impl Display for IdentifierID {
     }
 }
 
-impl Into<String> for IdentifierID {
+impl From<IdentifierID> for String {
     #[inline(always)]
-    fn into(self) -> String {
-        self.resolve_or_panic()
+    fn from(value: IdentifierID) -> Self {
+        value.resolve_or_panic()
     }
 }
 
@@ -724,6 +724,13 @@ impl PathID {
 impl Display for PathID {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.resolve_or_panic().display())
+    }
+}
+
+impl From<PathID> for String {
+    #[inline(always)]
+    fn from(value: PathID) -> Self {
+        format!("{}", value.resolve_or_panic().display())
     }
 }
 
