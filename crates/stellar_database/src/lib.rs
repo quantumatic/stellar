@@ -7,7 +7,7 @@
 use derive_more::Display;
 use parking_lot::{RawRwLock, RwLock, RwLockReadGuard, RwLockWriteGuard};
 use paste::paste;
-use stellar_ast::{IdentifierAST, Path, Visibility};
+use stellar_ast::{IdentifierAST, ModuleItemKind, Path, Visibility};
 use stellar_diagnostics::Diagnostics;
 use stellar_filesystem::location::{Location, DUMMY_LOCATION};
 use stellar_fx_hash::FxHashMap;
@@ -94,6 +94,26 @@ impl Symbol {
             Self::TypeAlias(alias) => alias.name(db),
             Self::EnumItem(item) => item.name(db),
         }
+    }
+
+    #[inline(always)]
+    #[must_use]
+    pub fn module_item_kind(self) -> Option<ModuleItemKind> {
+        match self {
+            Self::Enum(_) => Some(ModuleItemKind::Enum),
+            Self::Struct(_) => Some(ModuleItemKind::Struct),
+            Self::Function(_) => Some(ModuleItemKind::Function),
+            Self::Interface(_) => Some(ModuleItemKind::Interface),
+            Self::TupleLikeStruct(_) => Some(ModuleItemKind::TupleLikeStruct),
+            Self::TypeAlias(_) => Some(ModuleItemKind::TypeAlias),
+            Self::EnumItem(_) | Self::Module(_) => None,
+        }
+    }
+
+    #[inline(always)]
+    #[must_use]
+    pub fn module_item_kind_or_panic(self) -> ModuleItemKind {
+        self.module_item_kind().unwrap()
     }
 }
 

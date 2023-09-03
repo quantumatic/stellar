@@ -267,3 +267,32 @@ fn resolve_name_in_module_items_except_enums() {
 
     assert!(state.diagnostics().is_fatal());
 }
+
+#[test]
+fn importing_package() {
+    let mut state = State::new();
+
+    let submodule = parse_module(
+        &mut state,
+        IdentifierID::from("b"),
+        PathID::from("a/b.sr"),
+        "import a;",
+    );
+    let root = parse_module(
+        &mut state,
+        IdentifierID::from("a"),
+        PathID::from("a/package.sr"),
+        "",
+    );
+
+    root.module()
+        .add_submodule(state.db_mut(), submodule.module());
+    state.db_mut().add_package(root.module());
+
+    let hir = LowerToHir::run_all(&mut state, vec![root, submodule]);
+
+    CollectDefinitions::run_all(&mut state, &hir);
+    ResolveImports::run_all(&mut state, &hir);
+
+    assert!(state.diagnostics().is_fatal());
+}

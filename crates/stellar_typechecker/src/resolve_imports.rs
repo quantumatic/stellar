@@ -7,7 +7,7 @@ use stellar_filesystem::location::Location;
 #[cfg(feature = "debug")]
 use tracing::trace;
 
-use crate::resolve::resolve_global_path;
+use crate::{diagnostics::PackageImport, resolve::resolve_global_path};
 
 pub struct ResolveImports<'s> {
     state: &'s mut State,
@@ -33,13 +33,27 @@ impl<'s> ResolveImports<'s> {
         })
     }
 
-    fn resolve_import(&mut self, _: Location, path: &stellar_ast::ImportPath) {
+    fn resolve_import(&mut self, location: Location, path: &stellar_ast::ImportPath) {
         #[cfg(feature = "debug")]
         let now = Instant::now();
 
         let Some(symbol) = resolve_global_path(self.state, path) else {
             return;
         };
+
+        if let Some(module) = symbol.to_module() {
+            if self
+                .state
+                .db()
+                .contains_package(module.name(self.state.db()))
+            {
+                self.state.diagnostics_mut().add_single_file_diagnostic(
+                    path.path.location.filepath,
+                    PackageImport::new(location, *path.path.identifiers.first().unwrap()),
+                );
+                return;
+            }
+        }
 
         let name = if let Some(as_) = path.as_ {
             as_.id

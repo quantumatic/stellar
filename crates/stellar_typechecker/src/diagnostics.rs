@@ -1,5 +1,6 @@
-use stellar_ast::IdentifierAST;
+use stellar_ast::{IdentifierAST, ModuleItemKind};
 use stellar_diagnostics::define_diagnostics;
+use stellar_english_commons::pluralize::PluralizeExt;
 use stellar_filesystem::location::Location;
 
 define_diagnostics! {
@@ -47,17 +48,16 @@ define_diagnostics! {
     diagnostic(error) PackageImport(
         self,
         location: Location,
-        package_name: String,
-        package_name_location: Location
+        package_name: IdentifierAST
     ) {
         code { "E007" }
-        message { format!("trying to import package `{}`", self.package_name) }
+        message { format!("trying to import package `{}`", self.package_name.id) }
         labels {
             primary self.location => {
                 format!("consider: removing this import")
             },
-            secondary self.package_name_location => {
-                format!("{} is a package, not a particular module", self.package_name)
+            secondary self.package_name.location => {
+                format!("{} is a package, not a particular module", self.package_name.id)
             }
         }
         notes {
@@ -130,13 +130,14 @@ define_diagnostics! {
     diagnostic(error) ModuleItemsExceptEnumsDoNotServeAsNamespaces(
         self,
         module_item_name: IdentifierAST,
+        module_item_kind: ModuleItemKind,
         name: IdentifierAST
     ) {
         code { "E008" }
         message { format!("failed to resolve the name `{}`", self.name.id) }
         labels {
             primary self.name.location => {
-                format!("cannot find the name `{}` in the namespace `{}`",
+                format!("cannot find the name `{}` in `{}`",
                     self.name.id, self.module_item_name.id)
             },
             secondary self.module_item_name.location => {
@@ -145,7 +146,7 @@ define_diagnostics! {
             }
         }
         notes {
-            "note: module items other than enums don't serve as namespaces"
+            format!("note: {} don't serve as namespaces", self.module_item_kind.pluralize())
         }
     }
 

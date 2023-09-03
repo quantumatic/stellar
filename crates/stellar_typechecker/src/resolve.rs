@@ -61,7 +61,11 @@ fn resolve_global_path_segment(
         _ => {
             state.diagnostics_mut().add_single_file_diagnostic(
                 namespace.location.filepath,
-                ModuleItemsExceptEnumsDoNotServeAsNamespaces::new(namespace, member),
+                ModuleItemsExceptEnumsDoNotServeAsNamespaces::new(
+                    namespace,
+                    symbol.module_item_kind_or_panic(),
+                    member,
+                ),
             );
 
             None

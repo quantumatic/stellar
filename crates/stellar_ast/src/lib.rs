@@ -1322,6 +1322,13 @@ pub enum ModuleItemKind {
     TypeAlias,
 }
 
+impl From<ModuleItemKind> for String {
+    #[inline(always)]
+    fn from(value: ModuleItemKind) -> Self {
+        value.to_string()
+    }
+}
+
 /// An enum item, e.g. `None`, `Ok(T)`, `A { b: T }`.
 #[derive(Debug, PartialEq, Eq, Clone)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]

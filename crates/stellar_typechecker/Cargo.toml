@@ -26,6 +26,7 @@ stellar_parser = { path = "../stellar_parser" }
 stellar_stable_likely = { path = "../stellar_stable_likely" }
 stellar_thir = { path = "../stellar_thir" }
 tracing = { version = "0.1.37", optional = true }
+stellar_english_commons = { path = "../stellar_english_commons" }
 
 [features]
 debug = ["dep:tracing"]
