@@ -18,6 +18,7 @@ stellar_ast = { path = "../stellar_ast" }
 stellar_ast_lowering = { path = "../stellar_ast_lowering" }
 stellar_database = { path = "../stellar_database" }
 stellar_diagnostics = { path = "../stellar_diagnostics" }
+stellar_english_commons = { path = "../stellar_english_commons" }
 stellar_filesystem = { path = "../stellar_filesystem" }
 stellar_fx_hash = { path = "../stellar_fx_hash" }
 stellar_hir = { path = "../stellar_hir" }
@@ -26,7 +27,6 @@ stellar_parser = { path = "../stellar_parser" }
 stellar_stable_likely = { path = "../stellar_stable_likely" }
 stellar_thir = { path = "../stellar_thir" }
 tracing = { version = "0.1.37", optional = true }
-stellar_english_commons = { path = "../stellar_english_commons" }
 
 [features]
 debug = ["dep:tracing"]
