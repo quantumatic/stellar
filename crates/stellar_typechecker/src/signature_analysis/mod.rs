@@ -1,1 +1,1 @@
-pub mod collect_type_signatures;
+pub mod collect_signatures;
