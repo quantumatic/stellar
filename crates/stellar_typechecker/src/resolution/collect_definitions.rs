@@ -4,8 +4,8 @@ use std::time::Instant;
 use stellar_ast::IdentifierAST;
 use stellar_ast_lowering::LoweredModule;
 use stellar_database::{
-    EnumData, EnumItemData, FunctionData, InterfaceData, ModuleID, State, StructData, Symbol,
-    TupleLikeStructData, TypeAliasData,
+    EnumData, EnumItemData, FunctionData, InterfaceData, ModuleID, SignatureData, State,
+    StructData, Symbol, TupleLikeStructData, TypeAliasData,
 };
 #[cfg(feature = "debug")]
 use tracing::trace;
@@ -56,7 +56,13 @@ impl<'s> CollectDefinitions<'s> {
         #[cfg(feature = "debug")]
         let now = Instant::now();
 
-        let mut enum_data = EnumData::new(enum_.visibility, enum_.name, self.module);
+        let signature = SignatureData::alloc(
+            self.state.db_mut(),
+            enum_.visibility,
+            enum_.name,
+            self.module,
+        );
+        let mut enum_data = EnumData::new(signature);
 
         for item in &enum_.items {
             let name = item.name();
@@ -98,12 +104,14 @@ impl<'s> CollectDefinitions<'s> {
     }
 
     fn define_function(&mut self, function: &stellar_hir::Function) {
-        let id = FunctionData::alloc(
+        let signature = SignatureData::alloc(
             self.state.db_mut(),
-            function.signature.name,
             function.signature.visibility,
+            function.signature.name,
             self.module,
         );
+
+        let id = FunctionData::alloc(self.state.db_mut(), signature);
 
         self.check_for_duplicate_definition(function.signature.name);
 
@@ -115,12 +123,14 @@ impl<'s> CollectDefinitions<'s> {
     }
 
     fn define_struct(&mut self, struct_: &stellar_hir::Struct) {
-        let id = StructData::alloc(
+        let signature = SignatureData::alloc(
             self.state.db_mut(),
             struct_.visibility,
             struct_.name,
             self.module,
         );
+
+        let id = StructData::alloc(self.state.db_mut(), signature);
 
         self.check_for_duplicate_definition(struct_.name);
 
@@ -132,12 +142,14 @@ impl<'s> CollectDefinitions<'s> {
         #[cfg(feature = "debug")]
         let now = Instant::now();
 
-        let id = TupleLikeStructData::alloc(
+        let signature = SignatureData::alloc(
             self.state.db_mut(),
             struct_.visibility,
             struct_.name,
             self.module,
         );
+
+        let id = TupleLikeStructData::alloc(self.state.db_mut(), signature);
 
         self.check_for_duplicate_definition(struct_.name);
 
@@ -160,12 +172,14 @@ impl<'s> CollectDefinitions<'s> {
         #[cfg(feature = "debug")]
         let now = Instant::now();
 
-        let id = InterfaceData::alloc(
+        let signature = SignatureData::alloc(
             self.state.db_mut(),
             interface.visibility,
             interface.name,
             self.module,
         );
+
+        let id = InterfaceData::alloc(self.state.db_mut(), signature);
 
         self.check_for_duplicate_definition(interface.name);
 
@@ -188,12 +202,15 @@ impl<'s> CollectDefinitions<'s> {
         #[cfg(feature = "debug")]
         let now = Instant::now();
 
-        let id = TypeAliasData::alloc(
+        let signature = SignatureData::alloc(
             self.state.db_mut(),
             alias.visibility,
             alias.name,
             self.module,
         );
+
+        let id = TypeAliasData::alloc(self.state.db_mut(), signature);
+
         self.check_for_duplicate_definition(alias.name);
 
         self.module
@@ -225,7 +242,7 @@ impl<'s> CollectDefinitions<'s> {
     fn check_for_duplicate_enum_item(&mut self, enum_data: &EnumData, item_name: IdentifierAST) {
         if let Some(enum_item) = enum_data.items.get(&item_name.id) {
             let diagnostic = EnumItemDefinedMultipleTimes::new(
-                enum_data.name.id,
+                self.state.db().signature(enum_data.signature).name.id,
                 item_name.id,
                 enum_item.name(self.state.db()).location,
                 item_name.location,

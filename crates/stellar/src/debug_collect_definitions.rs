@@ -4,7 +4,7 @@ use stellar_ast_lowering::LowerToHir;
 use stellar_database::State;
 use stellar_diagnostics::{diagnostic::Diagnostic, DiagnosticsEmitter};
 use stellar_parser::parse_package_source_files;
-use stellar_typechecker::collect_definitions::CollectDefinitions;
+use stellar_typechecker::resolution::collect_definitions::CollectDefinitions;
 
 use crate::prefix::log;
 

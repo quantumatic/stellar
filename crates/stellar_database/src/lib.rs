@@ -86,12 +86,12 @@ impl Symbol {
                 location: DUMMY_LOCATION,
                 id: db.module(module).name,
             },
-            Self::Enum(enum_) => enum_.name(db),
-            Self::Struct(struct_) => struct_.name(db),
-            Self::Function(function) => function.name(db),
-            Self::Interface(interface) => interface.name(db),
-            Self::TupleLikeStruct(struct_) => struct_.name(db),
-            Self::TypeAlias(alias) => alias.name(db),
+            Self::Enum(enum_) => enum_.signature(db).name(db),
+            Self::Struct(struct_) => struct_.signature(db).name(db),
+            Self::Function(function) => function.signature(db).name(db),
+            Self::Interface(interface) => interface.signature(db).name(db),
+            Self::TupleLikeStruct(struct_) => struct_.signature(db).name(db),
+            Self::TypeAlias(alias) => alias.signature(db).name(db),
             Self::EnumItem(item) => item.name(db),
         }
     }
@@ -120,11 +120,7 @@ impl Symbol {
 /// A data that Stellar compiler has about an enum.
 #[derive(Debug)]
 pub struct EnumData {
-    pub visibility: Visibility,
-    pub name: IdentifierAST,
-    pub module: ModuleID,
-    pub implements: Vec<TypeConstructor>,
-    pub predicates: Vec<PredicateID>,
+    pub signature: SignatureID,
     pub items: FxHashMap<IdentifierID, EnumItemID>,
     pub methods: FxHashMap<IdentifierID, FunctionID>,
 }
@@ -133,25 +129,16 @@ impl EnumData {
     /// Creates a new enum data object in the database and returns its ID.
     #[inline(always)]
     #[must_use]
-    pub fn alloc(
-        db: &mut Database,
-        visibility: Visibility,
-        name: IdentifierAST,
-        module: ModuleID,
-    ) -> EnumID {
-        db.add_enum_module_item(Self::new(visibility, name, module))
+    pub fn alloc(db: &mut Database, signature: SignatureID) -> EnumID {
+        db.add_enum_module_item(Self::new(signature))
     }
 
     /// Creates a new enum data object.
     #[inline(always)]
     #[must_use]
-    pub fn new(visibility: Visibility, name: IdentifierAST, module: ModuleID) -> Self {
+    pub fn new(signature: SignatureID) -> Self {
         Self {
-            visibility,
-            name,
-            module,
-            implements: Vec::new(),
-            predicates: Vec::new(),
+            signature,
             items: FxHashMap::default(),
             methods: FxHashMap::default(),
         }
@@ -163,32 +150,11 @@ impl EnumData {
 pub struct EnumID(pub usize);
 
 impl EnumID {
-    /// Returns the name of the enum.
-    #[inline(always)]
-    #[must_use]
-    pub fn name(self, db: &Database) -> IdentifierAST {
-        db.enum_module_item(self).name
-    }
-
-    /// Returns the module which enum is defined in.
-    #[inline(always)]
-    #[must_use]
-    pub fn module(self, db: &Database) -> ModuleID {
-        db.enum_module_item(self).module
-    }
-
-    /// Returns a list of interfaces implemented by the enum.
-    #[inline(always)]
-    #[must_use]
-    pub fn implements(self, db: &Database) -> &[TypeConstructor] {
-        &db.enum_module_item(self).implements
-    }
-
     /// Returns a list of predicates associated with the enum.
     #[inline(always)]
     #[must_use]
-    pub fn predicates(self, db: &Database) -> &[PredicateID] {
-        &db.enum_module_item(self).predicates
+    pub fn signature(self, db: &Database) -> SignatureID {
+        db.enum_module_item(self).signature
     }
 
     /// Returns a list of items associated with the enum.
@@ -214,10 +180,7 @@ impl EnumID {
 /// A data that Stellar compiler has about a struct.
 #[derive(Debug)]
 pub struct StructData {
-    pub visibility: Visibility,
-    pub name: IdentifierAST,
-    pub module: ModuleID,
-    pub predicates: Vec<PredicateID>,
+    pub signature: SignatureID,
     pub fields: FxHashMap<IdentifierID, FieldID>,
     pub methods: FxHashMap<IdentifierID, FunctionID>,
 }
@@ -226,24 +189,16 @@ impl StructData {
     /// Creates a new struct data object in the database and returns its ID.
     #[inline(always)]
     #[must_use]
-    pub fn alloc(
-        db: &mut Database,
-        visibility: Visibility,
-        name: IdentifierAST,
-        module: ModuleID,
-    ) -> StructID {
-        db.add_struct_module_item(Self::new(visibility, name, module))
+    pub fn alloc(db: &mut Database, signature: SignatureID) -> StructID {
+        db.add_struct_module_item(Self::new(signature))
     }
 
     /// Creates a new struct data object.
     #[inline(always)]
     #[must_use]
-    pub fn new(visibility: Visibility, name: IdentifierAST, module: ModuleID) -> Self {
+    pub fn new(signature: SignatureID) -> Self {
         Self {
-            visibility,
-            name,
-            module,
-            predicates: Vec::new(),
+            signature,
             fields: FxHashMap::default(),
             methods: FxHashMap::default(),
         }
@@ -255,25 +210,11 @@ impl StructData {
 pub struct StructID(pub usize);
 
 impl StructID {
-    /// Returns the name of the struct.
-    #[inline(always)]
-    #[must_use]
-    pub fn name(self, db: &Database) -> IdentifierAST {
-        db.struct_module_item(self).name
-    }
-
-    /// Returns the module which struct is defined in.
-    #[inline(always)]
-    #[must_use]
-    pub fn module(self, db: &Database) -> ModuleID {
-        db.struct_module_item(self).module
-    }
-
     /// Returns a list of predicates associated with the struct.
     #[inline(always)]
     #[must_use]
-    pub fn predicates(self, db: &Database) -> &[PredicateID] {
-        &db.struct_module_item(self).predicates
+    pub fn signature(self, db: &Database) -> SignatureID {
+        db.struct_module_item(self).signature
     }
 
     /// Returns a list of fields associated with the struct.
@@ -287,34 +228,25 @@ impl StructID {
 /// A data that Stellar compiler has about a function.
 #[derive(Debug)]
 pub struct TupleLikeStructData {
-    pub visibility: Visibility,
-    pub name: IdentifierAST,
+    pub signature: SignatureID,
     pub fields: Vec<(Visibility, Type)>,
-    pub module: ModuleID,
 }
 
 impl TupleLikeStructData {
     /// Creates a new tuple-like struct data object in the database and returns its ID.
     #[inline(always)]
     #[must_use]
-    pub fn alloc(
-        db: &mut Database,
-        visibility: Visibility,
-        name: IdentifierAST,
-        module: ModuleID,
-    ) -> TupleLikeStructID {
-        db.add_tuple_like_struct(Self::new(visibility, name, module))
+    pub fn alloc(db: &mut Database, signature: SignatureID) -> TupleLikeStructID {
+        db.add_tuple_like_struct(Self::new(signature))
     }
 
     /// Creates a new tuple-like struct data object.
     #[inline(always)]
     #[must_use]
-    pub fn new(visibility: Visibility, name: IdentifierAST, module: ModuleID) -> Self {
+    pub fn new(signature: SignatureID) -> Self {
         Self {
-            visibility,
-            name,
+            signature,
             fields: Vec::new(),
-            module,
         }
     }
 }
@@ -324,11 +256,11 @@ impl TupleLikeStructData {
 pub struct TupleLikeStructID(pub usize);
 
 impl TupleLikeStructID {
-    /// Returns the name of the struct.
+    /// Returns the type signature of the struct.
     #[inline(always)]
     #[must_use]
-    pub fn name(self, db: &Database) -> IdentifierAST {
-        db.tuple_like_struct(self).name
+    pub fn signature(self, db: &Database) -> SignatureID {
+        db.tuple_like_struct(self).signature
     }
 }
 
@@ -413,6 +345,13 @@ pub struct GenericParameterScopeData {
 }
 
 impl GenericParameterScopeData {
+    /// Creates a new generic parameter scope data object in the database and returns its ID.
+    #[inline(always)]
+    #[must_use]
+    pub fn alloc(db: &mut Database) -> GenericParameterScopeID {
+        db.add_generic_parameter_scope(Self::new(None))
+    }
+
     /// Creates a new empty generic parameter scope.
     #[inline(always)]
     #[must_use]
@@ -553,36 +492,98 @@ impl EnumItemID {
     }
 }
 
+/// A data that Stellar compiler has about a particular type signature.
+#[derive(Debug)]
+pub struct SignatureData {
+    pub visibility: Visibility,
+    pub name: IdentifierAST,
+    pub module: ModuleID,
+    pub generic_parameter_scope: GenericParameterScopeID,
+    pub predicates: Vec<PredicateID>,
+    pub implements: Vec<TypeConstructor>,
+}
+
+impl SignatureData {
+    /// Creates a new signature data object in the database and returns its ID.
+    #[inline(always)]
+    #[must_use]
+    pub fn alloc(
+        db: &mut Database,
+        visibility: Visibility,
+        name: IdentifierAST,
+        module: ModuleID,
+    ) -> SignatureID {
+        let generic_parameter_scope = GenericParameterScopeData::alloc(db);
+
+        db.add_signature(Self::new(visibility, name, generic_parameter_scope, module))
+    }
+
+    /// Creates a new signature data object.
+    #[inline(always)]
+    #[must_use]
+    pub fn new(
+        visibility: Visibility,
+        name: IdentifierAST,
+        generic_parameter_scope: GenericParameterScopeID,
+        module: ModuleID,
+    ) -> Self {
+        Self {
+            visibility,
+            name,
+            module,
+            generic_parameter_scope,
+            predicates: Vec::new(),
+            implements: Vec::new(),
+        }
+    }
+}
+
+/// A unique ID that maps to [`TypeSignatureData`].
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
+pub struct SignatureID(pub usize);
+
+impl SignatureID {
+    /// Returns the name.
+    #[inline(always)]
+    #[must_use]
+    pub fn name(self, db: &Database) -> IdentifierAST {
+        db.signature(self).name
+    }
+
+    /// Returns the visibility.
+    #[inline(always)]
+    #[must_use]
+    pub fn visibility(self, db: &Database) -> Visibility {
+        db.signature(self).visibility
+    }
+
+    /// Returns the module.
+    #[inline(always)]
+    #[must_use]
+    pub fn module(self, db: &Database) -> ModuleID {
+        db.signature(self).module
+    }
+}
+
 /// A data that Stellar compiler has about a function.
 #[derive(Debug)]
 pub struct FunctionData {
-    pub name: IdentifierAST,
-    pub visibility: Visibility,
-    pub module: ModuleID,
+    pub signature: SignatureID,
 }
 
 impl FunctionData {
     /// Creates a new function data object in the database and returns its ID.
     #[inline(always)]
     #[must_use]
-    pub fn alloc(
-        db: &mut Database,
-        name: IdentifierAST,
-        visibility: Visibility,
-        module: ModuleID,
-    ) -> FunctionID {
-        db.add_function(Self::new(name, visibility, module))
+    pub fn alloc(db: &mut Database, signature: SignatureID) -> FunctionID {
+        db.add_function(Self::new(signature))
     }
 
     /// Creates a new function data object.
     #[inline(always)]
     #[must_use]
-    pub fn new(name: IdentifierAST, visibility: Visibility, module: ModuleID) -> Self {
-        Self {
-            name,
-            visibility,
-            module,
-        }
+    pub fn new(signature: SignatureID) -> Self {
+        Self { signature }
     }
 }
 
@@ -591,21 +592,18 @@ impl FunctionData {
 pub struct FunctionID(pub usize);
 
 impl FunctionID {
-    /// Returns the name of the function.
+    /// Returns the function signature.
     #[inline(always)]
     #[must_use]
-    pub fn name(self, db: &Database) -> IdentifierAST {
-        db.function(self).name
+    pub fn signature(self, db: &Database) -> SignatureID {
+        db.function(self).signature
     }
 }
 
 /// A data that Stellar compiler has about an interface.
 #[derive(Debug)]
 pub struct InterfaceData {
-    pub visibility: Visibility,
-    pub name: IdentifierAST,
-    pub module: ModuleID,
-    pub predicates: Vec<PredicateID>,
+    pub signature: SignatureID,
     pub methods: FxHashMap<IdentifierID, FunctionID>,
 }
 
@@ -613,24 +611,16 @@ impl InterfaceData {
     /// Creates a new interface data object in the database and returns its ID.
     #[inline(always)]
     #[must_use]
-    pub fn alloc(
-        db: &mut Database,
-        visibility: Visibility,
-        name: IdentifierAST,
-        module: ModuleID,
-    ) -> InterfaceID {
-        db.add_interface(Self::new(visibility, name, module))
+    pub fn alloc(db: &mut Database, signature: SignatureID) -> InterfaceID {
+        db.add_interface(Self::new(signature))
     }
 
     /// Creates a new interface data object.
     #[inline(always)]
     #[must_use]
-    pub fn new(visibility: Visibility, name: IdentifierAST, module: ModuleID) -> Self {
+    pub fn new(signature: SignatureID) -> Self {
         Self {
-            visibility,
-            name,
-            module,
-            predicates: Vec::new(),
+            signature,
             methods: FxHashMap::default(),
         }
     }
@@ -641,45 +631,36 @@ impl InterfaceData {
 pub struct InterfaceID(pub usize);
 
 impl InterfaceID {
-    /// Returns the name of the interface.
+    /// Returns the type signature of the interface.
     #[inline(always)]
     #[must_use]
-    pub fn name(self, db: &Database) -> IdentifierAST {
-        db.interface(self).name
+    pub fn signature(self, db: &Database) -> SignatureID {
+        db.interface(self).signature
     }
 }
 
 /// A data that Stellar compiler has about a module.
 #[derive(Debug)]
 pub struct TypeAliasData {
-    pub visibility: Visibility,
-    pub name: IdentifierAST,
+    pub signature: SignatureID,
     pub ty: Type,
-    pub module: ModuleID,
 }
 
 impl TypeAliasData {
     /// Creates a new type alias data object in the database and returns its ID.
     #[inline(always)]
     #[must_use]
-    pub fn alloc(
-        db: &mut Database,
-        visibility: Visibility,
-        name: IdentifierAST,
-        module: ModuleID,
-    ) -> TypeAliasID {
-        db.add_type_alias(Self::new(visibility, name, module))
+    pub fn alloc(db: &mut Database, signature: SignatureID) -> TypeAliasID {
+        db.add_type_alias(Self::new(signature))
     }
 
     /// Creates a new type alias data object.
     #[inline(always)]
     #[must_use]
-    pub fn new(visibility: Visibility, name: IdentifierAST, module: ModuleID) -> Self {
+    pub fn new(signature: SignatureID) -> Self {
         Self {
-            visibility,
-            name,
+            signature,
             ty: Type::Unknown,
-            module,
         }
     }
 }
@@ -689,11 +670,11 @@ impl TypeAliasData {
 pub struct TypeAliasID(pub usize);
 
 impl TypeAliasID {
-    /// Returns the name of the type alias.
+    /// Returns the signature of the type alias.
     #[inline(always)]
     #[must_use]
-    pub fn name(self, db: &Database) -> IdentifierAST {
-        db.type_alias(self).name
+    pub fn signature(self, db: &Database) -> SignatureID {
+        db.type_alias(self).signature
     }
 }
 
@@ -894,6 +875,7 @@ pub struct Database {
     type_aliases: Vec<TypeAliasData>,
     generic_parameter_scopes: Vec<GenericParameterScopeData>,
     generic_parameters: Vec<GenericParameterData>,
+    signatures: Vec<SignatureData>,
 }
 
 macro_rules! db_methods {
@@ -999,11 +981,13 @@ impl Database {
         interface(interfaces):      InterfaceID => InterfaceData,
         predicate(predicates):      PredicateID => PredicateData,
         enum_item(enum_items):      EnumItemID => EnumItemData,
-        field(fields):              FieldID =>   FieldData,
+        field(fields):              FieldID => FieldData,
         generic_parameter_scope(generic_parameter_scopes):
                                     GenericParameterScopeID => GenericParameterScopeData,
         generic_parameter(generic_parameters):
-                                    GenericParameterID => GenericParameterData
+                                    GenericParameterID => GenericParameterData,
+        signature(signatures):
+                                    SignatureID => SignatureData
     }
 }
 

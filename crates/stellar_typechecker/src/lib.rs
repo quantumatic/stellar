@@ -1,4 +1,5 @@
-pub mod collect_definitions;
+#![allow(warnings)]
+
 mod diagnostics;
-pub mod resolve;
-pub mod resolve_imports;
+pub mod resolution;
+pub mod signature_analysis;

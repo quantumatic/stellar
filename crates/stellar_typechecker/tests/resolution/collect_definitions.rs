@@ -2,7 +2,7 @@ use stellar_ast_lowering::LowerToHir;
 use stellar_database::State;
 use stellar_interner::{IdentifierID, PathID, DUMMY_IDENTIFIER_ID};
 use stellar_parser::parse_module;
-use stellar_typechecker::collect_definitions::CollectDefinitions;
+use stellar_typechecker::resolution::collect_definitions::CollectDefinitions;
 
 #[test]
 fn test_enum() {

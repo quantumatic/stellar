@@ -3,7 +3,8 @@ use stellar_database::State;
 use stellar_interner::{IdentifierID, PathID};
 use stellar_parser::parse_module;
 use stellar_typechecker::{
-    collect_definitions::CollectDefinitions, resolve_imports::ResolveImports,
+    resolution::collect_definitions::CollectDefinitions,
+    resolution::resolve_imports::ResolveImports,
 };
 
 #[test]

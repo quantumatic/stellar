@@ -7,7 +7,7 @@ use stellar_filesystem::location::Location;
 #[cfg(feature = "debug")]
 use tracing::trace;
 
-use crate::{diagnostics::PackageImport, resolve::resolve_global_path};
+use crate::{diagnostics::PackageImport, resolution::resolve::resolve_global_path};
 
 pub struct ResolveImports<'s> {
     state: &'s mut State,
