@@ -134,6 +134,7 @@ impl From<IdentifierID> for String {
 impl FromStr for IdentifierID {
     type Err = ();
 
+    #[inline(always)]
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         Ok(Self::from(s))
     }
@@ -722,6 +723,7 @@ impl PathID {
 }
 
 impl Display for PathID {
+    #[inline(always)]
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.resolve_or_panic().display())
     }
@@ -737,6 +739,7 @@ impl From<PathID> for String {
 impl FromStr for PathID {
     type Err = ();
 
+    #[inline(always)]
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         Ok(Self::from(s))
     }
