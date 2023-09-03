@@ -524,6 +524,7 @@ pub struct SignatureData {
     pub generic_parameter_scope: GenericParameterScopeID,
     pub predicates: Vec<PredicateID>,
     pub implements: Vec<TypeConstructor>,
+    pub is_analyzed: bool,
 }
 
 impl SignatureData {
@@ -557,6 +558,7 @@ impl SignatureData {
             generic_parameter_scope,
             predicates: Vec::new(),
             implements: Vec::new(),
+            is_analyzed: false,
         }
     }
 }
@@ -585,6 +587,18 @@ impl SignatureID {
     #[must_use]
     pub fn module(self, db: &Database) -> ModuleID {
         db.signature(self).module
+    }
+
+    #[inline(always)]
+    #[must_use]
+    pub fn analyzed(mut self, db: &mut Database) {
+        db.signature_mut(self).is_analyzed = true;
+    }
+
+    #[inline(always)]
+    #[must_use]
+    pub fn add_predicate(self, db: &mut Database, predicate: PredicateID) {
+        db.signature_mut(self).predicates.push(predicate);
     }
 }
 
@@ -698,6 +712,18 @@ impl TypeAliasID {
     #[must_use]
     pub fn signature(self, db: &Database) -> SignatureID {
         db.type_alias(self).signature
+    }
+
+    #[inline(always)]
+    #[must_use]
+    pub fn ty(self, db: &Database) -> &Type {
+        &db.type_alias(self).ty
+    }
+
+    #[inline(always)]
+    #[must_use]
+    pub fn ty_mut(mut self, db: &mut Database) -> &mut Type {
+        &mut db.type_alias_mut(self).ty
     }
 }
 

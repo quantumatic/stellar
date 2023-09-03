@@ -9,6 +9,26 @@ use crate::diagnostics::{
     FailedToResolvePackage, ModuleItemsExceptEnumsDoNotServeAsNamespaces,
 };
 
+pub fn resolve_global_path_in_module_context(
+    state: &mut State,
+    path: &stellar_ast::Path,
+    module: ModuleID,
+) -> Option<Symbol> {
+    let mut identifiers = path.identifiers.iter();
+    let namespace = identifiers.next()?;
+
+    let Some(namespace_symbol) = module.symbol(state.db(), namespace.id) else {
+        state.diagnostics_mut().add_single_file_diagnostic(
+            namespace.location.filepath,
+            FailedToResolvePackage::new(namespace.location, namespace.id),
+        );
+
+        return None;
+    };
+
+    resolve_global_path_by_first_symbol(state, namespace_symbol, namespace, identifiers)
+}
+
 pub fn resolve_global_path(state: &mut State, path: &stellar_ast::ImportPath) -> Option<Symbol> {
     let mut identifiers = path.path.identifiers.iter();
     let namespace = identifiers.next()?;

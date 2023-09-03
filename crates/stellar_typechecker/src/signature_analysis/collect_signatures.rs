@@ -1,9 +1,12 @@
 use stellar_ast_lowering::LoweredModule;
 use stellar_database::{
     GenericParameterData, GenericParameterScopeData, GenericParameterScopeID, ModuleID,
-    SignatureID, State,
+    PredicateData, SignatureID, State,
 };
-use stellar_thir::ty::Type;
+use stellar_thir::{
+    ty::{Type, TypeConstructor},
+    Path, Predicate,
+};
 
 pub struct CollectSignatures<'s> {
     state: &'s mut State,
@@ -33,16 +36,16 @@ impl<'s> CollectSignatures<'s> {
         })
     }
 
-    fn analyze_enum_type_signature(&mut self, module: ModuleID, enum_: &stellar_hir::Enum) {
-        self.analyze_generic_parameters(
-            module,
-            module
-                .module_item_symbol_or_panic(self.state.db(), enum_.name.id)
-                .to_enum_or_panic()
-                .signature(self.state.db()),
-            None,
-            &enum_.generic_parameters,
-        );
+    fn analyze_enum_type_signature(&mut self, module: ModuleID, enum_hir: &stellar_hir::Enum) {
+        let signature = module
+            .symbol_or_panic(self.state.db(), enum_hir.name.id)
+            .to_enum_or_panic()
+            .signature(self.state.db());
+
+        self.analyze_generic_parameters(module, signature, None, &enum_hir.generic_parameters);
+        self.analyze_where_predicates(module, signature, &enum_hir.where_predicates);
+
+        signature.analyzed(self.state.db_mut());
     }
 
     fn analyze_generic_parameters(
@@ -61,6 +64,18 @@ impl<'s> CollectSignatures<'s> {
                 None
             };
 
+            if let Some(bounds) = &parameter_hir.bounds {
+                let bounds = self.resolve_bounds(bounds);
+
+                let predicate = PredicateData::alloc(
+                    self.state.db_mut(),
+                    Type::Constructor(TypeConstructor::new_primitive(parameter_hir.name.id)),
+                    bounds,
+                );
+
+                signature.add_predicate(self.state.db_mut(), predicate);
+            }
+
             let generic_parameter = GenericParameterData::alloc(
                 self.state.db_mut(),
                 parameter_hir.name.location,
@@ -75,9 +90,53 @@ impl<'s> CollectSignatures<'s> {
         })
     }
 
-    fn resolve_type(&self, ty: &stellar_hir::Type) -> Option<Type> {
+    fn analyze_where_predicates(
+        &mut self,
+        module: ModuleID,
+        signature: SignatureID,
+        predicates_hir: &[stellar_hir::WherePredicate],
+    ) {
+        predicates_hir.iter().for_each(|predicate_hir| {
+            let Some(ty) = self.resolve_type(&predicate_hir.ty) else {
+                return;
+            };
+
+            let bounds = self.resolve_bounds(&predicate_hir.bounds);
+
+            let predicate = PredicateData::alloc(self.state.db_mut(), ty, bounds);
+
+            signature.add_predicate(self.state.db_mut(), predicate);
+        })
+    }
+
+    fn resolve_bounds(&mut self, bounds: &[stellar_hir::TypeConstructor]) -> Vec<TypeConstructor> {
         todo!()
     }
 
-    fn analyze_type_alias(&self, module: ModuleID, alias: &stellar_hir::TypeAlias) {}
+    fn resolve_bound(&mut self, bound: &stellar_hir::TypeConstructor) -> TypeConstructor {
+        todo!()
+    }
+
+    fn resolve_type(&mut self, ty: &stellar_hir::Type) -> Option<Type> {
+        todo!()
+    }
+
+    fn analyze_type_signature(&mut self, path: &stellar_ast::Path) {}
+
+    fn analyze_type_alias(&mut self, module: ModuleID, alias_hir: &stellar_hir::TypeAlias) {
+        let alias = module
+            .symbol_or_panic(self.state.db(), alias_hir.name.id)
+            .to_type_alias_or_panic();
+        let signature = alias.signature(self.state.db());
+
+        self.analyze_generic_parameters(module, signature, None, &alias_hir.generic_parameters);
+
+        let Some(value) = self.resolve_type(&alias_hir.value) else {
+            return;
+        };
+
+        *alias.ty_mut(self.state.db_mut()) = value;
+
+        signature.analyzed(self.state.db_mut());
+    }
 }
