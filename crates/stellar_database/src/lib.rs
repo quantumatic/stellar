@@ -926,7 +926,7 @@ pub struct Database {
     signatures: Vec<SignatureData>,
 }
 
-macro_rules! __db_access_method {
+macro_rules! __db_first_access_method {
     (
         {
             name_singular: $what:ident,
@@ -945,55 +945,6 @@ macro_rules! __db_access_method {
                 #[must_use]
                 pub fn $what(&self, id: $id_ty) -> &$data_ty {
                     &self.$whats[id.0]
-                }
-
-                #[doc = "Returns a mutable reference to [`" $data_ty "`] by its ID ([`" $id_ty "`])."]
-                #[doc = "# Panics"]
-                #[doc = "Panics if an object with the given ID is not present in the database storage."]
-                #[doc = ""]
-                #[doc = "_This function is automatically generated using a macro!_"]
-                #[inline(always)]
-                #[must_use]
-                pub fn [<$what _mut>](&mut self, id: $id_ty) -> &mut $data_ty {
-                    &mut self.$whats[id.0]
-                }
-
-                #[doc = "Returns an immutable reference to [`" $data_ty "`] by its ID ([`" $id_ty "`])."]
-                #[doc = ""]
-                #[doc = "_This function is automatically generated using a macro!_"]
-                #[inline(always)]
-                #[must_use]
-                pub fn [<$what _or_none>](&self, id: $id_ty) -> Option<&$data_ty> {
-                    self.$whats.get(id.0)
-                }
-
-                #[doc = "Returns a mutable reference to [`" $data_ty "`] by its ID ([`" $id_ty "`])."]
-                #[doc = ""]
-                #[doc = "_This function is automatically generated using a macro!_"]
-                #[inline(always)]
-                #[must_use]
-                pub fn [<$what _mut_or_none>](&mut self, id: $id_ty) -> Option<&mut $data_ty> {
-                    self.$whats.get_mut(id.0)
-                }
-
-                #[doc = "Returns whether a database object of type [`" $data_ty "`] with a given ID ([`" $id_ty "`]) is present in the database storage."]
-                #[doc = ""]
-                #[doc = "_This function is automatically generated using a macro!_"]
-                #[inline(always)]
-                #[must_use]
-                pub fn [<contains_ $what>](&self, id: $id_ty) -> bool {
-                    id.0 < self.$whats.len()
-                }
-
-                #[doc = "Adds an object of type [`" $data_ty "`] to the database storage."]
-                #[doc = ""]
-                #[doc = "_This function is automatically generated using a macro!_"]
-                #[inline(always)]
-                #[must_use]
-                pub fn [<add_ $what>](&mut self, [<$what _>]: $data_ty) -> $id_ty {
-                    self.$whats.push([<$what _>]);
-
-                    $id_ty(self.$whats.len() - 1)
                 }
             }
     };
@@ -1017,62 +968,96 @@ macro_rules! __db_access_method {
                 pub fn [<$what _>](&self, id: $id_ty) -> &$data_ty {
                     &self.$whats[id.0]
                 }
-
-                #[doc = "Returns a mutable reference to [`" $data_ty "`] by its ID ([`" $id_ty "`])."]
-                #[doc = "# Panics"]
-                #[doc = "Panics if an object with the given ID is not present in the database storage."]
-                #[doc = ""]
-                #[doc = "_This function is automatically generated using a macro!_"]
-                #[inline(always)]
-                #[must_use]
-                pub fn [<$what _mut>](&mut self, id: $id_ty) -> &mut $data_ty {
-                    &mut self.$whats[id.0]
-                }
-
-                #[doc = "Returns an immutable reference to [`" $data_ty "`] by its ID ([`" $id_ty "`])."]
-                #[doc = ""]
-                #[doc = "_This function is automatically generated using a macro!_"]
-                #[inline(always)]
-                #[must_use]
-                pub fn [<$what _or_none>](&self, id: $id_ty) -> Option<&$data_ty> {
-                    self.$whats.get(id.0)
-                }
-
-                #[doc = "Returns a mutable reference to [`" $data_ty "`] by its ID ([`" $id_ty "`])."]
-                #[doc = ""]
-                #[doc = "_This function is automatically generated using a macro!_"]
-                #[inline(always)]
-                #[must_use]
-                pub fn [<$what _mut_or_none>](&mut self, id: $id_ty) -> Option<&mut $data_ty> {
-                    self.$whats.get_mut(id.0)
-                }
-
-                #[doc = "Returns whether a [`" $data_ty "`] with a given ID ([`" $id_ty "`]) is present in the database storage."]
-                #[doc = ""]
-                #[doc = "_This function is automatically generated using a macro!_"]
-                #[inline(always)]
-                #[must_use]
-                pub fn [<contains_ $what>](&self, id: $id_ty) -> bool {
-                    id.0 < self.$whats.len()
-                }
-
-                #[doc = "Adds an object of type [`" $data_ty "`] to the database storage and returns its ID ([`" $id_ty "`])."]
-                #[doc = ""]
-                #[doc = "_This function is automatically generated using a macro!_"]
-                #[inline(always)]
-                #[must_use]
-                pub fn [<add_ $what>](&mut self, [<$what _>]: $data_ty) -> $id_ty {
-                    self.$whats.push([<$what _>]);
-
-                    $id_ty(self.$whats.len() - 1)
-                }
             }
     };
 }
 
+macro_rules! __db_rest_of_access_methods {
+    (
+        {
+            name_singular: $what:ident,
+            name_plural: $whats:ident,
+            id_ty: $id_ty:ty,
+            data_ty: $data_ty:ty
+        }
+    ) => {
+        paste! {
+            #[doc = "Returns a mutable reference to [`" $data_ty "`] by its ID ([`" $id_ty "`])."]
+            #[doc = "# Panics"]
+            #[doc = "Panics if an object with the given ID is not present in the database storage."]
+            #[doc = ""]
+            #[doc = "_This function is automatically generated using a macro!_"]
+            #[inline(always)]
+            #[must_use]
+            pub fn [<$what _mut>](&mut self, id: $id_ty) -> &mut $data_ty {
+                &mut self.$whats[id.0]
+            }
+
+            #[doc = "Returns an immutable reference to [`" $data_ty "`] by its ID ([`" $id_ty "`])."]
+            #[doc = ""]
+            #[doc = "_This function is automatically generated using a macro!_"]
+            #[inline(always)]
+            #[must_use]
+            pub fn [<$what _or_none>](&self, id: $id_ty) -> Option<&$data_ty> {
+                self.$whats.get(id.0)
+            }
+
+            #[doc = "Returns a mutable reference to [`" $data_ty "`] by its ID ([`" $id_ty "`])."]
+            #[doc = ""]
+            #[doc = "_This function is automatically generated using a macro!_"]
+            #[inline(always)]
+            #[must_use]
+            pub fn [<$what _mut_or_none>](&mut self, id: $id_ty) -> Option<&mut $data_ty> {
+                self.$whats.get_mut(id.0)
+            }
+
+            #[doc = "Returns whether a [`" $data_ty "`] with a given ID ([`" $id_ty "`]) is present in the database storage."]
+            #[doc = ""]
+            #[doc = "_This function is automatically generated using a macro!_"]
+            #[inline(always)]
+            #[must_use]
+            pub fn [<contains_ $what>](&self, id: $id_ty) -> bool {
+                id.0 < self.$whats.len()
+            }
+
+            #[doc = "Adds an object of type [`" $data_ty "`] to the database storage and returns its ID ([`" $id_ty "`])."]
+            #[doc = ""]
+            #[doc = "_This function is automatically generated using a macro!_"]
+            #[inline(always)]
+            #[must_use]
+            pub fn [<add_ $what>](&mut self, [<$what _>]: $data_ty) -> $id_ty {
+                self.$whats.push([<$what _>]);
+
+                $id_ty(self.$whats.len() - 1)
+            }
+        }
+    };
+    (
+        {
+            reserved_name,
+            name_singular: $what:ident,
+            name_plural: $whats:ident,
+            id_ty: $id_ty:ty,
+            data_ty: $data_ty:ty
+        }
+    ) => {
+        __db_rest_of_access_methods! {
+            {
+                name_singular: $what,
+                name_plural: $whats,
+                id_ty: $id_ty,
+                data_ty: $data_ty
+            }
+        }
+    }
+}
+
 macro_rules! __db_data_access_methods {
     ($($tt:tt),*) => {
-        $(__db_access_method! { $tt })*
+        $(
+            __db_first_access_method! { $tt }
+            __db_rest_of_access_methods! { $tt }
+        )*
     };
 }
 
