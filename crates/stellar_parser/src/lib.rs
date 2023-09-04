@@ -90,7 +90,7 @@ use stellar_ast::{
     Expression, IdentifierAST, Module, ModuleItem, Pattern, Statement, Type, Visibility,
 };
 use stellar_database::{ModuleData, ModuleID, State};
-use stellar_diagnostics::{BuildDiagnostic, Diagnostics};
+use stellar_diagnostics::Diagnostics;
 use stellar_filesystem::{
     location::{ByteOffset, Location, LocationIndex},
     path_resolver::PackagePathResolver,
@@ -433,10 +433,11 @@ impl<'s, 'd> ParseState<'s, 'd> {
     #[inline(always)]
     fn check_next_token(&mut self) {
         if let RawToken::Error(error) = self.next_token.raw {
-            self.add_diagnostic(LexErrorDiagnostic::new(LexError {
-                location: self.next_token.location,
-                raw: error,
-            }));
+            self.diagnostics
+                .add_file_diagnostic(LexErrorDiagnostic::new(LexError {
+                    location: self.next_token.location,
+                    raw: error,
+                }));
         }
     }
 
@@ -471,7 +472,7 @@ impl<'s, 'd> ParseState<'s, 'd> {
         if self.next_token.raw == expected {
             Some(())
         } else {
-            self.add_diagnostic(UnexpectedToken::new(
+            self.diagnostics.add_file_diagnostic(UnexpectedToken::new(
                 self.current_token.location.end,
                 self.next_token,
                 expected,
@@ -515,7 +516,7 @@ impl<'s, 'd> ParseState<'s, 'd> {
                 id: self.lexer.scanned_identifier,
             }
         } else {
-            self.add_diagnostic(UnexpectedToken::new(
+            self.diagnostics.add_file_diagnostic(UnexpectedToken::new(
                 self.current_token.location.end,
                 self.next_token,
                 "identifier",
@@ -558,14 +559,6 @@ impl<'s, 'd> ParseState<'s, 'd> {
         } else {
             None
         }
-    }
-
-    /// Saves a single file diagnostic.
-    #[inline(always)]
-    #[allow(clippy::needless_pass_by_value)]
-    pub(crate) fn add_diagnostic(&mut self, diagnostic: impl BuildDiagnostic) {
-        self.diagnostics
-            .add_single_file_diagnostic(self.lexer.filepath, diagnostic);
     }
 }
 

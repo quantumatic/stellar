@@ -2,7 +2,7 @@
 
 use stellar_ast::token::{LexError, Token};
 use stellar_diagnostics::{define_diagnostics, diagnostic::Diagnostic};
-use stellar_diagnostics::{BuildDiagnostic, LocationExt};
+use stellar_diagnostics::{BuildFileDiagnostic, LocationExt};
 use stellar_filesystem::location::{ByteOffset, Location};
 use stellar_interner::PathID;
 
@@ -32,6 +32,7 @@ define_diagnostics! {
     diagnostic(error) LexErrorDiagnostic(self, error: LexError) {
         code { "E000" }
         message { format!("{}", self.error.raw) }
+        files_involved { self.error.location.filepath }
         labels {
             primary self.error.location => {""}
         }
@@ -42,6 +43,7 @@ define_diagnostics! {
     diagnostic(error) IntegerOverflow(self, location: Location) {
         code { "E002" }
         message { "unexpected integer overflow" }
+        files_involved { self.location.filepath }
         labels {
             primary self.location => {"error appeared when parsing this integer"}
         }
@@ -55,6 +57,7 @@ define_diagnostics! {
     diagnostic(error) FloatOverflow(self, location: Location) {
         code { "E003" }
         message { "unexpected float overflow" }
+        files_involved { self.location.filepath }
         labels {
             primary self.location => {"error appeared when parsing this float literal"}
         }
@@ -73,6 +76,7 @@ define_diagnostics! {
     ) {
         code { "E001" }
         message { format!("expected {}, found {}", self.expected, self.got.raw) }
+        files_involved { self.got.location.filepath }
         labels {
             primary self.offset.next_byte_location_at(self.got.location.filepath) => {
                 format!("expected {}", self.expected)
@@ -93,7 +97,7 @@ pub struct UnnecessaryVisibilityQualifierDiagnostic {
     pub context: UnnecessaryVisibilityQualifierContext,
 }
 
-impl BuildDiagnostic for UnnecessaryVisibilityQualifierDiagnostic {
+impl BuildFileDiagnostic for UnnecessaryVisibilityQualifierDiagnostic {
     #[inline(always)]
     fn build(self) -> Diagnostic<PathID> {
         let mut labels = vec![self
@@ -127,5 +131,9 @@ impl BuildDiagnostic for UnnecessaryVisibilityQualifierDiagnostic {
                     vec!["note: using `pub` will not make the import public.".to_owned()]
                 }
             })
+    }
+
+    fn files_involved(&self) -> Vec<PathID> {
+        vec![self.location.filepath]
     }
 }

@@ -2,7 +2,7 @@ use std::iter;
 
 use itertools::Itertools;
 use stellar_ast::IdentifierAST;
-use stellar_database::{EnumID, ModuleID, State, Symbol};
+use stellar_database::{EnumID, ModuleID, State, Symbol, TypeAliasID};
 
 use crate::diagnostics::{
     EnumItemsDoNotServeAsNamespaces, FailedToResolveEnumItem, FailedToResolveNameInModule,
@@ -18,10 +18,12 @@ pub fn resolve_global_path_in_module_context(
     let namespace = identifiers.next()?;
 
     let Some(namespace_symbol) = module.symbol_or_none(state.db(), namespace.id) else {
-        state.diagnostics_mut().add_single_file_diagnostic(
-            namespace.location.filepath,
-            FailedToResolvePackage::new(namespace.location, namespace.id),
-        );
+        state
+            .diagnostics_mut()
+            .add_file_diagnostic(FailedToResolvePackage::new(
+                namespace.location,
+                namespace.id,
+            ));
 
         return None;
     };
@@ -34,10 +36,12 @@ pub fn resolve_global_path(state: &mut State, path: &stellar_ast::ImportPath) ->
     let namespace = identifiers.next()?;
 
     let Some(root_module) = state.db_mut().package_root_module(namespace.id) else {
-        state.diagnostics_mut().add_single_file_diagnostic(
-            namespace.location.filepath,
-            FailedToResolvePackage::new(namespace.location, namespace.id),
-        );
+        state
+            .diagnostics_mut()
+            .add_file_diagnostic(FailedToResolvePackage::new(
+                namespace.location,
+                namespace.id,
+            ));
 
         return None;
     };
@@ -71,16 +75,14 @@ fn resolve_global_path_segment(
         }
         Symbol::Enum(enum_) => resolve_symbol_in_enum_namespace(state, enum_, namespace, member),
         Symbol::EnumItem(_) => {
-            state.diagnostics_mut().add_single_file_diagnostic(
-                namespace.location.filepath,
-                EnumItemsDoNotServeAsNamespaces::new(namespace, member),
-            );
+            state
+                .diagnostics_mut()
+                .add_file_diagnostic(EnumItemsDoNotServeAsNamespaces::new(namespace, member));
 
             None
         }
         _ => {
-            state.diagnostics_mut().add_single_file_diagnostic(
-                namespace.location.filepath,
+            state.diagnostics_mut().add_file_diagnostic(
                 ModuleItemsExceptEnumsDoNotServeAsNamespaces::new(
                     namespace,
                     symbol.module_item_kind(),
@@ -106,15 +108,14 @@ fn resolve_symbol_in_module_namespace(
     {
         Some(symbol)
     } else {
-        state.diagnostics_mut().add_single_file_diagnostic(
-            member.location.filepath,
-            FailedToResolveNameInModule::new(
+        state
+            .diagnostics_mut()
+            .add_file_diagnostic(FailedToResolveNameInModule::new(
                 member.id,
                 member.location,
                 namespace.id,
                 namespace.location,
-            ),
-        );
+            ));
 
         None
     }
@@ -129,10 +130,9 @@ fn resolve_symbol_in_enum_namespace(
     if let Some(symbol) = enum_.item(state.db(), member.id) {
         Some(Symbol::EnumItem(symbol))
     } else {
-        state.diagnostics_mut().add_single_file_diagnostic(
-            member.location.filepath,
-            FailedToResolveEnumItem::new(namespace, member),
-        );
+        state
+            .diagnostics_mut()
+            .add_file_diagnostic(FailedToResolveEnumItem::new(namespace, member));
 
         None
     }

@@ -1,7 +1,13 @@
+use itertools::Itertools;
 use stellar_ast::{IdentifierAST, ModuleItemKind};
-use stellar_diagnostics::define_diagnostics;
+use stellar_diagnostics::{
+    define_diagnostics,
+    diagnostic::{Diagnostic, Label},
+    BuildFileDiagnostic, LocationExt,
+};
 use stellar_english_commons::pluralize::PluralizeExt;
 use stellar_filesystem::location::Location;
+use stellar_interner::PathID;
 
 define_diagnostics! {
     /// Diagnostic related to an item defined multiple times error.
@@ -13,6 +19,10 @@ define_diagnostics! {
     ) {
         code { "E005" }
         message { format!("the name `{}` is defined multiple times", self.name) }
+        files_involved {
+            self.first_definition_location.filepath,
+            self.second_definition_location.filepath
+        }
         labels {
             primary self.first_definition_location => {
                 format!("previous definition of `{}` is here", self.name)
@@ -33,6 +43,10 @@ define_diagnostics! {
     ) {
         code { "E006" }
         message { format!("duplicate definition of the enum item `{}` in `{}`", self.item_name, self.enum_name) }
+        files_involved {
+            self.first_definition_location.filepath,
+            self.second_definition_location.filepath
+        }
         labels {
             primary self.first_definition_location => {
                 format!("first definition of `{}`", self.item_name)
@@ -52,6 +66,7 @@ define_diagnostics! {
     ) {
         code { "E007" }
         message { format!("trying to import package `{}`", self.package_name.id) }
+        files_involved { self.location.filepath }
         labels {
             primary self.location => {
                 format!("consider: removing this import")
@@ -74,6 +89,7 @@ define_diagnostics! {
     ) {
         code { "E008" }
         message { format!("failed to resolve the package `{}`", self.package_name) }
+        files_involved { self.location.filepath }
         labels {
             primary self.location => {""}
         }
@@ -92,6 +108,10 @@ define_diagnostics! {
     ) {
         code { "E008" }
         message { format!("failed to resolve the module item `{}`", self.item_name) }
+        files_involved {
+            self.module_name_location.filepath,
+            self.item_name_location.filepath
+        }
         labels {
             primary self.item_name_location => {""},
             secondary self.module_name_location => {
@@ -111,6 +131,7 @@ define_diagnostics! {
     ) {
         code { "E008" }
         message { format!("failed to resolve private module item `{}`", self.item_name) }
+        files_involved { self.module_name_location.filepath }
         labels {
             primary self.item_name_location => {""},
             secondary self.module_name_location => {
@@ -135,6 +156,10 @@ define_diagnostics! {
     ) {
         code { "E008" }
         message { format!("failed to resolve the name `{}`", self.name.id) }
+        files_involved {
+            self.module_item_name.location.filepath,
+            self.name.location.filepath
+        }
         labels {
             primary self.name.location => {
                 format!("cannot find the name `{}` in `{}`",
@@ -164,6 +189,7 @@ define_diagnostics! {
     ) {
         code { "E008" }
         message { format!("failed to resolve the name `{}`", self.name.id) }
+        files_involved { self.enum_item_name.location.filepath }
         labels {
             primary self.name.location => {
                 format!("cannot find the name `{}` in the namespace `{}`",
@@ -186,6 +212,10 @@ define_diagnostics! {
     ) {
         code { "E008" }
         message { format!("failed to resolve enum item `{}`", self.enum_item_name.id) }
+        files_involved {
+            self.enum_name.location.filepath,
+            self.enum_item_name.location.filepath
+        }
         labels {
             primary self.enum_item_name.location => {
                 format!("cannot find the name `{}` in the definition of enum `{}`",
@@ -202,9 +232,50 @@ define_diagnostics! {
     ) {
         code { "E008" }
         message { format!("failed to resolve the name `{}`", self.name.id) }
+        files_involved {
+            self.name.location.filepath
+        }
         labels {
             primary self.name.location => {""}
         }
         notes {}
+    }
+}
+
+pub struct CycleDetectedWhenComputingSignatureOf {
+    pub backtrace: Vec<IdentifierAST>,
+}
+
+impl CycleDetectedWhenComputingSignatureOf {
+    pub fn new(backtrace: Vec<IdentifierAST>) -> Self {
+        Self { backtrace }
+    }
+}
+
+impl BuildFileDiagnostic for CycleDetectedWhenComputingSignatureOf {
+    fn build(self) -> Diagnostic<PathID> {
+        Diagnostic::error()
+            .with_message(format!(
+                "cycle detected when computing signature of {}",
+                self.backtrace.first().unwrap().id
+            ))
+            .with_code("E009")
+            .with_labels(
+                self.backtrace
+                    .iter()
+                    .tuple_windows()
+                    .enumerate()
+                    .map(|(idx, (a, b))| {
+                        a.location.to_primary_label().with_message(format!(
+                            "computing signature of {}, requires also to compute signature of {}",
+                            a.id, b.id
+                        ))
+                    })
+                    .collect(),
+            )
+    }
+
+    fn files_involved(&self) -> Vec<PathID> {
+        self.backtrace.iter().map(|b| b.location.filepath).collect()
     }
 }

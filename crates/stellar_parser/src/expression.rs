@@ -253,7 +253,7 @@ impl Parse for PrimaryExpressionParser {
                 }
 
                 if self.in_statements_block {
-                    state.add_diagnostic(UnexpectedToken::new(
+                    state.diagnostics.add_file_diagnostic(UnexpectedToken::new(
                         state.current_token.location.end,
                         state.next_token,
                         one_of(
@@ -266,7 +266,7 @@ impl Parse for PrimaryExpressionParser {
                         ),
                     ));
                 } else {
-                    state.add_diagnostic(UnexpectedToken::new(
+                    state.diagnostics.add_file_diagnostic(UnexpectedToken::new(
                         state.current_token.location.end,
                         state.next_token,
                         "expression",

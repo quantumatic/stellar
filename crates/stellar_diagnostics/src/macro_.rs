@@ -47,6 +47,7 @@ macro_rules! define_diagnostics {
             ) {
                 code { $code:expr }
                 message { $message:expr }
+                files_involved { $($filepath:expr),* }
                 labels {
                     primary $primary_label_location:expr => { $primary_label_message:expr }
                     $(,secondary $label_location:expr => { $label_message:expr })*
@@ -76,7 +77,7 @@ macro_rules! define_diagnostics {
             }
 
             #[allow(clippy::unnecessary_qualification)]
-            impl $crate::BuildDiagnostic for $name {
+            impl $crate::BuildFileDiagnostic for $name {
                 #[inline(always)]
                 fn build($self) -> $crate::diagnostic::Diagnostic<stellar_interner::PathID> {
                     $crate::diagnostic::Diagnostic::$severity()
@@ -91,6 +92,11 @@ macro_rules! define_diagnostics {
                         .with_notes(vec![
                             $($note.to_string()),*
                         ])
+                }
+
+                #[inline(always)]
+                fn files_involved(&$self) -> Vec<stellar_interner::PathID> {
+                    vec![$($filepath),*]
                 }
             }
         )*

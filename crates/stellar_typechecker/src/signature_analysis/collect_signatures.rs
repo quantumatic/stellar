@@ -1,15 +1,24 @@
+use std::mem;
+#[cfg(feature = "debug")]
+use std::time::Instant;
+
 use stellar_ast_lowering::LoweredModule;
 use stellar_database::{
     GenericParameterData, GenericParameterScopeData, GenericParameterScopeID, ModuleID,
-    PredicateData, SignatureID, State,
+    PredicateData, SignatureID, State, Symbol, TypeAliasID,
 };
 use stellar_thir::{
     ty::{Type, TypeConstructor},
     Path, Predicate,
 };
+#[cfg(feature = "debug")]
+use tracing::trace;
+
+use crate::diagnostics::CycleDetectedWhenComputingSignatureOf;
 
 pub struct CollectSignatures<'s> {
     state: &'s mut State,
+    currently_analyzed_symbols: Vec<Symbol>,
     module: ModuleID,
 }
 
@@ -18,6 +27,7 @@ impl<'s> CollectSignatures<'s> {
         for lowered_module in lowered_modules {
             CollectSignatures {
                 state,
+                currently_analyzed_symbols: Vec::new(),
                 module: lowered_module.module(),
             }
             .run(lowered_module.hir());
@@ -38,11 +48,53 @@ impl<'s> CollectSignatures<'s> {
         }
     }
 
+    fn emit_computation_cycle_diagnostic(&mut self) {
+        let diagnostic = CycleDetectedWhenComputingSignatureOf::new(
+            mem::take(&mut self.currently_analyzed_symbols)
+                .into_iter()
+                .map(|symbol| symbol.name(self.state.db()))
+                .collect::<Vec<_>>(),
+        );
+
+        self.state.diagnostics_mut().add_file_diagnostic(diagnostic);
+    }
+
+    fn start_analyzing_signature_of(&mut self, symbol: Symbol) {
+        #[cfg(feature = "debug")]
+        let now = Instant::now();
+
+        if self.currently_analyzed_symbols.contains(&symbol) {
+            #[cfg(feature = "debug")]
+            trace!(
+                "signature cycle detected when analyzing signature of '{}' in '{}' <{} us>",
+                symbol.name(self.state.db()).id,
+                self.module.filepath(self.state.db()),
+                now.elapsed().as_micros()
+            );
+
+            self.emit_computation_cycle_diagnostic();
+
+            return;
+        }
+
+        self.currently_analyzed_symbols.push(symbol);
+
+        #[cfg(feature = "debug")]
+        trace!(
+            "start_analyzing_signature_of(symbol = '{}', module = '{}') <{} us>",
+            symbol.name(self.state.db()).id,
+            self.module.filepath(self.state.db()),
+            now.elapsed().as_micros()
+        );
+    }
+
     fn analyze_enum_type_signature(&mut self, module: ModuleID, enum_hir: &stellar_hir::Enum) {
-        let signature = module
-            .symbol(self.state.db(), enum_hir.name.id)
-            .to_enum()
-            .signature(self.state.db());
+        let symbol = module.symbol(self.state.db(), enum_hir.name.id);
+
+        self.start_analyzing_signature_of(symbol);
+
+        let enum_ = symbol.to_enum();
+        let signature = enum_.signature(self.state.db());
 
         self.analyze_generic_parameters(module, signature, None, &enum_hir.generic_parameters);
         self.analyze_where_predicates(module, signature, &enum_hir.where_predicates);
@@ -126,9 +178,11 @@ impl<'s> CollectSignatures<'s> {
     fn analyze_type_signature(&mut self, path: &stellar_ast::Path) {}
 
     fn analyze_type_alias(&mut self, module: ModuleID, alias_hir: &stellar_hir::TypeAlias) {
-        let alias = module
-            .symbol(self.state.db(), alias_hir.name.id)
-            .to_type_alias();
+        let symbol = module.symbol(self.state.db(), alias_hir.name.id);
+
+        self.start_analyzing_signature_of(symbol);
+
+        let alias = symbol.to_type_alias();
         let signature = alias.signature(self.state.db());
 
         self.analyze_generic_parameters(module, signature, None, &alias_hir.generic_parameters);

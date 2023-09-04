@@ -8,6 +8,7 @@ define_diagnostics! {
     ) {
         code { "W000" }
         message { "unnecessary grouped pattern" }
+        files_involved { self.location.filepath }
         labels {
             primary self.location.start_byte_location() => {""},
             secondary self.location.end_byte_location() => {
@@ -23,6 +24,7 @@ define_diagnostics! {
     ) {
         code { "W001" }
         message { "unnecessary parenthesized expression" }
+        files_involved { self.location.filepath }
         labels {
             primary self.location.start_byte_location() => {""},
             secondary self.location.end_byte_location() => {
@@ -38,6 +40,7 @@ define_diagnostics! {
     ) {
         code { "W002" }
         message { "unnecessary parenthesized type" }
+        files_involved { self.location.filepath }
         labels {
             primary self.location.start_byte_location() => {""},
             secondary self.location.end_byte_location() => {

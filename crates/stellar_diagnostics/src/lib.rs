@@ -147,50 +147,11 @@ impl Diagnostics {
         }
     }
 
-    /// Adds a diagnostic associated with a single file.
-    #[inline(always)]
-    pub fn add_single_file_diagnostic(
-        &mut self,
-        filepath: PathID,
-        diagnostic: impl BuildDiagnostic,
-    ) {
-        self.files_involved.insert(filepath);
-        self.file_diagnostics.push(diagnostic.build());
-    }
-
-    /// Adds diagnostics associated with a single file.
-    #[inline(always)]
-    pub fn add_single_file_diagnostics(
-        &mut self,
-        filepath: PathID,
-        diagnostic: impl IntoIterator<Item = impl BuildDiagnostic>,
-    ) {
-        self.files_involved.insert(filepath);
-        self.file_diagnostics
-            .extend(diagnostic.into_iter().map(BuildDiagnostic::build));
-    }
-
     /// Adds a diagnostic associated with some files.
     #[inline(always)]
-    pub fn add_file_diagnostic(
-        &mut self,
-        files_involved: impl IntoIterator<Item = PathID>,
-        diagnostic: impl BuildDiagnostic,
-    ) {
-        self.files_involved.extend(files_involved);
+    pub fn add_file_diagnostic(&mut self, diagnostic: impl BuildFileDiagnostic) {
+        self.files_involved.extend(diagnostic.files_involved());
         self.file_diagnostics.push(diagnostic.build());
-    }
-
-    /// Adds diagnostics associated with some files.
-    #[inline(always)]
-    pub fn add_file_diagnostics(
-        &mut self,
-        files_involved: impl IntoIterator<Item = PathID>,
-        diagnostics: impl IntoIterator<Item = impl BuildDiagnostic>,
-    ) {
-        self.files_involved.extend(files_involved);
-        self.file_diagnostics
-            .extend(diagnostics.into_iter().map(BuildDiagnostic::build));
     }
 
     /// Returns `true` if diagnostics are fatal.
@@ -379,17 +340,14 @@ pub const fn is_fatal_severity(severity: Severity) -> bool {
 }
 
 /// Builds a diagnostic struct.
-pub trait BuildDiagnostic {
+pub trait BuildFileDiagnostic {
     /// Convert [`self`] into [`Diagnostic`].
     #[must_use]
     fn build(self) -> Diagnostic<PathID>;
-}
 
-impl BuildDiagnostic for Diagnostic<PathID> {
-    #[inline(always)]
-    fn build(self) -> Diagnostic<PathID> {
-        self
-    }
+    /// Returns IDs of the files involved in the diagnostics.
+    #[must_use]
+    fn files_involved(&self) -> Vec<PathID>;
 }
 
 /// Extends [`Location`] with methods for converting into primary and secondary

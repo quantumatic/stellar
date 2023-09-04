@@ -5,7 +5,7 @@ use stellar_ast::IdentifierAST;
 use stellar_ast_lowering::LoweredModule;
 use stellar_database::{
     EnumData, EnumItemData, FunctionData, InterfaceData, ModuleID, SignatureData, State,
-    StructData, Symbol, TupleLikeStructData, TypeAliasData,
+    StructData, Symbol, TupleLikeStructData, TypeAliasData, TypeAliasID,
 };
 #[cfg(feature = "debug")]
 use tracing::trace;
@@ -238,9 +238,7 @@ impl<'s> CollectDefinitions<'s> {
                 name.location,
             );
 
-            self.state
-                .diagnostics_mut()
-                .add_single_file_diagnostic(name.location.filepath, diagnostic);
+            self.state.diagnostics_mut().add_file_diagnostic(diagnostic);
         }
     }
 
@@ -253,9 +251,7 @@ impl<'s> CollectDefinitions<'s> {
                 item_name.location,
             );
 
-            self.state
-                .diagnostics_mut()
-                .add_single_file_diagnostic(item_name.location.filepath, diagnostic);
+            self.state.diagnostics_mut().add_file_diagnostic(diagnostic);
         }
     }
 }

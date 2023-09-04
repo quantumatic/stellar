@@ -47,10 +47,12 @@ impl<'s> ResolveImports<'s> {
                 .db()
                 .contains_package(module.name(self.state.db()))
             {
-                self.state.diagnostics_mut().add_single_file_diagnostic(
-                    path.path.location.filepath,
-                    PackageImport::new(location, *path.path.identifiers.first().unwrap()),
-                );
+                self.state
+                    .diagnostics_mut()
+                    .add_file_diagnostic(PackageImport::new(
+                        location,
+                        *path.path.identifiers.first().unwrap(),
+                    ));
                 return;
             }
         }

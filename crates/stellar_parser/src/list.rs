@@ -55,7 +55,7 @@ where
 
             // `(` element `?` (invalid token)
             if state.next_token.raw != Punctuator::Comma {
-                state.add_diagnostic(UnexpectedToken::new(
+                state.diagnostics.add_file_diagnostic(UnexpectedToken::new(
                     state.current_token.location.end,
                     state.next_token,
                     one_of(
