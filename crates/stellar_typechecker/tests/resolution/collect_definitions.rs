@@ -19,13 +19,13 @@ fn test_enum() {
         .first()
         .unwrap()
         .module()
-        .symbol_or_panic(state.db(), IdentifierID::from("A"))
+        .symbol(state.db(), IdentifierID::from("A"))
         .is_enum());
     assert!(hir
         .first()
         .unwrap()
         .module()
-        .symbol_or_panic(state.db(), IdentifierID::from("B"))
+        .symbol(state.db(), IdentifierID::from("B"))
         .is_enum());
     assert!(state.diagnostics().is_ok());
 }
@@ -59,15 +59,15 @@ fn test_enum_items() {
         .first()
         .unwrap()
         .module()
-        .symbol_or_panic(state.db(), IdentifierID::from("A"))
+        .symbol(state.db(), IdentifierID::from("A"))
         .is_enum());
 
     let items = hir
         .first()
         .unwrap()
         .module()
-        .symbol_or_panic(state.db(), IdentifierID::from("A"))
-        .to_enum_or_panic()
+        .symbol(state.db(), IdentifierID::from("A"))
+        .to_enum()
         .items(state.db());
 
     assert!(items.contains_key(&IdentifierID::from("A")));
@@ -104,7 +104,7 @@ fn test_function() {
         .first()
         .unwrap()
         .module()
-        .symbol_or_panic(state.db(), IdentifierID::from("a"))
+        .symbol(state.db(), IdentifierID::from("a"))
         .is_function());
     assert!(state.diagnostics().is_ok());
 }
@@ -124,7 +124,7 @@ fn test_struct() {
         .first()
         .unwrap()
         .module()
-        .symbol_or_panic(state.db(), IdentifierID::from("A"))
+        .symbol(state.db(), IdentifierID::from("A"))
         .is_struct());
     assert!(state.diagnostics().is_ok());
 }
@@ -144,7 +144,7 @@ fn test_interface() {
         .first()
         .unwrap()
         .module()
-        .symbol_or_panic(state.db(), IdentifierID::from("A"))
+        .symbol(state.db(), IdentifierID::from("A"))
         .is_interface());
     assert!(state.diagnostics().is_ok());
 }
@@ -164,7 +164,7 @@ fn test_type_alias() {
         .first()
         .unwrap()
         .module()
-        .symbol_or_panic(state.db(), IdentifierID::from("A"))
+        .symbol(state.db(), IdentifierID::from("A"))
         .is_type_alias());
     assert!(state.diagnostics().is_ok());
 }

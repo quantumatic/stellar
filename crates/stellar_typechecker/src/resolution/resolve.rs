@@ -17,7 +17,7 @@ pub fn resolve_global_path_in_module_context(
     let mut identifiers = path.identifiers.iter();
     let namespace = identifiers.next()?;
 
-    let Some(namespace_symbol) = module.symbol(state.db(), namespace.id) else {
+    let Some(namespace_symbol) = module.symbol_or_none(state.db(), namespace.id) else {
         state.diagnostics_mut().add_single_file_diagnostic(
             namespace.location.filepath,
             FailedToResolvePackage::new(namespace.location, namespace.id),
@@ -83,7 +83,7 @@ fn resolve_global_path_segment(
                 namespace.location.filepath,
                 ModuleItemsExceptEnumsDoNotServeAsNamespaces::new(
                     namespace,
-                    symbol.module_item_kind_or_panic(),
+                    symbol.module_item_kind(),
                     member,
                 ),
             );
@@ -102,7 +102,7 @@ fn resolve_symbol_in_module_namespace(
     if let Some(symbol) = module
         .submodule(state.db(), member.id)
         .map(Symbol::Module)
-        .or(module.module_item_symbol(state.db(), member.id))
+        .or(module.module_item_symbol_or_none(state.db(), member.id))
     {
         Some(symbol)
     } else {

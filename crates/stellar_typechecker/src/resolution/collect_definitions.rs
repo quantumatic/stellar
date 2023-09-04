@@ -19,30 +19,32 @@ pub struct CollectDefinitions<'s> {
 
 impl<'s> CollectDefinitions<'s> {
     pub fn run_all(state: &'s mut State, lowered_modules: &[LoweredModule]) {
-        lowered_modules.iter().for_each(|lowered_module| {
+        for lowered_module in lowered_modules {
             CollectDefinitions {
                 state,
                 module: lowered_module.module(),
             }
             .run(lowered_module.hir());
-        })
+        }
     }
 
     fn run(mut self, module: &stellar_hir::Module) {
         #[cfg(feature = "debug")]
         let now = Instant::now();
 
-        module.items.iter().for_each(|item| match item {
-            stellar_hir::ModuleItem::Enum(enum_) => self.define_enum(enum_),
-            stellar_hir::ModuleItem::Function(function) => self.define_function(function),
-            stellar_hir::ModuleItem::Struct(struct_) => self.define_struct(struct_),
-            stellar_hir::ModuleItem::Interface(interface) => self.define_interface(interface),
-            stellar_hir::ModuleItem::TupleLikeStruct(struct_) => {
-                self.define_tuple_like_struct(struct_)
+        for item in &module.items {
+            match item {
+                stellar_hir::ModuleItem::Enum(enum_) => self.define_enum(enum_),
+                stellar_hir::ModuleItem::Function(function) => self.define_function(function),
+                stellar_hir::ModuleItem::Struct(struct_) => self.define_struct(struct_),
+                stellar_hir::ModuleItem::Interface(interface) => self.define_interface(interface),
+                stellar_hir::ModuleItem::TupleLikeStruct(struct_) => {
+                    self.define_tuple_like_struct(struct_)
+                }
+                stellar_hir::ModuleItem::TypeAlias(alias) => self.define_type_alias(alias),
+                _ => {}
             }
-            stellar_hir::ModuleItem::TypeAlias(alias) => self.define_type_alias(alias),
-            _ => {}
-        });
+        }
 
         #[cfg(feature = "debug")]
         trace!(
@@ -226,7 +228,10 @@ impl<'s> CollectDefinitions<'s> {
     }
 
     fn check_for_duplicate_definition(&mut self, name: IdentifierAST) {
-        if let Some(symbol) = self.module.module_item_symbol(self.state.db(), name.id) {
+        if let Some(symbol) = self
+            .module
+            .module_item_symbol_or_none(self.state.db(), name.id)
+        {
             let diagnostic = ItemDefinedMultipleTimes::new(
                 name.id,
                 symbol.name(self.state.db()).location,

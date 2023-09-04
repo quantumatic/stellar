@@ -15,22 +15,22 @@ pub struct ResolveImports<'s> {
 }
 
 impl<'s> ResolveImports<'s> {
-    pub fn run_all(state: &'s mut State, modules: &[LoweredModule]) {
-        modules.iter().for_each(|module| {
+    pub fn run_all(state: &'s mut State, lowered_modules: &[LoweredModule]) {
+        for lowered_module in lowered_modules {
             ResolveImports {
                 state,
-                module: module.module(),
+                module: lowered_module.module(),
             }
-            .run(module.hir())
-        })
+            .run(lowered_module.hir())
+        }
     }
 
     fn run(mut self, module: &stellar_hir::Module) {
-        module.items.iter().for_each(|item| {
+        for item in &module.items {
             if let stellar_hir::ModuleItem::Import { location, path } = item {
                 self.resolve_import(*location, path)
             }
-        })
+        }
     }
 
     fn resolve_import(&mut self, location: Location, path: &stellar_ast::ImportPath) {
@@ -41,7 +41,7 @@ impl<'s> ResolveImports<'s> {
             return;
         };
 
-        if let Some(module) = symbol.to_module() {
+        if let Some(module) = symbol.to_module_or_none() {
             if self
                 .state
                 .db()

@@ -15,31 +15,33 @@ pub struct CollectSignatures<'s> {
 
 impl<'s> CollectSignatures<'s> {
     pub fn run_all(self, state: &'s mut State, lowered_modules: &[LoweredModule]) {
-        lowered_modules.iter().for_each(|lowered_module| {
+        for lowered_module in lowered_modules {
             CollectSignatures {
                 state,
                 module: lowered_module.module(),
             }
             .run(lowered_module.hir());
-        })
+        }
     }
 
     fn run(mut self, module: &stellar_hir::Module) {
-        module.items.iter().for_each(|item| match item {
-            stellar_hir::ModuleItem::Enum(enum_) => {
-                self.analyze_enum_type_signature(self.module, enum_);
+        for item in &module.items {
+            match item {
+                stellar_hir::ModuleItem::Enum(enum_) => {
+                    self.analyze_enum_type_signature(self.module, enum_);
+                }
+                stellar_hir::ModuleItem::TypeAlias(alias) => {
+                    self.analyze_type_alias(self.module, alias)
+                }
+                _ => todo!(),
             }
-            stellar_hir::ModuleItem::TypeAlias(alias) => {
-                self.analyze_type_alias(self.module, alias)
-            }
-            _ => todo!(),
-        })
+        }
     }
 
     fn analyze_enum_type_signature(&mut self, module: ModuleID, enum_hir: &stellar_hir::Enum) {
         let signature = module
-            .symbol_or_panic(self.state.db(), enum_hir.name.id)
-            .to_enum_or_panic()
+            .symbol(self.state.db(), enum_hir.name.id)
+            .to_enum()
             .signature(self.state.db());
 
         self.analyze_generic_parameters(module, signature, None, &enum_hir.generic_parameters);
@@ -53,11 +55,11 @@ impl<'s> CollectSignatures<'s> {
         module: ModuleID,
         signature: SignatureID,
         parent_generic_parameter_scope: Option<GenericParameterScopeID>,
-        generic_parameters: &[stellar_hir::GenericParameter],
+        parameters_hir: &[stellar_hir::GenericParameter],
     ) {
         let generic_parameter_scope = GenericParameterScopeData::alloc(self.state.db_mut());
 
-        generic_parameters.iter().for_each(|parameter_hir| {
+        for parameter_hir in parameters_hir {
             let default_value = if let Some(default_value) = &parameter_hir.default_value {
                 self.resolve_type(default_value)
             } else {
@@ -87,7 +89,7 @@ impl<'s> CollectSignatures<'s> {
                 parameter_hir.name.id,
                 generic_parameter,
             );
-        })
+        }
     }
 
     fn analyze_where_predicates(
@@ -96,7 +98,7 @@ impl<'s> CollectSignatures<'s> {
         signature: SignatureID,
         predicates_hir: &[stellar_hir::WherePredicate],
     ) {
-        predicates_hir.iter().for_each(|predicate_hir| {
+        for predicate_hir in predicates_hir {
             let Some(ty) = self.resolve_type(&predicate_hir.ty) else {
                 return;
             };
@@ -106,7 +108,7 @@ impl<'s> CollectSignatures<'s> {
             let predicate = PredicateData::alloc(self.state.db_mut(), ty, bounds);
 
             signature.add_predicate(self.state.db_mut(), predicate);
-        })
+        }
     }
 
     fn resolve_bounds(&mut self, bounds: &[stellar_hir::TypeConstructor]) -> Vec<TypeConstructor> {
@@ -125,8 +127,8 @@ impl<'s> CollectSignatures<'s> {
 
     fn analyze_type_alias(&mut self, module: ModuleID, alias_hir: &stellar_hir::TypeAlias) {
         let alias = module
-            .symbol_or_panic(self.state.db(), alias_hir.name.id)
-            .to_type_alias_or_panic();
+            .symbol(self.state.db(), alias_hir.name.id)
+            .to_type_alias();
         let signature = alias.signature(self.state.db());
 
         self.analyze_generic_parameters(module, signature, None, &alias_hir.generic_parameters);
