@@ -16,6 +16,10 @@
 ///    ) {
 ///        code { "E007" }
 ///        message { format!("failed to resolve the module `{}`", self.module_name) }
+///        files_involved {
+///            self.package_name_location.filepath,
+///            self.module_name_location.filepath
+///        }
 ///        labels {
 ///            primary self.module_name_location => {""},
 ///            secondary self.package_name_location => {
