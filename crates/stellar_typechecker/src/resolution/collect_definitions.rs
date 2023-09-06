@@ -125,6 +125,9 @@ impl<'s> CollectDefinitions<'s> {
     }
 
     fn define_struct(&mut self, struct_: &stellar_hir::Struct) {
+        #[cfg(feature = "debug")]
+        let now = Instant::now();
+
         let signature = SignatureData::alloc(
             self.state.db_mut(),
             struct_.visibility,
@@ -137,7 +140,15 @@ impl<'s> CollectDefinitions<'s> {
         self.check_for_duplicate_definition(struct_.name);
 
         self.module
-            .add_module_item(self.state.db_mut(), struct_.name.id, Symbol::Struct(id))
+            .add_module_item(self.state.db_mut(), struct_.name.id, Symbol::Struct(id));
+
+        #[cfg(feature = "debug")]
+        trace!(
+            "define_struct(name = '{}', module = '{}') <{} us>",
+            struct_.name.id,
+            self.module.filepath(self.state.db()),
+            now.elapsed().as_micros()
+        )
     }
 
     fn define_tuple_like_struct(&mut self, struct_: &stellar_hir::TupleLikeStruct) {

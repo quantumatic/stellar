@@ -1,12 +1,15 @@
+#![cfg(feature = "debug")]
 use std::time::Instant;
 
 use stellar_ast_lowering::LowerToHir;
 use stellar_database::State;
 use stellar_diagnostics::{diagnostic::Diagnostic, DiagnosticsEmitter};
 use stellar_parser::parse_package_source_files;
-use stellar_typechecker::resolution::collect_definitions::CollectDefinitions;
+use stellar_typechecker::resolution::{
+    collect_definitions::CollectDefinitions, resolve_imports::ResolveImports,
+};
 
-use crate::prefix::log;
+use crate::log::log;
 
 pub fn command() {
     let mut state = State::new();
@@ -33,6 +36,7 @@ pub fn command() {
             now = Instant::now();
 
             CollectDefinitions::run_all(&mut state, &hir);
+            ResolveImports::run_all(&mut state, &hir);
 
             log("Analyzed", format!("in {}s", now.elapsed().as_secs_f64()));
 

@@ -60,12 +60,14 @@
 use clap::{Parser, Subcommand};
 
 #[cfg(feature = "debug")]
-mod debug_collect_definitions;
+mod collect_definitions;
+mod collect_signatures;
 mod lex;
+mod log;
 mod lower;
 mod parse;
 mod parse_manifest;
-mod prefix;
+mod resolve_imports;
 mod version;
 
 #[derive(Parser)]
@@ -78,33 +80,41 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
-    #[command(about = "Tokenizes a given source file")]
+    #[cfg(feature = "debug")]
+    #[command(about = "Debug mode: tokenize a given source file")]
     Lex {
         filepath: String,
         #[arg(long)]
         show_locations: bool,
     },
-    #[command(about = "Tokenizes a given source file")]
+    #[cfg(feature = "debug")]
+    #[command(about = "Debug mode: tokenize a given source file")]
     Tokenize {
         filepath: String,
         #[arg(long)]
         show_locations: bool,
     },
-    #[command(about = "Tokenizes a given source file")]
+    #[cfg(feature = "debug")]
+    #[command(about = "Debug mode: tokenize a given source file")]
     Scan {
         filepath: String,
         #[arg(long)]
         show_locations: bool,
     },
-    #[command(about = "Parses a given source file and serializes its AST")]
+    #[cfg(feature = "debug")]
+    #[command(about = "Debug mode: parse a given source file and serialize its AST")]
     Ast { filepath: String },
-    #[command(about = "Parses a given source file and serializes its AST")]
+    #[cfg(feature = "debug")]
+    #[command(about = "Debug mode: parse a given source file and serialize its AST")]
     Parse { filepath: String },
-    #[command(about = "Parses a given source file, lower its AST and serializes HIR")]
+    #[cfg(feature = "debug")]
+    #[command(about = "Debug mode: parse a given source file, lower its AST and serialize HIR")]
     Hir { filepath: String },
-    #[command(about = "Parses a given source file, lower its AST and serializes HIR")]
+    #[cfg(feature = "debug")]
+    #[command(about = "Debug mode: parse a given source file, lower its AST and serialize HIR")]
     LowerAst { filepath: String },
-    #[command(about = "Parses a given manifest file")]
+    #[cfg(feature = "debug")]
+    #[command(about = "Debug mode: parses a given manifest file")]
     ParseManifest { filepath: String },
     #[command(about = "Creates a new package")]
     New { package_name: String },
@@ -114,7 +124,15 @@ enum Commands {
     StdVersion,
     #[cfg(feature = "debug")]
     #[command(about = "Debug mode: debug collect definitions")]
-    DebugCollectDefinitions,
+    CollectDefinitions,
+    #[cfg(feature = "debug")]
+    #[command(
+        about = "Debug mode: debug collect definitions, resolve imports and collect signatures"
+    )]
+    CollectSignatures,
+    #[cfg(feature = "debug")]
+    #[command(about = "Debug mode: debug collect definitions and resolve imports")]
+    ResolveImports,
     #[command(about = "Prints current version of the package manager (Stellar repository)")]
     PackageManagerVersion,
 }
@@ -132,10 +150,15 @@ fn main() {
 
     match Cli::parse().command {
         #[cfg(feature = "debug")]
-        Commands::DebugCollectDefinitions => debug_collect_definitions::command(),
+        Commands::CollectDefinitions => collect_definitions::command(),
+        #[cfg(feature = "debug")]
+        Commands::CollectSignatures => collect_signatures::command(),
+        #[cfg(feature = "debug")]
+        Commands::ResolveImports => resolve_imports::command(),
         Commands::CompilerVersion => version::compiler_version_command(),
         Commands::StdVersion => version::std_version_command(),
         Commands::PackageManagerVersion => version::package_manager_version_command(),
+        #[cfg(feature = "debug")]
         Commands::Lex {
             filepath,
             show_locations,
@@ -148,12 +171,15 @@ fn main() {
             filepath,
             show_locations,
         } => lex::command(&filepath, show_locations),
+        #[cfg(feature = "debug")]
         Commands::Ast { filepath } | Commands::Parse { filepath } => {
             parse::command(&filepath);
         }
+        #[cfg(feature = "debug")]
         Commands::Hir { filepath } | Commands::LowerAst { filepath } => {
             lower::command(&filepath);
         }
+        #[cfg(feature = "debug")]
         Commands::ParseManifest { filepath } => {
             parse_manifest::command(&filepath);
         }

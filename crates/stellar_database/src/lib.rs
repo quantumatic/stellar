@@ -595,6 +595,21 @@ impl SignatureID {
     pub fn add_predicate(self, db: &mut Database, predicate: PredicateID) {
         db.signature_mut(self).predicates.push(predicate);
     }
+
+    #[inline(always)]
+    #[must_use]
+    pub fn generic_parameter_scope(self, db: &Database) -> GenericParameterScopeID {
+        db.signature(self).generic_parameter_scope
+    }
+
+    #[inline(always)]
+    pub fn set_generic_parameter_scope(
+        self,
+        db: &mut Database,
+        generic_parameter_scope: GenericParameterScopeID,
+    ) {
+        db.signature_mut(self).generic_parameter_scope = generic_parameter_scope;
+    }
 }
 
 /// A data that Stellar compiler has about a function.

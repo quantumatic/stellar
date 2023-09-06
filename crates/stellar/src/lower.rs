@@ -1,3 +1,5 @@
+#![cfg(feature = "debug")]
+
 use std::io::Write;
 use std::time::Instant;
 
@@ -9,7 +11,7 @@ use stellar_filesystem::file_utils::make_unique_file;
 use stellar_interner::{PathID, DUMMY_IDENTIFIER_ID};
 use stellar_parser::read_and_parse_module;
 
-use crate::prefix::log;
+use crate::log::log;
 
 pub fn command(filepath: &str) {
     let mut diagnostics_emitter = DiagnosticsEmitter::new();

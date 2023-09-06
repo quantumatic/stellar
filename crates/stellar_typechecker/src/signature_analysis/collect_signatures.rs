@@ -23,7 +23,7 @@ pub struct CollectSignatures<'s> {
 }
 
 impl<'s> CollectSignatures<'s> {
-    pub fn run_all(self, state: &'s mut State, lowered_modules: &[LoweredModule]) {
+    pub fn run_all(state: &'s mut State, lowered_modules: &[LoweredModule]) {
         for lowered_module in lowered_modules {
             CollectSignatures {
                 state,
@@ -38,7 +38,13 @@ impl<'s> CollectSignatures<'s> {
         for item in &module.items {
             match item {
                 stellar_hir::ModuleItem::Enum(enum_) => {
-                    self.analyze_enum_type_signature(self.module, enum_);
+                    self.analyze_signature_of_enum(self.module, enum_);
+                }
+                stellar_hir::ModuleItem::Struct(struct_) => {
+                    self.analyze_signature_of_struct(self.module, struct_)
+                }
+                stellar_hir::ModuleItem::TupleLikeStruct(struct_) => {
+                    self.analyze_signature_of_tuple_like_struct(self.module, struct_)
                 }
                 stellar_hir::ModuleItem::TypeAlias(alias) => {
                     self.analyze_type_alias(self.module, alias)
@@ -60,16 +66,12 @@ impl<'s> CollectSignatures<'s> {
     }
 
     fn start_analyzing_signature_of(&mut self, symbol: Symbol) {
-        #[cfg(feature = "debug")]
-        let now = Instant::now();
-
         if self.currently_analyzed_symbols.contains(&symbol) {
             #[cfg(feature = "debug")]
             trace!(
-                "signature cycle detected when analyzing signature of '{}' in '{}' <{} us>",
+                "signature cycle detected when analyzing signature of '{}' in '{}'",
                 symbol.name(self.state.db()).id,
-                self.module.filepath(self.state.db()),
-                now.elapsed().as_micros()
+                self.module.filepath(self.state.db())
             );
 
             self.emit_computation_cycle_diagnostic();
@@ -81,14 +83,16 @@ impl<'s> CollectSignatures<'s> {
 
         #[cfg(feature = "debug")]
         trace!(
-            "start_analyzing_signature_of(symbol = '{}', module = '{}') <{} us>",
+            "start_analyzing_signature_of(name = '{}', module = '{}')",
             symbol.name(self.state.db()).id,
             self.module.filepath(self.state.db()),
-            now.elapsed().as_micros()
         );
     }
 
-    fn analyze_enum_type_signature(&mut self, module: ModuleID, enum_hir: &stellar_hir::Enum) {
+    fn analyze_signature_of_enum(&mut self, module: ModuleID, enum_hir: &stellar_hir::Enum) {
+        #[cfg(feature = "debug")]
+        let now = Instant::now();
+
         let symbol = module.symbol(self.state.db(), enum_hir.name.id);
 
         self.start_analyzing_signature_of(symbol);
@@ -100,6 +104,68 @@ impl<'s> CollectSignatures<'s> {
         self.analyze_where_predicates(module, signature, &enum_hir.where_predicates);
 
         signature.analyzed(self.state.db_mut());
+
+        #[cfg(feature = "debug")]
+        trace!(
+            "analyze_signature_of_enum(name = '{}', module = '{}') <{} us>",
+            enum_hir.name.id,
+            self.module.filepath(self.state.db()),
+            now.elapsed().as_micros()
+        )
+    }
+
+    fn analyze_signature_of_struct(&mut self, module: ModuleID, struct_hir: &stellar_hir::Struct) {
+        #[cfg(feature = "debug")]
+        let now = Instant::now();
+
+        let symbol = module.symbol(self.state.db(), struct_hir.name.id);
+
+        self.start_analyzing_signature_of(symbol);
+
+        let struct_ = symbol.to_struct();
+        let signature = struct_.signature(self.state.db());
+
+        self.analyze_generic_parameters(module, signature, None, &struct_hir.generic_parameters);
+        self.analyze_where_predicates(module, signature, &struct_hir.where_predicates);
+
+        signature.analyzed(self.state.db_mut());
+
+        #[cfg(feature = "debug")]
+        trace!(
+            "analyze_signature_of_struct(name = '{}', module = '{}') <{} us>",
+            struct_hir.name.id,
+            self.module.filepath(self.state.db()),
+            now.elapsed().as_micros()
+        )
+    }
+
+    fn analyze_signature_of_tuple_like_struct(
+        &mut self,
+        module: ModuleID,
+        struct_hir: &stellar_hir::TupleLikeStruct,
+    ) {
+        #[cfg(feature = "debug")]
+        let now = Instant::now();
+
+        let symbol = module.symbol(self.state.db(), struct_hir.name.id);
+
+        self.start_analyzing_signature_of(symbol);
+
+        let struct_ = symbol.to_tuple_like_struct();
+        let signature = struct_.signature(self.state.db());
+
+        self.analyze_generic_parameters(module, signature, None, &struct_hir.generic_parameters);
+        self.analyze_where_predicates(module, signature, &struct_hir.where_predicates);
+
+        signature.analyzed(self.state.db_mut());
+
+        #[cfg(feature = "debug")]
+        trace!(
+            "analyze_signature_of_tuple_like_struct(name = '{}', module = '{}') <{} us>",
+            struct_hir.name.id,
+            self.module.filepath(self.state.db()),
+            now.elapsed().as_micros()
+        )
     }
 
     fn analyze_generic_parameters(
@@ -142,6 +208,8 @@ impl<'s> CollectSignatures<'s> {
                 generic_parameter,
             );
         }
+
+        signature.set_generic_parameter_scope(self.state.db_mut(), generic_parameter_scope);
     }
 
     fn analyze_where_predicates(
@@ -178,6 +246,9 @@ impl<'s> CollectSignatures<'s> {
     fn analyze_type_signature(&mut self, path: &stellar_ast::Path) {}
 
     fn analyze_type_alias(&mut self, module: ModuleID, alias_hir: &stellar_hir::TypeAlias) {
+        #[cfg(feature = "debug")]
+        let now = Instant::now();
+
         let symbol = module.symbol(self.state.db(), alias_hir.name.id);
 
         self.start_analyzing_signature_of(symbol);
@@ -194,5 +265,13 @@ impl<'s> CollectSignatures<'s> {
         *alias.ty_mut(self.state.db_mut()) = value;
 
         signature.analyzed(self.state.db_mut());
+
+        #[cfg(feature = "debug")]
+        trace!(
+            "analyze_type_alias(name = '{}', module = '{}') <{} us>",
+            alias_hir.name.id,
+            self.module.filepath(self.state.db()),
+            now.elapsed().as_micros()
+        )
     }
 }

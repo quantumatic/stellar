@@ -1,3 +1,5 @@
+#![cfg(feature = "debug")]
+
 use std::fs;
 
 use stellar_diagnostics::diagnostic::Diagnostic;
