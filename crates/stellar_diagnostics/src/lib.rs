@@ -72,14 +72,11 @@ use core::fmt;
 use std::fmt::Display;
 
 use stellar_filesystem::in_memory_file_storage::InMemoryFileStorage;
-use stellar_filesystem::location::Location;
 use stellar_fx_hash::FxHashSet;
 use stellar_interner::PathID;
 
-use crate::diagnostic::Label;
 use crate::{
     diagnostic::{Diagnostic, Severity},
-    files::Files,
     term::{
         termcolor::{ColorChoice, StandardStream},
         Config,
@@ -113,7 +110,7 @@ pub struct MultiFileDiagnostic {
     pub paths: Vec<PathID>,
 
     /// Diagnostic.
-    pub diagnostic: Diagnostic<PathID>,
+    pub diagnostic: Diagnostic,
 }
 
 /// Global diagnostics.
@@ -122,11 +119,8 @@ pub struct Diagnostics {
     /// Files that are involved in the diagnostics.
     pub files_involved: FxHashSet<PathID>,
 
-    /// Diagnostics associated with files.
-    pub file_diagnostics: Vec<Diagnostic<PathID>>,
-
-    /// Context free diagnostics.
-    pub context_free_diagnostics: Vec<Diagnostic<()>>,
+    /// Diagnostics.
+    pub diagnostics: Vec<Diagnostic>,
 }
 
 impl Default for Diagnostics {
@@ -142,16 +136,17 @@ impl Diagnostics {
     pub fn new() -> Self {
         Self {
             files_involved: FxHashSet::default(),
-            file_diagnostics: vec![],
-            context_free_diagnostics: Vec::new(),
+            diagnostics: vec![],
         }
     }
 
     /// Adds a diagnostic associated with some files.
     #[inline(always)]
-    pub fn add_file_diagnostic(&mut self, diagnostic: impl BuildFileDiagnostic) {
+    pub fn add_file_diagnostic(&mut self, diagnostic: impl BuildDiagnostic) {
+        let diagnostic = diagnostic.build();
+
         self.files_involved.extend(diagnostic.files_involved());
-        self.file_diagnostics.push(diagnostic.build());
+        self.diagnostics.push(diagnostic);
     }
 
     /// Returns `true` if diagnostics are fatal.
@@ -165,13 +160,9 @@ impl Diagnostics {
     #[inline(always)]
     #[must_use]
     pub fn is_ok(&self) -> bool {
-        self.context_free_diagnostics
+        self.diagnostics
             .iter()
             .all(|d| !is_fatal_severity(d.severity))
-            && self
-                .file_diagnostics
-                .iter()
-                .all(|d| !is_fatal_severity(d.severity))
     }
 }
 
@@ -198,28 +189,6 @@ impl Display for EmptyName {
 impl AsRef<str> for EmptySource {
     fn as_ref(&self) -> &str {
         ""
-    }
-}
-
-impl Files<'_> for EmptyDiagnosticsManager {
-    type FileId = ();
-    type Name = EmptyName;
-    type Source = EmptySource;
-
-    fn name(&self, _: ()) -> Result<Self::Name, files::Error> {
-        Ok(EmptyName)
-    }
-
-    fn source(&'_ self, _: ()) -> Result<Self::Source, files::Error> {
-        Ok(EmptySource)
-    }
-
-    fn line_index(&'_ self, _: (), _: usize) -> Result<usize, files::Error> {
-        panic!("line_index() is not implemented for EmptyDiagnosticsManager")
-    }
-
-    fn line_range(&'_ self, _: (), _: usize) -> Result<std::ops::Range<usize>, files::Error> {
-        panic!("line_range() is not implemented for EmptyDiagnosticsManager")
     }
 }
 
@@ -253,27 +222,6 @@ impl DiagnosticsEmitter {
         self
     }
 
-    /// Emit the diagnostic not associated with a file.
-    #[inline(always)]
-    #[allow(clippy::missing_panics_doc)]
-    pub fn emit_context_free_diagnostic(&self, diagnostic: &Diagnostic<()>) {
-        term::emit(
-            &mut self.writer.lock(),
-            &self.config,
-            &EmptyDiagnosticsManager,
-            diagnostic,
-        )
-        .unwrap();
-    }
-
-    /// Emit diagnostics not associated with a particular file.
-    #[inline(always)]
-    pub fn emit_context_free_diagnostics(&self, diagnostics: &[Diagnostic<()>]) {
-        for diagnostic in diagnostics {
-            self.emit_context_free_diagnostic(diagnostic);
-        }
-    }
-
     /// Emit diagnostics associated with a particular file. If the file
     /// cannot be read, stops executing (no panic, diagnostic is just ignored).
     ///
@@ -281,7 +229,7 @@ impl DiagnosticsEmitter {
     /// * If the file with a given path does not exist.
     /// * If the file path id cannot be resolved in the path storage.
     #[inline(always)]
-    pub fn emit_file_diagnostic(&self, diagnostic: &Diagnostic<PathID>) {
+    fn emit_diagnostic(&self, diagnostic: &Diagnostic) {
         term::emit(
             &mut self.writer.lock(),
             &self.config,
@@ -293,12 +241,9 @@ impl DiagnosticsEmitter {
 
     /// Emit all of the single file diagnostics.
     #[allow(single_use_lifetimes)] // anonymous lifetimes in traits are unstable
-    pub fn emit_file_diagnostics<'a>(
-        &self,
-        diagnostics: impl IntoIterator<Item = &'a Diagnostic<PathID>>,
-    ) {
+    fn emit_diagnostics<'a>(&self, diagnostics: impl IntoIterator<Item = &'a Diagnostic>) {
         for diagnostic in diagnostics {
-            self.emit_file_diagnostic(diagnostic);
+            self.emit_diagnostic(diagnostic);
         }
     }
 
@@ -317,8 +262,7 @@ impl DiagnosticsEmitter {
     #[inline(always)]
     pub fn emit_global_diagnostics(&mut self, global_diagnostics: &Diagnostics) {
         self.initialize_file_storage(&global_diagnostics.files_involved);
-        self.emit_context_free_diagnostics(&global_diagnostics.context_free_diagnostics);
-        self.emit_file_diagnostics(&global_diagnostics.file_diagnostics);
+        self.emit_diagnostics(&global_diagnostics.diagnostics);
     }
 }
 
@@ -340,36 +284,8 @@ pub const fn is_fatal_severity(severity: Severity) -> bool {
 }
 
 /// Builds a diagnostic struct.
-pub trait BuildFileDiagnostic {
+pub trait BuildDiagnostic {
     /// Convert [`self`] into [`Diagnostic`].
     #[must_use]
-    fn build(self) -> Diagnostic<PathID>;
-
-    /// Returns IDs of the files involved in the diagnostics.
-    #[must_use]
-    fn files_involved(&self) -> Vec<PathID>;
-}
-
-/// Extends [`Location`] with methods for converting into primary and secondary
-/// diagnostics labels.
-pub trait LocationExt {
-    /// Gets primary diagnostics label in the location.
-    #[must_use]
-    fn to_primary_label(self) -> Label<PathID>;
-
-    /// Gets secondary diagnostics label in the location.
-    #[must_use]
-    fn to_secondary_label(self) -> Label<PathID>;
-}
-
-impl LocationExt for Location {
-    #[inline(always)]
-    fn to_primary_label(self) -> Label<PathID> {
-        Label::primary(self.filepath, self)
-    }
-
-    #[inline(always)]
-    fn to_secondary_label(self) -> Label<PathID> {
-        Label::secondary(self.filepath, self)
-    }
+    fn build(self) -> Diagnostic;
 }

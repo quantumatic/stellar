@@ -2,10 +2,10 @@
 
 use std::str::FromStr;
 
+use stellar_filesystem::in_memory_file_storage::InMemoryFileStorage;
 use termcolor::{ColorChoice, WriteColor};
 
 use crate::diagnostic::Diagnostic;
-use crate::files::Files;
 
 mod config;
 mod renderer;
@@ -62,19 +62,25 @@ impl From<ColorArg> for ColorChoice {
 /// * a file was removed from the file database.
 /// * a file was changed so that it is too small to have an index
 /// * IO fails
-pub fn emit<'f, F: Files<'f>>(
+pub fn emit(
     writer: &mut dyn WriteColor,
     config: &Config,
-    files: &'f F,
-    diagnostic: &Diagnostic<F::FileId>,
+    in_memory_file_storage: &InMemoryFileStorage,
+    diagnostic: &Diagnostic,
 ) -> Result<(), super::files::Error> {
     use self::renderer::Renderer;
     use self::views::{RichDiagnostic, ShortDiagnostic};
 
     let mut renderer = Renderer::new(writer, config);
     match config.display_style {
-        DisplayStyle::Rich => RichDiagnostic::new(diagnostic, config).render(files, &mut renderer),
-        DisplayStyle::Medium => ShortDiagnostic::new(diagnostic, true).render(files, &mut renderer),
-        DisplayStyle::Short => ShortDiagnostic::new(diagnostic, false).render(files, &mut renderer),
+        DisplayStyle::Rich => {
+            RichDiagnostic::new(diagnostic, config).render(in_memory_file_storage, &mut renderer)
+        }
+        DisplayStyle::Medium => {
+            ShortDiagnostic::new(diagnostic, true).render(in_memory_file_storage, &mut renderer)
+        }
+        DisplayStyle::Short => {
+            ShortDiagnostic::new(diagnostic, false).render(in_memory_file_storage, &mut renderer)
+        }
     }
 }

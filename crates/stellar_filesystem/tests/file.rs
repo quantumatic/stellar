@@ -26,7 +26,7 @@ fn line_span_sources() {
     let line_sources = (0..4)
         .map(|line| {
             let line_range = file.line_range_by_index(line).unwrap();
-            &file.source[line_range]
+            &file.source[line_range.start.0..line_range.end.0]
         })
         .collect::<Vec<_>>();
 

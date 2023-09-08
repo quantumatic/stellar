@@ -1,10 +1,11 @@
 use std::io::{self, Write};
 use std::ops::Range;
 
+use stellar_filesystem::location::ByteOffset;
 use termcolor::{ColorSpec, WriteColor};
 
 use crate::diagnostic::{LabelStyle, Severity};
-use crate::files::{Error, Location};
+use crate::files::{Error, ResolvedLocation};
 use crate::term::{Chars, Config, Styles};
 
 /// The 'location focus' of a source code snippet.
@@ -12,7 +13,7 @@ pub(crate) struct Locus {
     /// The user-facing name of the file.
     pub(crate) name: String,
     /// The location.
-    pub(crate) location: Location,
+    pub(crate) location: ResolvedLocation,
 }
 
 /// Single-line label, with an optional message.
@@ -39,7 +40,7 @@ pub(crate) enum MultiLabel<'d> {
     /// ```text
     /// ╭
     /// ```
-    Top(usize),
+    Top(ByteOffset),
     /// Left vertical labels for multi-line labels.
     ///
     /// ```text
@@ -52,7 +53,7 @@ pub(crate) enum MultiLabel<'d> {
     /// ```text
     /// ╰────────────^ blah blah
     /// ```
-    Bottom(usize, &'d str),
+    Bottom(ByteOffset, &'d str),
 }
 
 #[derive(Copy, Clone)]
@@ -255,7 +256,7 @@ impl<'w, 'c> Renderer<'w, 'c> {
                     Some((label_index, label_style, label)) if *label_index == label_column => {
                         match label {
                             MultiLabel::Top(start)
-                                if *start <= source.len() - source.trim_start().len() =>
+                                if start.0 <= source.len() - source.trim_start().len() =>
                             {
                                 self.label_multi_top_left(severity, *label_style)?;
                             }
@@ -282,9 +283,9 @@ impl<'w, 'c> Renderer<'w, 'c> {
                 }) || multi_labels.iter().any(|(_, ls, label)| {
                     *ls == LabelStyle::Primary
                         && match label {
-                            MultiLabel::Top(start) => column_range.start >= *start,
+                            MultiLabel::Top(start) => column_range.start >= start.0,
                             MultiLabel::Left => true,
-                            MultiLabel::Bottom(start, _) => column_range.end <= *start,
+                            MultiLabel::Bottom(start, _) => column_range.end <= start.0,
                         }
                 });
 
@@ -532,7 +533,7 @@ impl<'w, 'c> Renderer<'w, 'c> {
             let (label_style, range, bottom_message) = match label {
                 MultiLabel::Left => continue, // no label caret needed
                 // no label caret needed if this can be started in front of the line
-                MultiLabel::Top(start) if *start <= source.len() - source.trim_start().len() => {
+                MultiLabel::Top(start) if start.0 <= source.len() - source.trim_start().len() => {
                     continue
                 }
                 MultiLabel::Top(range) => (*label_style, range, None),
@@ -583,10 +584,10 @@ impl<'w, 'c> Renderer<'w, 'c> {
             // Finish the top or bottom caret
             match bottom_message {
                 None => {
-                    self.label_multi_top_caret(severity, label_style, source, *range)?;
+                    self.label_multi_top_caret(severity, label_style, source, range.0)?;
                 }
                 Some(message) => {
-                    self.label_multi_bottom_caret(severity, label_style, source, *range, message)?;
+                    self.label_multi_bottom_caret(severity, label_style, source, range.0, message)?;
                 }
             }
         }

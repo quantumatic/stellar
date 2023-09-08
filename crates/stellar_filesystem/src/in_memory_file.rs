@@ -6,7 +6,7 @@ use std::{cmp::Ordering, path::PathBuf};
 
 use stellar_interner::PathID;
 
-use crate::location::{Location, LocationIndex};
+use crate::location::ByteOffset;
 
 /// A Stellar source file.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -85,20 +85,13 @@ impl InMemoryFile {
         }
     }
 
-    /// Returns the string slice corresponding to the given location.
-    #[inline(always)]
-    #[must_use]
-    pub fn resolve_location(&self, location: Location) -> &str {
-        self.source.index(location)
-    }
-
     /// Returns the line starting byte index of the given byte index.
     ///
     /// # Example
     ///
     /// ```
     /// # use std::path::Path;
-    /// # use stellar_filesystem::in_memory_file::InMemoryFile;
+    /// # use stellar_filesystem::{in_memory_file::InMemoryFile, location::ByteOffset};
     /// let file = InMemoryFile::new_from_source(
     ///     Path::new("test.sr"),
     ///     "fun main() {
@@ -106,13 +99,13 @@ impl InMemoryFile {
     /// }".to_owned(),
     /// );
     ///
-    /// assert_eq!(file.get_line_index_by_byte_index(0), 0);
-    /// assert_eq!(file.get_line_index_by_byte_index(13), 1);
+    /// assert_eq!(file.get_line_index_by_byte_index(ByteOffset(0)), 0);
+    /// assert_eq!(file.get_line_index_by_byte_index(ByteOffset(13)), 1);
     /// ```
     #[must_use]
-    pub fn get_line_index_by_byte_index(&self, byte_index: usize) -> usize {
+    pub fn get_line_index_by_byte_index(&self, byte_offset: ByteOffset) -> usize {
         self.line_starts
-            .binary_search(&byte_index)
+            .binary_search(&byte_offset.0)
             .unwrap_or_else(|next_line| next_line - 1)
     }
 
@@ -125,7 +118,7 @@ impl InMemoryFile {
     ///
     /// ```
     /// # use std::path::Path;
-    /// # use stellar_filesystem::in_memory_file::InMemoryFile;
+    /// # use stellar_filesystem::{in_memory_file::InMemoryFile, location::ByteOffset};
     /// let file = InMemoryFile::new_from_source(
     ///     Path::new("test.sr"),
     ///     "fun main() {
@@ -133,21 +126,25 @@ impl InMemoryFile {
     /// }".to_owned(),
     /// );
     ///
-    /// assert_eq!(file.get_line_start_by_index(0).unwrap(), 0);
-    /// assert_eq!(file.get_line_start_by_index(1).unwrap(), 13);
+    /// assert_eq!(file.get_line_start_by_index(0).unwrap(), ByteOffset(0));
+    /// assert_eq!(file.get_line_start_by_index(1).unwrap(), ByteOffset(13));
     /// assert!(file.get_line_start_by_index(5).is_err());
     /// ```
     ///
     /// # Errors
     /// When line index is out of bounds.
-    pub fn get_line_start_by_index(&self, line_index: usize) -> Result<usize, LineTooLargeError> {
+    pub fn get_line_start_by_index(
+        &self,
+        line_index: usize,
+    ) -> Result<ByteOffset, LineTooLargeError> {
         match line_index.cmp(&self.line_starts.len()) {
-            Ordering::Less => Ok(self
-                .line_starts
-                .get(line_index)
-                .copied()
-                .expect("failed despite previous check")),
-            Ordering::Equal => Ok(self.source.len()),
+            Ordering::Less => Ok(ByteOffset(
+                *self
+                    .line_starts
+                    .get(line_index)
+                    .expect("failed despite previous check"),
+            )),
+            Ordering::Equal => Ok(ByteOffset(self.source.len())),
             Ordering::Greater => Err(LineTooLargeError {
                 given: line_index,
                 max: self.line_starts.len() - 1,
@@ -161,7 +158,7 @@ impl InMemoryFile {
     ///
     /// ```
     /// # use std::path::Path;
-    /// # use stellar_filesystem::in_memory_file::InMemoryFile;
+    /// # use stellar_filesystem::{in_memory_file::InMemoryFile, location::ByteOffset};
     /// let file = InMemoryFile::new_from_source(
     ///     Path::new("test.sr"),
     ///     "fun main() {
@@ -169,12 +166,12 @@ impl InMemoryFile {
     /// }".to_owned(),
     /// );
     ///
-    /// assert_eq!(file.line_range_by_index(0), Some(0..13));
-    /// assert_eq!(file.line_range_by_index(1), Some(13..43));
-    /// assert_eq!(file.line_range_by_index(2), Some(43..44));
+    /// assert_eq!(file.line_range_by_index(0), Some(ByteOffset(0)..ByteOffset(13)));
+    /// assert_eq!(file.line_range_by_index(1), Some(ByteOffset(13)..ByteOffset(43)));
+    /// assert_eq!(file.line_range_by_index(2), Some(ByteOffset(43)..ByteOffset(44)));
     /// ```
     #[must_use]
-    pub fn line_range_by_index(&self, line_index: usize) -> Option<Range<usize>> {
+    pub fn line_range_by_index(&self, line_index: usize) -> Option<Range<ByteOffset>> {
         let current_line_start = self.get_line_start_by_index(line_index).ok()?;
         let next_line_start = self.get_line_start_by_index(line_index + 1).ok()?;
 

@@ -1,8 +1,11 @@
 use std::cmp;
-use std::ops::Range;
+
+use stellar_filesystem::in_memory_file_storage::InMemoryFileStorage;
+use stellar_filesystem::location::{ByteOffset, Location};
+use stellar_interner::PathID;
 
 use crate::diagnostic::{Diagnostic, LabelStyle};
-use crate::files::{Error, Files, Location};
+use crate::files::{DiagnosticsRenderHelper, Error, ResolvedLocation};
 use crate::term::renderer::{Locus, MultiLabel, Renderer, SingleLabel};
 use crate::term::Config;
 
@@ -12,51 +15,45 @@ fn count_digits(n: usize) -> usize {
 }
 
 /// Output a richly formatted diagnostic, with source code previews.
-pub(crate) struct RichDiagnostic<'d, 'c, FileId> {
-    diagnostic: &'d Diagnostic<FileId>,
+pub(crate) struct RichDiagnostic<'d, 'c> {
+    diagnostic: &'d Diagnostic,
     config: &'c Config,
 }
 
-impl<'d, 'c, FileId> RichDiagnostic<'d, 'c, FileId>
-where
-    FileId: Copy + PartialEq,
-{
+impl<'d, 'c> RichDiagnostic<'d, 'c> {
     pub(crate) const fn new(
-        diagnostic: &'d Diagnostic<FileId>,
+        diagnostic: &'d Diagnostic,
         config: &'c Config,
-    ) -> RichDiagnostic<'d, 'c, FileId> {
+    ) -> RichDiagnostic<'d, 'c> {
         RichDiagnostic { diagnostic, config }
     }
 
-    pub(crate) fn render<'files>(
+    pub(crate) fn render(
         &self,
-        files: &'files impl Files<'files, FileId = FileId>,
+        in_memory_file_storage: &InMemoryFileStorage,
         renderer: &mut Renderer<'_, '_>,
-    ) -> Result<(), Error>
-    where
-        FileId: 'files,
-    {
+    ) -> Result<(), Error> {
         use std::collections::BTreeMap;
 
-        struct LabeledFile<'diagnostic, FileId> {
-            file_id: FileId,
-            start: usize,
+        struct LabeledFile<'d> {
+            filepath: PathID,
+            start: ByteOffset,
             name: String,
-            location: Location,
+            location: ResolvedLocation,
             num_multi_labels: usize,
-            lines: BTreeMap<usize, Line<'diagnostic>>,
+            lines: BTreeMap<usize, Line<'d>>,
             max_label_style: LabelStyle,
         }
 
-        impl<'diagnostic, FileId> LabeledFile<'diagnostic, FileId> {
+        impl<'d> LabeledFile<'d> {
             fn get_or_insert_line(
                 &mut self,
                 line_index: usize,
-                line_range: Range<usize>,
+                line_location: Location,
                 line_number: usize,
-            ) -> &mut Line<'diagnostic> {
+            ) -> &mut Line<'d> {
                 self.lines.entry(line_index).or_insert_with(|| Line {
-                    range: line_range,
+                    location: line_location,
                     number: line_number,
                     single_labels: vec![],
                     multi_labels: vec![],
@@ -66,27 +63,31 @@ where
             }
         }
 
-        struct Line<'diagnostic> {
+        struct Line<'d> {
             number: usize,
-            range: Range<usize>,
-            single_labels: Vec<SingleLabel<'diagnostic>>,
-            multi_labels: Vec<(usize, LabelStyle, MultiLabel<'diagnostic>)>,
+            location: Location,
+            single_labels: Vec<SingleLabel<'d>>,
+            multi_labels: Vec<(usize, LabelStyle, MultiLabel<'d>)>,
             must_render: bool,
         }
 
-        let mut labeled_files = Vec::<LabeledFile<'_, _>>::new();
+        let mut labeled_files = Vec::<LabeledFile<'_>>::new();
         // Keep track of the outer padding to use when rendering the
         // snippets of source code.
         let mut outer_padding = 0;
 
         // Group labels by file
         for label in &self.diagnostic.labels {
-            let start_line_index = files.line_index(label.file_id, label.range.start)?;
-            let start_line_number = files.line_number(label.file_id, start_line_index)?;
-            let start_line_range = files.line_range(label.file_id, start_line_index)?;
-            let end_line_index = files.line_index(label.file_id, label.range.end)?;
-            let end_line_number = files.line_number(label.file_id, end_line_index)?;
-            let end_line_range = files.line_range(label.file_id, end_line_index)?;
+            let start_line_index =
+                in_memory_file_storage.line_index(label.location.filepath, label.location.start)?;
+            let start_line_number = start_line_index + 1;
+            let start_line_range =
+                in_memory_file_storage.line_location(label.location.filepath, start_line_index)?;
+            let end_line_index =
+                in_memory_file_storage.line_index(label.location.filepath, label.location.end)?;
+            let end_line_number = end_line_index + 1;
+            let end_line_location =
+                in_memory_file_storage.line_location(label.location.filepath, end_line_index)?;
 
             outer_padding = cmp::max(
                 outer_padding,
@@ -98,26 +99,30 @@ where
             // preserve the order that unique files appear in the list of labels.
             let labeled_file = if let Some(labeled_file) = labeled_files
                 .iter_mut()
-                .find(|labeled_file| label.file_id == labeled_file.file_id)
+                .find(|labeled_file| label.location.filepath == labeled_file.filepath)
             {
                 // another diagnostic also referenced this file
                 if labeled_file.max_label_style > label.style
                     || (labeled_file.max_label_style == label.style
-                        && labeled_file.start > label.range.start)
+                        && labeled_file.start > label.location.start)
                 {
                     // this label has a higher style or has the same style but starts earlier
-                    labeled_file.start = label.range.start;
-                    labeled_file.location = files.location(label.file_id, label.range.start)?;
+                    labeled_file.start = label.location.start;
+                    labeled_file.location = in_memory_file_storage
+                        .location(label.location.filepath, label.location.start)?;
                     labeled_file.max_label_style = label.style;
                 }
                 labeled_file
             } else {
                 // no other diagnostic referenced this file yet
                 labeled_files.push(LabeledFile {
-                    file_id: label.file_id,
-                    start: label.range.start,
-                    name: files.name(label.file_id)?.to_string(),
-                    location: files.location(label.file_id, label.range.start)?,
+                    filepath: label.location.filepath,
+                    start: label.location.start,
+                    name: in_memory_file_storage
+                        .name(label.location.filepath)?
+                        .to_string(),
+                    location: in_memory_file_storage
+                        .location(label.location.filepath, label.location.start)?,
                     num_multi_labels: 0,
                     lines: BTreeMap::new(),
                     max_label_style: label.style,
@@ -138,9 +143,14 @@ where
                     break;
                 };
 
-                if let Ok(range) = files.line_range(label.file_id, index) {
-                    let line =
-                        labeled_file.get_or_insert_line(index, range, start_line_number - offset);
+                if let Ok(location) =
+                    in_memory_file_storage.line_location(label.location.filepath, index)
+                {
+                    let line = labeled_file.get_or_insert_line(
+                        index,
+                        location,
+                        start_line_number - offset,
+                    );
                     line.must_render = true;
                 } else {
                     break;
@@ -154,9 +164,11 @@ where
                     .checked_add(offset)
                     .expect("line index too big");
 
-                if let Ok(range) = files.line_range(label.file_id, index) {
+                if let Ok(location) =
+                    in_memory_file_storage.line_location(label.location.filepath, index)
+                {
                     let line =
-                        labeled_file.get_or_insert_line(index, range, end_line_number + offset);
+                        labeled_file.get_or_insert_line(index, location, end_line_number + offset);
                     line.must_render = true;
                 } else {
                     break;
@@ -164,7 +176,7 @@ where
             }
 
             if start_line_index == end_line_index
-                || (label.range.end == end_line_range.start
+                || (label.location.end == end_line_location.start
                     && end_line_index - start_line_index == 1)
             {
                 // Single line
@@ -173,11 +185,11 @@ where
                 // 2 │ (+ test "")
                 //   │         ^^ expected `Int` but found `String`
                 // ```
-                let label_start = label.range.start - start_line_range.start;
+                let label_start = label.location.start - start_line_range.start;
                 // Ensure that we print at least one caret, even when we
                 // have a zero-length source range.
                 let label_end =
-                    usize::max(label.range.end - start_line_range.start, label_start + 1);
+                    cmp::max(label.location.end - start_line_range.start, label_start + 1);
 
                 let line = labeled_file.get_or_insert_line(
                     start_line_index,
@@ -190,7 +202,7 @@ where
                 let index = match line.single_labels.binary_search_by(|(_, range, _)| {
                     // `Range<usize>` doesn't implement `Ord`, so convert to `(usize, usize)`
                     // to piggyback off its lexicographic comparison implementation.
-                    (range.start, range.end).cmp(&(label_start, label_end))
+                    (range.start, range.end).cmp(&(label_start.0, label_end.0))
                 }) {
                     // If the ranges are the same, order the labels in reverse
                     // to how they were originally specified in the diagnostic.
@@ -198,8 +210,10 @@ where
                     Ok(index) | Err(index) => index,
                 };
 
-                line.single_labels
-                    .insert(index, (label.style, label_start..label_end, &label.message));
+                line.single_labels.insert(
+                    index,
+                    (label.style, label_start.0..label_end.0, &label.message),
+                );
 
                 // If this line is not rendered, the SingleLabel is not visible.
                 line.must_render = true;
@@ -220,11 +234,11 @@ where
                 labeled_file.num_multi_labels += 1;
 
                 // First labeled line
-                let label_start = label.range.start - start_line_range.start;
+                let label_start = label.location.start - start_line_range.start;
 
                 let start_line = labeled_file.get_or_insert_line(
                     start_line_index,
-                    start_line_range.clone(),
+                    start_line_range,
                     start_line_number,
                 );
 
@@ -245,15 +259,17 @@ where
                 // 7 │ │     _ 0 => "Buzz"
                 // ```
                 for line_index in (start_line_index + 1)..end_line_index {
-                    let line_range = files.line_range(label.file_id, line_index)?;
-                    let line_number = files.line_number(label.file_id, line_index)?;
+                    let line_location = in_memory_file_storage
+                        .line_location(label.location.filepath, line_index)?;
+                    let line_number = line_index + 1;
 
                     outer_padding = std::cmp::max(
                         outer_padding,
                         count_digits(line_number) + self.config.end_context_lines,
                     );
 
-                    let line = labeled_file.get_or_insert_line(line_index, line_range, line_number);
+                    let line =
+                        labeled_file.get_or_insert_line(line_index, line_location, line_number);
 
                     line.multi_labels
                         .push((label_index, label.style, MultiLabel::Left));
@@ -273,11 +289,11 @@ where
                 // 8 │ │     _ _ => num
                 //   │ ╰──────────────^ `case` clauses have incompatible types
                 // ```
-                let label_end = label.range.end - end_line_range.start;
+                let label_end = label.location.end - end_line_location.start;
 
                 let end_line = labeled_file.get_or_insert_line(
                     end_line_index,
-                    end_line_range,
+                    end_line_location,
                     end_line_number,
                 );
 
@@ -315,8 +331,7 @@ where
         // ```
         let mut labeled_files = labeled_files.into_iter().peekable();
         while let Some(labeled_file) = labeled_files.next() {
-            let source = files.source(labeled_file.file_id)?;
-            let source = source.as_ref();
+            let source = in_memory_file_storage.source(labeled_file.filepath)?;
 
             // Top left border and locus.
             //
@@ -349,7 +364,7 @@ where
                 renderer.render_snippet_source(
                     outer_padding,
                     line.number,
-                    &source[line.range.clone()],
+                    &source[line.location.start.0..line.location.end.0],
                     self.diagnostic.severity,
                     &line.single_labels,
                     labeled_file.num_multi_labels,
@@ -365,7 +380,7 @@ where
                         // One line between the current line and the next line
                         Some(2) => {
                             // Write a source line
-                            let file_id = labeled_file.file_id;
+                            let file_id = labeled_file.filepath;
 
                             // This line was not intended to be rendered initially.
                             // To render the line right, we have to get back the original labels.
@@ -374,10 +389,13 @@ where
                                 .get(&(line_index + 1))
                                 .map_or(&[][..], |line| &line.multi_labels[..]);
 
+                            let line_location =
+                                in_memory_file_storage.line_location(file_id, line_index + 1)?;
+
                             renderer.render_snippet_source(
                                 outer_padding,
-                                files.line_number(file_id, line_index + 1)?,
-                                &source[files.line_range(file_id, line_index + 1)?],
+                                line_index + 1,
+                                &source[line_location.start.0..line_location.end.0],
                                 self.diagnostic.severity,
                                 &[],
                                 labeled_file.num_multi_labels,
@@ -433,33 +451,24 @@ where
 }
 
 /// Output a short diagnostic, with a line number, severity, and message.
-pub(crate) struct ShortDiagnostic<'diagnostic, FileId> {
-    diagnostic: &'diagnostic Diagnostic<FileId>,
+pub(crate) struct ShortDiagnostic<'d> {
+    diagnostic: &'d Diagnostic,
     show_notes: bool,
 }
 
-impl<'diagnostic, FileId> ShortDiagnostic<'diagnostic, FileId>
-where
-    FileId: Copy + PartialEq,
-{
-    pub(crate) const fn new(
-        diagnostic: &'diagnostic Diagnostic<FileId>,
-        show_notes: bool,
-    ) -> ShortDiagnostic<'diagnostic, FileId> {
+impl<'d> ShortDiagnostic<'d> {
+    pub(crate) const fn new(diagnostic: &'d Diagnostic, show_notes: bool) -> ShortDiagnostic<'d> {
         ShortDiagnostic {
             diagnostic,
             show_notes,
         }
     }
 
-    pub(crate) fn render<'files>(
+    pub(crate) fn render(
         &self,
-        files: &'files impl Files<'files, FileId = FileId>,
+        in_memory_file_storage: &InMemoryFileStorage,
         renderer: &mut Renderer<'_, '_>,
-    ) -> Result<(), Error>
-    where
-        FileId: 'files,
-    {
+    ) -> Result<(), Error> {
         // Located headers
         //
         // ```text
@@ -472,8 +481,11 @@ where
 
             renderer.render_header(
                 Some(&Locus {
-                    name: files.name(label.file_id)?.to_string(),
-                    location: files.location(label.file_id, label.range.start)?,
+                    name: in_memory_file_storage
+                        .name(label.location.filepath)?
+                        .to_string(),
+                    location: in_memory_file_storage
+                        .location(label.location.filepath, label.location.start)?,
                 }),
                 self.diagnostic.severity,
                 self.diagnostic.code.as_deref(),

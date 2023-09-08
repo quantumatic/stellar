@@ -1,10 +1,10 @@
 //! Diagnostic data structures.
 
-use std::ops::Range;
 use std::string::ToString;
 
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
+use stellar_filesystem::location::Location;
 
 /// A severity level for diagnostic messages.
 ///
@@ -46,27 +46,24 @@ pub enum LabelStyle {
 /// A label describing an underlined region of code associated with a diagnostic.
 #[derive(Clone, Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "serialization", derive(Serialize, Deserialize))]
-pub struct Label<FileId> {
+pub struct Label {
     /// The style of the label.
     pub style: LabelStyle,
-    /// The file that we are labelling.
-    pub file_id: FileId,
-    /// The range in bytes we are going to include in the final snippet.
-    pub range: Range<usize>,
+    /// The location of the snippet.
+    pub location: Location,
     /// An optional message to provide some additional information for the
     /// underlined code. These should not include line breaks.
     pub message: String,
 }
 
-impl<FileId> Label<FileId> {
+impl Label {
     /// Create a new label.
     #[inline(always)]
     #[must_use]
-    pub fn new(style: LabelStyle, file_id: FileId, range: impl Into<Range<usize>>) -> Self {
+    pub const fn new(style: LabelStyle, location: Location) -> Self {
         Self {
             style,
-            file_id,
-            range: range.into(),
+            location,
             message: String::new(),
         }
     }
@@ -76,8 +73,8 @@ impl<FileId> Label<FileId> {
     /// [`LabelStyle::Primary`]: LabelStyle::Primary
     #[inline(always)]
     #[must_use]
-    pub fn primary(file_id: FileId, range: impl Into<Range<usize>>) -> Self {
-        Self::new(LabelStyle::Primary, file_id, range)
+    pub const fn primary(location: Location) -> Self {
+        Self::new(LabelStyle::Primary, location)
     }
 
     /// Create a new label with a style of [`LabelStyle::Secondary`].
@@ -85,8 +82,8 @@ impl<FileId> Label<FileId> {
     /// [`LabelStyle::Secondary`]: LabelStyle::Secondary
     #[inline(always)]
     #[must_use]
-    pub fn secondary(file_id: FileId, range: impl Into<Range<usize>>) -> Self {
-        Self::new(LabelStyle::Secondary, file_id, range)
+    pub const fn secondary(location: Location) -> Self {
+        Self::new(LabelStyle::Secondary, location)
     }
 
     /// Add a message to the diagnostic.
@@ -104,7 +101,7 @@ impl<FileId> Label<FileId> {
 /// The position of a Diagnostic is considered to be the position of the [`Label`] that has the earliest starting position and has the highest style which appears in all the labels of the diagnostic.
 #[derive(Clone, Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "serialization", derive(Serialize, Deserialize))]
-pub struct Diagnostic<FileId> {
+pub struct Diagnostic {
     /// The overall severity of the diagnostic
     pub severity: Severity,
     /// An optional code that identifies this diagnostic.
@@ -118,13 +115,13 @@ pub struct Diagnostic<FileId> {
     /// Source labels that describe the cause of the diagnostic.
     /// The order of the labels inside the vector does not have any meaning.
     /// The labels are always arranged in the order they appear in the source code.
-    pub labels: Vec<Label<FileId>>,
+    pub labels: Vec<Label>,
     /// Notes that are associated with the primary cause of the diagnostic.
     /// These can include line breaks for improved formatting.
     pub notes: Vec<String>,
 }
 
-impl<FileId> Diagnostic<FileId> {
+impl Diagnostic {
     /// Create a new diagnostic.
     #[inline(always)]
     #[must_use]
@@ -199,19 +196,38 @@ impl<FileId> Diagnostic<FileId> {
         self
     }
 
+    /// Add a label to the diagnostic.
+    #[inline(always)]
+    #[must_use]
+    pub fn with_label(mut self, label: Label) -> Self {
+        self.labels.push(label);
+        self
+    }
+
     /// Add some labels to the diagnostic.
     #[inline(always)]
     #[must_use]
-    pub fn with_labels(mut self, mut labels: Vec<Label<FileId>>) -> Self {
-        self.labels.append(&mut labels);
+    pub fn with_labels(mut self, labels: impl IntoIterator<Item = Label>) -> Self {
+        self.labels.append(&mut labels.into_iter().collect());
         self
     }
 
     /// Add some notes to the diagnostic.
     #[inline(always)]
     #[must_use]
-    pub fn with_notes(mut self, mut notes: Vec<String>) -> Self {
-        self.notes.append(&mut notes);
+    pub fn with_notes(mut self, notes: impl IntoIterator<Item = impl ToString>) -> Self {
+        self.notes
+            .append(&mut notes.into_iter().map(|note| note.to_string()).collect());
         self
+    }
+
+    /// Returns the files involved in the diagnostic.
+    #[inline(always)]
+    #[must_use]
+    pub fn files_involved(&self) -> Vec<stellar_interner::PathID> {
+        self.labels
+            .iter()
+            .map(|label| label.location.filepath)
+            .collect()
     }
 }

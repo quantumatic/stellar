@@ -3,8 +3,20 @@ use std::io::Write;
 use termcolor::{Color, ColorChoice, ColorSpec, StandardStream, WriteColor};
 
 #[allow(dead_code)]
-pub fn log(prefix: impl AsRef<str>, message: impl AsRef<str>) {
+pub fn log_info(prefix: impl AsRef<str>, message: impl AsRef<str>) {
     log_with_prefix(format!("{:>width$}", prefix.as_ref(), width = 12), message);
+}
+
+#[allow(dead_code)]
+pub fn log_error(message: impl AsRef<str>) {
+    let mut stdout = StandardStream::stderr(ColorChoice::Always);
+
+    stdout
+        .set_color(ColorSpec::new().set_bold(true).set_fg(Some(Color::Red)))
+        .unwrap();
+    write!(&mut stdout, "error: ").unwrap();
+    stdout.set_color(ColorSpec::new().set_fg(None)).unwrap();
+    write!(&mut stdout, "{}", message.as_ref()).unwrap();
 }
 
 #[allow(dead_code)]
@@ -18,13 +30,11 @@ fn log_with_prefix(prefix: impl AsRef<str>, message: impl AsRef<str>) {
                 .set_italic(true)
                 .set_fg(Some(Color::Green)),
         )
-        .expect("Cannot set fg color to cyan for current log");
-    write!(&mut stdout, "{} ", prefix.as_ref()).expect("Cannot write the current log message");
+        .unwrap();
+    write!(&mut stdout, "{} ", prefix.as_ref()).unwrap();
     stdout
         .set_color(ColorSpec::new().set_fg(Some(Color::White)))
-        .expect("Cannot set fg color to white for current log");
-    writeln!(&mut stdout, "{}", message.as_ref()).expect("Cannot write the current log message");
-    stdout
-        .set_color(ColorSpec::new().set_fg(None))
-        .expect("Cannot set fg color to white for current log");
+        .unwrap();
+    writeln!(&mut stdout, "{}", message.as_ref()).unwrap();
+    stdout.set_color(ColorSpec::new().set_fg(None)).unwrap();
 }

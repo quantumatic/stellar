@@ -8,10 +8,9 @@
 //! [`Diagnostics`]: crate::diagnostic::Diagnostic
 //! [`Files`]: Files
 
-use std::ops::Range;
-
-use stellar_filesystem::in_memory_file::{InMemoryFile, LineTooLargeError};
+use stellar_filesystem::in_memory_file::LineTooLargeError;
 use stellar_filesystem::in_memory_file_storage::InMemoryFileStorage;
+use stellar_filesystem::location::{ByteOffset, Location};
 use stellar_interner::PathID;
 
 /// An enum representing an error that happened while looking up a file or a piece of content in that file.
@@ -100,20 +99,12 @@ impl std::error::Error for Error {
 /// This is to workaround the lack of higher kinded lifetime parameters.
 /// This can be ignored if this is not needed, however.
 #[allow(clippy::missing_errors_doc)]
-pub trait Files<'a> {
-    /// A unique identifier for files in the file provider. This will be used
-    /// for rendering `diagnostic::Label`s in the corresponding source files.
-    type FileId: 'a + Copy + PartialEq;
-    /// The user-facing name of a file, to be displayed in diagnostics.
-    type Name: 'a + std::fmt::Display;
-    /// The source code of a file.
-    type Source: 'a + AsRef<str>;
-
+pub(crate) trait DiagnosticsRenderHelper<'a> {
     /// The user-facing name of a file.
-    fn name(&'a self, id: Self::FileId) -> Result<Self::Name, Error>;
+    fn name(&'a self, filepath: PathID) -> Result<String, Error>;
 
     /// The source code of a file.
-    fn source(&'a self, id: Self::FileId) -> Result<Self::Source, Error>;
+    fn source(&'a self, filepath: PathID) -> Result<&'a str, Error>;
 
     /// The index of the line at the given byte index.
     /// If the byte index is past the end of the file, returns the maximum line index in the file.
@@ -124,7 +115,7 @@ pub trait Files<'a> {
     /// This can be implemented efficiently by performing a binary search over
     /// a list of line starts. It might be useful to pre-compute and cache these
     /// line starts.
-    fn line_index(&'a self, id: Self::FileId, byte_index: usize) -> Result<usize, Error>;
+    fn line_index(&'a self, filepath: PathID, byte_offset: ByteOffset) -> Result<usize, Error>;
 
     /// The user-facing line number at the given line index.
     /// It is not necessarily checked that the specified line index
@@ -138,8 +129,8 @@ pub trait Files<'a> {
     ///
     /// [line-macro]: https://en.cppreference.com/w/c/preprocessor/line
     #[allow(unused_variables)]
-    fn line_number(&'a self, id: Self::FileId, line_index: usize) -> Result<usize, Error> {
-        Ok(line_index + 1)
+    fn line_number(&'a self, filepath: PathID, byte_offset: ByteOffset) -> Result<usize, Error> {
+        self.line_index(filepath, byte_offset).map(|idx| idx + 1)
     }
 
     /// The user-facing column number at the given line index and byte index.
@@ -154,30 +145,34 @@ pub trait Files<'a> {
     /// [`column_index`]: crate::files::column_index
     fn column_number(
         &'a self,
-        id: Self::FileId,
+        filepath: PathID,
         line_index: usize,
-        byte_index: usize,
+        byte_offset: ByteOffset,
     ) -> Result<usize, Error> {
-        let source = self.source(id)?;
-        let line_range = self.line_range(id, line_index)?;
-        let column_index = column_index(source.as_ref(), line_range, byte_index);
+        let source = self.source(filepath)?;
+        let line_range = self.line_location(filepath, line_index)?;
+        let column_index = column_index(source, line_range, byte_offset);
 
         Ok(column_index + 1)
     }
 
     /// Convenience method for returning line and column number at the given
     /// byte index in the file.
-    fn location(&'a self, id: Self::FileId, byte_index: usize) -> Result<Location, Error> {
-        let line_index = self.line_index(id, byte_index)?;
+    fn location(
+        &'a self,
+        filepath: PathID,
+        byte_offset: ByteOffset,
+    ) -> Result<ResolvedLocation, Error> {
+        let line_index = self.line_index(filepath, byte_offset)?;
 
-        Ok(Location {
-            line_number: self.line_number(id, line_index)?,
-            column_number: self.column_number(id, line_index, byte_index)?,
+        Ok(ResolvedLocation {
+            line_number: line_index + 1,
+            column_number: self.column_number(filepath, line_index, byte_offset)?,
         })
     }
 
     /// The byte range of line in the source of the file.
-    fn line_range(&'a self, id: Self::FileId, line_index: usize) -> Result<Range<usize>, Error>;
+    fn line_location(&'a self, filepath: PathID, line_index: usize) -> Result<Location, Error>;
 }
 
 /// A user-facing location in a source file.
@@ -186,11 +181,11 @@ pub trait Files<'a> {
 ///
 /// [`Files::location`]: Files::location
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub struct Location {
+pub(crate) struct ResolvedLocation {
     /// The user-facing line number.
-    pub line_number: usize,
+    pub(crate) line_number: usize,
     /// The user-facing column number.
-    pub column_number: usize,
+    pub(crate) column_number: usize,
 }
 
 /// The column index at the given byte index in the source file.
@@ -199,64 +194,17 @@ pub struct Location {
 /// If the byte index is smaller than the start of the line, then `0` is returned.
 /// If the byte index is past the end of the line, the column index of the last
 /// character `+ 1` is returned.
-///
-/// # Example
-///
-/// ```rust
-/// use stellar_diagnostics::files;
-///
-/// let source = "\n\n🗻∈🌏\n\n";
-///
-/// assert_eq!(files::column_index(source, 0..1, 0), 0);
-/// assert_eq!(files::column_index(source, 2..13, 0), 0);
-/// assert_eq!(files::column_index(source, 2..13, 2 + 0), 0);
-/// assert_eq!(files::column_index(source, 2..13, 2 + 1), 0);
-/// assert_eq!(files::column_index(source, 2..13, 2 + 4), 1);
-/// assert_eq!(files::column_index(source, 2..13, 2 + 8), 2);
-/// assert_eq!(files::column_index(source, 2..13, 2 + 10), 2);
-/// assert_eq!(files::column_index(source, 2..13, 2 + 11), 3);
-/// assert_eq!(files::column_index(source, 2..13, 2 + 12), 3);
-/// ```
 #[must_use]
-pub fn column_index(source: &str, line_range: Range<usize>, byte_index: usize) -> usize {
-    let end_index = std::cmp::min(byte_index, std::cmp::min(line_range.end, source.len()));
+pub fn column_index(source: &str, location: Location, byte_offset: ByteOffset) -> usize {
+    let end_index = std::cmp::min(
+        byte_offset,
+        std::cmp::min(location.end, source.len().into()),
+    );
 
-    (line_range.start..end_index)
+    (location.start.0..end_index.0)
         .filter(|byte_index| source.is_char_boundary(byte_index + 1))
         .count()
 }
-
-impl<'a> Files<'a> for InMemoryFile {
-    // we don't care about file IDs, because we have only one individual file here
-    type FileId = ();
-
-    type Name = String;
-    type Source = &'a str;
-
-    #[inline(always)]
-    fn name(&self, _: ()) -> Result<Self::Name, Error> {
-        Ok(format!("{}", self.path.display()))
-    }
-
-    #[inline(always)]
-    fn source(&'a self, _: ()) -> Result<Self::Source, Error> {
-        Ok(&self.source)
-    }
-
-    #[inline(always)]
-    fn line_index(&self, _: (), byte_index: usize) -> Result<usize, Error> {
-        Ok(self.get_line_index_by_byte_index(byte_index))
-    }
-
-    #[inline(always)]
-    fn line_range(&self, _: (), line_index: usize) -> Result<Range<usize>, Error> {
-        let line_start = self.get_line_start_by_index(line_index)?;
-        let next_line_start = self.get_line_start_by_index(line_index + 1)?;
-
-        Ok(line_start..next_line_start)
-    }
-}
-
 impl From<LineTooLargeError> for Error {
     fn from(value: LineTooLargeError) -> Self {
         Self::LineTooLarge {
@@ -266,37 +214,40 @@ impl From<LineTooLargeError> for Error {
     }
 }
 
-impl<'a> Files<'a> for InMemoryFileStorage {
-    type FileId = PathID;
-
-    type Name = String;
-    type Source = &'a str;
-
+impl<'a> DiagnosticsRenderHelper<'a> for InMemoryFileStorage {
     #[inline(always)]
-    fn name(&'a self, id: PathID) -> Result<Self::Name, Error> {
-        self.resolve_file(id)
+    fn name(&'a self, filepath: PathID) -> Result<String, Error> {
+        self.resolve_file(filepath)
             .map(|file| file.path.display().to_string())
             .ok_or(Error::FileMissing)
     }
 
     #[inline(always)]
-    fn source(&'a self, id: PathID) -> Result<Self::Source, Error> {
-        self.resolve_file(id)
+    fn source(&'a self, filepath: PathID) -> Result<&'a str, Error> {
+        self.resolve_file(filepath)
             .map(|file| file.source.as_str())
             .ok_or(Error::FileMissing)
     }
 
     #[inline(always)]
-    fn line_index(&'a self, id: PathID, byte_index: usize) -> Result<usize, Error> {
-        self.resolve_file(id)
+    fn line_index(&'a self, filepath: PathID, byte_offset: ByteOffset) -> Result<usize, Error> {
+        self.resolve_file(filepath)
             .ok_or(Error::FileMissing)
-            .and_then(|file| file.line_index((), byte_index))
+            .map(|file| file.get_line_index_by_byte_index(byte_offset))
     }
 
-    #[inline(always)]
-    fn line_range(&'a self, id: PathID, line_index: usize) -> Result<Range<usize>, Error> {
-        self.resolve_file(id)
+    fn line_location(&'a self, filepath: PathID, line_index: usize) -> Result<Location, Error> {
+        self.resolve_file(filepath)
             .ok_or(Error::FileMissing)
-            .and_then(|file| file.line_range((), line_index))
+            .and_then(|file| {
+                let line_start = file.get_line_start_by_index(line_index)?;
+                let next_line_start = file.get_line_start_by_index(line_index + 1)?;
+
+                Ok(Location {
+                    filepath,
+                    start: line_start,
+                    end: next_line_start,
+                })
+            })
     }
 }

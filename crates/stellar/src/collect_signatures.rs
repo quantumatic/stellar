@@ -3,14 +3,14 @@ use std::time::Instant;
 
 use stellar_ast_lowering::LowerToHir;
 use stellar_database::State;
-use stellar_diagnostics::{diagnostic::Diagnostic, DiagnosticsEmitter};
+use stellar_diagnostics::DiagnosticsEmitter;
 use stellar_parser::parse_package_source_files;
 use stellar_typechecker::{
     resolution::{collect_definitions::CollectDefinitions, resolve_imports::ResolveImports},
     signature_analysis::collect_signatures::CollectSignatures,
 };
 
-use crate::log::log;
+use crate::log::{log_error, log_info};
 
 pub fn command() {
     let mut state = State::new();
@@ -19,11 +19,10 @@ pub fn command() {
 
     match parse_package_source_files(&mut state, ".") {
         Err(err) => {
-            diagnostics_emitter
-                .emit_context_free_diagnostic(&Diagnostic::error().with_message(err));
+            log_error(err);
         }
         Ok(ast) => {
-            log(
+            log_info(
                 format!("Parsed"),
                 format!("in {}s", now.elapsed().as_secs_f64()),
             );
@@ -32,7 +31,7 @@ pub fn command() {
 
             let hir = LowerToHir::run_all(&mut state, ast);
 
-            log("Lowered", format!("in {}s", now.elapsed().as_secs_f64()));
+            log_info("Lowered", format!("in {}s", now.elapsed().as_secs_f64()));
 
             now = Instant::now();
 
@@ -40,7 +39,7 @@ pub fn command() {
             ResolveImports::run_all(&mut state, &hir);
             CollectSignatures::run_all(&mut state, &hir);
 
-            log("Analyzed", format!("in {}s", now.elapsed().as_secs_f64()));
+            log_info("Analyzed", format!("in {}s", now.elapsed().as_secs_f64()));
 
             diagnostics_emitter.emit_global_diagnostics(state.diagnostics());
         }

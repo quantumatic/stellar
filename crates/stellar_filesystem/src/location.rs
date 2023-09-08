@@ -2,7 +2,7 @@
 
 use std::{
     fmt::Display,
-    ops::{Add, AddAssign, Range, Sub, SubAssign},
+    ops::{Add, AddAssign, Index, Range, Sub, SubAssign},
 };
 
 use derive_more::Display;
@@ -24,10 +24,25 @@ pub struct Location {
     pub end: ByteOffset,
 }
 
+impl Index<Location> for String {
+    type Output = str;
+
+    fn index(&self, location: Location) -> &Self::Output {
+        &self[location.start.0..location.end.0]
+    }
+}
+
 /// Offset of a byte in a source text.
-#[derive(Debug, Copy, Clone, Default, PartialEq, Eq, Hash, Display)]
+#[derive(Debug, Copy, Clone, Default, PartialEq, Eq, PartialOrd, Ord, Hash, Display)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct ByteOffset(pub usize);
+
+impl From<usize> for ByteOffset {
+    #[inline(always)]
+    fn from(value: usize) -> Self {
+        Self(value)
+    }
+}
 
 impl Add for ByteOffset {
     type Output = Self;
@@ -140,7 +155,7 @@ impl Location {
     /// current location.
     ///
     /// ```
-    /// # use stellar_filesystem::location::{Location, LocationIndex, ByteOffset};
+    /// # use stellar_filesystem::location::{Location, ByteOffset};
     /// # use stellar_interner::DUMMY_PATH_ID;
     /// let location = Location {
     ///     filepath: DUMMY_PATH_ID,
@@ -167,7 +182,7 @@ impl Location {
     /// current location.
     ///
     /// ```
-    /// # use stellar_filesystem::location::{Location, LocationIndex, ByteOffset};
+    /// # use stellar_filesystem::location::{Location, ByteOffset};
     /// # use stellar_interner::DUMMY_PATH_ID;
     /// let location = Location {
     ///     filepath: DUMMY_PATH_ID,
@@ -200,40 +215,5 @@ impl From<Location> for Range<usize> {
 impl From<Location> for String {
     fn from(value: Location) -> Self {
         format!("{}..{}", value.start, value.end)
-    }
-}
-
-/// Allows to index a string using a given location.
-pub trait LocationIndex {
-    /// Output of the indexing operation.
-    type Output: ?Sized;
-
-    /// Index a string using a given location.
-    ///
-    /// # Example
-    /// ```
-    /// # use stellar_filesystem::location::{Location, LocationIndex, ByteOffset};
-    /// # use stellar_interner::DUMMY_PATH_ID;
-    /// let location = Location {
-    ///     filepath: DUMMY_PATH_ID,
-    ///     start: ByteOffset(0),
-    ///     end: ByteOffset(3)
-    /// };
-    ///
-    /// assert_eq!("test".index(location), "tes");
-    /// ```
-    fn index(&self, location: Location) -> &Self::Output;
-}
-
-impl<T> LocationIndex for T
-where
-    T: AsRef<str>,
-{
-    type Output = str;
-
-    #[inline(always)]
-    #[allow(clippy::indexing_slicing)]
-    fn index(&self, location: Location) -> &Self::Output {
-        &self.as_ref()[location.start.0..location.end.0]
     }
 }

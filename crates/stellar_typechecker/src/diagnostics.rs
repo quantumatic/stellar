@@ -3,7 +3,7 @@ use stellar_ast::{IdentifierAST, ModuleItemKind};
 use stellar_diagnostics::{
     define_diagnostics,
     diagnostic::{Diagnostic, Label},
-    BuildFileDiagnostic, LocationExt,
+    BuildDiagnostic,
 };
 use stellar_english_commons::pluralize::PluralizeExt;
 use stellar_filesystem::location::Location;
@@ -19,19 +19,14 @@ define_diagnostics! {
     ) {
         code { "E005" }
         message { format!("the name `{}` is defined multiple times", self.name) }
-        files_involved {
-            self.first_definition_location.filepath,
-            self.second_definition_location.filepath
-        }
         labels {
-            primary self.first_definition_location => {
-                format!("previous definition of `{}` is here", self.name)
-            },
-            secondary self.second_definition_location => {
-                format!("{} redefined here", self.name)
+            primary {
+                self.first_definition_location => format!("previous definition of `{}` is here", self.name)
+            }
+            secondary {
+                self.second_definition_location => format!("{} redefined here", self.name)
             }
         }
-        notes {}
     }
 
     diagnostic(error) EnumItemDefinedMultipleTimes(
@@ -43,19 +38,12 @@ define_diagnostics! {
     ) {
         code { "E006" }
         message { format!("duplicate definition of the enum item `{}` in `{}`", self.item_name, self.enum_name) }
-        files_involved {
-            self.first_definition_location.filepath,
-            self.second_definition_location.filepath
-        }
         labels {
-            primary self.first_definition_location => {
-                format!("first definition of `{}`", self.item_name)
-            },
-            secondary self.second_definition_location => {
-                format!("second, conflicting definition of `{}`", self.item_name)
+            primary {
+                self.first_definition_location => format!("first definition of `{}`", self.item_name)
             }
+            secondary { self.second_definition_location => format!("second, conflicting definition of `{}`", self.item_name) }
         }
-        notes {}
     }
 
     /// Diagnostic related to trying to import a package error.
@@ -66,13 +54,11 @@ define_diagnostics! {
     ) {
         code { "E007" }
         message { format!("trying to import package `{}`", self.package_name.id) }
-        files_involved { self.location.filepath }
         labels {
-            primary self.location => {
-                format!("consider: removing this import")
-            },
-            secondary self.package_name.location => {
-                format!("{} is a package, not a particular module", self.package_name.id)
+            primary { self.location => format!("help: remove this import")
+            }
+            secondary {
+                self.package_name.location => format!("{} is a package, not a particular module", self.package_name.id)
             }
         }
         notes {
@@ -89,12 +75,11 @@ define_diagnostics! {
     ) {
         code { "E008" }
         message { format!("failed to resolve the package `{}`", self.package_name) }
-        files_involved { self.location.filepath }
         labels {
-            primary self.location => {""}
+            primary { self.location }
         }
         notes {
-            format!("consider: adding `{}` into the manifest file's [dependencies] section", self.package_name)
+            format!("help: add `{}` into the manifest file's [dependencies] section", self.package_name)
         }
     }
 
@@ -108,17 +93,13 @@ define_diagnostics! {
     ) {
         code { "E008" }
         message { format!("failed to resolve the module item `{}`", self.item_name) }
-        files_involved {
-            self.module_name_location.filepath,
-            self.item_name_location.filepath
-        }
         labels {
-            primary self.item_name_location => {""},
-            secondary self.module_name_location => {
-                format!("module `{}` doesn't contain the item `{}`", self.module_name, self.item_name)
+            primary { self.item_name_location }
+            secondary {
+                self.module_name_location => format!("module `{}` doesn't contain the item `{}`", self.module_name, self.item_name)
             }
         }
-        notes {}
+
     }
 
     /// Diagnostic, that occurs when the compiler tries to resolve a module's item that is defined as private.
@@ -131,14 +112,12 @@ define_diagnostics! {
     ) {
         code { "E008" }
         message { format!("failed to resolve private module item `{}`", self.item_name) }
-        files_involved { self.module_name_location.filepath }
         labels {
-            primary self.item_name_location => {""},
-            secondary self.module_name_location => {
-                format!("module `{}` contains the item `{}`, but it is defined as private", self.module_name, self.item_name)
+            primary { self.item_name_location }
+            secondary {
+                self.module_name_location => format!("module `{}` contains the item `{}`, but it is defined as private", self.module_name, self.item_name)
             }
         }
-        notes {}
     }
 
     /// Diagnostic, that appears when you try to access a name in a namespace of
@@ -156,17 +135,13 @@ define_diagnostics! {
     ) {
         code { "E008" }
         message { format!("failed to resolve the name `{}`", self.name.id) }
-        files_involved {
-            self.module_item_name.location.filepath,
-            self.name.location.filepath
-        }
         labels {
-            primary self.name.location => {
-                format!("cannot find the name `{}` in `{}`",
+            primary {
+                self.name.location => format!("cannot find the name `{}` in `{}`",
                     self.name.id, self.module_item_name.id)
-            },
-            secondary self.module_item_name.location => {
-                format!("`{}` is not a module or an enum, so it cannot directly contain individual names",
+            }
+            secondary {
+                self.module_item_name.location => format!("`{}` is not a module or an enum, so it cannot directly contain individual names",
                     self.module_item_name.id)
             }
         }
@@ -189,14 +164,13 @@ define_diagnostics! {
     ) {
         code { "E008" }
         message { format!("failed to resolve the name `{}`", self.name.id) }
-        files_involved { self.enum_item_name.location.filepath }
         labels {
-            primary self.name.location => {
-                format!("cannot find the name `{}` in the namespace `{}`",
+            primary {
+                self.name.location => format!("cannot find the name `{}` in the namespace `{}`",
                     self.name.id, self.enum_item_name.id)
-            },
-            secondary self.enum_item_name.location => {
-                format!("`{}` is not a module or an enum, so it cannot directly contain individual names",
+            }
+            secondary {
+                self.enum_item_name.location => format!("`{}` is not a module or an enum, so it cannot directly contain individual names",
                     self.enum_item_name.id)
             }
         }
@@ -212,17 +186,12 @@ define_diagnostics! {
     ) {
         code { "E008" }
         message { format!("failed to resolve enum item `{}`", self.enum_item_name.id) }
-        files_involved {
-            self.enum_name.location.filepath,
-            self.enum_item_name.location.filepath
-        }
         labels {
-            primary self.enum_item_name.location => {
-                format!("cannot find the name `{}` in the definition of enum `{}`",
+            primary {
+                self.enum_item_name.location => format!("cannot find the name `{}` in the definition of enum `{}`",
                     self.enum_item_name.id, self.enum_name.id)
             }
         }
-        notes {}
     }
 
     /// Diagnostic, that occurs when the compiler tries to resolve a name in a module scope.
@@ -232,13 +201,9 @@ define_diagnostics! {
     ) {
         code { "E008" }
         message { format!("failed to resolve the name `{}`", self.name.id) }
-        files_involved {
-            self.name.location.filepath
-        }
         labels {
-            primary self.name.location => {""}
+            primary { self.name.location }
         }
-        notes {}
     }
 }
 
@@ -252,8 +217,8 @@ impl CycleDetectedWhenComputingSignatureOf {
     }
 }
 
-impl BuildFileDiagnostic for CycleDetectedWhenComputingSignatureOf {
-    fn build(self) -> Diagnostic<PathID> {
+impl BuildDiagnostic for CycleDetectedWhenComputingSignatureOf {
+    fn build(self) -> Diagnostic {
         Diagnostic::error()
             .with_message(format!(
                 "cycle detected when computing signature of {}",
@@ -266,16 +231,12 @@ impl BuildFileDiagnostic for CycleDetectedWhenComputingSignatureOf {
                     .tuple_windows()
                     .enumerate()
                     .map(|(idx, (a, b))| {
-                        a.location.to_primary_label().with_message(format!(
-                            "computing signature of {}, requires also to compute signature of {}",
+                        Label::secondary(a.location).with_message(format!(
+                            "computing signature of {} requires also to compute signature of {}",
                             a.id, b.id
                         ))
                     })
-                    .collect(),
+                    .collect::<Vec<_>>(),
             )
-    }
-
-    fn files_involved(&self) -> Vec<PathID> {
-        self.backtrace.iter().map(|b| b.location.filepath).collect()
     }
 }

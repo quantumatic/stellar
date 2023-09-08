@@ -30,19 +30,19 @@ pub struct Config {
 
     /// The minimum number of lines to be shown before the line on which a multiline [`Label`] ends.
     ///
-    /// Defaults to: `1`.
+    /// Defaults to: `3`.
     ///
     /// [`Label`]: crate::diagnostic::Label
     pub end_context_lines: usize,
 
     /// The minimum number of lines before a label that should be included for context.
     ///
-    /// Defaults to: `1`.
+    /// Defaults to: `3`.
     pub before_label_lines: usize,
 
     /// The minimum number of lines after a label that should be included for context.
     ///
-    /// Defaults to: `1`.
+    /// Defaults to: `3`.
     pub after_label_lines: usize,
 }
 
@@ -54,9 +54,9 @@ impl Default for Config {
             styles: Styles::default(),
             chars: Chars::default(),
             start_context_lines: 3,
-            end_context_lines: 1,
-            before_label_lines: 1,
-            after_label_lines: 1,
+            end_context_lines: 3,
+            before_label_lines: 3,
+            after_label_lines: 3,
         }
     }
 }

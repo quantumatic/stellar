@@ -92,7 +92,7 @@ use stellar_ast::{
 use stellar_database::{ModuleData, ModuleID, State};
 use stellar_diagnostics::Diagnostics;
 use stellar_filesystem::{
-    location::{ByteOffset, Location, LocationIndex},
+    location::{ByteOffset, Location},
     path_resolver::PackagePathResolver,
 };
 use stellar_interner::{IdentifierID, PathID};
@@ -445,7 +445,7 @@ impl<'s, 'd> ParseState<'s, 'd> {
     #[inline(always)]
     #[must_use]
     fn resolve_location(&self, location: Location) -> &str {
-        self.lexer.source.index(location)
+        &self.lexer.source[location.start.0..location.end.0]
     }
 
     /// Returns string slice corresponding to the current token's location.

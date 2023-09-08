@@ -74,6 +74,21 @@ define_symbol_struct! {
 }
 
 impl Symbol {
+    /// Returns the signature of the symbol.
+    #[inline(always)]
+    #[must_use]
+    pub fn signature(self, db: &Database) -> SignatureID {
+        match self {
+            Self::Enum(enum_) => enum_.signature(db),
+            Self::Struct(struct_) => struct_.signature(db),
+            Self::Function(function) => function.signature(db),
+            Self::Interface(interface) => interface.signature(db),
+            Self::TupleLikeStruct(struct_) => struct_.signature(db),
+            Self::TypeAlias(alias) => alias.signature(db),
+            Self::EnumItem(_) | Self::Module(_) => unreachable!(),
+        }
+    }
+
     /// Returns the name of the symbol.
     #[inline(always)]
     #[must_use]
@@ -587,13 +602,24 @@ impl SignatureID {
     }
 
     #[inline(always)]
-    pub fn analyzed(self, db: &mut Database) {
+    pub fn set_analyzed(self, db: &mut Database) {
         db.signature_mut(self).is_analyzed = true;
+    }
+
+    #[inline(always)]
+    #[must_use]
+    pub fn is_analyzed(self, db: &Database) -> bool {
+        db.signature(self).is_analyzed
     }
 
     #[inline(always)]
     pub fn add_predicate(self, db: &mut Database, predicate: PredicateID) {
         db.signature_mut(self).predicates.push(predicate);
+    }
+
+    #[inline(always)]
+    pub fn add_implemented_interface(self, db: &mut Database, interface: TypeConstructor) {
+        db.signature_mut(self).implements.push(interface);
     }
 
     #[inline(always)]

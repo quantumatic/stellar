@@ -1,10 +1,10 @@
 //! Defines diagnostics for parser.
 
 use stellar_ast::token::{LexError, Token};
+use stellar_diagnostics::diagnostic::Label;
+use stellar_diagnostics::BuildDiagnostic;
 use stellar_diagnostics::{define_diagnostics, diagnostic::Diagnostic};
-use stellar_diagnostics::{BuildFileDiagnostic, LocationExt};
 use stellar_filesystem::location::{ByteOffset, Location};
-use stellar_interner::PathID;
 
 /// Context in which the unnecessary visibility qualifier error is found.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -32,20 +32,18 @@ define_diagnostics! {
     diagnostic(error) LexErrorDiagnostic(self, error: LexError) {
         code { "E000" }
         message { format!("{}", self.error.raw) }
-        files_involved { self.error.location.filepath }
         labels {
-            primary self.error.location => {""}
+            primary { self.error.location }
         }
-        notes {}
     }
 
     /// Diagnostic related to an integer overflow error.
     diagnostic(error) IntegerOverflow(self, location: Location) {
         code { "E002" }
         message { "unexpected integer overflow" }
-        files_involved { self.location.filepath }
+
         labels {
-            primary self.location => {"error appeared when parsing this integer"}
+            primary { self.location => "error appeared when parsing this integer" }
         }
         notes {
             "note: integer cannot exceed the maximum value of `u64` (u64.max() == 18_446_744_073_709_551_615)"
@@ -57,9 +55,9 @@ define_diagnostics! {
     diagnostic(error) FloatOverflow(self, location: Location) {
         code { "E003" }
         message { "unexpected float overflow" }
-        files_involved { self.location.filepath }
+
         labels {
-            primary self.location => {"error appeared when parsing this float literal"}
+            primary { self.location => "error appeared when parsing this float literal" }
         }
         notes {
             "note: float cannot exceed the maximum value of `f64` (f64.max() == 1.7976931348623157e+308)"
@@ -76,14 +74,13 @@ define_diagnostics! {
     ) {
         code { "E001" }
         message { format!("expected {}, found {}", self.expected, self.got.raw) }
-        files_involved { self.got.location.filepath }
         labels {
-            primary self.offset.next_byte_location_at(self.got.location.filepath) => {
-                format!("expected {}", self.expected)
-            },
-            secondary self.got.location => { "unexpected token" }
+            primary {
+                self.offset.next_byte_location_at(self.got.location.filepath) =>
+                    format!("expected {}", self.expected)
+            }
+            secondary { self.got.location => "unexpected token" }
         }
-        notes {}
     }
 }
 
@@ -97,21 +94,18 @@ pub struct UnnecessaryVisibilityQualifierDiagnostic {
     pub context: UnnecessaryVisibilityQualifierContext,
 }
 
-impl BuildFileDiagnostic for UnnecessaryVisibilityQualifierDiagnostic {
+impl BuildDiagnostic for UnnecessaryVisibilityQualifierDiagnostic {
     #[inline(always)]
-    fn build(self) -> Diagnostic<PathID> {
-        let mut labels = vec![self
-            .location
-            .to_primary_label()
-            .with_message("consider removing this `pub`")];
+    fn build(self) -> Diagnostic {
+        let mut labels =
+            vec![Label::primary(self.location).with_message("help: remove this `pub`")];
 
         if let UnnecessaryVisibilityQualifierContext::InterfaceMethod { name_location } =
             self.context
         {
             labels.push(
-                name_location
-                    .to_secondary_label()
-                    .with_message("happened when analyzing the interface method"),
+                Label::secondary(name_location)
+                    .with_message("happened when processing the interface method"),
             );
         }
 
@@ -131,9 +125,5 @@ impl BuildFileDiagnostic for UnnecessaryVisibilityQualifierDiagnostic {
                     vec!["note: using `pub` will not make the import public.".to_owned()]
                 }
             })
-    }
-
-    fn files_involved(&self) -> Vec<PathID> {
-        vec![self.location.filepath]
     }
 }

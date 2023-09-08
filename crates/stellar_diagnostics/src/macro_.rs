@@ -1,3 +1,68 @@
+/// **FOR INTERNAL USAGE ONLY!!!**
+#[macro_export]
+macro_rules! __notes {
+    ($diagnostic:ident, ) => {};
+    ($diagnostic:ident, notes { $($note:expr)* }) => {
+        let $diagnostic = $diagnostic.with_notes(vec![
+            $($note),*
+        ]);
+    }
+}
+
+/// **FOR INTERNAL USAGE ONLY!!!**
+#[macro_export]
+macro_rules! __labels {
+    ($diagnostic:ident,) => {};
+    ($diagnostic:ident,
+     $(primary { $($primary_label:tt)* })*
+     $(secondary { $($secondary_label:tt)* } )*
+    ) => {
+            $(
+                $crate::__primary_label!(
+                    $diagnostic,
+                    $($primary_label)*
+                );
+            )*
+
+            $(
+                $crate::__secondary_label!(
+                    $diagnostic,
+                    $($secondary_label)*
+                );
+            )*
+    };
+}
+
+/// **FOR INTERNAL USAGE ONLY!!!**
+#[macro_export]
+macro_rules! __primary_label {
+    ($diagnostic:ident, $location:expr => $message:expr) => {
+        let $diagnostic = $diagnostic.with_label(
+            stellar_diagnostics::diagnostic::Label::primary($location).with_message($message),
+        );
+    };
+    ($diagnostic:ident, $location:expr) => {
+        let $diagnostic =
+            $diagnostic.with_label(stellar_diagnostics::diagnostic::Label::primary($location));
+    };
+    ($diagnostic:ident,) => {};
+}
+
+/// **FOR INTERNAL USAGE ONLY!!!**
+#[macro_export]
+macro_rules! __secondary_label {
+    ($diagnostic:ident, $location:expr => $message:expr) => {
+        let $diagnostic = $diagnostic.with_label(
+            stellar_diagnostics::diagnostic::Label::secondary($location).with_message($message),
+        );
+    };
+    ($diagnostic:ident, $location:expr) => {
+        let $diagnostic =
+            $diagnostic.with_label(stellar_diagnostics::diagnostic::Label::secondary($location));
+    };
+    ($diagnostic:ident,) => {};
+}
+
 /// Allows to define diagnostics more efficiently.
 ///
 /// # Example
@@ -16,18 +81,14 @@
 ///    ) {
 ///        code { "E007" }
 ///        message { format!("failed to resolve the module `{}`", self.module_name) }
-///        files_involved {
-///            self.package_name_location.filepath,
-///            self.module_name_location.filepath
-///        }
 ///        labels {
-///            primary self.module_name_location => {""},
-///            secondary self.package_name_location => {
-///                format!("package `{}` doesn't contain the submodule `{}`",
+///            primary { self.module_name_location }
+///            secondary {
+///                self.package_name_location => format!(
+///                    "package `{}` doesn't contain the submodule `{}`",
 ///                    self.package_name, self.module_name)
 ///            }
 ///        }
-///        notes {}
 ///    }
 /// }
 /// ```
@@ -51,12 +112,8 @@ macro_rules! define_diagnostics {
             ) {
                 code { $code:expr }
                 message { $message:expr }
-                files_involved { $($filepath:expr),* }
-                labels {
-                    primary $primary_label_location:expr => { $primary_label_message:expr }
-                    $(,secondary $label_location:expr => { $label_message:expr })*
-                }
-                notes { $($note:expr)* }
+                labels { $($labels:tt)* }
+                $($note:tt)*
             }
         )*
     } => {
@@ -81,26 +138,17 @@ macro_rules! define_diagnostics {
             }
 
             #[allow(clippy::unnecessary_qualification)]
-            impl $crate::BuildFileDiagnostic for $name {
+            impl $crate::BuildDiagnostic for $name {
                 #[inline(always)]
-                fn build($self) -> $crate::diagnostic::Diagnostic<stellar_interner::PathID> {
-                    $crate::diagnostic::Diagnostic::$severity()
+                fn build($self) -> $crate::diagnostic::Diagnostic {
+                    let diagnostic = $crate::diagnostic::Diagnostic::$severity()
                         .with_code($code.to_string())
-                        .with_message($message)
-                        .with_labels(vec![
-                            $crate::LocationExt::to_primary_label($primary_label_location).with_message($primary_label_message)
-                            $(,
-                                $crate::LocationExt::to_secondary_label($label_location).with_message($label_message),
-                            )*
-                        ])
-                        .with_notes(vec![
-                            $($note.to_string()),*
-                        ])
-                }
+                        .with_message($message);
 
-                #[inline(always)]
-                fn files_involved(&$self) -> Vec<stellar_interner::PathID> {
-                    vec![$($filepath),*]
+                    $crate::__labels!(diagnostic, $($labels)*);
+                    $crate::__notes!(diagnostic, $($note)*);
+
+                    diagnostic
                 }
             }
         )*

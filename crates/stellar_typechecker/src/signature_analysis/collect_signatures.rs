@@ -7,6 +7,7 @@ use stellar_database::{
     GenericParameterData, GenericParameterScopeData, GenericParameterScopeID, ModuleID,
     PredicateData, SignatureID, State, Symbol, TypeAliasID,
 };
+use stellar_interner::SymbolID;
 use stellar_thir::{
     ty::{Type, TypeConstructor},
     Path, Predicate,
@@ -36,21 +37,25 @@ impl<'s> CollectSignatures<'s> {
 
     fn run(mut self, module: &stellar_hir::Module) {
         for item in &module.items {
-            match item {
-                stellar_hir::ModuleItem::Enum(enum_) => {
-                    self.analyze_signature_of_enum(self.module, enum_);
-                }
-                stellar_hir::ModuleItem::Struct(struct_) => {
-                    self.analyze_signature_of_struct(self.module, struct_)
-                }
-                stellar_hir::ModuleItem::TupleLikeStruct(struct_) => {
-                    self.analyze_signature_of_tuple_like_struct(self.module, struct_)
-                }
-                stellar_hir::ModuleItem::TypeAlias(alias) => {
-                    self.analyze_type_alias(self.module, alias)
-                }
-                _ => todo!(),
+            self.analyze_signature(item);
+        }
+    }
+
+    fn analyze_signature(&mut self, item: &stellar_hir::ModuleItem) {
+        match item {
+            stellar_hir::ModuleItem::Enum(enum_) => {
+                self.analyze_signature_of_enum(self.module, enum_);
             }
+            stellar_hir::ModuleItem::Struct(struct_) => {
+                self.analyze_signature_of_struct(self.module, struct_)
+            }
+            stellar_hir::ModuleItem::TupleLikeStruct(struct_) => {
+                self.analyze_signature_of_tuple_like_struct(self.module, struct_)
+            }
+            stellar_hir::ModuleItem::TypeAlias(alias) => {
+                self.analyze_type_alias(self.module, alias)
+            }
+            _ => todo!(),
         }
     }
 
@@ -103,7 +108,7 @@ impl<'s> CollectSignatures<'s> {
         self.analyze_generic_parameters(module, signature, None, &enum_hir.generic_parameters);
         self.analyze_where_predicates(module, signature, &enum_hir.where_predicates);
 
-        signature.analyzed(self.state.db_mut());
+        signature.set_analyzed(self.state.db_mut());
 
         #[cfg(feature = "debug")]
         trace!(
@@ -128,7 +133,7 @@ impl<'s> CollectSignatures<'s> {
         self.analyze_generic_parameters(module, signature, None, &struct_hir.generic_parameters);
         self.analyze_where_predicates(module, signature, &struct_hir.where_predicates);
 
-        signature.analyzed(self.state.db_mut());
+        signature.set_analyzed(self.state.db_mut());
 
         #[cfg(feature = "debug")]
         trace!(
@@ -157,7 +162,7 @@ impl<'s> CollectSignatures<'s> {
         self.analyze_generic_parameters(module, signature, None, &struct_hir.generic_parameters);
         self.analyze_where_predicates(module, signature, &struct_hir.where_predicates);
 
-        signature.analyzed(self.state.db_mut());
+        signature.set_analyzed(self.state.db_mut());
 
         #[cfg(feature = "debug")]
         trace!(
@@ -166,6 +171,26 @@ impl<'s> CollectSignatures<'s> {
             self.module.filepath(self.state.db()),
             now.elapsed().as_micros()
         )
+    }
+
+    fn analyze_implemented_interfaces(
+        &mut self,
+        module: ModuleID,
+        signature: SignatureID,
+        interfaces_hir: &[stellar_hir::TypeConstructor],
+    ) {
+        for interface_hir in interfaces_hir {
+            let interface = self.resolve_interface(interface_hir);
+
+            signature.add_implemented_interface(self.state.db_mut(), interface);
+        }
+    }
+
+    fn resolve_interface(
+        &mut self,
+        interface_hir: &stellar_hir::TypeConstructor,
+    ) -> TypeConstructor {
+        todo!()
     }
 
     fn analyze_generic_parameters(
@@ -231,6 +256,14 @@ impl<'s> CollectSignatures<'s> {
         }
     }
 
+    fn resolve_signature(&mut self, symbol: Symbol) -> SignatureID {
+        let signature = symbol.signature(self.state.db());
+
+        if !signature.is_analyzed(self.state.db()) {}
+
+        todo!()
+    }
+
     fn resolve_bounds(&mut self, bounds: &[stellar_hir::TypeConstructor]) -> Vec<TypeConstructor> {
         todo!()
     }
@@ -264,7 +297,7 @@ impl<'s> CollectSignatures<'s> {
 
         *alias.ty_mut(self.state.db_mut()) = value;
 
-        signature.analyzed(self.state.db_mut());
+        signature.set_analyzed(self.state.db_mut());
 
         #[cfg(feature = "debug")]
         trace!(

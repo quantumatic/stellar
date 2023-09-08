@@ -8,14 +8,12 @@ define_diagnostics! {
     ) {
         code { "W000" }
         message { "unnecessary grouped pattern" }
-        files_involved { self.location.filepath }
         labels {
-            primary self.location.start_byte_location() => {""},
-            secondary self.location.end_byte_location() => {
-                "consider removing these parentheses"
+            primary { self.location.start_byte_location() }
+            secondary {
+                self.location.end_byte_location() => "help: remove these parentheses"
             }
         }
-        notes {}
     }
 
     diagnostic(warning) UnnecessaryParenthesizedExpression(
@@ -24,14 +22,10 @@ define_diagnostics! {
     ) {
         code { "W001" }
         message { "unnecessary parenthesized expression" }
-        files_involved { self.location.filepath }
         labels {
-            primary self.location.start_byte_location() => {""},
-            secondary self.location.end_byte_location() => {
-                "consider removing these parentheses"
-            }
+            primary { self.location.start_byte_location() }
+            primary { self.location.end_byte_location() => "help: remove these parentheses" }
         }
-        notes {}
     }
 
     diagnostic(warning) UnnecessaryParenthesizedType(
@@ -40,13 +34,11 @@ define_diagnostics! {
     ) {
         code { "W002" }
         message { "unnecessary parenthesized type" }
-        files_involved { self.location.filepath }
         labels {
-            primary self.location.start_byte_location() => {""},
-            secondary self.location.end_byte_location() => {
-                "consider removing these parentheses"
+            primary { self.location.start_byte_location() }
+            secondary {
+                self.location.end_byte_location() => "help: remove these parentheses"
             }
         }
-        notes {}
     }
 }
