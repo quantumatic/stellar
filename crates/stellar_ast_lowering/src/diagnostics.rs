@@ -10,9 +10,7 @@ define_diagnostics! {
         message { "unnecessary grouped pattern" }
         labels {
             primary { self.location.start_byte_location() }
-            secondary {
-                self.location.end_byte_location() => "help: remove these parentheses"
-            }
+            primary { self.location.end_byte_location() => "help: remove these parentheses" }
         }
     }
 
@@ -36,9 +34,7 @@ define_diagnostics! {
         message { "unnecessary parenthesized type" }
         labels {
             primary { self.location.start_byte_location() }
-            secondary {
-                self.location.end_byte_location() => "help: remove these parentheses"
-            }
+            primary { self.location.end_byte_location() => "help: remove these parentheses" }
         }
     }
 }
