@@ -81,7 +81,7 @@ impl<'d, 'c> RichDiagnostic<'d, 'c> {
             let start_line_index =
                 in_memory_file_storage.line_index(label.location.filepath, label.location.start)?;
             let start_line_number = start_line_index + 1;
-            let start_line_range =
+            let start_line_location =
                 in_memory_file_storage.line_location(label.location.filepath, start_line_index)?;
             let end_line_index =
                 in_memory_file_storage.line_index(label.location.filepath, label.location.end)?;
@@ -185,15 +185,17 @@ impl<'d, 'c> RichDiagnostic<'d, 'c> {
                 // 2 │ (+ test "")
                 //   │         ^^ expected `Int` but found `String`
                 // ```
-                let label_start = label.location.start - start_line_range.start;
+                let label_start = label.location.start - start_line_location.start;
                 // Ensure that we print at least one caret, even when we
                 // have a zero-length source range.
-                let label_end =
-                    cmp::max(label.location.end - start_line_range.start, label_start + 1);
+                let label_end = cmp::max(
+                    label.location.end - start_line_location.start,
+                    label_start + 1,
+                );
 
                 let line = labeled_file.get_or_insert_line(
                     start_line_index,
-                    start_line_range,
+                    start_line_location,
                     start_line_number,
                 );
 
@@ -234,11 +236,11 @@ impl<'d, 'c> RichDiagnostic<'d, 'c> {
                 labeled_file.num_multi_labels += 1;
 
                 // First labeled line
-                let label_start = label.location.start - start_line_range.start;
+                let label_start = label.location.start - start_line_location.start;
 
                 let start_line = labeled_file.get_or_insert_line(
                     start_line_index,
-                    start_line_range,
+                    start_line_location,
                     start_line_number,
                 );
 
@@ -364,7 +366,7 @@ impl<'d, 'c> RichDiagnostic<'d, 'c> {
                 renderer.render_snippet_source(
                     outer_padding,
                     line.number,
-                    &source[line.location.start.0..line.location.end.0],
+                    &source[line.location],
                     self.diagnostic.severity,
                     &line.single_labels,
                     labeled_file.num_multi_labels,
@@ -389,13 +391,11 @@ impl<'d, 'c> RichDiagnostic<'d, 'c> {
                                 .get(&(line_index + 1))
                                 .map_or(&[][..], |line| &line.multi_labels[..]);
 
-                            let line_location =
-                                in_memory_file_storage.line_location(file_id, line_index + 1)?;
-
                             renderer.render_snippet_source(
                                 outer_padding,
-                                line_index + 1,
-                                &source[line_location.start.0..line_location.end.0],
+                                line_index + 2,
+                                &source[in_memory_file_storage
+                                    .line_location(file_id, line_index + 1)?],
                                 self.diagnostic.severity,
                                 &[],
                                 labeled_file.num_multi_labels,

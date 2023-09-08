@@ -24,7 +24,7 @@ pub struct Location {
     pub end: ByteOffset,
 }
 
-impl Index<Location> for String {
+impl Index<Location> for str {
     type Output = str;
 
     fn index(&self, location: Location) -> &Self::Output {
