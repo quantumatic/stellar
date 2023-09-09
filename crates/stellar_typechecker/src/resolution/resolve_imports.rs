@@ -49,7 +49,7 @@ impl<'s> ResolveImports<'s> {
             {
                 self.state
                     .diagnostics_mut()
-                    .add_file_diagnostic(PackageImport::new(
+                    .add_diagnostic(PackageImport::new(
                         location,
                         *path.path.identifiers.first().unwrap(),
                     ));

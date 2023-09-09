@@ -20,7 +20,7 @@ pub fn resolve_global_path_in_module_context(
     let Some(namespace_symbol) = module.symbol_or_none(state.db(), namespace.id) else {
         state
             .diagnostics_mut()
-            .add_file_diagnostic(FailedToResolvePackage::new(
+            .add_diagnostic(FailedToResolvePackage::new(
                 namespace.location,
                 namespace.id,
             ));
@@ -38,7 +38,7 @@ pub fn resolve_global_path(state: &mut State, path: &stellar_ast::ImportPath) ->
     let Some(root_module) = state.db_mut().package_root_module(namespace.id) else {
         state
             .diagnostics_mut()
-            .add_file_diagnostic(FailedToResolvePackage::new(
+            .add_diagnostic(FailedToResolvePackage::new(
                 namespace.location,
                 namespace.id,
             ));
@@ -77,12 +77,12 @@ fn resolve_global_path_segment(
         Symbol::EnumItem(_) => {
             state
                 .diagnostics_mut()
-                .add_file_diagnostic(EnumItemsDoNotServeAsNamespaces::new(namespace, member));
+                .add_diagnostic(EnumItemsDoNotServeAsNamespaces::new(namespace, member));
 
             None
         }
         _ => {
-            state.diagnostics_mut().add_file_diagnostic(
+            state.diagnostics_mut().add_diagnostic(
                 ModuleItemsExceptEnumsDoNotServeAsNamespaces::new(
                     namespace,
                     symbol.module_item_kind(),
@@ -110,7 +110,7 @@ fn resolve_symbol_in_module_namespace(
     } else {
         state
             .diagnostics_mut()
-            .add_file_diagnostic(FailedToResolveNameInModule::new(
+            .add_diagnostic(FailedToResolveNameInModule::new(
                 member.id,
                 member.location,
                 namespace.id,
@@ -132,7 +132,7 @@ fn resolve_symbol_in_enum_namespace(
     } else {
         state
             .diagnostics_mut()
-            .add_file_diagnostic(FailedToResolveEnumItem::new(namespace, member));
+            .add_diagnostic(FailedToResolveEnumItem::new(namespace, member));
 
         None
     }

@@ -356,7 +356,7 @@ impl<'s> LowerToHir<'s> {
                 if let stellar_ast::Pattern::Grouped { location, .. } = *inner {
                     self.state
                         .diagnostics_mut()
-                        .add_file_diagnostic(UnnecessaryGroupedPattern::new(location));
+                        .add_diagnostic(UnnecessaryGroupedPattern::new(location));
                 }
 
                 self.lower_pattern(*inner)
@@ -505,7 +505,7 @@ impl<'s> LowerToHir<'s> {
                 if let stellar_ast::Expression::Parenthesized { location, .. } = *expression {
                     self.state
                         .diagnostics_mut()
-                        .add_file_diagnostic(UnnecessaryParenthesizedExpression::new(location));
+                        .add_diagnostic(UnnecessaryParenthesizedExpression::new(location));
                 }
 
                 stellar_hir::Expression::Match {
@@ -537,7 +537,7 @@ impl<'s> LowerToHir<'s> {
                 if let stellar_ast::Expression::Parenthesized { location, .. } = *condition {
                     self.state
                         .diagnostics_mut()
-                        .add_file_diagnostic(UnnecessaryParenthesizedExpression::new(location));
+                        .add_diagnostic(UnnecessaryParenthesizedExpression::new(location));
                 }
 
                 stellar_hir::Expression::While {
@@ -577,7 +577,7 @@ impl<'s> LowerToHir<'s> {
                 if let stellar_ast::Expression::Parenthesized { location, .. } = *inner {
                     self.state
                         .diagnostics_mut()
-                        .add_file_diagnostic(UnnecessaryParenthesizedExpression::new(location));
+                        .add_diagnostic(UnnecessaryParenthesizedExpression::new(location));
                 }
 
                 self.lower_expression(*inner)
@@ -655,7 +655,7 @@ impl<'s> LowerToHir<'s> {
         if let stellar_ast::Expression::Parenthesized { location, .. } = ast.right {
             self.state
                 .diagnostics_mut()
-                .add_file_diagnostic(UnnecessaryParenthesizedExpression::new(location));
+                .add_diagnostic(UnnecessaryParenthesizedExpression::new(location));
         }
 
         stellar_hir::MatchExpressionItem {
@@ -701,7 +701,7 @@ impl<'s> LowerToHir<'s> {
         if let stellar_ast::Expression::Parenthesized { location, .. } = if_block.0 {
             self.state
                 .diagnostics_mut()
-                .add_file_diagnostic(UnnecessaryParenthesizedExpression::new(location));
+                .add_diagnostic(UnnecessaryParenthesizedExpression::new(location));
         }
 
         (
@@ -887,7 +887,7 @@ impl<'s> LowerToHir<'s> {
                 if let stellar_ast::Type::Parenthesized { location, .. } = *inner {
                     self.state
                         .diagnostics_mut()
-                        .add_file_diagnostic(UnnecessaryParenthesizedExpression::new(location));
+                        .add_diagnostic(UnnecessaryParenthesizedExpression::new(location));
                 }
 
                 self.lower_type(*inner)

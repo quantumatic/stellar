@@ -434,7 +434,7 @@ impl<'s, 'd> ParseState<'s, 'd> {
     fn check_next_token(&mut self) {
         if let RawToken::Error(error) = self.next_token.raw {
             self.diagnostics
-                .add_file_diagnostic(LexErrorDiagnostic::new(LexError {
+                .add_diagnostic(LexErrorDiagnostic::new(LexError {
                     location: self.next_token.location,
                     raw: error,
                 }));
@@ -472,7 +472,7 @@ impl<'s, 'd> ParseState<'s, 'd> {
         if self.next_token.raw == expected {
             Some(())
         } else {
-            self.diagnostics.add_file_diagnostic(UnexpectedToken::new(
+            self.diagnostics.add_diagnostic(UnexpectedToken::new(
                 self.current_token.location.end,
                 self.next_token,
                 expected,
@@ -516,7 +516,7 @@ impl<'s, 'd> ParseState<'s, 'd> {
                 id: self.lexer.scanned_identifier,
             }
         } else {
-            self.diagnostics.add_file_diagnostic(UnexpectedToken::new(
+            self.diagnostics.add_diagnostic(UnexpectedToken::new(
                 self.current_token.location.end,
                 self.next_token,
                 "identifier",

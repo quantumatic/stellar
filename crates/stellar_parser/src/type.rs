@@ -53,7 +53,7 @@ impl Parse for TypeParser {
             }
             RawToken::Keyword(Keyword::Fun) => FunctionTypeParser.parse(state),
             _ => {
-                state.diagnostics.add_file_diagnostic(UnexpectedToken::new(
+                state.diagnostics.add_diagnostic(UnexpectedToken::new(
                     state.current_token.location.end,
                     state.next_token,
                     "type",

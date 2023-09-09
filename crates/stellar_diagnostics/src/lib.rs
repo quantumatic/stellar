@@ -103,16 +103,6 @@ impl Default for DiagnosticsEmitter {
     }
 }
 
-/// Multi file diagnostic.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct MultiFileDiagnostic {
-    /// ID-s of the paths of the files that the diagnostics belongs to.
-    pub paths: Vec<PathID>,
-
-    /// Diagnostic.
-    pub diagnostic: Diagnostic,
-}
-
 /// Global diagnostics.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Diagnostics {
@@ -142,7 +132,7 @@ impl Diagnostics {
 
     /// Adds a diagnostic associated with some files.
     #[inline(always)]
-    pub fn add_file_diagnostic(&mut self, diagnostic: impl BuildDiagnostic) {
+    pub fn add_diagnostic(&mut self, diagnostic: impl BuildDiagnostic) {
         let diagnostic = diagnostic.build();
 
         self.files_involved.extend(diagnostic.files_involved());

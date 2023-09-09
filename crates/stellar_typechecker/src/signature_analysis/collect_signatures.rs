@@ -67,7 +67,7 @@ impl<'s> CollectSignatures<'s> {
                 .collect::<Vec<_>>(),
         );
 
-        self.state.diagnostics_mut().add_file_diagnostic(diagnostic);
+        self.state.diagnostics_mut().add_diagnostic(diagnostic);
     }
 
     fn start_analyzing_signature_of(&mut self, symbol: Symbol) {

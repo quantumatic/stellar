@@ -93,7 +93,7 @@ impl Parse for StatementsBlockParser {
             match state.next_token.raw {
                 RawToken::Punctuator(Punctuator::CloseBrace) => break,
                 RawToken::EndOfFile => {
-                    state.diagnostics.add_file_diagnostic(UnexpectedToken::new(
+                    state.diagnostics.add_diagnostic(UnexpectedToken::new(
                         state.current_token.location.end,
                         state.next_token,
                         Punctuator::CloseBrace,

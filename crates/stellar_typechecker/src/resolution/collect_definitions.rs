@@ -249,7 +249,7 @@ impl<'s> CollectDefinitions<'s> {
                 name.location,
             );
 
-            self.state.diagnostics_mut().add_file_diagnostic(diagnostic);
+            self.state.diagnostics_mut().add_diagnostic(diagnostic);
         }
     }
 
@@ -262,7 +262,7 @@ impl<'s> CollectDefinitions<'s> {
                 item_name.location,
             );
 
-            self.state.diagnostics_mut().add_file_diagnostic(diagnostic);
+            self.state.diagnostics_mut().add_diagnostic(diagnostic);
         }
     }
 }

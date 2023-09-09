@@ -23,7 +23,7 @@ impl Parse for LiteralParser {
                 } else {
                     state
                         .diagnostics
-                        .add_file_diagnostic(IntegerOverflow::new(state.current_token.location));
+                        .add_diagnostic(IntegerOverflow::new(state.current_token.location));
                     None
                 }
             }
@@ -38,7 +38,7 @@ impl Parse for LiteralParser {
                 } else {
                     state
                         .diagnostics
-                        .add_file_diagnostic(FloatOverflow::new(state.current_token.location));
+                        .add_diagnostic(FloatOverflow::new(state.current_token.location));
                     None
                 }
             }

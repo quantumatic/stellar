@@ -36,7 +36,7 @@ impl Parse for ImportParser {
         if let Visibility::Public(location) = self.visibility {
             state
                 .diagnostics
-                .add_file_diagnostic(UnnecessaryVisibilityQualifierDiagnostic {
+                .add_diagnostic(UnnecessaryVisibilityQualifierDiagnostic {
                     location,
                     context: UnnecessaryVisibilityQualifierContext::Import,
                 });
@@ -253,7 +253,7 @@ impl Parse for StructParser {
                 docstring: self.docstring,
             }))
         } else {
-            state.diagnostics.add_file_diagnostic(UnexpectedToken::new(
+            state.diagnostics.add_diagnostic(UnexpectedToken::new(
                 state.current_token.location.end,
                 state.next_token,
                 one_of(
@@ -359,7 +359,7 @@ impl Parse for FunctionParser {
                 _ => {
                     state.advance();
 
-                    state.diagnostics.add_file_diagnostic(UnexpectedToken::new(
+                    state.diagnostics.add_diagnostic(UnexpectedToken::new(
                         state.current_token.location.end,
                         state.next_token,
                         one_of([Punctuator::Semicolon, Punctuator::OpenParent].iter()),
@@ -445,7 +445,7 @@ impl Parse for InterfaceParser {
             if let Visibility::Public(location) = method.signature.visibility {
                 state
                     .diagnostics
-                    .add_file_diagnostic(UnnecessaryVisibilityQualifierDiagnostic {
+                    .add_diagnostic(UnnecessaryVisibilityQualifierDiagnostic {
                         location,
                         context: UnnecessaryVisibilityQualifierContext::InterfaceMethod {
                             name_location: method.signature.name.location,
@@ -735,7 +735,7 @@ impl Parse for ItemParser {
                 .parse(state)
             ),
             _ => {
-                state.diagnostics.add_file_diagnostic(UnexpectedToken::new(
+                state.diagnostics.add_diagnostic(UnexpectedToken::new(
                     state.current_token.location.end,
                     state.next_token,
                     "module item",
