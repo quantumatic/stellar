@@ -25,7 +25,7 @@ pub struct Location {
 }
 
 impl Index<Location> for str {
-    type Output = str;
+    type Output = Self;
 
     fn index(&self, location: Location) -> &Self::Output {
         &self[location.start.0..location.end.0]
