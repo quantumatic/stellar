@@ -41,7 +41,6 @@ define_diagnostics! {
     diagnostic(error) IntegerOverflow(self, location: Location) {
         code { "E002" }
         message { "unexpected integer overflow" }
-
         labels {
             primary { self.location => "error appeared when parsing this integer" }
         }
@@ -55,7 +54,6 @@ define_diagnostics! {
     diagnostic(error) FloatOverflow(self, location: Location) {
         code { "E003" }
         message { "unexpected float overflow" }
-
         labels {
             primary { self.location => "error appeared when parsing this float literal" }
         }

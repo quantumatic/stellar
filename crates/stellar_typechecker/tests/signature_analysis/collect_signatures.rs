@@ -20,9 +20,9 @@ fn simple_generic_parameter() {
     CollectSignatures::run_all(&mut state, &hir);
 
     assert!(hir
-        .first()
+        .first_key_value()
         .unwrap()
-        .module()
+        .0
         .symbol(state.db(), IdentifierID::from("Box"))
         .to_tuple_like_struct()
         .signature(state.db())

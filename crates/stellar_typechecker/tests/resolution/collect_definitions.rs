@@ -16,15 +16,15 @@ fn test_enum() {
     CollectDefinitions::run_all(&mut state, &hir);
 
     assert!(hir
-        .first()
+        .first_key_value()
         .unwrap()
-        .module()
+        .0
         .symbol(state.db(), IdentifierID::from("A"))
         .is_enum());
     assert!(hir
-        .first()
+        .first_key_value()
         .unwrap()
-        .module()
+        .0
         .symbol(state.db(), IdentifierID::from("B"))
         .is_enum());
     assert!(state.diagnostics().is_ok());
@@ -56,16 +56,16 @@ fn test_enum_items() {
     CollectDefinitions::run_all(&mut state, &hir);
 
     assert!(hir
-        .first()
+        .first_key_value()
         .unwrap()
-        .module()
+        .0
         .symbol(state.db(), IdentifierID::from("A"))
         .is_enum());
 
     let items = hir
-        .first()
+        .first_key_value()
         .unwrap()
-        .module()
+        .0
         .symbol(state.db(), IdentifierID::from("A"))
         .to_enum()
         .items(state.db());
@@ -101,9 +101,9 @@ fn test_function() {
     CollectDefinitions::run_all(&mut state, &hir);
 
     assert!(hir
-        .first()
+        .first_key_value()
         .unwrap()
-        .module()
+        .0
         .symbol(state.db(), IdentifierID::from("a"))
         .is_function());
     assert!(state.diagnostics().is_ok());
@@ -121,9 +121,9 @@ fn test_struct() {
     CollectDefinitions::run_all(&mut state, &hir);
 
     assert!(hir
-        .first()
+        .first_key_value()
         .unwrap()
-        .module()
+        .0
         .symbol(state.db(), IdentifierID::from("A"))
         .is_struct());
     assert!(state.diagnostics().is_ok());
@@ -141,9 +141,9 @@ fn test_interface() {
     CollectDefinitions::run_all(&mut state, &hir);
 
     assert!(hir
-        .first()
+        .first_key_value()
         .unwrap()
-        .module()
+        .0
         .symbol(state.db(), IdentifierID::from("A"))
         .is_interface());
     assert!(state.diagnostics().is_ok());
@@ -161,9 +161,9 @@ fn test_type_alias() {
     CollectDefinitions::run_all(&mut state, &hir);
 
     assert!(hir
-        .first()
+        .first_key_value()
         .unwrap()
-        .module()
+        .0
         .symbol(state.db(), IdentifierID::from("A"))
         .is_type_alias());
     assert!(state.diagnostics().is_ok());

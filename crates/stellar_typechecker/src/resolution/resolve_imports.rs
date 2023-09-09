@@ -1,3 +1,4 @@
+use std::collections::BTreeMap;
 #[cfg(feature = "debug")]
 use std::time::Instant;
 
@@ -15,13 +16,13 @@ pub struct ResolveImports<'s> {
 }
 
 impl<'s> ResolveImports<'s> {
-    pub fn run_all(state: &'s mut State, lowered_modules: &[LoweredModule]) {
-        for lowered_module in lowered_modules {
+    pub fn run_all(state: &'s mut State, modules: &BTreeMap<ModuleID, stellar_hir::Module>) {
+        for module in modules {
             ResolveImports {
                 state,
-                module: lowered_module.module(),
+                module: *module.0,
             }
-            .run(lowered_module.hir())
+            .run(module.1)
         }
     }
 

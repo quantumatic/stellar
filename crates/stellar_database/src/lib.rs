@@ -89,6 +89,19 @@ impl Symbol {
         }
     }
 
+    pub fn module(self, db: &Database) -> ModuleID {
+        match self {
+            Self::Enum(enum_) => enum_.signature(db).module(db),
+            Self::Struct(struct_) => struct_.signature(db).module(db),
+            Self::Function(function_) => function_.signature(db).module(db),
+            Self::Module(module) => module,
+            Self::Interface(interface) => interface.signature(db).module(db),
+            Self::TupleLikeStruct(struct_) => struct_.signature(db).module(db),
+            Self::TypeAlias(alias) => alias.signature(db).module(db),
+            Self::EnumItem(item) => item.module(db),
+        }
+    }
+
     /// Returns the name of the symbol.
     #[inline(always)]
     #[must_use]

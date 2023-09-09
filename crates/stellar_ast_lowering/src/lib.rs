@@ -15,6 +15,7 @@
     html_favicon_url = "https://raw.githubusercontent.com/quantumatic/stellar/main/additional/icon/stellar.png"
 )]
 
+use std::collections::BTreeMap;
 #[cfg(feature = "debug")]
 use std::time::Instant;
 
@@ -36,7 +37,7 @@ pub struct LowerToHir<'s> {
 /// A lowered module.
 #[derive(Debug)]
 pub struct LoweredModule {
-    module: ModuleID,
+    id: ModuleID,
     hir: stellar_hir::Module,
 }
 
@@ -44,15 +45,15 @@ impl LoweredModule {
     /// Constructs a new lowered module.
     #[inline(always)]
     #[must_use]
-    pub const fn new(module: ModuleID, hir: stellar_hir::Module) -> Self {
-        Self { module, hir }
+    pub const fn new(id: ModuleID, hir: stellar_hir::Module) -> Self {
+        Self { id, hir }
     }
 
     /// Returns the ID of the module in the database.
     #[inline(always)]
     #[must_use]
-    pub const fn module(&self) -> ModuleID {
-        self.module
+    pub const fn id(&self) -> ModuleID {
+        self.id
     }
 
     /// Returns the HIR of the module.
@@ -85,7 +86,10 @@ impl From<LoweredModule> for stellar_hir::Module {
 }
 
 impl<'s> LowerToHir<'s> {
-    pub fn run_all(state: &'s mut State, modules: Vec<ParsedModule>) -> Vec<LoweredModule> {
+    pub fn run_all(
+        state: &'s mut State,
+        modules: Vec<ParsedModule>,
+    ) -> BTreeMap<ModuleID, stellar_hir::Module> {
         modules
             .into_iter()
             .map(|module| {
@@ -102,7 +106,7 @@ impl<'s> LowerToHir<'s> {
                     now.elapsed().as_micros()
                 );
 
-                LoweredModule::new(module, hir)
+                (module, hir)
             })
             .collect()
     }

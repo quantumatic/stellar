@@ -1,6 +1,6 @@
-use std::mem;
 #[cfg(feature = "debug")]
 use std::time::Instant;
+use std::{collections::BTreeMap, mem};
 
 use stellar_ast_lowering::LoweredModule;
 use stellar_database::{
@@ -17,43 +17,44 @@ use tracing::trace;
 
 use crate::diagnostics::CycleDetectedWhenComputingSignatureOf;
 
-pub struct CollectSignatures<'s> {
+pub struct CollectSignatures<'s, 'h> {
     state: &'s mut State,
     currently_analyzed_symbols: Vec<Symbol>,
-    module: ModuleID,
+    modules: &'h BTreeMap<ModuleID, stellar_hir::Module>,
 }
 
-impl<'s> CollectSignatures<'s> {
-    pub fn run_all(state: &'s mut State, lowered_modules: &[LoweredModule]) {
-        for lowered_module in lowered_modules {
-            CollectSignatures {
-                state,
-                currently_analyzed_symbols: Vec::new(),
-                module: lowered_module.module(),
-            }
-            .run(lowered_module.hir());
+impl<'s, 'h> CollectSignatures<'s, 'h> {
+    pub fn run_all(state: &'s mut State, modules: &'h BTreeMap<ModuleID, stellar_hir::Module>) {
+        let mut me = CollectSignatures {
+            state,
+            currently_analyzed_symbols: Vec::new(),
+            modules,
+        };
+
+        for module in modules {
+            me.run(*module.0, module.1);
         }
     }
 
-    fn run(mut self, module: &stellar_hir::Module) {
-        for item in &module.items {
-            self.analyze_signature(item);
+    fn run(&mut self, module: ModuleID, hir: &stellar_hir::Module) {
+        for item in &hir.items {
+            self.analyze_signature(module, item);
         }
     }
 
-    fn analyze_signature(&mut self, item: &stellar_hir::ModuleItem) {
+    fn analyze_signature(&mut self, module: ModuleID, item: &stellar_hir::ModuleItem) {
         match item {
             stellar_hir::ModuleItem::Enum(enum_) => {
-                self.analyze_signature_of_enum(self.module, enum_);
+                self.analyze_signature_of_enum(module, enum_);
             }
             stellar_hir::ModuleItem::Struct(struct_) => {
-                self.analyze_signature_of_struct(self.module, struct_)
+                self.analyze_signature_of_struct(module, struct_);
             }
             stellar_hir::ModuleItem::TupleLikeStruct(struct_) => {
-                self.analyze_signature_of_tuple_like_struct(self.module, struct_)
+                self.analyze_signature_of_tuple_like_struct(module, struct_);
             }
             stellar_hir::ModuleItem::TypeAlias(alias) => {
-                self.analyze_type_alias(self.module, alias)
+                self.analyze_type_alias(module, alias);
             }
             _ => todo!(),
         }
@@ -259,9 +260,11 @@ impl<'s> CollectSignatures<'s> {
     fn resolve_signature(&mut self, symbol: Symbol) -> SignatureID {
         let signature = symbol.signature(self.state.db());
 
-        if !signature.is_analyzed(self.state.db()) {}
+        if !signature.is_analyzed(self.state.db()) {
+            // self.analyze_signature(symbol.module(self.state.db()), item);
+        }
 
-        todo!()
+        signature
     }
 
     fn resolve_bounds(&mut self, bounds: &[stellar_hir::TypeConstructor]) -> Vec<TypeConstructor> {
