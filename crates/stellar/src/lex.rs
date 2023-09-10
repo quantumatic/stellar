@@ -1,14 +1,14 @@
 #![cfg(feature = "debug")]
 use std::{fs, process::exit};
 
-use stellar_interner::PathID;
+use stellar_interner::PathId;
 use stellar_lexer::Lexer;
 
 use crate::log::log_info;
 
 pub fn command(filepath: &str, show_locations: bool) {
     if let Ok(source) = fs::read_to_string(filepath) {
-        let mut lexer = Lexer::new(PathID(1), &source);
+        let mut lexer = Lexer::new(PathId(1), &source);
         let mut current_token_index = 0;
 
         print!("0x000000: ");

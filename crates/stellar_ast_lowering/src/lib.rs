@@ -21,7 +21,7 @@ use std::time::Instant;
 
 use diagnostics::{UnnecessaryGroupedPattern, UnnecessaryParenthesizedExpression};
 use stellar_ast::IdentifierAST;
-use stellar_database::{ModuleID, State};
+use stellar_database::{ModuleId, State};
 use stellar_filesystem::location::Location;
 use stellar_interner::builtin_identifiers::BIG_SELF;
 use stellar_parser::ParsedModule;
@@ -37,7 +37,7 @@ pub struct LowerToHir<'s> {
 /// A lowered module.
 #[derive(Debug)]
 pub struct LoweredModule {
-    id: ModuleID,
+    id: ModuleId,
     hir: stellar_hir::Module,
 }
 
@@ -45,14 +45,14 @@ impl LoweredModule {
     /// Constructs a new lowered module.
     #[inline(always)]
     #[must_use]
-    pub const fn new(id: ModuleID, hir: stellar_hir::Module) -> Self {
+    pub const fn new(id: ModuleId, hir: stellar_hir::Module) -> Self {
         Self { id, hir }
     }
 
     /// Returns the ID of the module in the database.
     #[inline(always)]
     #[must_use]
-    pub const fn id(&self) -> ModuleID {
+    pub const fn id(&self) -> ModuleId {
         self.id
     }
 
@@ -89,7 +89,7 @@ impl<'s> LowerToHir<'s> {
     pub fn run_all(
         state: &'s mut State,
         modules: Vec<ParsedModule>,
-    ) -> BTreeMap<ModuleID, stellar_hir::Module> {
+    ) -> BTreeMap<ModuleId, stellar_hir::Module> {
         modules
             .into_iter()
             .map(|module| {

@@ -161,8 +161,8 @@ use serde::Serializer;
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 use stellar_filesystem::location::Location;
-use stellar_interner::IdentifierID;
-use stellar_interner::PathID;
+use stellar_interner::IdentifierId;
+use stellar_interner::PathId;
 use token::{Punctuator, RawToken};
 
 pub mod precedence;
@@ -214,7 +214,7 @@ impl Literal {
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct IdentifierAST {
     pub location: Location,
-    pub id: IdentifierID,
+    pub id: IdentifierId,
 }
 
 /// Returns an identifier with a dummy location.
@@ -1207,7 +1207,7 @@ impl ModuleItem {
     /// Returns the id of the item name identifier.
     #[inline(always)]
     #[must_use]
-    pub const fn name_identifier_id(&self) -> Option<IdentifierID> {
+    pub const fn name_identifier_id(&self) -> Option<IdentifierId> {
         match self {
             Self::Enum(Enum {
                 name: IdentifierAST { id, .. },
@@ -1248,7 +1248,7 @@ impl ModuleItem {
     /// If the item does not have a name.
     #[inline(always)]
     #[must_use]
-    pub fn name_identifier_id_or_panic(&self) -> IdentifierID {
+    pub fn name_identifier_id_or_panic(&self) -> IdentifierId {
         self.name_identifier_id().unwrap()
     }
 
@@ -1453,7 +1453,7 @@ pub struct NotSelfFunctionParameter {
 #[derive(Debug, PartialEq, Clone)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct Module {
-    pub filepath: PathID,
+    pub filepath: PathId,
 
     pub items: Vec<ModuleItem>,
 

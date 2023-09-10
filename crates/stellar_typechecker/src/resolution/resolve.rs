@@ -2,7 +2,7 @@ use std::iter;
 
 use itertools::Itertools;
 use stellar_ast::IdentifierAST;
-use stellar_database::{EnumID, ModuleID, State, Symbol, TypeAliasID};
+use stellar_database::{EnumId, ModuleId, State, Symbol, TypeAliasId};
 
 use crate::diagnostics::{
     EnumItemsDoNotServeAsNamespaces, FailedToResolveEnumItem, FailedToResolveNameInModule,
@@ -12,7 +12,7 @@ use crate::diagnostics::{
 pub fn resolve_global_path_in_module_context(
     state: &mut State,
     path: &stellar_ast::Path,
-    module: ModuleID,
+    module: ModuleId,
 ) -> Option<Symbol> {
     let mut identifiers = path.identifiers.iter();
     let namespace = identifiers.next()?;
@@ -97,7 +97,7 @@ fn resolve_global_path_segment(
 
 fn resolve_symbol_in_module_namespace(
     state: &mut State,
-    module: ModuleID,
+    module: ModuleId,
     namespace: IdentifierAST,
     member: IdentifierAST,
 ) -> Option<Symbol> {
@@ -123,7 +123,7 @@ fn resolve_symbol_in_module_namespace(
 
 fn resolve_symbol_in_enum_namespace(
     state: &mut State,
-    enum_: EnumID,
+    enum_: EnumId,
     namespace: IdentifierAST,
     member: IdentifierAST,
 ) -> Option<Symbol> {

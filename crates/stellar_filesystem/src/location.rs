@@ -8,14 +8,14 @@ use std::{
 use derive_more::Display;
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
-use stellar_interner::PathID;
+use stellar_interner::PathId;
 
 /// Represents location in the source text.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct Location {
     /// Path of the source file.
-    pub filepath: PathID,
+    pub filepath: PathId,
 
     /// Offset of starting byte in the source text.
     pub start: ByteOffset,
@@ -112,7 +112,7 @@ impl ByteOffset {
     /// Returns location of the next byte relative to the current offset.
     #[inline(always)]
     #[must_use]
-    pub const fn next_byte_location_at(self, filepath: PathID) -> Location {
+    pub const fn next_byte_location_at(self, filepath: PathId) -> Location {
         Location {
             filepath,
             start: self,
@@ -123,7 +123,7 @@ impl ByteOffset {
     /// Returns location of the previous byte relative to the current offset.
     #[inline(always)]
     #[must_use]
-    pub const fn previous_byte_location_at(self, filepath: PathID) -> Location {
+    pub const fn previous_byte_location_at(self, filepath: PathId) -> Location {
         Location {
             filepath,
             start: Self(self.0 - 1),
@@ -139,7 +139,7 @@ impl ByteOffset {
 /// because this can result in undefined behavior with diagnostics and
 /// debug information!
 pub const DUMMY_LOCATION: Location = Location {
-    filepath: PathID(0),
+    filepath: PathId(0),
     start: ByteOffset(0),
     end: ByteOffset(0),
 };

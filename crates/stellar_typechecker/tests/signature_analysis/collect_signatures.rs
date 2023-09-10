@@ -1,6 +1,6 @@
 use stellar_ast_lowering::LowerToHir;
 use stellar_database::State;
-use stellar_interner::{IdentifierID, PathID, DUMMY_IDENTIFIER_ID};
+use stellar_interner::{IdentifierId, PathId, DUMMY_IDENTIFIER_ID};
 use stellar_parser::parse_module;
 use stellar_typechecker::{
     resolution::collect_definitions::CollectDefinitions,
@@ -10,7 +10,7 @@ use stellar_typechecker::{
 #[test]
 fn simple_generic_parameter() {
     let mut state = State::new();
-    let filepath = PathID::from("test.sr");
+    let filepath = PathId::from("test.sr");
     let source_code = "struct Box[T](T);";
 
     let ast = parse_module(&mut state, DUMMY_IDENTIFIER_ID, filepath, source_code);
@@ -23,11 +23,11 @@ fn simple_generic_parameter() {
         .first_key_value()
         .unwrap()
         .0
-        .symbol(state.db(), IdentifierID::from("Box"))
+        .symbol(state.db(), IdentifierId::from("Box"))
         .to_tuple_like_struct()
         .signature(state.db())
         .generic_parameter_scope(state.db())
-        .contains(state.db(), IdentifierID::from("T")));
+        .contains(state.db(), IdentifierId::from("T")));
 
     assert!(state.diagnostics().is_ok());
 }

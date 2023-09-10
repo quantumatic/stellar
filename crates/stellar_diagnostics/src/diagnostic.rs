@@ -224,7 +224,7 @@ impl Diagnostic {
     /// Returns the files involved in the diagnostic.
     #[inline(always)]
     #[must_use]
-    pub fn files_involved(&self) -> Vec<stellar_interner::PathID> {
+    pub fn files_involved(&self) -> Vec<stellar_interner::PathId> {
         self.labels
             .iter()
             .map(|label| label.location.filepath)

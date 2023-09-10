@@ -69,7 +69,7 @@ use std::{mem, str::Chars, string::String};
 
 use stellar_ast::token::{get_keyword, LexError, Punctuator, RawLexError, RawToken, Token};
 use stellar_filesystem::location::{ByteOffset, Location};
-use stellar_interner::{IdentifierID, PathID};
+use stellar_interner::{IdentifierId, PathId};
 use stellar_stable_likely::unlikely;
 
 mod number;
@@ -119,8 +119,8 @@ mod number;
 /// [`Error`]: stellar_ast::token::RawToken::Error
 #[derive(Debug)]
 pub struct Lexer<'s> {
-    /// ID of the path of the file being scanned.
-    pub filepath: PathID,
+    /// Id of the path of the file being scanned.
+    pub filepath: PathId,
 
     /// Content of the file being scanned.
     pub source: &'s str,
@@ -137,7 +137,7 @@ pub struct Lexer<'s> {
     offset: ByteOffset,
 
     /// Symbol corresponding to an identifier being processed early on.
-    pub scanned_identifier: IdentifierID,
+    pub scanned_identifier: IdentifierId,
     /// Buffer for storing scanned characters (after processing escape sequences).
     pub scanned_char: char,
     /// Buffer for storing scanned strings (after processing escape sequences).
@@ -148,7 +148,7 @@ impl<'s> Lexer<'s> {
     /// Creates a new [`Lexer`] instance.
     #[inline(always)]
     #[must_use]
-    pub fn new(filepath: PathID, source: &'s str) -> Self {
+    pub fn new(filepath: PathId, source: &'s str) -> Self {
         let mut chars = source.chars();
 
         let current = chars.next().unwrap_or('\0');
@@ -161,7 +161,7 @@ impl<'s> Lexer<'s> {
             next,
             chars,
             offset: ByteOffset(0),
-            scanned_identifier: IdentifierID(0),
+            scanned_identifier: IdentifierId(0),
             scanned_char: '\0',
             scanned_string: String::new(),
         }
@@ -584,7 +584,7 @@ impl<'s> Lexer<'s> {
 
         self.advance();
 
-        self.scanned_identifier = IdentifierID::from(name);
+        self.scanned_identifier = IdentifierId::from(name);
 
         Token {
             raw: RawToken::Identifier,
@@ -657,7 +657,7 @@ impl<'s> Lexer<'s> {
                 location: self.location_from(start_location),
             }
         } else {
-            self.scanned_identifier = IdentifierID::from(name);
+            self.scanned_identifier = IdentifierId::from(name);
 
             Token {
                 raw: RawToken::Identifier,

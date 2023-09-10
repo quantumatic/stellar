@@ -5,7 +5,7 @@ use std::fmt::Display;
 use derive_more::Display;
 use paste::paste;
 use stellar_filesystem::location::Location;
-use stellar_interner::{builtin_identifiers, IdentifierID};
+use stellar_interner::{builtin_identifiers, IdentifierId};
 
 use crate::Path;
 
@@ -155,33 +155,33 @@ pub enum TypeVariable {
         /// Location of the corresponding generic parameter name.
         origin_location: Location,
 
-        /// Type variable ID.
-        id: TypeVariableID,
+        /// Type variable Id.
+        id: TypeVariableId,
     },
     #[cfg_attr(feature = "serde", serde(rename = "expression_type_variable"))]
     Expression {
         /// Location of the expression.
         location: Location,
 
-        /// Type variable ID.
-        id: TypeVariableID,
+        /// Type variable Id.
+        id: TypeVariableId,
     },
 }
 
 impl TypeVariable {
-    /// Returns ID of the type variable.
+    /// Returns Id of the type variable.
     #[inline(always)]
     #[must_use]
-    pub const fn id(&self) -> TypeVariableID {
+    pub const fn id(&self) -> TypeVariableId {
         match self {
             Self::TypePlaceholder { id, .. } | Self::Expression { id, .. } => *id,
         }
     }
 }
 
-/// A type variable ID.
+/// A type variable Id.
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
-pub struct TypeVariableID(pub usize);
+pub struct TypeVariableId(pub usize);
 
 /// The macro, automates the process of generating functions
 /// for getting builtin primitive types.
@@ -226,7 +226,7 @@ impl TypeConstructor {
 
     #[inline(always)]
     #[must_use]
-    pub fn new_primitive(identifier_id: IdentifierID) -> Self {
+    pub fn new_primitive(identifier_id: IdentifierId) -> Self {
         Self {
             path: Path {
                 identifiers: vec![identifier_id],
@@ -239,7 +239,7 @@ impl TypeConstructor {
 impl Type {
     #[inline(always)]
     #[must_use]
-    pub fn new_primitive(identifier_id: IdentifierID) -> Self {
+    pub fn new_primitive(identifier_id: IdentifierId) -> Self {
         Self::Constructor(TypeConstructor::new_primitive(identifier_id))
     }
 }

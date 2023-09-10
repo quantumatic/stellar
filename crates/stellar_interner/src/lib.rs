@@ -89,12 +89,12 @@ use stellar_fx_hash::FxHasher;
 
 /// Represents unique symbol corresponding to some interned identifier.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct IdentifierID(pub usize);
+pub struct IdentifierId(pub usize);
 
-/// ID of an identifier, that will never exist in the [`IdentifierInterner`].
-pub const DUMMY_IDENTIFIER_ID: IdentifierID = IdentifierID(0);
+/// Id of an identifier, that will never exist in the [`IdentifierInterner`].
+pub const DUMMY_IDENTIFIER_ID: IdentifierId = IdentifierId(0);
 
-impl IdentifierID {
+impl IdentifierId {
     /// Interns a string.
     #[inline(always)]
     #[must_use]
@@ -102,14 +102,14 @@ impl IdentifierID {
         IDENTIFIER_INTERNER.write().get_or_intern(string)
     }
 
-    /// Gets the interned string by ID.
+    /// Gets the interned string by Id.
     #[inline(always)]
     #[must_use]
     pub fn resolve_or_panic(self) -> String {
         IDENTIFIER_INTERNER.read().resolved_owned_or_panic(self)
     }
 
-    /// Gets the interned string by ID.
+    /// Gets the interned string by Id.
     #[inline(always)]
     #[must_use]
     pub fn resolve(self) -> Option<String> {
@@ -117,21 +117,21 @@ impl IdentifierID {
     }
 }
 
-impl Display for IdentifierID {
+impl Display for IdentifierId {
     #[inline(always)]
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.resolve_or_panic().fmt(f)
     }
 }
 
-impl From<IdentifierID> for String {
+impl From<IdentifierId> for String {
     #[inline(always)]
-    fn from(value: IdentifierID) -> Self {
+    fn from(value: IdentifierId) -> Self {
         value.resolve_or_panic()
     }
 }
 
-impl FromStr for IdentifierID {
+impl FromStr for IdentifierId {
     type Err = ();
 
     #[inline(always)]
@@ -141,7 +141,7 @@ impl FromStr for IdentifierID {
 }
 
 #[cfg(feature = "serde")]
-impl Serialize for IdentifierID {
+impl Serialize for IdentifierId {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
@@ -151,7 +151,7 @@ impl Serialize for IdentifierID {
 }
 
 #[cfg(feature = "serde")]
-impl<'de> Deserialize<'de> for IdentifierID {
+impl<'de> Deserialize<'de> for IdentifierId {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: Deserializer<'de>,
@@ -160,7 +160,7 @@ impl<'de> Deserialize<'de> for IdentifierID {
     }
 }
 
-impl SymbolID for IdentifierID {
+impl SymbolId for IdentifierId {
     #[inline(always)]
     fn to_storage_index(self) -> usize {
         self.0 - 1
@@ -172,9 +172,9 @@ impl SymbolID for IdentifierID {
     }
 }
 
-/// A trait, that is implemented for types which represent unique ID-s of
+/// A trait, that is implemented for types which represent unique Id-s of
 /// interned objects in [`Interner`].
-pub trait SymbolID: Copy {
+pub trait SymbolId: Copy {
     /// Returns an index of the symbol in the interner memory storage.
     #[must_use]
     fn to_storage_index(self) -> usize;
@@ -184,7 +184,7 @@ pub trait SymbolID: Copy {
     fn from_storage_index(index: usize) -> Self;
 }
 
-impl SymbolID for usize {
+impl SymbolId for usize {
     #[inline(always)]
     fn to_storage_index(self) -> usize {
         self
@@ -196,7 +196,7 @@ impl SymbolID for usize {
     }
 }
 
-impl SymbolID for u64 {
+impl SymbolId for u64 {
     #[inline(always)]
     fn to_storage_index(self) -> usize {
         usize::try_from(self).unwrap()
@@ -208,7 +208,7 @@ impl SymbolID for u64 {
     }
 }
 
-impl SymbolID for u32 {
+impl SymbolId for u32 {
     #[inline(always)]
     fn to_storage_index(self) -> usize {
         usize::try_from(self).unwrap()
@@ -235,7 +235,7 @@ impl SymbolID for u32 {
 #[derive(Debug, Clone)]
 pub struct Interner<S>
 where
-    S: SymbolID,
+    S: SymbolId,
 {
     dedup: HashMap<S, (), ()>,
     hasher: BuildHasherDefault<FxHasher>,
@@ -246,7 +246,7 @@ where
 #[derive(Debug, Clone)]
 struct InternerStorage<S>
 where
-    S: SymbolID,
+    S: SymbolId,
 {
     ends: Vec<usize>,
 
@@ -258,7 +258,7 @@ where
 
 impl<S> Default for InternerStorage<S>
 where
-    S: SymbolID,
+    S: SymbolId,
 {
     fn default() -> Self {
         Self {
@@ -271,7 +271,7 @@ where
 
 impl<S> Default for Interner<S>
 where
-    S: SymbolID,
+    S: SymbolId,
 {
     /// Creates a new empty [`Interner`].
     #[inline(always)]
@@ -292,7 +292,7 @@ where
 
 impl<S> InternerStorage<S>
 where
-    S: SymbolID,
+    S: SymbolId,
 {
     #[must_use]
     #[inline(always)]
@@ -376,7 +376,7 @@ where
 
 impl<S> Interner<S>
 where
-    S: SymbolID,
+    S: SymbolId,
 {
     /// Creates a new empty [`Interner`], that only contains builtin symbols.
     #[inline(always)]
@@ -534,7 +534,7 @@ struct Span {
 /// - [`IdentifierInterner::get_or_intern()`] to intern a new string.
 /// - [`IdentifierInterner::resolve()`] to resolve already interned strings.
 #[derive(Debug, Clone, Default)]
-pub struct IdentifierInterner(Interner<IdentifierID>);
+pub struct IdentifierInterner(Interner<IdentifierId>);
 
 lazy_static! {
     static ref IDENTIFIER_INTERNER: RwLock<IdentifierInterner> =
@@ -546,11 +546,11 @@ macro_rules! define_builtin_identifiers {
         /// Defines all builtin identifiers (that are automatically interned by
         /// [`IdentifierInterner`]).
         pub mod builtin_identifiers {
-            use crate::IdentifierID;
+            use crate::IdentifierId;
 
             $(
                 #[doc = concat!("Builtin identifier `", $id, "`.")]
-                pub const $id_name: IdentifierID = IdentifierID($value);
+                pub const $id_name: IdentifierId = IdentifierId($value);
             )+
         }
 
@@ -601,13 +601,13 @@ impl IdentifierInterner {
     /// assert_eq!(Some(hello_id), identifier_interner.get("hello"));
     /// ```
     #[inline(always)]
-    pub fn get(&self, identifier: impl AsRef<str>) -> Option<IdentifierID> {
+    pub fn get(&self, identifier: impl AsRef<str>) -> Option<IdentifierId> {
         self.0.get(identifier)
     }
 
     /// Interns the given identifier (if it doesn't exist) and returns a corresponding symbol.
     #[inline(always)]
-    pub fn get_or_intern(&mut self, identifier: impl AsRef<str>) -> IdentifierID {
+    pub fn get_or_intern(&mut self, identifier: impl AsRef<str>) -> IdentifierId {
         self.0.get_or_intern(identifier)
     }
 
@@ -616,7 +616,7 @@ impl IdentifierInterner {
     pub fn get_or_intern_vec(
         &mut self,
         identifiers: impl IntoIterator<Item = impl AsRef<str>>,
-    ) -> Vec<IdentifierID> {
+    ) -> Vec<IdentifierId> {
         self.0.get_or_intern_vec(identifiers)
     }
 
@@ -628,7 +628,7 @@ impl IdentifierInterner {
         identifiers: impl IntoIterator<Item = impl AsRef<str>>,
     ) -> Option<T>
     where
-        T: HomogeneousTuple<Item = IdentifierID>,
+        T: HomogeneousTuple<Item = IdentifierId>,
     {
         self.0.get_or_intern_tuple(identifiers)
     }
@@ -643,18 +643,18 @@ impl IdentifierInterner {
     ///
     /// # Example
     /// ```
-    /// # use stellar_interner::{IdentifierInterner, builtin_identifiers::UINT8, IdentifierID};
+    /// # use stellar_interner::{IdentifierInterner, builtin_identifiers::UINT8, IdentifierId};
     /// let mut identifier_interner = IdentifierInterner::new();
     ///
     /// let hello_id = identifier_interner.get_or_intern("hello");
     ///
     /// assert_eq!(identifier_interner.resolve(hello_id), Some("hello"));
     /// assert_eq!(identifier_interner.resolve(UINT8), Some("uint8")); // interned by default
-    /// assert_eq!(identifier_interner.resolve(IdentifierID(3123123123)), None);
+    /// assert_eq!(identifier_interner.resolve(IdentifierId(3123123123)), None);
     /// ```
     #[inline(always)]
     #[must_use]
-    pub fn resolve(&self, id: IdentifierID) -> Option<&str> {
+    pub fn resolve(&self, id: IdentifierId) -> Option<&str> {
         self.0.resolve(id)
     }
 
@@ -664,22 +664,22 @@ impl IdentifierInterner {
     /// If the identifier is not yet interned.
     #[inline(always)]
     #[must_use]
-    pub fn resolve_or_panic(&self, id: IdentifierID) -> &str {
+    pub fn resolve_or_panic(&self, id: IdentifierId) -> &str {
         self.resolve(id)
-            .unwrap_or_else(|| panic!("Failed to resolve identifier with ID: {id:?}"))
+            .unwrap_or_else(|| panic!("Failed to resolve identifier with Id: {id:?}"))
     }
 
     /// Returns the string for the given identifier if any.
     #[inline(always)]
     #[must_use]
-    pub fn resolve_owned(&self, id: IdentifierID) -> Option<String> {
+    pub fn resolve_owned(&self, id: IdentifierId) -> Option<String> {
         self.resolve(id).map(ToOwned::to_owned)
     }
 
     /// Returns the string for the given identifier if any.
     #[inline(always)]
     #[must_use]
-    pub fn resolved_owned_or_panic(&self, id: IdentifierID) -> String {
+    pub fn resolved_owned_or_panic(&self, id: IdentifierId) -> String {
         self.resolve_or_panic(id).to_owned()
     }
 }
@@ -687,34 +687,34 @@ impl IdentifierInterner {
 /// Storage for file paths (to avoid copying and fast comparing, basically the same
 /// movitation as with [`IdentifierInterner`]).
 ///
-/// The ID-s that correspond to file paths have a type of [`PathID`].
+/// The Id-s that correspond to file paths have a type of [`PathId`].
 #[derive(Debug, Clone)]
-pub struct PathInterner(Interner<PathID>);
+pub struct PathInterner(Interner<PathId>);
 
 lazy_static! {
     static ref PATH_INTERNER: RwLock<PathInterner> = RwLock::new(PathInterner::new());
 }
 
-/// ID of a path in the [`PathInterner`].
+/// Id of a path in the [`PathInterner`].
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
-pub struct PathID(pub usize);
+pub struct PathId(pub usize);
 
-impl PathID {
-    /// Interns the given path and returns its ID.
+impl PathId {
+    /// Interns the given path and returns its Id.
     #[inline(always)]
     #[must_use]
     pub fn from(path: impl AsRef<Path>) -> Self {
         PATH_INTERNER.write().get_or_intern(path)
     }
 
-    /// Resolves the given path by ID.
+    /// Resolves the given path by Id.
     #[inline(always)]
     #[must_use]
     pub fn resolve(self) -> Option<PathBuf> {
         PATH_INTERNER.read().resolve_owned(self)
     }
 
-    /// Resolves the given path by ID.
+    /// Resolves the given path by Id.
     #[inline(always)]
     #[must_use]
     pub fn resolve_or_panic(self) -> PathBuf {
@@ -722,21 +722,21 @@ impl PathID {
     }
 }
 
-impl Display for PathID {
+impl Display for PathId {
     #[inline(always)]
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.resolve_or_panic().display())
     }
 }
 
-impl From<PathID> for String {
+impl From<PathId> for String {
     #[inline(always)]
-    fn from(value: PathID) -> Self {
+    fn from(value: PathId) -> Self {
         format!("{}", value.resolve_or_panic().display())
     }
 }
 
-impl FromStr for PathID {
+impl FromStr for PathId {
     type Err = ();
 
     #[inline(always)]
@@ -746,7 +746,7 @@ impl FromStr for PathID {
 }
 
 #[cfg(feature = "serde")]
-impl Serialize for PathID {
+impl Serialize for PathId {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
@@ -756,7 +756,7 @@ impl Serialize for PathID {
 }
 
 #[cfg(feature = "serde")]
-impl<'de> Deserialize<'de> for PathID {
+impl<'de> Deserialize<'de> for PathId {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: Deserializer<'de>,
@@ -765,7 +765,7 @@ impl<'de> Deserialize<'de> for PathID {
     }
 }
 
-impl SymbolID for PathID {
+impl SymbolId for PathId {
     #[inline(always)]
     fn to_storage_index(self) -> usize {
         self.0 - 1
@@ -777,8 +777,8 @@ impl SymbolID for PathID {
     }
 }
 
-/// ID of a path, that will never exist in the [`PathInterner`].
-pub const DUMMY_PATH_ID: PathID = PathID(0);
+/// Id of a path, that will never exist in the [`PathInterner`].
+pub const DUMMY_PATH_ID: PathId = PathId(0);
 
 impl Default for PathInterner {
     #[inline(always)]
@@ -801,7 +801,7 @@ impl PathInterner {
     /// If the path is not a valid UTF-8 string.
     #[inline(always)]
     #[must_use]
-    pub fn get_or_intern(&mut self, path: impl AsRef<Path>) -> PathID {
+    pub fn get_or_intern(&mut self, path: impl AsRef<Path>) -> PathId {
         self.0
             .get_or_intern(path.as_ref().to_str().expect("Invalid UTF-8 path"))
     }
@@ -811,7 +811,7 @@ impl PathInterner {
     pub fn get_or_intern_iter(
         &mut self,
         paths: impl IntoIterator<Item = impl AsRef<Path>>,
-    ) -> Vec<PathID> {
+    ) -> Vec<PathId> {
         paths
             .into_iter()
             .map(|path| self.get_or_intern(path))
@@ -826,7 +826,7 @@ impl PathInterner {
         paths: impl IntoIterator<Item = impl AsRef<Path>>,
     ) -> Option<T>
     where
-        T: HomogeneousTuple<Item = PathID>,
+        T: HomogeneousTuple<Item = PathId>,
     {
         paths
             .into_iter()
@@ -837,14 +837,14 @@ impl PathInterner {
     /// Resolves a path stored in the storage.
     #[inline(always)]
     #[must_use]
-    pub fn resolve(&self, id: PathID) -> Option<&Path> {
+    pub fn resolve(&self, id: PathId) -> Option<&Path> {
         self.0.resolve(id).map(Path::new)
     }
 
     /// Resolves an owned path stored in the storage.
     #[inline(always)]
     #[must_use]
-    pub fn resolve_owned(&self, id: PathID) -> Option<PathBuf> {
+    pub fn resolve_owned(&self, id: PathId) -> Option<PathBuf> {
         self.0.resolve(id).map(PathBuf::from)
     }
 
@@ -853,7 +853,7 @@ impl PathInterner {
     #[inline(always)]
     #[must_use]
     #[allow(clippy::missing_panics_doc)]
-    pub fn resolve_or_panic(&self, id: PathID) -> &Path {
+    pub fn resolve_or_panic(&self, id: PathId) -> &Path {
         self.resolve(id)
             .unwrap_or_else(|| panic!("Path with id: {} is not found", id.0))
     }
@@ -863,7 +863,7 @@ impl PathInterner {
     #[inline(always)]
     #[must_use]
     #[allow(clippy::missing_panics_doc)]
-    pub fn resolve_owned_or_panic(&self, id: PathID) -> PathBuf {
+    pub fn resolve_owned_or_panic(&self, id: PathId) -> PathBuf {
         self.resolve(id)
             .unwrap_or_else(|| panic!("Path with id: {} is not found", id.0))
             .to_owned()

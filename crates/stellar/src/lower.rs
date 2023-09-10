@@ -7,7 +7,7 @@ use stellar_ast_lowering::LowerToHir;
 use stellar_database::State;
 use stellar_diagnostics::DiagnosticsEmitter;
 use stellar_filesystem::file_utils::make_unique_file;
-use stellar_interner::{PathID, DUMMY_IDENTIFIER_ID};
+use stellar_interner::{PathId, DUMMY_IDENTIFIER_ID};
 use stellar_parser::read_and_parse_module;
 
 use crate::log::{log_error, log_info};
@@ -15,7 +15,7 @@ use crate::log::{log_error, log_info};
 pub fn command(filepath: &str) {
     let mut diagnostics_emitter = DiagnosticsEmitter::new();
     let mut state = State::new();
-    let filepath = PathID::from(filepath);
+    let filepath = PathId::from(filepath);
 
     let mut now = Instant::now();
 
@@ -29,7 +29,7 @@ pub fn command(filepath: &str) {
             now = Instant::now();
 
             let hir = LowerToHir::run_all(&mut state, vec![ast]);
-            let hir = &hir.first().unwrap().hir();
+            let hir = hir.first_key_value().unwrap().1;
 
             log_info("Lowered", format!("in {}s", now.elapsed().as_secs_f64()));
 

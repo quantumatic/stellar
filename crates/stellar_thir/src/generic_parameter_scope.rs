@@ -5,7 +5,7 @@ use std::sync::Arc;
 
 use stellar_filesystem::location::Location;
 use stellar_fx_hash::FxHashMap;
-use stellar_interner::IdentifierID;
+use stellar_interner::IdentifierId;
 
 use crate::ty::Type;
 
@@ -22,7 +22,7 @@ pub struct GenericParameterScope {
     pub parent_scope: Option<Arc<Self>>,
 
     /// A map of generic parameters in the scope.
-    pub parameters: FxHashMap<IdentifierID, GenericParameterData>,
+    pub parameters: FxHashMap<IdentifierId, GenericParameterData>,
 }
 
 impl GenericParameterScope {
@@ -40,7 +40,7 @@ impl GenericParameterScope {
     #[inline(always)]
     pub fn add_generic_parameter(
         &mut self,
-        parameter_name: IdentifierID,
+        parameter_name: IdentifierId,
         data: GenericParameterData,
     ) {
         self.parameters.insert(parameter_name, data);
@@ -53,7 +53,7 @@ impl GenericParameterScope {
     ///
     /// [`contains()`]: GenericParameterScope::contains
     #[must_use]
-    pub fn resolve(&self, parameter_name: IdentifierID) -> Option<&GenericParameterData> {
+    pub fn resolve(&self, parameter_name: IdentifierId) -> Option<&GenericParameterData> {
         if let Some(data) = self.parameters.get(&parameter_name) {
             Some(data)
         } else if let Some(parent_scope) = &self.parent_scope {
@@ -65,7 +65,7 @@ impl GenericParameterScope {
 
     /// Checks if the generic parameter exists in the scope.
     #[must_use]
-    pub fn contains(&self, parameter_name: IdentifierID) -> bool {
+    pub fn contains(&self, parameter_name: IdentifierId) -> bool {
         self.parameters.contains_key(&parameter_name)
             || if let Some(parent_scope) = &self.parent_scope {
                 parent_scope.contains(parameter_name)

@@ -3,7 +3,7 @@ use std::collections::BTreeMap;
 use std::time::Instant;
 
 use stellar_ast_lowering::LoweredModule;
-use stellar_database::{ModuleID, State};
+use stellar_database::{ModuleId, State};
 use stellar_filesystem::location::Location;
 #[cfg(feature = "debug")]
 use tracing::trace;
@@ -12,11 +12,11 @@ use crate::{diagnostics::PackageImport, resolution::resolve::resolve_global_path
 
 pub struct ResolveImports<'s> {
     state: &'s mut State,
-    module: ModuleID,
+    module: ModuleId,
 }
 
 impl<'s> ResolveImports<'s> {
-    pub fn run_all(state: &'s mut State, modules: &BTreeMap<ModuleID, stellar_hir::Module>) {
+    pub fn run_all(state: &'s mut State, modules: &BTreeMap<ModuleId, stellar_hir::Module>) {
         for module in modules {
             ResolveImports {
                 state,

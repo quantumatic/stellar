@@ -11,7 +11,7 @@
 use stellar_filesystem::in_memory_file::LineTooLargeError;
 use stellar_filesystem::in_memory_file_storage::InMemoryFileStorage;
 use stellar_filesystem::location::{ByteOffset, Location};
-use stellar_interner::PathID;
+use stellar_interner::PathId;
 
 /// An enum representing an error that happened while looking up a file or a piece of content in that file.
 #[derive(Debug)]
@@ -101,10 +101,10 @@ impl std::error::Error for Error {
 #[allow(clippy::missing_errors_doc)]
 pub(crate) trait DiagnosticsRenderHelper<'a> {
     /// The user-facing name of a file.
-    fn name(&'a self, filepath: PathID) -> Result<String, Error>;
+    fn name(&'a self, filepath: PathId) -> Result<String, Error>;
 
     /// The source code of a file.
-    fn source(&'a self, filepath: PathID) -> Result<&'a str, Error>;
+    fn source(&'a self, filepath: PathId) -> Result<&'a str, Error>;
 
     /// The index of the line at the given byte index.
     /// If the byte index is past the end of the file, returns the maximum line index in the file.
@@ -115,7 +115,7 @@ pub(crate) trait DiagnosticsRenderHelper<'a> {
     /// This can be implemented efficiently by performing a binary search over
     /// a list of line starts. It might be useful to pre-compute and cache these
     /// line starts.
-    fn line_index(&'a self, filepath: PathID, byte_offset: ByteOffset) -> Result<usize, Error>;
+    fn line_index(&'a self, filepath: PathId, byte_offset: ByteOffset) -> Result<usize, Error>;
 
     /// The user-facing line number at the given line index.
     /// It is not necessarily checked that the specified line index
@@ -129,7 +129,7 @@ pub(crate) trait DiagnosticsRenderHelper<'a> {
     ///
     /// [line-macro]: https://en.cppreference.com/w/c/preprocessor/line
     #[allow(unused_variables)]
-    fn line_number(&'a self, filepath: PathID, byte_offset: ByteOffset) -> Result<usize, Error> {
+    fn line_number(&'a self, filepath: PathId, byte_offset: ByteOffset) -> Result<usize, Error> {
         self.line_index(filepath, byte_offset).map(|idx| idx + 1)
     }
 
@@ -145,7 +145,7 @@ pub(crate) trait DiagnosticsRenderHelper<'a> {
     /// [`column_index`]: crate::files::column_index
     fn column_number(
         &'a self,
-        filepath: PathID,
+        filepath: PathId,
         line_index: usize,
         byte_offset: ByteOffset,
     ) -> Result<usize, Error> {
@@ -160,7 +160,7 @@ pub(crate) trait DiagnosticsRenderHelper<'a> {
     /// byte index in the file.
     fn location(
         &'a self,
-        filepath: PathID,
+        filepath: PathId,
         byte_offset: ByteOffset,
     ) -> Result<ResolvedLocation, Error> {
         let line_index = self.line_index(filepath, byte_offset)?;
@@ -172,7 +172,7 @@ pub(crate) trait DiagnosticsRenderHelper<'a> {
     }
 
     /// The byte range of line in the source of the file.
-    fn line_location(&'a self, filepath: PathID, line_index: usize) -> Result<Location, Error>;
+    fn line_location(&'a self, filepath: PathId, line_index: usize) -> Result<Location, Error>;
 }
 
 /// A user-facing location in a source file.
@@ -216,27 +216,27 @@ impl From<LineTooLargeError> for Error {
 
 impl<'a> DiagnosticsRenderHelper<'a> for InMemoryFileStorage {
     #[inline(always)]
-    fn name(&'a self, filepath: PathID) -> Result<String, Error> {
+    fn name(&'a self, filepath: PathId) -> Result<String, Error> {
         self.resolve_file(filepath)
             .map(|file| file.path.display().to_string())
             .ok_or(Error::FileMissing)
     }
 
     #[inline(always)]
-    fn source(&'a self, filepath: PathID) -> Result<&'a str, Error> {
+    fn source(&'a self, filepath: PathId) -> Result<&'a str, Error> {
         self.resolve_file(filepath)
             .map(|file| file.source.as_str())
             .ok_or(Error::FileMissing)
     }
 
     #[inline(always)]
-    fn line_index(&'a self, filepath: PathID, byte_offset: ByteOffset) -> Result<usize, Error> {
+    fn line_index(&'a self, filepath: PathId, byte_offset: ByteOffset) -> Result<usize, Error> {
         self.resolve_file(filepath)
             .ok_or(Error::FileMissing)
             .map(|file| file.get_line_index_by_byte_index(byte_offset))
     }
 
-    fn line_location(&'a self, filepath: PathID, line_index: usize) -> Result<Location, Error> {
+    fn line_location(&'a self, filepath: PathId, line_index: usize) -> Result<Location, Error> {
         self.resolve_file(filepath)
             .ok_or(Error::FileMissing)
             .and_then(|file| {

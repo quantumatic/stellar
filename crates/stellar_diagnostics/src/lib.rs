@@ -73,7 +73,7 @@ use std::fmt::Display;
 
 use stellar_filesystem::in_memory_file_storage::InMemoryFileStorage;
 use stellar_fx_hash::FxHashSet;
-use stellar_interner::PathID;
+use stellar_interner::PathId;
 
 use crate::{
     diagnostic::{Diagnostic, Severity},
@@ -107,7 +107,7 @@ impl Default for DiagnosticsEmitter {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Diagnostics {
     /// Files that are involved in the diagnostics.
-    pub files_involved: FxHashSet<PathID>,
+    pub files_involved: FxHashSet<PathId>,
 
     /// Diagnostics.
     pub diagnostics: Vec<Diagnostic>,
@@ -241,7 +241,7 @@ impl DiagnosticsEmitter {
     #[allow(single_use_lifetimes)] // anonymous lifetimes in traits are unstable
     fn initialize_file_storage<'a>(
         &mut self,
-        files_involved: impl IntoIterator<Item = &'a PathID>,
+        files_involved: impl IntoIterator<Item = &'a PathId>,
     ) {
         for filepath in files_involved {
             self.file_storage.read_and_add_file_or_panic(*filepath);

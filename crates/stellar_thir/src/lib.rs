@@ -65,7 +65,7 @@ use stellar_ast::{IdentifierAST, Literal, Visibility};
 use stellar_filesystem::location::Location;
 use stellar_fx_hash::FxHashMap;
 use stellar_hir as _;
-use stellar_interner::IdentifierID;
+use stellar_interner::IdentifierId;
 use ty::{Type, TypeConstructor};
 
 pub mod generic_parameter_scope;
@@ -417,7 +417,7 @@ pub struct GeneralTypeSignature {
 #[derive(Debug, PartialEq, Clone)]
 pub struct EnumSignature {
     pub type_signature: GeneralTypeSignature,
-    pub items: FxHashMap<IdentifierID, EnumItem>,
+    pub items: FxHashMap<IdentifierId, EnumItem>,
 }
 
 #[derive(Debug, PartialEq, Eq, Clone)]
@@ -425,11 +425,11 @@ pub enum EnumItem {
     Just(IdentifierAST),
     TupleLike {
         name: IdentifierAST,
-        fields: FxHashMap<IdentifierID, EnumItemTupleField>,
+        fields: FxHashMap<IdentifierId, EnumItemTupleField>,
     },
     Struct {
         name: IdentifierAST,
-        fields: FxHashMap<IdentifierID, EnumItemStructField>,
+        fields: FxHashMap<IdentifierId, EnumItemStructField>,
     },
 }
 
@@ -448,7 +448,7 @@ pub struct EnumItemTupleField {
 #[derive(Debug, PartialEq, Clone)]
 pub struct StructSignature {
     pub type_signature: GeneralTypeSignature,
-    pub fields: FxHashMap<IdentifierID, StructField>,
+    pub fields: FxHashMap<IdentifierId, StructField>,
 }
 
 #[derive(Debug, PartialEq, Eq, Clone)]
@@ -475,7 +475,7 @@ pub struct InterfaceSignature {
 pub struct FunctionSignature {
     pub name: IdentifierAST,
     pub generic_parameter_scope: GenericParameterScope,
-    pub parameters: FxHashMap<IdentifierID, FunctionParameter>,
+    pub parameters: FxHashMap<IdentifierId, FunctionParameter>,
     pub return_type: Type,
     pub bounds: Vec<Predicate>,
 }
@@ -515,7 +515,7 @@ pub enum ModuleItem {
     Struct(StructSignature),
     Interface {
         signature: InterfaceSignature,
-        methods: FxHashMap<IdentifierID, Function>,
+        methods: FxHashMap<IdentifierId, Function>,
     },
     Function(Function),
 }
@@ -526,7 +526,7 @@ pub enum ModuleItem {
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
 pub struct Path {
     /// List of semantic symbols.
-    pub identifiers: Vec<IdentifierID>,
+    pub identifiers: Vec<IdentifierId>,
 }
 
 /// Macro, that can be used to construct a path in tests:
@@ -535,10 +535,10 @@ pub struct Path {
 ///
 /// ```
 /// use stellar_thir::{path, Path};
-/// use stellar_interner::IdentifierID;
+/// use stellar_interner::IdentifierId;
 ///
-/// let a = IdentifierID(2);
-/// let b = IdentifierID(3);
+/// let a = IdentifierId(2);
+/// let b = IdentifierId(3);
 /// assert_eq!(path!(a, b), Path { identifiers: vec![a, b] });
 /// ```
 #[macro_export]

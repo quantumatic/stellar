@@ -4,10 +4,10 @@ use std::{collections::BTreeMap, mem};
 
 use stellar_ast_lowering::LoweredModule;
 use stellar_database::{
-    GenericParameterData, GenericParameterScopeData, GenericParameterScopeID, ModuleID,
-    PredicateData, SignatureID, State, Symbol, TypeAliasID,
+    GenericParameterData, GenericParameterScopeData, GenericParameterScopeId, ModuleId,
+    PredicateData, SignatureId, State, Symbol, TypeAliasId,
 };
-use stellar_interner::SymbolID;
+use stellar_interner::SymbolId;
 use stellar_thir::{
     ty::{Type, TypeConstructor},
     Path, Predicate,
@@ -20,11 +20,11 @@ use crate::diagnostics::CycleDetectedWhenComputingSignatureOf;
 pub struct CollectSignatures<'s, 'h> {
     state: &'s mut State,
     currently_analyzed_symbols: Vec<Symbol>,
-    modules: &'h BTreeMap<ModuleID, stellar_hir::Module>,
+    modules: &'h BTreeMap<ModuleId, stellar_hir::Module>,
 }
 
 impl<'s, 'h> CollectSignatures<'s, 'h> {
-    pub fn run_all(state: &'s mut State, modules: &'h BTreeMap<ModuleID, stellar_hir::Module>) {
+    pub fn run_all(state: &'s mut State, modules: &'h BTreeMap<ModuleId, stellar_hir::Module>) {
         let mut me = CollectSignatures {
             state,
             currently_analyzed_symbols: Vec::new(),
@@ -36,13 +36,13 @@ impl<'s, 'h> CollectSignatures<'s, 'h> {
         }
     }
 
-    fn run(&mut self, module: ModuleID, hir: &stellar_hir::Module) {
+    fn run(&mut self, module: ModuleId, hir: &stellar_hir::Module) {
         for item in &hir.items {
             self.analyze_signature(module, item);
         }
     }
 
-    fn analyze_signature(&mut self, module: ModuleID, item: &stellar_hir::ModuleItem) {
+    fn analyze_signature(&mut self, module: ModuleId, item: &stellar_hir::ModuleItem) {
         match item {
             stellar_hir::ModuleItem::Enum(enum_) => {
                 self.analyze_signature_of_enum(module, enum_);
@@ -71,13 +71,16 @@ impl<'s, 'h> CollectSignatures<'s, 'h> {
         self.state.diagnostics_mut().add_diagnostic(diagnostic);
     }
 
-    fn start_analyzing_signature_of(&mut self, symbol: Symbol) {
+    fn start_analyzing_signature(&mut self, symbol: Symbol) {
+        #[cfg(feature = "debug")]
+        let module = symbol.module(self.state.db());
+
         if self.currently_analyzed_symbols.contains(&symbol) {
             #[cfg(feature = "debug")]
             trace!(
                 "signature cycle detected when analyzing signature of '{}' in '{}'",
                 symbol.name(self.state.db()).id,
-                self.module.filepath(self.state.db())
+                module.filepath(self.state.db())
             );
 
             self.emit_computation_cycle_diagnostic();
@@ -91,17 +94,17 @@ impl<'s, 'h> CollectSignatures<'s, 'h> {
         trace!(
             "start_analyzing_signature_of(name = '{}', module = '{}')",
             symbol.name(self.state.db()).id,
-            self.module.filepath(self.state.db()),
+            module.filepath(self.state.db()),
         );
     }
 
-    fn analyze_signature_of_enum(&mut self, module: ModuleID, enum_hir: &stellar_hir::Enum) {
+    fn analyze_signature_of_enum(&mut self, module: ModuleId, enum_hir: &stellar_hir::Enum) {
         #[cfg(feature = "debug")]
         let now = Instant::now();
 
         let symbol = module.symbol(self.state.db(), enum_hir.name.id);
 
-        self.start_analyzing_signature_of(symbol);
+        self.start_analyzing_signature(symbol);
 
         let enum_ = symbol.to_enum();
         let signature = enum_.signature(self.state.db());
@@ -115,18 +118,18 @@ impl<'s, 'h> CollectSignatures<'s, 'h> {
         trace!(
             "analyze_signature_of_enum(name = '{}', module = '{}') <{} us>",
             enum_hir.name.id,
-            self.module.filepath(self.state.db()),
+            module.filepath(self.state.db()),
             now.elapsed().as_micros()
         )
     }
 
-    fn analyze_signature_of_struct(&mut self, module: ModuleID, struct_hir: &stellar_hir::Struct) {
+    fn analyze_signature_of_struct(&mut self, module: ModuleId, struct_hir: &stellar_hir::Struct) {
         #[cfg(feature = "debug")]
         let now = Instant::now();
 
         let symbol = module.symbol(self.state.db(), struct_hir.name.id);
 
-        self.start_analyzing_signature_of(symbol);
+        self.start_analyzing_signature(symbol);
 
         let struct_ = symbol.to_struct();
         let signature = struct_.signature(self.state.db());
@@ -140,14 +143,14 @@ impl<'s, 'h> CollectSignatures<'s, 'h> {
         trace!(
             "analyze_signature_of_struct(name = '{}', module = '{}') <{} us>",
             struct_hir.name.id,
-            self.module.filepath(self.state.db()),
+            module.filepath(self.state.db()),
             now.elapsed().as_micros()
         )
     }
 
     fn analyze_signature_of_tuple_like_struct(
         &mut self,
-        module: ModuleID,
+        module: ModuleId,
         struct_hir: &stellar_hir::TupleLikeStruct,
     ) {
         #[cfg(feature = "debug")]
@@ -155,7 +158,7 @@ impl<'s, 'h> CollectSignatures<'s, 'h> {
 
         let symbol = module.symbol(self.state.db(), struct_hir.name.id);
 
-        self.start_analyzing_signature_of(symbol);
+        self.start_analyzing_signature(symbol);
 
         let struct_ = symbol.to_tuple_like_struct();
         let signature = struct_.signature(self.state.db());
@@ -169,15 +172,15 @@ impl<'s, 'h> CollectSignatures<'s, 'h> {
         trace!(
             "analyze_signature_of_tuple_like_struct(name = '{}', module = '{}') <{} us>",
             struct_hir.name.id,
-            self.module.filepath(self.state.db()),
+            module.filepath(self.state.db()),
             now.elapsed().as_micros()
         )
     }
 
     fn analyze_implemented_interfaces(
         &mut self,
-        module: ModuleID,
-        signature: SignatureID,
+        module: ModuleId,
+        signature: SignatureId,
         interfaces_hir: &[stellar_hir::TypeConstructor],
     ) {
         for interface_hir in interfaces_hir {
@@ -196,9 +199,9 @@ impl<'s, 'h> CollectSignatures<'s, 'h> {
 
     fn analyze_generic_parameters(
         &mut self,
-        module: ModuleID,
-        signature: SignatureID,
-        parent_generic_parameter_scope: Option<GenericParameterScopeID>,
+        module: ModuleId,
+        signature: SignatureId,
+        parent_generic_parameter_scope: Option<GenericParameterScopeId>,
         parameters_hir: &[stellar_hir::GenericParameter],
     ) {
         let generic_parameter_scope = GenericParameterScopeData::alloc(self.state.db_mut());
@@ -240,8 +243,8 @@ impl<'s, 'h> CollectSignatures<'s, 'h> {
 
     fn analyze_where_predicates(
         &mut self,
-        module: ModuleID,
-        signature: SignatureID,
+        module: ModuleId,
+        signature: SignatureId,
         predicates_hir: &[stellar_hir::WherePredicate],
     ) {
         for predicate_hir in predicates_hir {
@@ -257,7 +260,7 @@ impl<'s, 'h> CollectSignatures<'s, 'h> {
         }
     }
 
-    fn resolve_signature(&mut self, symbol: Symbol) -> SignatureID {
+    fn resolve_signature(&mut self, symbol: Symbol) -> SignatureId {
         let signature = symbol.signature(self.state.db());
 
         if !signature.is_analyzed(self.state.db()) {
@@ -281,13 +284,13 @@ impl<'s, 'h> CollectSignatures<'s, 'h> {
 
     fn analyze_type_signature(&mut self, path: &stellar_ast::Path) {}
 
-    fn analyze_type_alias(&mut self, module: ModuleID, alias_hir: &stellar_hir::TypeAlias) {
+    fn analyze_type_alias(&mut self, module: ModuleId, alias_hir: &stellar_hir::TypeAlias) {
         #[cfg(feature = "debug")]
         let now = Instant::now();
 
         let symbol = module.symbol(self.state.db(), alias_hir.name.id);
 
-        self.start_analyzing_signature_of(symbol);
+        self.start_analyzing_signature(symbol);
 
         let alias = symbol.to_type_alias();
         let signature = alias.signature(self.state.db());
@@ -306,7 +309,7 @@ impl<'s, 'h> CollectSignatures<'s, 'h> {
         trace!(
             "analyze_type_alias(name = '{}', module = '{}') <{} us>",
             alias_hir.name.id,
-            self.module.filepath(self.state.db()),
+            module.filepath(self.state.db()),
             now.elapsed().as_micros()
         )
     }

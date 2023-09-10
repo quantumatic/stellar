@@ -5,7 +5,7 @@ use std::{io::Write, time::Instant};
 use stellar_database::State;
 use stellar_diagnostics::DiagnosticsEmitter;
 use stellar_filesystem::file_utils::make_unique_file;
-use stellar_interner::{PathID, DUMMY_IDENTIFIER_ID};
+use stellar_interner::{PathId, DUMMY_IDENTIFIER_ID};
 use stellar_parser::read_and_parse_module;
 
 use crate::log::{log_error, log_info};
@@ -15,7 +15,7 @@ pub fn command(filepath: &str) {
     let mut state = State::new();
     let now = Instant::now();
 
-    match read_and_parse_module(&mut state, DUMMY_IDENTIFIER_ID, PathID::from(filepath)) {
+    match read_and_parse_module(&mut state, DUMMY_IDENTIFIER_ID, PathId::from(filepath)) {
         Err(..) => {
             log_error(format!("cannot read the file {filepath}"));
         }

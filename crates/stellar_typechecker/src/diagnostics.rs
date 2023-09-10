@@ -7,7 +7,7 @@ use stellar_diagnostics::{
 };
 use stellar_english_commons::pluralize::PluralizeExt;
 use stellar_filesystem::location::Location;
-use stellar_interner::PathID;
+use stellar_interner::PathId;
 
 define_diagnostics! {
     /// Diagnostic related to an item defined multiple times error.

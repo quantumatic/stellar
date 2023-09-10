@@ -5,8 +5,8 @@ use std::time::Instant;
 use stellar_ast::IdentifierAST;
 use stellar_ast_lowering::LoweredModule;
 use stellar_database::{
-    EnumData, EnumItemData, FunctionData, InterfaceData, ModuleID, SignatureData, State,
-    StructData, Symbol, TupleLikeStructData, TypeAliasData, TypeAliasID,
+    EnumData, EnumItemData, FunctionData, InterfaceData, ModuleId, SignatureData, State,
+    StructData, Symbol, TupleLikeStructData, TypeAliasData, TypeAliasId,
 };
 #[cfg(feature = "debug")]
 use tracing::trace;
@@ -15,11 +15,11 @@ use crate::diagnostics::{EnumItemDefinedMultipleTimes, ItemDefinedMultipleTimes}
 
 pub struct CollectDefinitions<'s> {
     state: &'s mut State,
-    module: ModuleID,
+    module: ModuleId,
 }
 
 impl<'s> CollectDefinitions<'s> {
-    pub fn run_all(state: &'s mut State, modules: &BTreeMap<ModuleID, stellar_hir::Module>) {
+    pub fn run_all(state: &'s mut State, modules: &BTreeMap<ModuleId, stellar_hir::Module>) {
         for module in modules {
             CollectDefinitions {
                 state,

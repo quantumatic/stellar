@@ -2,7 +2,7 @@ use std::cmp;
 
 use stellar_filesystem::in_memory_file_storage::InMemoryFileStorage;
 use stellar_filesystem::location::{ByteOffset, Location};
-use stellar_interner::PathID;
+use stellar_interner::PathId;
 
 use crate::diagnostic::{Diagnostic, LabelStyle};
 use crate::files::{DiagnosticsRenderHelper, Error, ResolvedLocation};
@@ -36,7 +36,7 @@ impl<'d, 'c> RichDiagnostic<'d, 'c> {
         use std::collections::BTreeMap;
 
         struct LabeledFile<'d> {
-            filepath: PathID,
+            filepath: PathId,
             start: ByteOffset,
             name: String,
             location: ResolvedLocation,

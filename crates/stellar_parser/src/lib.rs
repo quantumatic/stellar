@@ -89,13 +89,13 @@ use stellar_ast::{
     token::{Keyword, LexError, RawToken, Token},
     Expression, IdentifierAST, Module, ModuleItem, Pattern, Statement, Type, Visibility,
 };
-use stellar_database::{ModuleData, ModuleID, State};
+use stellar_database::{ModuleData, ModuleId, State};
 use stellar_diagnostics::Diagnostics;
 use stellar_filesystem::{
     location::{ByteOffset, Location},
     path_resolver::PackagePathResolver,
 };
-use stellar_interner::{IdentifierID, PathID};
+use stellar_interner::{IdentifierId, PathId};
 use stellar_lexer::Lexer;
 use stellar_stable_likely::unlikely;
 #[cfg(feature = "debug")]
@@ -151,7 +151,7 @@ pub trait OptionallyParse: Sized {
 /// A structure returned by every module parsing function.
 #[derive(Debug)]
 pub struct ParsedModule {
-    module: ModuleID,
+    module: ModuleId,
     ast: Module,
 }
 
@@ -159,7 +159,7 @@ impl ParsedModule {
     /// Creates a new instance of [`ParsedModule`].
     #[inline(always)]
     #[must_use]
-    pub const fn new(module_id: ModuleID, ast: Module) -> Self {
+    pub const fn new(module_id: ModuleId, ast: Module) -> Self {
         Self {
             module: module_id,
             ast,
@@ -176,7 +176,7 @@ impl ParsedModule {
     /// Returns the ID of the module in database.
     #[inline(always)]
     #[must_use]
-    pub const fn module(&self) -> ModuleID {
+    pub const fn module(&self) -> ModuleId {
         self.module
     }
 
@@ -205,8 +205,8 @@ impl ParsedModule {
 #[inline(always)]
 pub fn read_and_parse_module(
     state: &mut State,
-    module_name: IdentifierID,
-    filepath: PathID,
+    module_name: IdentifierId,
+    filepath: PathId,
 ) -> Result<ParsedModule, io::Error> {
     let module = ModuleData::alloc(state.db_mut(), module_name, filepath);
     let source = fs::read_to_string(filepath.resolve_or_panic())?;
@@ -228,8 +228,8 @@ pub fn read_and_parse_module(
 #[must_use]
 pub fn parse_module(
     state: &mut State,
-    module_name: IdentifierID,
-    filepath: PathID,
+    module_name: IdentifierId,
+    filepath: PathId,
     source: &str,
 ) -> ParsedModule {
     let module = ModuleData::alloc(state.db_mut(), module_name, filepath);
@@ -250,7 +250,7 @@ pub fn parse_module(
 #[must_use]
 pub fn parse_module_using(
     state: &mut State,
-    module_name: IdentifierID,
+    module_name: IdentifierId,
     mut parse_state: ParseState<'_, '_>,
 ) -> ParsedModule {
     ParsedModule::new(
@@ -267,7 +267,7 @@ pub fn parse_module_using(
 #[inline(always)]
 #[must_use]
 pub fn parse_item(
-    filepath: PathID,
+    filepath: PathId,
     source: impl AsRef<str>,
     diagnostics: &mut Diagnostics,
 ) -> Option<ModuleItem> {
@@ -285,7 +285,7 @@ pub fn parse_item_using(state: &mut ParseState<'_, '_>) -> Option<ModuleItem> {
 #[inline(always)]
 #[must_use]
 pub fn parse_expression(
-    filepath: PathID,
+    filepath: PathId,
     source: impl AsRef<str>,
     diagnostics: &mut Diagnostics,
 ) -> Option<Expression> {
@@ -303,7 +303,7 @@ pub fn parse_expression_using(state: &mut ParseState<'_, '_>) -> Option<Expressi
 #[inline(always)]
 #[must_use]
 pub fn parse_statement(
-    filepath: PathID,
+    filepath: PathId,
     source: impl AsRef<str>,
     diagnostics: &mut Diagnostics,
 ) -> Option<Statement> {
@@ -321,7 +321,7 @@ pub fn parse_statement_using(state: &mut ParseState<'_, '_>) -> Option<Statement
 #[inline(always)]
 #[must_use]
 pub fn parse_type(
-    filepath: PathID,
+    filepath: PathId,
     source: impl AsRef<str>,
     diagnostics: &mut Diagnostics,
 ) -> Option<Type> {
@@ -339,7 +339,7 @@ pub fn parse_type_using(state: &mut ParseState<'_, '_>) -> Option<Type> {
 #[inline(always)]
 #[must_use]
 pub fn parse_pattern(
-    filepath: PathID,
+    filepath: PathId,
     source: impl AsRef<str>,
     diagnostics: &mut Diagnostics,
 ) -> Option<Pattern> {
@@ -361,8 +361,8 @@ pub fn parse_package_source_files(
     state: &mut State,
     root: impl AsRef<Path>,
 ) -> Result<Vec<ParsedModule>, String> {
-    fn module_name(path: PathID) -> IdentifierID {
-        IdentifierID::from(
+    fn module_name(path: PathId) -> IdentifierId {
+        IdentifierId::from(
             path.resolve_or_panic()
                 .file_stem()
                 .unwrap()
@@ -393,7 +393,7 @@ pub fn parse_package_source_files(
                 #[cfg(feature = "debug")]
                 let now = Instant::now();
 
-                let filepath = PathID::from(entry.path());
+                let filepath = PathId::from(entry.path());
                 let parsing_result = read_and_parse_module(state, module_name(filepath), filepath);
 
                 #[cfg(feature = "debug")]
@@ -412,7 +412,7 @@ pub fn parse_package_source_files(
 impl<'s, 'd> ParseState<'s, 'd> {
     /// Creates an initial parse state from file source.
     #[must_use]
-    pub fn new(filepath: PathID, source: &'s str, diagnostics: &'d mut Diagnostics) -> Self {
+    pub fn new(filepath: PathId, source: &'s str, diagnostics: &'d mut Diagnostics) -> Self {
         let mut lexer = Lexer::new(filepath, source);
 
         let current_token = lexer.next_no_comments();

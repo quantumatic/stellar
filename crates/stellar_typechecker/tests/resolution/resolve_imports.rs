@@ -1,6 +1,6 @@
 use stellar_ast_lowering::LowerToHir;
 use stellar_database::State;
-use stellar_interner::{IdentifierID, PathID};
+use stellar_interner::{IdentifierId, PathId};
 use stellar_parser::parse_module;
 use stellar_typechecker::{
     resolution::collect_definitions::CollectDefinitions,
@@ -13,14 +13,14 @@ fn resolve_submodule_import_ok() {
 
     let submodule = parse_module(
         &mut state,
-        IdentifierID::from("b"),
-        PathID::from("a/b.sr"),
+        IdentifierId::from("b"),
+        PathId::from("a/b.sr"),
         "",
     );
     let root = parse_module(
         &mut state,
-        IdentifierID::from("a"),
-        PathID::from("a/package.sr"),
+        IdentifierId::from("a"),
+        PathId::from("a/package.sr"),
         "import a.b;",
     );
 
@@ -41,14 +41,14 @@ fn resolve_submodule_import_err() {
 
     let submodule = parse_module(
         &mut state,
-        IdentifierID::from("b"),
-        PathID::from("a/b.sr"),
+        IdentifierId::from("b"),
+        PathId::from("a/b.sr"),
         "",
     );
     let root = parse_module(
         &mut state,
-        IdentifierID::from("a"),
-        PathID::from("a/package.sr"),
+        IdentifierId::from("a"),
+        PathId::from("a/package.sr"),
         "import a.c;",
     );
 
@@ -69,14 +69,14 @@ fn resolve_module_item_ok() {
 
     let submodule = parse_module(
         &mut state,
-        IdentifierID::from("b"),
-        PathID::from("a/b.sr"),
+        IdentifierId::from("b"),
+        PathId::from("a/b.sr"),
         "fun foo() {}",
     );
     let root = parse_module(
         &mut state,
-        IdentifierID::from("a"),
-        PathID::from("a/package.sr"),
+        IdentifierId::from("a"),
+        PathId::from("a/package.sr"),
         "import a.b.foo;",
     );
 
@@ -98,14 +98,14 @@ fn resolve_module_item_err1() {
 
     let submodule = parse_module(
         &mut state,
-        IdentifierID::from("b"),
-        PathID::from("a/b.sr"),
+        IdentifierId::from("b"),
+        PathId::from("a/b.sr"),
         "fun foo() {}",
     );
     let root = parse_module(
         &mut state,
-        IdentifierID::from("a"),
-        PathID::from("a/package.sr"),
+        IdentifierId::from("a"),
+        PathId::from("a/package.sr"),
         "import a.b.foo;
 import a.b.foo2;",
     );
@@ -128,14 +128,14 @@ fn resolve_module_item_err2() {
 
     let submodule = parse_module(
         &mut state,
-        IdentifierID::from("b"),
-        PathID::from("a/b.sr"),
+        IdentifierId::from("b"),
+        PathId::from("a/b.sr"),
         "fun foo() {}",
     );
     let root = parse_module(
         &mut state,
-        IdentifierID::from("a"),
-        PathID::from("a/package.sr"),
+        IdentifierId::from("a"),
+        PathId::from("a/package.sr"),
         "import a.c.foo;",
     );
 
@@ -157,14 +157,14 @@ fn resolve_enum_item_ok() {
 
     let submodule = parse_module(
         &mut state,
-        IdentifierID::from("b"),
-        PathID::from("a/b.sr"),
+        IdentifierId::from("b"),
+        PathId::from("a/b.sr"),
         "enum Result[T, E] { Ok(T), Err(E) }",
     );
     let root = parse_module(
         &mut state,
-        IdentifierID::from("a"),
-        PathID::from("a/package.sr"),
+        IdentifierId::from("a"),
+        PathId::from("a/package.sr"),
         "import a.b.Result;
 import a.b.Result.Ok;
 import a.b.Result.Err;",
@@ -188,14 +188,14 @@ fn resolve_enum_item_err1() {
 
     let submodule = parse_module(
         &mut state,
-        IdentifierID::from("b"),
-        PathID::from("a/b.sr"),
+        IdentifierId::from("b"),
+        PathId::from("a/b.sr"),
         "enum Result[T, E] { Ok(T), Err(E) }",
     );
     let root = parse_module(
         &mut state,
-        IdentifierID::from("a"),
-        PathID::from("a/package.sr"),
+        IdentifierId::from("a"),
+        PathId::from("a/package.sr"),
         "import a.b.Result.Foo;",
     );
 
@@ -217,14 +217,14 @@ fn resolve_enum_item_err2() {
 
     let submodule = parse_module(
         &mut state,
-        IdentifierID::from("b"),
-        PathID::from("a/b.sr"),
+        IdentifierId::from("b"),
+        PathId::from("a/b.sr"),
         "enum Result[T, E] { Ok(T), Err(E) }",
     );
     let root = parse_module(
         &mut state,
-        IdentifierID::from("a"),
-        PathID::from("a/package.sr"),
+        IdentifierId::from("a"),
+        PathId::from("a/package.sr"),
         "import a.b.Result.Ok.Foo;",
     );
 
@@ -246,14 +246,14 @@ fn resolve_name_in_module_items_except_enums() {
 
     let submodule = parse_module(
         &mut state,
-        IdentifierID::from("b"),
-        PathID::from("a/b.sr"),
+        IdentifierId::from("b"),
+        PathId::from("a/b.sr"),
         "fun foo() {}",
     );
     let root = parse_module(
         &mut state,
-        IdentifierID::from("a"),
-        PathID::from("a/package.sr"),
+        IdentifierId::from("a"),
+        PathId::from("a/package.sr"),
         "import a.b.foo.foo;",
     );
 
@@ -275,14 +275,14 @@ fn importing_package() {
 
     let submodule = parse_module(
         &mut state,
-        IdentifierID::from("b"),
-        PathID::from("a/b.sr"),
+        IdentifierId::from("b"),
+        PathId::from("a/b.sr"),
         "import a;",
     );
     let root = parse_module(
         &mut state,
-        IdentifierID::from("a"),
-        PathID::from("a/package.sr"),
+        IdentifierId::from("a"),
+        PathId::from("a/package.sr"),
         "",
     );
 
