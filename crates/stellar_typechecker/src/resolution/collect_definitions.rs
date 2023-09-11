@@ -16,6 +16,7 @@ use crate::diagnostics::{EnumItemDefinedMultipleTimes, ItemDefinedMultipleTimes}
 pub struct CollectDefinitions<'s> {
     state: &'s mut State,
     module: ModuleId,
+    current_node_idx: usize,
 }
 
 impl<'s> CollectDefinitions<'s> {
@@ -24,6 +25,7 @@ impl<'s> CollectDefinitions<'s> {
             CollectDefinitions {
                 state,
                 module: *module.0,
+                current_node_idx: 0,
             }
             .run(module.1);
         }
@@ -63,6 +65,7 @@ impl<'s> CollectDefinitions<'s> {
             self.state.db_mut(),
             enum_.visibility,
             enum_.name,
+            self.current_node_idx,
             self.module,
         );
         let mut enum_data = EnumData::new(signature);
@@ -111,6 +114,7 @@ impl<'s> CollectDefinitions<'s> {
             self.state.db_mut(),
             function.signature.visibility,
             function.signature.name,
+            self.current_node_idx,
             self.module,
         );
 
@@ -133,6 +137,7 @@ impl<'s> CollectDefinitions<'s> {
             self.state.db_mut(),
             struct_.visibility,
             struct_.name,
+            self.current_node_idx,
             self.module,
         );
 
@@ -160,6 +165,7 @@ impl<'s> CollectDefinitions<'s> {
             self.state.db_mut(),
             struct_.visibility,
             struct_.name,
+            self.current_node_idx,
             self.module,
         );
 
@@ -190,6 +196,7 @@ impl<'s> CollectDefinitions<'s> {
             self.state.db_mut(),
             interface.visibility,
             interface.name,
+            self.current_node_idx,
             self.module,
         );
 
@@ -220,6 +227,7 @@ impl<'s> CollectDefinitions<'s> {
             self.state.db_mut(),
             alias.visibility,
             alias.name,
+            self.current_node_idx,
             self.module,
         );
 

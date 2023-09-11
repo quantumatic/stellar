@@ -545,6 +545,7 @@ impl EnumItemId {
 pub struct SignatureData {
     pub visibility: Visibility,
     pub name: IdentifierAST,
+    pub node_idx: usize,
     pub module: ModuleId,
     pub generic_parameter_scope: GenericParameterScopeId,
     pub predicates: Vec<PredicateId>,
@@ -560,11 +561,18 @@ impl SignatureData {
         db: &mut Database,
         visibility: Visibility,
         name: IdentifierAST,
+        node_idx: usize,
         module: ModuleId,
     ) -> SignatureId {
         let generic_parameter_scope = GenericParameterScopeData::alloc(db);
 
-        db.add_signature(Self::new(visibility, name, generic_parameter_scope, module))
+        db.add_signature(Self::new(
+            visibility,
+            name,
+            node_idx,
+            generic_parameter_scope,
+            module,
+        ))
     }
 
     /// Creates a new signature data object.
@@ -573,12 +581,14 @@ impl SignatureData {
     pub fn new(
         visibility: Visibility,
         name: IdentifierAST,
+        node_idx: usize,
         generic_parameter_scope: GenericParameterScopeId,
         module: ModuleId,
     ) -> Self {
         Self {
             visibility,
             name,
+            node_idx,
             module,
             generic_parameter_scope,
             predicates: Vec::new(),
@@ -612,6 +622,13 @@ impl SignatureId {
     #[must_use]
     pub fn module(self, db: &Database) -> ModuleId {
         db.signature(self).module
+    }
+
+    /// Returns the corresponding HIR/THIR node index.
+    #[inline(always)]
+    #[must_use]
+    pub fn node_idx(self, db: &Database) -> usize {
+        db.signature(self).node_idx
     }
 
     #[inline(always)]

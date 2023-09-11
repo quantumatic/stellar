@@ -264,7 +264,11 @@ impl<'s, 'h> CollectSignatures<'s, 'h> {
         let signature = symbol.signature(self.state.db());
 
         if !signature.is_analyzed(self.state.db()) {
-            // self.analyze_signature(symbol.module(self.state.db()), item);
+            self.analyze_signature(
+                symbol.module(self.state.db()),
+                &self.modules[&symbol.module(self.state.db())].items
+                    [symbol.signature(self.state.db()).node_idx(self.state.db())],
+            );
         }
 
         signature
