@@ -353,6 +353,22 @@ impl PredicateData {
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
 pub struct PredicateId(pub usize);
 
+impl PredicateId {
+    /// Returns the type of the predicate.
+    #[inline(always)]
+    #[must_use]
+    pub fn ty(self, db: &Database) -> &Type {
+        &db.predicate(self).ty
+    }
+
+    /// Returns the bounds of the predicate.
+    #[inline(always)]
+    #[must_use]
+    pub fn bounds(self, db: &Database) -> &[TypeConstructor] {
+        &db.predicate(self).bounds
+    }
+}
+
 /// A data that Stellar compiler has about a generic parameter scope.
 #[derive(Default, PartialEq, Clone, Debug)]
 pub struct GenericParameterScopeData {
@@ -640,6 +656,12 @@ impl SignatureId {
     #[must_use]
     pub fn is_analyzed(self, db: &Database) -> bool {
         db.signature(self).is_analyzed
+    }
+
+    #[inline(always)]
+    #[must_use]
+    pub fn predicates(self, db: &Database) -> &[PredicateId] {
+        &db.signature(self).predicates
     }
 
     #[inline(always)]

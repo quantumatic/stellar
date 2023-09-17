@@ -1,7 +1,10 @@
 use itertools::Itertools;
 use stellar_ast::IdentifierAST;
-use stellar_database::{ModuleId, SignatureId, Symbol};
-use stellar_thir::ty::{Type, TypeConstructor};
+use stellar_database::{ModuleId, PredicateId, SignatureId, Symbol};
+use stellar_thir::{
+    ty::{Type, TypeConstructor},
+    Path,
+};
 
 use super::collect_signatures::CollectSignatures;
 use crate::{
@@ -10,15 +13,15 @@ use crate::{
 };
 
 impl<'s, 'h> CollectSignatures<'s, 'h> {
-    fn resolve_or_analyze_type_in_signature(
+    pub(crate) fn resolve_or_analyze_type_in_signature(
         &mut self,
+        module: ModuleId,
         item_name: IdentifierAST,
         ty: &stellar_hir::Type,
-        module: ModuleId,
     ) -> Option<Type> {
         match ty {
             stellar_hir::Type::Constructor(constructor) => self
-                .resolve_or_analyze_type_constructor(constructor, module)
+                .resolve_or_analyze_type_constructor(module, item_name, constructor)
                 .map(|c| Type::Constructor(c)),
             stellar_hir::Type::Tuple {
                 location,
@@ -29,7 +32,7 @@ impl<'s, 'h> CollectSignatures<'s, 'h> {
                 } else {
                     element_types
                         .iter()
-                        .map(|ty| self.resolve_or_analyze_type_in_signature(item_name, ty, module))
+                        .map(|ty| self.resolve_or_analyze_type_in_signature(module, item_name, ty))
                         .collect::<Option<_>>()
                         .map(|element_types| Type::Tuple { element_types })
                 }
@@ -40,7 +43,7 @@ impl<'s, 'h> CollectSignatures<'s, 'h> {
                 return_type,
             } => parameter_types
                 .iter()
-                .map(|ty| self.resolve_or_analyze_type_in_signature(item_name, ty, module))
+                .map(|ty| self.resolve_or_analyze_type_in_signature(module, item_name, ty))
                 .collect::<Option<_>>()
                 .and_then(|parameter_types| {
                     Some(Type::Function {
@@ -49,9 +52,9 @@ impl<'s, 'h> CollectSignatures<'s, 'h> {
                             .as_ref()
                             .map(|ty| {
                                 self.resolve_or_analyze_type_in_signature(
+                                    module,
                                     item_name,
                                     ty.as_ref(),
-                                    module,
                                 )
                             })
                             .unwrap_or(Some(Type::Unit))
@@ -61,7 +64,7 @@ impl<'s, 'h> CollectSignatures<'s, 'h> {
             stellar_hir::Type::InterfaceObject { location, bounds } => {
                 let bounds = bounds
                     .iter()
-                    .filter_map(|bound| self.resolve_or_analyze_interface(bound, module))
+                    .filter_map(|bound| self.resolve_or_analyze_interface(module, bound))
                     .collect::<Vec<_>>();
 
                 if bounds.is_empty() {
@@ -81,24 +84,52 @@ impl<'s, 'h> CollectSignatures<'s, 'h> {
 
     fn resolve_or_analyze_type_constructor(
         &mut self,
-        constructor: &stellar_hir::TypeConstructor,
         module: ModuleId,
+        item_name: IdentifierAST,
+        constructor: &stellar_hir::TypeConstructor,
     ) -> Option<TypeConstructor> {
+        let signature = self.resolve_or_analyze_signature(module, &constructor.path)?;
+
+        let constructor = TypeConstructor {
+            path: Path::from(&constructor.path),
+            arguments: constructor
+                .arguments
+                .iter()
+                .map(|ty| self.resolve_or_analyze_type_in_signature(module, item_name, ty))
+                .collect::<Option<_>>()?,
+        };
+
+        self.validate_type_constructor(signature, &constructor);
+
+        Some(constructor)
+    }
+
+    fn validate_type_constructor(&mut self, signature: SignatureId, constructor: &TypeConstructor) {
+        // for &predicate in signature.predicates(self.state.db()) {
+        // self.validate_predicate(predicate);
+        // }
+    }
+
+    fn satisfies(&mut self, ty: &Type, interface: &TypeConstructor) -> bool {
+        todo!()
+    }
+
+    fn validate_predicate(&mut self, predicate: PredicateId) -> Option<()> {
         todo!()
     }
 
     fn resolve_or_analyze_interface(
         &mut self,
-        constructor: &stellar_hir::TypeConstructor,
         module: ModuleId,
+        constructor: &stellar_hir::TypeConstructor,
     ) -> Option<TypeConstructor> {
         todo!()
     }
 
     fn resolve_or_analyze_signature(
         &mut self,
-        path: &stellar_hir::Path,
         module: ModuleId,
+        path: &stellar_hir::Path,
     ) -> Option<SignatureId> {
         let symbol = resolve_global_path_in_module_context(self.state, path, module)?;
 

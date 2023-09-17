@@ -529,6 +529,15 @@ pub struct Path {
     pub identifiers: Vec<IdentifierId>,
 }
 
+impl From<&stellar_hir::Path> for Path {
+    #[inline(always)]
+    fn from(value: &stellar_hir::Path) -> Self {
+        Self {
+            identifiers: value.identifiers.iter().map(|ast| ast.id).collect(),
+        }
+    }
+}
+
 /// Macro, that can be used to construct a path in tests:
 ///
 /// # Example

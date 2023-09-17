@@ -2,12 +2,13 @@
 use std::time::Instant;
 use std::{collections::BTreeMap, mem};
 
+use stellar_ast::IdentifierAST;
 use stellar_ast_lowering::LoweredModule;
 use stellar_database::{
     GenericParameterData, GenericParameterScopeData, GenericParameterScopeId, ModuleId,
     PredicateData, SignatureId, State, Symbol, TypeAliasId,
 };
-use stellar_interner::SymbolId;
+use stellar_interner::{IdentifierId, SymbolId};
 use stellar_thir::{
     ty::{Type, TypeConstructor},
     Path, Predicate,
@@ -109,8 +110,14 @@ impl<'s, 'h> CollectSignatures<'s, 'h> {
         let enum_ = symbol.to_enum();
         let signature = enum_.signature(self.state.db());
 
-        self.analyze_generic_parameters(module, signature, None, &enum_hir.generic_parameters);
-        self.analyze_where_predicates(module, signature, &enum_hir.where_predicates);
+        self.analyze_generic_parameters(
+            module,
+            enum_hir.name,
+            signature,
+            None,
+            &enum_hir.generic_parameters,
+        );
+        self.analyze_where_predicates(module, enum_hir.name, signature, &enum_hir.where_predicates);
 
         signature.set_analyzed(self.state.db_mut());
 
@@ -134,8 +141,19 @@ impl<'s, 'h> CollectSignatures<'s, 'h> {
         let struct_ = symbol.to_struct();
         let signature = struct_.signature(self.state.db());
 
-        self.analyze_generic_parameters(module, signature, None, &struct_hir.generic_parameters);
-        self.analyze_where_predicates(module, signature, &struct_hir.where_predicates);
+        self.analyze_generic_parameters(
+            module,
+            struct_hir.name,
+            signature,
+            None,
+            &struct_hir.generic_parameters,
+        );
+        self.analyze_where_predicates(
+            module,
+            struct_hir.name,
+            signature,
+            &struct_hir.where_predicates,
+        );
 
         signature.set_analyzed(self.state.db_mut());
 
@@ -163,8 +181,19 @@ impl<'s, 'h> CollectSignatures<'s, 'h> {
         let struct_ = symbol.to_tuple_like_struct();
         let signature = struct_.signature(self.state.db());
 
-        self.analyze_generic_parameters(module, signature, None, &struct_hir.generic_parameters);
-        self.analyze_where_predicates(module, signature, &struct_hir.where_predicates);
+        self.analyze_generic_parameters(
+            module,
+            struct_hir.name,
+            signature,
+            None,
+            &struct_hir.generic_parameters,
+        );
+        self.analyze_where_predicates(
+            module,
+            struct_hir.name,
+            signature,
+            &struct_hir.where_predicates,
+        );
 
         signature.set_analyzed(self.state.db_mut());
 
@@ -200,6 +229,7 @@ impl<'s, 'h> CollectSignatures<'s, 'h> {
     fn analyze_generic_parameters(
         &mut self,
         module: ModuleId,
+        item_name: IdentifierAST,
         signature: SignatureId,
         parent_generic_parameter_scope: Option<GenericParameterScopeId>,
         parameters_hir: &[stellar_hir::GenericParameter],
@@ -208,7 +238,7 @@ impl<'s, 'h> CollectSignatures<'s, 'h> {
 
         for parameter_hir in parameters_hir {
             let default_value = if let Some(default_value) = &parameter_hir.default_value {
-                self.resolve_type(default_value)
+                self.resolve_or_analyze_type_in_signature(module, item_name, default_value)
             } else {
                 None
             };
@@ -244,11 +274,14 @@ impl<'s, 'h> CollectSignatures<'s, 'h> {
     fn analyze_where_predicates(
         &mut self,
         module: ModuleId,
+        item_name: IdentifierAST,
         signature: SignatureId,
         predicates_hir: &[stellar_hir::WherePredicate],
     ) {
         for predicate_hir in predicates_hir {
-            let Some(ty) = self.resolve_type(&predicate_hir.ty) else {
+            let Some(ty) =
+                self.resolve_or_analyze_type_in_signature(module, item_name, &predicate_hir.ty)
+            else {
                 return;
             };
 
@@ -268,10 +301,6 @@ impl<'s, 'h> CollectSignatures<'s, 'h> {
         todo!()
     }
 
-    fn resolve_type(&mut self, ty: &stellar_hir::Type) -> Option<Type> {
-        todo!()
-    }
-
     fn analyze_type_signature(&mut self, path: &stellar_ast::Path) {}
 
     fn analyze_type_alias(&mut self, module: ModuleId, alias_hir: &stellar_hir::TypeAlias) {
@@ -285,9 +314,17 @@ impl<'s, 'h> CollectSignatures<'s, 'h> {
         let alias = symbol.to_type_alias();
         let signature = alias.signature(self.state.db());
 
-        self.analyze_generic_parameters(module, signature, None, &alias_hir.generic_parameters);
+        self.analyze_generic_parameters(
+            module,
+            alias_hir.name,
+            signature,
+            None,
+            &alias_hir.generic_parameters,
+        );
 
-        let Some(value) = self.resolve_type(&alias_hir.value) else {
+        let Some(value) =
+            self.resolve_or_analyze_type_in_signature(module, alias_hir.name, &alias_hir.value)
+        else {
             return;
         };
 
