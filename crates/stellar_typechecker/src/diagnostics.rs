@@ -205,6 +205,23 @@ define_diagnostics! {
             primary { self.name.location }
         }
     }
+
+    diagnostic(error) UnderscoreTypeInSignature(
+        self,
+        item_name: IdentifierAST,
+        location: Location
+    ) {
+        code { "E009" }
+        message { format!("found underscore type in signature of `{}`", self.item_name.id) }
+        labels {
+            primary { self.location }
+            secondary { self.item_name.location
+                => format!("happened when analyzing `{}`", self.item_name.id)}
+        }
+        notes {
+            "note: types cannot be inferred in signatures, because of explicitness."
+        }
+    }
 }
 
 pub struct CycleDetectedWhenComputingSignatureOf {

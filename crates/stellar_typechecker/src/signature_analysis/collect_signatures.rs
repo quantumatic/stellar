@@ -18,16 +18,16 @@ use tracing::trace;
 use crate::diagnostics::CycleDetectedWhenComputingSignatureOf;
 
 pub struct CollectSignatures<'s, 'h> {
-    state: &'s mut State,
-    currently_analyzed_symbols: Vec<Symbol>,
-    modules: &'h BTreeMap<ModuleId, stellar_hir::Module>,
+    pub(crate) state: &'s mut State,
+    pub(crate) currently_analyzed_symbols_trace: Vec<Symbol>,
+    pub(crate) modules: &'h BTreeMap<ModuleId, stellar_hir::Module>,
 }
 
 impl<'s, 'h> CollectSignatures<'s, 'h> {
     pub fn run_all(state: &'s mut State, modules: &'h BTreeMap<ModuleId, stellar_hir::Module>) {
         let mut me = CollectSignatures {
             state,
-            currently_analyzed_symbols: Vec::new(),
+            currently_analyzed_symbols_trace: Vec::new(),
             modules,
         };
 
@@ -42,7 +42,7 @@ impl<'s, 'h> CollectSignatures<'s, 'h> {
         }
     }
 
-    fn analyze_signature(&mut self, module: ModuleId, item: &stellar_hir::ModuleItem) {
+    pub(crate) fn analyze_signature(&mut self, module: ModuleId, item: &stellar_hir::ModuleItem) {
         match item {
             stellar_hir::ModuleItem::Enum(enum_) => {
                 self.analyze_signature_of_enum(module, enum_);
@@ -62,7 +62,7 @@ impl<'s, 'h> CollectSignatures<'s, 'h> {
 
     fn emit_computation_cycle_diagnostic(&mut self) {
         let diagnostic = CycleDetectedWhenComputingSignatureOf::new(
-            mem::take(&mut self.currently_analyzed_symbols)
+            mem::take(&mut self.currently_analyzed_symbols_trace)
                 .into_iter()
                 .map(|symbol| symbol.name(self.state.db()))
                 .collect::<Vec<_>>(),
@@ -75,7 +75,7 @@ impl<'s, 'h> CollectSignatures<'s, 'h> {
         #[cfg(feature = "debug")]
         let module = symbol.module(self.state.db());
 
-        if self.currently_analyzed_symbols.contains(&symbol) {
+        if self.currently_analyzed_symbols_trace.contains(&symbol) {
             #[cfg(feature = "debug")]
             trace!(
                 "signature cycle detected when analyzing signature of '{}' in '{}'",
@@ -88,7 +88,7 @@ impl<'s, 'h> CollectSignatures<'s, 'h> {
             return;
         }
 
-        self.currently_analyzed_symbols.push(symbol);
+        self.currently_analyzed_symbols_trace.push(symbol);
 
         #[cfg(feature = "debug")]
         trace!(
@@ -258,20 +258,6 @@ impl<'s, 'h> CollectSignatures<'s, 'h> {
 
             signature.add_predicate(self.state.db_mut(), predicate);
         }
-    }
-
-    fn resolve_signature(&mut self, symbol: Symbol) -> SignatureId {
-        let signature = symbol.signature(self.state.db());
-
-        if !signature.is_analyzed(self.state.db()) {
-            self.analyze_signature(
-                symbol.module(self.state.db()),
-                &self.modules[&symbol.module(self.state.db())].items
-                    [symbol.signature(self.state.db()).node_idx(self.state.db())],
-            );
-        }
-
-        signature
     }
 
     fn resolve_bounds(&mut self, bounds: &[stellar_hir::TypeConstructor]) -> Vec<TypeConstructor> {
