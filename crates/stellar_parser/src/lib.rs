@@ -563,7 +563,7 @@ impl<'s, 'd> ParseState<'s, 'd> {
             self.current_token.location.end,
             self.next_token,
             expected,
-        ))
+        ));
     }
 }
 

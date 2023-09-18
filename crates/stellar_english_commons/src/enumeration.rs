@@ -10,7 +10,6 @@ use std::fmt::Display;
 /// assert_eq!(one_of(["a", "b"].iter()), "a or b".to_owned());
 /// assert_eq!(one_of(["a", "b", "c"].iter()), "a, b, or c".to_owned());
 /// ```
-#[allow(single_use_lifetimes)]
 #[must_use]
 pub fn one_of<I, S>(iter: I) -> String
 where
@@ -50,7 +49,6 @@ where
 /// assert_eq!(all_of(["a", "b"].iter()), "a and b".to_owned());
 /// assert_eq!(all_of(["a", "b", "c"].iter()), "a, b, and c".to_owned());
 /// ```
-#[allow(single_use_lifetimes)]
 #[must_use]
 pub fn all_of<I, S>(iter: I) -> String
 where

@@ -4,8 +4,7 @@ use stellar_ast::{
 };
 
 use crate::{
-    expression::ExpressionParser, pattern::PatternParser,
-    r#type::TypeParser, Parse, ParseState,
+    expression::ExpressionParser, pattern::PatternParser, r#type::TypeParser, Parse, ParseState,
 };
 
 pub(crate) struct StatementParser;

@@ -55,6 +55,7 @@ where
 
             // `(` element `?` (invalid token)
             if state.next_token.raw != Punctuator::Comma {
+                #[allow(clippy::needless_collect)]
                 state.add_unexpected_token_diagnostic(one_of(
                     self.closing_tokens
                         .iter()

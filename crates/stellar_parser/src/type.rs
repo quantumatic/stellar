@@ -3,10 +3,7 @@ use stellar_ast::{
     GenericParameter, Type, TypeConstructor, WherePredicate,
 };
 
-use crate::{
-    list::ListParser, path::PathParser, OptionallyParse, Parse,
-    ParseState,
-};
+use crate::{list::ListParser, path::PathParser, OptionallyParse, Parse, ParseState};
 
 pub(crate) struct BoundsParser;
 
