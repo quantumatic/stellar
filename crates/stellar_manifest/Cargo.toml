@@ -11,5 +11,5 @@ description = "Parses and processes Stellar projects' configuration files."
 [dependencies]
 serde = { version = "1.0.167", features = ["derive"] }
 serde_ignored = "0.1.8"
-toml = "0.7.6"
+toml = "0.8.0"
 toml_edit = "0.19.12"
