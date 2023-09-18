@@ -4,7 +4,7 @@ use stellar_ast::{
 };
 
 use crate::{
-    diagnostics::UnexpectedToken, expression::ExpressionParser, pattern::PatternParser,
+    expression::ExpressionParser, pattern::PatternParser,
     r#type::TypeParser, Parse, ParseState,
 };
 
@@ -93,11 +93,7 @@ impl Parse for StatementsBlockParser {
             match state.next_token.raw {
                 RawToken::Punctuator(Punctuator::CloseBrace) => break,
                 RawToken::EndOfFile => {
-                    state.diagnostics.add_diagnostic(UnexpectedToken::new(
-                        state.current_token.location.end,
-                        state.next_token,
-                        Punctuator::CloseBrace,
-                    ));
+                    state.add_unexpected_token_diagnostic(Punctuator::CloseBrace);
 
                     return None;
                 }

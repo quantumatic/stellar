@@ -12,13 +12,19 @@ use std::fmt::Display;
 /// ```
 #[allow(single_use_lifetimes)]
 #[must_use]
-pub fn one_of(list: impl ExactSizeIterator<Item = impl Display>) -> String {
-    let len = list.len();
+pub fn one_of<I, S>(iter: I) -> String
+where
+    I: IntoIterator,
+    I::IntoIter: ExactSizeIterator<Item = S>,
+    S: Display,
+{
+    let iter = iter.into_iter();
+    let len = iter.len();
 
-    list.enumerate()
-        .map(|(idx, token)| {
+    iter.enumerate()
+        .map(|(idx, item)| {
             format!(
-                "{}{token}",
+                "{}{item}",
                 if idx == 0 {
                     ""
                 } else if idx == len - 1 {
@@ -46,13 +52,19 @@ pub fn one_of(list: impl ExactSizeIterator<Item = impl Display>) -> String {
 /// ```
 #[allow(single_use_lifetimes)]
 #[must_use]
-pub fn all_of(list: impl ExactSizeIterator<Item = impl Display>) -> String {
-    let len = list.len();
+pub fn all_of<I, S>(iter: I) -> String
+where
+    I: IntoIterator,
+    I::IntoIter: ExactSizeIterator<Item = S>,
+    S: Display,
+{
+    let iter = iter.into_iter();
+    let len = iter.len();
 
-    list.enumerate()
-        .map(|(idx, token)| {
+    iter.enumerate()
+        .map(|(idx, item)| {
             format!(
-                "{}{token}",
+                "{}{item}",
                 if idx == 0 {
                     ""
                 } else if idx == len - 1 {

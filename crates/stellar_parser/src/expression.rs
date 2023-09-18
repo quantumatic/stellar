@@ -8,7 +8,6 @@ use stellar_ast::{
 use stellar_english_commons::enumeration::one_of;
 
 use crate::{
-    diagnostics::UnexpectedToken,
     list::ListParser,
     literal::LiteralParser,
     pattern::PatternParser,
@@ -253,24 +252,13 @@ impl Parse for PrimaryExpressionParser {
                 }
 
                 if self.in_statements_block {
-                    state.diagnostics.add_diagnostic(UnexpectedToken::new(
-                        state.current_token.location.end,
-                        state.next_token,
-                        one_of(
-                            [
-                                "statement".to_owned(),
-                                Punctuator::Semicolon.to_string(),
-                                Punctuator::CloseBrace.to_string(),
-                            ]
-                            .iter(),
-                        ),
-                    ));
+                    state.add_unexpected_token_diagnostic(one_of([
+                        "statement".to_owned(),
+                        Punctuator::Semicolon.to_string(),
+                        Punctuator::CloseBrace.to_string(),
+                    ]));
                 } else {
-                    state.diagnostics.add_diagnostic(UnexpectedToken::new(
-                        state.current_token.location.end,
-                        state.next_token,
-                        "expression",
-                    ));
+                    state.add_unexpected_token_diagnostic("expression");
                 }
                 None
             }

@@ -9,8 +9,7 @@ use stellar_interner::builtin_identifiers;
 
 use crate::{
     diagnostics::{
-        UnexpectedToken, UnnecessaryVisibilityQualifierContext,
-        UnnecessaryVisibilityQualifierDiagnostic,
+        UnnecessaryVisibilityQualifierContext, UnnecessaryVisibilityQualifierDiagnostic,
     },
     list::ListParser,
     path::ImportPathParser,
@@ -253,18 +252,11 @@ impl Parse for StructParser {
                 docstring: self.docstring,
             }))
         } else {
-            state.diagnostics.add_diagnostic(UnexpectedToken::new(
-                state.current_token.location.end,
-                state.next_token,
-                one_of(
-                    [
-                        Punctuator::Semicolon,
-                        Punctuator::OpenParent,
-                        Punctuator::OpenBrace,
-                    ]
-                    .iter(),
-                ),
-            ));
+            state.add_unexpected_token_diagnostic(one_of([
+                Punctuator::Semicolon,
+                Punctuator::OpenParent,
+                Punctuator::OpenBrace,
+            ]));
 
             None
         }
@@ -330,6 +322,7 @@ impl Parse for FunctionParser {
 
         let return_type = if state.next_token.raw == Punctuator::Colon {
             state.advance();
+
             Some(TypeParser.parse(state)?)
         } else {
             None
@@ -357,13 +350,10 @@ impl Parse for FunctionParser {
                     Some(StatementsBlockParser.parse(state)?)
                 }
                 _ => {
-                    state.advance();
-
-                    state.diagnostics.add_diagnostic(UnexpectedToken::new(
-                        state.current_token.location.end,
-                        state.next_token,
-                        one_of([Punctuator::Semicolon, Punctuator::OpenParent].iter()),
-                    ));
+                    state.add_unexpected_token_diagnostic(one_of([
+                        Punctuator::Semicolon,
+                        Punctuator::OpenBrace,
+                    ]));
 
                     return None;
                 }
@@ -735,13 +725,10 @@ impl Parse for ItemParser {
                 .parse(state)
             ),
             _ => {
-                state.diagnostics.add_diagnostic(UnexpectedToken::new(
-                    state.current_token.location.end,
-                    state.next_token,
-                    "module item",
-                ));
+                state.add_unexpected_token_diagnostic("module item");
 
                 Self::goto_next_valid_item(state);
+
                 return None;
             }
         })
