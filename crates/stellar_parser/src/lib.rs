@@ -472,11 +472,7 @@ impl<'s, 'd> ParseState<'s, 'd> {
         if self.next_token.raw == expected {
             Some(())
         } else {
-            self.diagnostics.add_diagnostic(UnexpectedToken::new(
-                self.current_token.location.end,
-                self.next_token,
-                expected,
-            ));
+            self.add_unexpected_token_diagnostic(expected);
 
             None
         }
@@ -516,11 +512,8 @@ impl<'s, 'd> ParseState<'s, 'd> {
                 id: self.lexer.scanned_identifier,
             }
         } else {
-            self.diagnostics.add_diagnostic(UnexpectedToken::new(
-                self.current_token.location.end,
-                self.next_token,
-                "identifier",
-            ));
+            self.add_unexpected_token_diagnostic("identifier");
+
             return None;
         };
 
@@ -559,6 +552,18 @@ impl<'s, 'd> ParseState<'s, 'd> {
         } else {
             None
         }
+    }
+
+    /// Adds an unexpected token diagnostic.
+    ///
+    /// See [`diagnostics::UnexpectedToken`] for more details.
+    #[inline(always)]
+    pub(crate) fn add_unexpected_token_diagnostic(&mut self, expected: impl Into<String>) {
+        self.diagnostics.add_diagnostic(UnexpectedToken::new(
+            self.current_token.location.end,
+            self.next_token,
+            expected,
+        ));
     }
 }
 

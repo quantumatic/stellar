@@ -85,11 +85,7 @@ impl Parse for PatternExceptOrParser {
                         }
                     }
                     _ => {
-                        state.diagnostics.add_diagnostic(UnexpectedToken::new(
-                            state.current_token.location.end,
-                            state.next_token,
-                            "numeric literal",
-                        ));
+                        state.add_unexpected_token_diagnostic("numeric literal");
 
                         None
                     }

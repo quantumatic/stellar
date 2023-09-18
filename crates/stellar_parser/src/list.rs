@@ -3,7 +3,7 @@ use std::iter;
 use stellar_ast::token::{Punctuator, RawToken};
 use stellar_english_commons::enumeration::one_of;
 
-use crate::{diagnostics::UnexpectedToken, Parse, ParseState};
+use crate::{Parse, ParseState};
 
 pub(crate) struct ListParser<'a, P, E>
 where
@@ -55,17 +55,13 @@ where
 
             // `(` element `?` (invalid token)
             if state.next_token.raw != Punctuator::Comma {
-                state.diagnostics.add_diagnostic(UnexpectedToken::new(
-                    state.current_token.location.end,
-                    state.next_token,
-                    one_of(
-                        self.closing_tokens
-                            .iter()
-                            .map(ToString::to_string)
-                            .chain(iter::once("`,`".to_owned()))
-                            .collect::<Vec<_>>()
-                            .iter(),
-                    ),
+                #[allow(clippy::needless_collect)]
+                state.add_unexpected_token_diagnostic(one_of(
+                    self.closing_tokens
+                        .iter()
+                        .map(ToString::to_string)
+                        .chain(iter::once("`,`".to_owned()))
+                        .collect::<Vec<_>>(),
                 ));
 
                 return None;
