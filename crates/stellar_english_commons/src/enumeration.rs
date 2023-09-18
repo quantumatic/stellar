@@ -6,9 +6,9 @@ use std::fmt::Display;
 /// ```
 /// use stellar_english_commons::enumeration::one_of;
 ///
-/// assert_eq!(one_of(["a"].iter()), "a".to_owned());
-/// assert_eq!(one_of(["a", "b"].iter()), "a or b".to_owned());
-/// assert_eq!(one_of(["a", "b", "c"].iter()), "a, b, or c".to_owned());
+/// assert_eq!(one_of(["a"]), "a".to_owned());
+/// assert_eq!(one_of(["a", "b"]), "a or b".to_owned());
+/// assert_eq!(one_of(["a", "b", "c"]), "a, b, or c".to_owned());
 /// ```
 #[must_use]
 pub fn one_of<I, S>(iter: I) -> String
@@ -45,9 +45,9 @@ where
 /// ```
 /// use stellar_english_commons::enumeration::all_of;
 ///
-/// assert_eq!(all_of(["a"].iter()), "a".to_owned());
-/// assert_eq!(all_of(["a", "b"].iter()), "a and b".to_owned());
-/// assert_eq!(all_of(["a", "b", "c"].iter()), "a, b, and c".to_owned());
+/// assert_eq!(all_of(["a"]), "a".to_owned());
+/// assert_eq!(all_of(["a", "b"]), "a and b".to_owned());
+/// assert_eq!(all_of(["a", "b", "c"]), "a, b, and c".to_owned());
 /// ```
 #[must_use]
 pub fn all_of<I, S>(iter: I) -> String
