@@ -8,8 +8,7 @@ use stellar_thir::{
 
 use super::collect_signatures::CollectSignatures;
 use crate::{
-    diagnostics::UnderscoreTypeInSignature,
-    resolution::resolve::resolve_global_path_in_module_context,
+    diagnostics::UnderscoreTypeInSignature, resolution::resolve_global_path_in_module_context,
 };
 
 impl<'s, 'h> CollectSignatures<'s, 'h> {

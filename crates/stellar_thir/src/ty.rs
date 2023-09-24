@@ -7,6 +7,9 @@ use paste::paste;
 use stellar_filesystem::location::Location;
 use stellar_interner::{builtin_identifiers, IdentifierId};
 
+#[cfg(feature = "serde")]
+use serde::{Deserialize, Serialize};
+
 use crate::Path;
 
 /// A raw representation of types in the Stellar programming language.
@@ -138,7 +141,7 @@ impl Type {
     }
 }
 
-///
+/// A type variable.
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "serde", serde(tag = "kind"))]
@@ -179,8 +182,9 @@ impl TypeVariable {
     }
 }
 
-/// A type variable Id.
-#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
+/// A type variable ID.
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, Display)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct TypeVariableId(pub usize);
 
 /// The macro, automates the process of generating functions
@@ -209,6 +213,7 @@ generate_builtin_primitive_types! {
 ///
 /// Anything that has name and optionally have generic arguments.
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct TypeConstructor {
     pub path: Path,
     pub arguments: Vec<Type>,

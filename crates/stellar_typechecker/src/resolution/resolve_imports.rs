@@ -5,10 +5,12 @@ use std::time::Instant;
 use stellar_ast_lowering::LoweredModule;
 use stellar_database::{ModuleId, State};
 use stellar_filesystem::location::Location;
+use stellar_fx_hash::FxHashMap;
 #[cfg(feature = "debug")]
 use tracing::trace;
 
-use crate::{diagnostics::PackageImport, resolution::resolve::resolve_global_path};
+use super::resolve_global_path;
+use crate::diagnostics::PackageImport;
 
 pub struct ResolveImports<'s> {
     state: &'s mut State,
@@ -16,7 +18,7 @@ pub struct ResolveImports<'s> {
 }
 
 impl<'s> ResolveImports<'s> {
-    pub fn run_all(state: &'s mut State, modules: &BTreeMap<ModuleId, stellar_hir::Module>) {
+    pub fn run_all(state: &'s mut State, modules: &FxHashMap<ModuleId, stellar_hir::Module>) {
         for module in modules {
             ResolveImports {
                 state,
@@ -69,7 +71,7 @@ impl<'s> ResolveImports<'s> {
 
         #[cfg(feature = "debug")]
         trace!(
-            "resolve_import(path = {:?}, module = {}) <{} us>",
+            "resolve_import(path = {:?}, module = {:?}) <{} us>",
             path,
             self.module,
             now.elapsed().as_millis()

@@ -68,6 +68,9 @@ use stellar_hir as _;
 use stellar_interner::IdentifierId;
 use ty::{Type, TypeConstructor};
 
+#[cfg(feature = "serde")]
+use serde::{Deserialize, Serialize};
+
 pub mod generic_parameter_scope;
 pub mod ty;
 
@@ -524,6 +527,7 @@ pub enum ModuleItem {
 /// between this struct and [`stellar_ast::Path`] is that the former doesn't store
 /// locations of identifiers.
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct Path {
     /// List of semantic symbols.
     pub identifiers: Vec<IdentifierId>,

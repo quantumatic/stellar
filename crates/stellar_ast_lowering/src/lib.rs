@@ -15,7 +15,6 @@
     html_favicon_url = "https://raw.githubusercontent.com/quantumatic/stellar/main/additional/icon/stellar.png"
 )]
 
-use std::collections::BTreeMap;
 #[cfg(feature = "debug")]
 use std::time::Instant;
 
@@ -23,6 +22,7 @@ use diagnostics::{UnnecessaryGroupedPattern, UnnecessaryParenthesizedExpression}
 use stellar_ast::IdentifierAST;
 use stellar_database::{ModuleId, State};
 use stellar_filesystem::location::Location;
+use stellar_fx_hash::FxHashMap;
 use stellar_interner::builtin_identifiers::BIG_SELF;
 use stellar_parser::ParsedModule;
 #[cfg(feature = "debug")]
@@ -89,7 +89,7 @@ impl<'s> LowerToHir<'s> {
     pub fn run_all(
         state: &'s mut State,
         modules: Vec<ParsedModule>,
-    ) -> BTreeMap<ModuleId, stellar_hir::Module> {
+    ) -> FxHashMap<ModuleId, stellar_hir::Module> {
         modules
             .into_iter()
             .map(|module| {
@@ -102,7 +102,7 @@ impl<'s> LowerToHir<'s> {
                 #[cfg(feature = "debug")]
                 trace!(
                     "lower_ast(module = '{}') <{} us>",
-                    module.filepath(&state.db()),
+                    module.filepath(state.db()),
                     now.elapsed().as_micros()
                 );
 

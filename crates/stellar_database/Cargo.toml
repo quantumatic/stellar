@@ -17,3 +17,9 @@ stellar_filesystem = { path = "../stellar_filesystem" }
 stellar_fx_hash = { path = "../stellar_fx_hash" }
 stellar_interner = { path = "../stellar_interner" }
 stellar_thir = { path = "../stellar_thir" }
+serde = { version = "1.0.188", features = ["derive"], optional = true }
+bincode = { version = "1.3.3", optional = true }
+
+[features]
+serde = ["dep:serde"]
+bincode = ["serde", "dep:bincode"]

@@ -89,7 +89,7 @@ use stellar_ast::{
     token::{Keyword, LexError, RawToken, Token},
     Expression, IdentifierAST, Module, ModuleItem, Pattern, Statement, Type, Visibility,
 };
-use stellar_database::{ModuleData, ModuleId, State};
+use stellar_database::{ModuleData, ModuleId, PackageId, State};
 use stellar_diagnostics::Diagnostics;
 use stellar_filesystem::{
     location::{ByteOffset, Location},
@@ -205,10 +205,11 @@ impl ParsedModule {
 #[inline(always)]
 pub fn read_and_parse_module(
     state: &mut State,
+    package: PackageId,
     module_name: IdentifierId,
     filepath: PathId,
 ) -> Result<ParsedModule, io::Error> {
-    let module = ModuleData::alloc(state.db_mut(), module_name, filepath);
+    let module = ModuleData::alloc(state.db_mut(), package, module_name, filepath);
     let source = fs::read_to_string(filepath.resolve_or_panic())?;
 
     let mut parse_state = ParseState::new(filepath, &source, state.diagnostics_mut());
@@ -228,11 +229,12 @@ pub fn read_and_parse_module(
 #[must_use]
 pub fn parse_module(
     state: &mut State,
+    package: PackageId,
     module_name: IdentifierId,
     filepath: PathId,
     source: &str,
 ) -> ParsedModule {
-    let module = ModuleData::alloc(state.db_mut(), module_name, filepath);
+    let module = ModuleData::alloc(state.db_mut(), package, module_name, filepath);
     let mut parse_state = ParseState::new(filepath, source, state.diagnostics_mut());
 
     ParsedModule {
@@ -250,11 +252,17 @@ pub fn parse_module(
 #[must_use]
 pub fn parse_module_using(
     state: &mut State,
+    package: PackageId,
     module_name: IdentifierId,
     mut parse_state: ParseState<'_, '_>,
 ) -> ParsedModule {
     ParsedModule::new(
-        ModuleData::alloc(state.db_mut(), module_name, parse_state.lexer.filepath),
+        ModuleData::alloc(
+            state.db_mut(),
+            package,
+            module_name,
+            parse_state.lexer.filepath,
+        ),
         Module {
             filepath: parse_state.lexer.filepath,
             docstring: parse_state.consume_module_docstring(),
@@ -394,7 +402,12 @@ pub fn parse_package_source_files(
                 let now = Instant::now();
 
                 let filepath = PathId::from(entry.path());
-                let parsing_result = read_and_parse_module(state, module_name(filepath), filepath);
+                let parsing_result = read_and_parse_module(
+                    state,
+                    PackageId(0), // TODO: package managment
+                    module_name(filepath),
+                    filepath,
+                );
 
                 #[cfg(feature = "debug")]
                 trace!(
