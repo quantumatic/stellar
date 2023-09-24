@@ -3,7 +3,7 @@ use super::*;
 macro_rules! symbols {
     ($($name:ident),*) => {
         paste! {
-            /// A symbol's unique Id.
+            /// A symbol's unique ID.
             #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
             #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
             pub enum Symbol {

@@ -91,7 +91,7 @@ use stellar_fx_hash::FxHasher;
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct IdentifierId(pub usize);
 
-/// Id of an identifier, that will never exist in the [`IdentifierInterner`].
+/// ID of an identifier, that will never exist in the [`IdentifierInterner`].
 pub const DUMMY_IDENTIFIER_ID: IdentifierId = IdentifierId(0);
 
 impl IdentifierId {
@@ -102,14 +102,14 @@ impl IdentifierId {
         IDENTIFIER_INTERNER.write().get_or_intern(string)
     }
 
-    /// Gets the interned string by Id.
+    /// Gets the interned string by ID.
     #[inline(always)]
     #[must_use]
     pub fn resolve_or_panic(self) -> String {
         IDENTIFIER_INTERNER.read().resolved_owned_or_panic(self)
     }
 
-    /// Gets the interned string by Id.
+    /// Gets the interned string by ID.
     #[inline(always)]
     #[must_use]
     pub fn resolve(self) -> Option<String> {
@@ -695,26 +695,26 @@ lazy_static! {
     static ref PATH_INTERNER: RwLock<PathInterner> = RwLock::new(PathInterner::new());
 }
 
-/// Id of a path in the [`PathInterner`].
+/// ID of a path in the [`PathInterner`].
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct PathId(pub usize);
 
 impl PathId {
-    /// Interns the given path and returns its Id.
+    /// Interns the given path and returns its ID.
     #[inline(always)]
     #[must_use]
     pub fn from(path: impl AsRef<Path>) -> Self {
         PATH_INTERNER.write().get_or_intern(path)
     }
 
-    /// Resolves the given path by Id.
+    /// Resolves the given path by ID.
     #[inline(always)]
     #[must_use]
     pub fn resolve(self) -> Option<PathBuf> {
         PATH_INTERNER.read().resolve_owned(self)
     }
 
-    /// Resolves the given path by Id.
+    /// Resolves the given path by ID.
     #[inline(always)]
     #[must_use]
     pub fn resolve_or_panic(self) -> PathBuf {
@@ -777,7 +777,7 @@ impl SymbolId for PathId {
     }
 }
 
-/// Id of a path, that will never exist in the [`PathInterner`].
+/// ID of a path, that will never exist in the [`PathInterner`].
 pub const DUMMY_PATH_ID: PathId = PathId(0);
 
 impl Default for PathInterner {

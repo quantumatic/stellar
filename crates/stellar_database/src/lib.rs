@@ -49,7 +49,7 @@ impl EnumData {
     }
 }
 
-/// A unique Id that maps to [`EnumData`].
+/// A unique ID that maps to [`EnumData`].
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct EnumId(pub PackageId, pub usize);
@@ -111,7 +111,7 @@ impl StructData {
     }
 }
 
-/// A unique Id that maps to [`StructData`].
+/// A unique ID that maps to [`StructData`].
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct StructId(pub PackageId, pub usize);
@@ -159,7 +159,7 @@ impl TupleLikeStructData {
     }
 }
 
-/// A unique Id that maps to [`TupleLikeStructData`].
+/// A unique ID that maps to [`TupleLikeStructData`].
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct TupleLikeStructId(pub PackageId, pub usize);
@@ -208,7 +208,7 @@ impl FieldData {
     }
 }
 
-/// A unique Id that maps to [`FieldData`].
+/// A unique ID that maps to [`FieldData`].
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct FieldId(pub PackageId, pub usize);
@@ -242,7 +242,7 @@ impl PredicateData {
     }
 }
 
-/// A unique Id that maps to [`PredicateData`].
+/// A unique ID that maps to [`PredicateData`].
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct PredicateId(pub PackageId, pub usize);
@@ -299,7 +299,7 @@ impl GenericParameterScopeData {
     }
 }
 
-/// A unique Id that maps to [`GenericParameterScopeData`].
+/// A unique ID that maps to [`GenericParameterScopeData`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct GenericParameterScopeId(pub PackageId, pub usize);
@@ -408,7 +408,7 @@ impl GenericParameterData {
     }
 }
 
-/// A unique Id that maps to [`GenericParameterData`].
+/// A unique ID that maps to [`GenericParameterData`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct GenericParameterId(pub PackageId, pub usize);
@@ -437,7 +437,7 @@ impl EnumItemData {
     }
 }
 
-/// A unique Id that maps to [`EnumItemData`].
+/// A unique ID that maps to [`EnumItemData`].
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct EnumItemId(pub PackageId, pub usize);
@@ -515,7 +515,7 @@ impl SignatureData {
     }
 }
 
-/// A unique Id that maps to [`SignatureData`].
+/// A unique ID that maps to [`SignatureData`].
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct SignatureId(pub PackageId, pub usize);
@@ -615,7 +615,7 @@ impl FunctionData {
     }
 }
 
-/// A unique Id that maps to [`FunctionData`].
+/// A unique ID that maps to [`FunctionData`].
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct FunctionId(pub PackageId, pub usize);
@@ -656,7 +656,7 @@ impl InterfaceData {
     }
 }
 
-/// A unique Id that maps to [`InterfaceData`].
+/// A unique ID that maps to [`InterfaceData`].
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct InterfaceId(pub PackageId, pub usize);
@@ -697,7 +697,7 @@ impl TypeAliasData {
     }
 }
 
-/// A unique Id that maps to [`TypeAliasData`].
+/// A unique ID that maps to [`TypeAliasData`].
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct TypeAliasId(pub PackageId, pub usize);
@@ -761,7 +761,7 @@ impl ModuleData {
     }
 }
 
-/// A unique Id that maps to [`ModuleData`].
+/// A unique ID that maps to [`ModuleData`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct ModuleId(pub PackageId, pub usize);
@@ -885,7 +885,7 @@ impl ModuleId {
         self.submodules(db).contains_key(&name)
     }
 
-    /// Checks if a submodule with a given Id is contained in the module.
+    /// Checks if a submodule with a given ID is contained in the module.
     #[inline(always)]
     #[must_use]
     pub fn contains_submodule_with_id(self, db: &Database, id: ModuleId) -> bool {

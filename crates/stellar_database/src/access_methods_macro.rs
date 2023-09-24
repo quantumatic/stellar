@@ -10,7 +10,7 @@ macro_rules! __db_first_access_method {
             paste! {
                 #[doc = "Returns an immutable reference to [`" $data_ty "`] by its ID ([`" $id_ty "`])."]
                 #[doc = "# Panics"]
-                #[doc = "Panics if an object with the given Id is not present in the database storage."]
+                #[doc = "Panics if an object with the given ID is not present in the database storage."]
                 #[doc = ""]
                 #[doc = "_This function is automatically generated using a macro!_"]
                 #[inline(always)]
@@ -32,7 +32,7 @@ macro_rules! __db_first_access_method {
             paste! {
                 #[doc = "Returns an immutable reference to [`" $data_ty "`] by its ID ([`" $id_ty "`])."]
                 #[doc = "# Panics"]
-                #[doc = "Panics if an object with the given Id is not present in the database storage."]
+                #[doc = "Panics if an object with the given ID is not present in the database storage."]
                 #[doc = ""]
                 #[doc = "_This function is automatically generated using a macro!_"]
                 #[inline(always)]
@@ -83,7 +83,7 @@ macro_rules! __db_rest_of_access_methods {
                 self.packages.get_mut(id.0.0).and_then(|p| p.$whats.get_mut(id.1))
             }
 
-            #[doc = "Returns whether a [`" $data_ty "`] with a given Id ([`" $id_ty "`]) is present in the database storage."]
+            #[doc = "Returns whether a [`" $data_ty "`] with a given ID ([`" $id_ty "`]) is present in the database storage."]
             ///
             /// _This function is automatically generated using a macro!_
             #[inline(always)]

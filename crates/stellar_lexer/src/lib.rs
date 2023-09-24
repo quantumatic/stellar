@@ -119,7 +119,7 @@ mod number;
 /// [`Error`]: stellar_ast::token::RawToken::Error
 #[derive(Debug)]
 pub struct Lexer<'s> {
-    /// Id of the path of the file being scanned.
+    /// ID of the path of the file being scanned.
     pub filepath: PathId,
 
     /// Content of the file being scanned.

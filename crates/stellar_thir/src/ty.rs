@@ -158,7 +158,7 @@ pub enum TypeVariable {
         /// Location of the corresponding generic parameter name.
         origin_location: Location,
 
-        /// Type variable Id.
+        /// Type variable ID.
         id: TypeVariableId,
     },
     #[cfg_attr(feature = "serde", serde(rename = "expression_type_variable"))]
@@ -166,13 +166,13 @@ pub enum TypeVariable {
         /// Location of the expression.
         location: Location,
 
-        /// Type variable Id.
+        /// Type variable ID.
         id: TypeVariableId,
     },
 }
 
 impl TypeVariable {
-    /// Returns Id of the type variable.
+    /// Returns ID of the type variable.
     #[inline(always)]
     #[must_use]
     pub const fn id(&self) -> TypeVariableId {
