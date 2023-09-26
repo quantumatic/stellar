@@ -2,6 +2,8 @@
 <img width="80%" src="./additional/icon/banner.png">
 </p>
 
+# Stellar programming language
+
 Stellar is the language to make your programs both easy and fast!
 
 <p align="center">
