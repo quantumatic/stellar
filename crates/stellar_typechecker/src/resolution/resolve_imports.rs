@@ -40,15 +40,15 @@ impl<'s> ResolveImports<'s> {
         #[cfg(feature = "debug")]
         let now = Instant::now();
 
-        let Some(symbol) = resolve_global_path(self.state, path) else {
+        let Some(symbol) = resolve_global_path(self.state, self.module.0, path) else {
             return;
         };
 
         if let Some(module) = symbol.to_module_or_none() {
-            if self
+            if self.module.0.dependencies(self
                 .state
-                .db()
-                .contains_package(module.name(self.state.db()))
+                .db())
+                .contains_key(&module.name(self.state.db()))
             {
                 self.state
                     .diagnostics_mut()

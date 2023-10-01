@@ -922,13 +922,37 @@ pub struct PackageId(pub usize);
 impl PackageId {
     #[inline(always)]
     #[must_use]
+    pub fn parent(self, db: &Database) -> Option<PackageId> {
+        db.packages[self.0].parent
+    }
+
+    #[inline(always)]
+    #[must_use]
+    pub fn parent_or_none(self, db: &Database) -> Option<PackageId> {
+        db.packages.get(self.0).and_then(|package| package.parent)
+    }
+
+    #[inline(always)]
+    #[must_use]
+    pub fn dependencies(self, db: &Database) -> &FxHashMap<IdentifierId, PackageId> {
+        &db.packages[self.0].dependencies
+    }
+
+    #[inline(always)]
+    #[must_use]
+    pub fn dependencies_or_none(self, db: &Database) -> Option<&FxHashMap<IdentifierId, PackageId>> {
+        db.packages.get(self.0).map(|package| &package.dependencies)
+    }
+
+    #[inline(always)]
+    #[must_use]
     pub fn root_module(self, db: &Database) -> ModuleId {
         db.packages[self.0].root_module
     }
 
     #[inline(always)]
     #[must_use]
-    pub fn package_root_module_or_none(self, db: &Database) -> Option<ModuleId> {
+    pub fn root_module_or_none(self, db: &Database) -> Option<ModuleId> {
         db.packages.get(self.0).map(|package| package.root_module)
     }
 }
@@ -959,6 +983,10 @@ pub struct PackageData {
     /// ```
     #[allow(dead_code)]
     parent: Option<PackageId>,
+
+    /// List of packages that the package depends on.
+    #[allow(dead_code)]
+    dependencies: FxHashMap<IdentifierId, PackageId>,
 
     // Information about all package-related compiler entities.
     modules: Vec<ModuleData>,

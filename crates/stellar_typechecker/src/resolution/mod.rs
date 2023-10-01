@@ -5,7 +5,7 @@ use std::iter;
 
 use itertools::Itertools;
 use stellar_ast::IdentifierAST;
-use stellar_database::{EnumId, ModuleId, State, Symbol, TypeAliasId};
+use stellar_database::{EnumId, ModuleId, State, Symbol, TypeAliasId, PackageId};
 
 use crate::diagnostics::{
     EnumItemsDoNotServeAsNamespaces, FailedToResolveEnumItem, FailedToResolveNameInModule,
@@ -36,12 +36,13 @@ pub(crate) fn resolve_global_path_in_module_context(
 
 pub(crate) fn resolve_global_path(
     state: &mut State,
+    package: PackageId,
     path: &stellar_ast::ImportPath,
 ) -> Option<Symbol> {
     let mut identifiers = path.path.identifiers.iter();
     let namespace = identifiers.next()?;
 
-    let Some(package) = state.db().resolve_package_or_none(namespace.id) else {
+    let Some(package) = package.dependencies(state.db()).get(&namespace.id) else {
         state
             .diagnostics_mut()
             .add_diagnostic(FailedToResolvePackage::new(
