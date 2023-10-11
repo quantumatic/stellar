@@ -126,9 +126,9 @@ pub struct Lexer<'s> {
     pub source: &'s str,
 
     /// Current character.
-    current: char,
+    current: Option<char>,
     /// Next character.
-    next: char,
+    next: Option<char>,
 
     /// Iterator through source text characters.
     chars: Chars<'s>,
@@ -151,8 +151,8 @@ impl<'s> Lexer<'s> {
     pub fn new(filepath: PathId, source: &'s str) -> Self {
         let mut chars = source.chars();
 
-        let current = chars.next().unwrap_or('\0');
-        let next = chars.next().unwrap_or('\0');
+        let current = chars.next();
+        let next = chars.next();
 
         Self {
             filepath,
@@ -182,12 +182,12 @@ impl<'s> Lexer<'s> {
         &self.scanned_string
     }
 
-    /// Returns `true` if current character is EOF (`\0`).
+    /// Returns `true` if it is EOF.
     const fn eof(&self) -> bool {
-        self.current == '\0'
+        self.current.is_none()
     }
 
-    /// Skips whitespace characters. See [`Lexer::is_whitespace()`] for more details.
+    /// Skips whitespace characters.
     fn eat_whitespaces(&mut self) {
         while is_whitespace(self.current) {
             self.advance();
@@ -199,9 +199,12 @@ impl<'s> Lexer<'s> {
         let previous = self.current;
 
         self.current = self.next;
-        self.next = self.chars.next().unwrap_or('\0');
+        self.next = self.chars.next();
 
-        self.offset += previous.len_utf8();
+        self.offset += match previous {
+            Some(c) => c.len_utf8(),
+            None => 0,
+        };
     }
 
     /// Advances the lexer state to the next 2 characters
@@ -263,7 +266,7 @@ impl<'s> Lexer<'s> {
     #[inline(always)]
     fn advance_while<F>(&mut self, start_offset: ByteOffset, mut f: F) -> &'s str
     where
-        F: FnMut(char, char) -> bool,
+        F: FnMut(Option<char>, Option<char>) -> bool,
     {
         while f(self.current, self.next) && !self.eof() {
             self.advance();
@@ -277,24 +280,24 @@ impl<'s> Lexer<'s> {
         self.advance(); // `\`
 
         let r = match self.current {
-            'b' => Ok('\u{0008}'),
-            'f' => Ok('\u{000C}'),
-            'n' => Ok('\n'),
-            'r' => Ok('\r'),
-            't' => Ok('\t'),
-            '\'' => Ok('\''),
-            '"' => Ok('"'),
-            '\\' => Ok('\\'),
-            '\0' => Err(LexError {
+            Some('b') => Ok('\u{0008}'),
+            Some('f') => Ok('\u{000C}'),
+            Some('n') => Ok('\n'),
+            Some('r') => Ok('\r'),
+            Some('t') => Ok('\t'),
+            Some('\'') => Ok('\''),
+            Some('"') => Ok('"'),
+            Some('\\') => Ok('\\'),
+            Some('\0') => Err(LexError {
                 raw: RawLexError::EmptyEscapeSequence,
                 location: self.current_char_location(),
             }),
-            'u' => {
+            Some('u') => {
                 let start_offset = self.offset;
 
                 self.advance();
 
-                if self.current != '{' {
+                if self.current != Some('{') {
                     return Err(LexError {
                         raw: RawLexError::ExpectedOpenBracketInUnicodeEscapeSequence,
                         location: self.current_char_location(),
@@ -313,11 +316,13 @@ impl<'s> Lexer<'s> {
                         });
                     }
 
-                    buffer.push(self.current);
+                    // SAFETY: `None.is_ascii_hexdigit()` is guaranteed to be `false`.
+                    // So if `self.current` is `None`, then the branch will not be executed.
+                    buffer.push(unsafe { self.current.unwrap_unchecked() });
                     self.advance();
                 }
 
-                if self.current != '}' {
+                if self.current != Some('}') {
                     return Err(LexError {
                         raw: RawLexError::ExpectedCloseBracketInUnicodeEscapeSequence,
                         location: self.current_char_location(),
@@ -332,12 +337,12 @@ impl<'s> Lexer<'s> {
                     }),
                 }
             }
-            'U' => {
+            Some('U') => {
                 let start_offset = self.offset;
 
                 self.advance();
 
-                if self.current != '{' {
+                if self.current != Some('{') {
                     return Err(LexError {
                         raw: RawLexError::ExpectedOpenBracketInUnicodeEscapeSequence,
                         location: self.current_char_location(),
@@ -356,11 +361,13 @@ impl<'s> Lexer<'s> {
                         });
                     }
 
-                    buffer.push(self.current);
+                    // SAFETY: `None.is_ascii_hexdigit()` is guaranteed to be `false`.
+                    // So if `self.current` is `None`, then the branch will not be executed.
+                    buffer.push(unsafe { self.current.unwrap_unchecked() });
                     self.advance();
                 }
 
-                if self.current != '}' {
+                if self.current != Some('}') {
                     return Err(LexError {
                         raw: RawLexError::ExpectedCloseBracketInUnicodeEscapeSequence,
                         location: self.current_char_location(),
@@ -375,12 +382,12 @@ impl<'s> Lexer<'s> {
                     }),
                 }
             }
-            'x' => {
+            Some('x') => {
                 let start_offset = self.offset;
 
                 self.advance();
 
-                if self.current != '{' {
+                if self.current != Some('{') {
                     return Err(LexError {
                         raw: RawLexError::ExpectedOpenBracketInByteEscapeSequence,
                         location: self.current_char_location(),
@@ -399,11 +406,13 @@ impl<'s> Lexer<'s> {
                         });
                     }
 
-                    buffer.push(self.current);
+                    // SAFETY: `None.is_ascii_hexdigit()` is guaranteed to be `false`.
+                    // So if `self.current` is `None`, then the branch will not be executed.
+                    buffer.push(unsafe { self.current.unwrap_unchecked() });
                     self.advance();
                 }
 
-                if self.current != '}' {
+                if self.current != Some('}') {
                     return Err(LexError {
                         raw: RawLexError::ExpectedCloseBracketInByteEscapeSequence,
                         location: self.current_char_location(),
@@ -437,15 +446,15 @@ impl<'s> Lexer<'s> {
 
         let mut size = 0;
 
-        while self.current != '\'' {
-            if self.current == '\n' || self.eof() {
+        while self.current != Some('\'') {
+            if self.current == Some('\n') || self.eof() {
                 return Token {
                     raw: RawToken::Error(RawLexError::UnterminatedCharLiteral),
                     location: self.location_from(start_offset),
                 };
             }
 
-            if self.current == '\\' {
+            if self.current == Some('\\') {
                 let e = self.process_escape_sequence();
 
                 match e {
@@ -469,7 +478,10 @@ impl<'s> Lexer<'s> {
                     }
                 }
             } else {
-                self.scanned_char = self.current;
+                // SAFETY: `self.current` is guaranteed to be `Some(..)`. Because if
+                // `self.current` is `None`, then the branch will not be executed cause
+                // of `self.eof()` condition.
+                self.scanned_char = unsafe { self.current.unwrap_unchecked() };
                 self.advance();
             }
 
@@ -507,14 +519,14 @@ impl<'s> Lexer<'s> {
 
         self.advance();
 
-        while !self.eof() && self.current != '\n' {
+        while !self.eof() && self.current != Some('\n') {
             let c = self.current;
 
-            if c == '"' {
+            if c == Some('"') {
                 break;
             }
 
-            if c == '\\' {
+            if c == Some('\\') {
                 let e = self.process_escape_sequence();
 
                 match e {
@@ -538,12 +550,15 @@ impl<'s> Lexer<'s> {
                     }
                 }
             } else {
-                self.scanned_string.push(c);
+                // SAFETY: `self.current` is guaranteed to be `Some(..)`. Because if
+                // `self.current` is `None`, then the branch will not be executed cause
+                // of `!self.eof()` condition.
+                self.scanned_string.push(unsafe { c.unwrap_unchecked() });
                 self.advance();
             }
         }
 
-        if self.eof() || self.current == '\n' {
+        if self.eof() || self.current == Some('\n') {
             return Token {
                 raw: RawToken::Error(RawLexError::UnterminatedStringLiteral),
                 location: self.location_from(start_offset),
@@ -565,10 +580,10 @@ impl<'s> Lexer<'s> {
         self.advance();
 
         let name = &self.advance_while(start_location, |current, _| {
-            current != '\n' && current != '`'
+            current != Some('\n') && current != Some('`')
         })[1..];
 
-        if self.current != '`' {
+        if self.current != Some('`') {
             return Token {
                 raw: RawToken::Error(RawLexError::UnterminatedWrappedIdentifier),
                 location: self.location_from(start_location),
@@ -598,7 +613,7 @@ impl<'s> Lexer<'s> {
         let start_location = self.offset - 1;
         self.advance();
 
-        self.advance_while(start_location + 2, |current, _| (current != '\n'));
+        self.advance_while(start_location + 2, |current, _| (current != Some('\n')));
 
         Token {
             raw: RawToken::Comment,
@@ -617,7 +632,7 @@ impl<'s> Lexer<'s> {
         let start_location = self.offset - 1;
         self.advance_twice(); // `/` and (`!` or `/`)
 
-        self.advance_while(start_location + 3, |current, _| (current != '\n'));
+        self.advance_while(start_location + 3, |current, _| (current != Some('\n')));
 
         Token {
             location: self.location_from(start_location),
@@ -688,80 +703,80 @@ impl<'s> Lexer<'s> {
         }
 
         match (self.current, self.next) {
-            (':', _) => self.advance_with(Punctuator::Colon),
-            ('@', _) => self.advance_with(Punctuator::At),
+            (Some(':'), Some(_)) => self.advance_with(Punctuator::Colon),
+            (Some('@'), Some(_)) => self.advance_with(Punctuator::At),
 
-            ('"', _) => self.tokenize_string_literal(),
-            ('\'', _) => self.tokenize_char_literal(),
-            ('`', _) => self.tokenize_wrapped_identifier(),
+            (Some('"'), Some(_)) => self.tokenize_string_literal(),
+            (Some('\''), Some(_)) => self.tokenize_char_literal(),
+            (Some('`'), Some(_)) => self.tokenize_wrapped_identifier(),
 
-            ('+', '+') => self.advance_twice_with(Punctuator::DoublePlus),
-            ('+', '=') => self.advance_twice_with(Punctuator::PlusEq),
-            ('+', _) => self.advance_with(Punctuator::Plus),
+            (Some('+'), Some('+')) => self.advance_twice_with(Punctuator::DoublePlus),
+            (Some('+'), Some('=')) => self.advance_twice_with(Punctuator::PlusEq),
+            (Some('+'), Some(_)) => self.advance_with(Punctuator::Plus),
 
-            ('-', '>') => self.advance_twice_with(Punctuator::Arrow),
-            ('-', '-') => self.advance_twice_with(Punctuator::DoubleMinus),
-            ('-', '=') => self.advance_twice_with(Punctuator::MinusEq),
-            ('-', _) => self.advance_with(Punctuator::Minus),
+            (Some('-'), Some('>')) => self.advance_twice_with(Punctuator::Arrow),
+            (Some('-'), Some('-')) => self.advance_twice_with(Punctuator::DoubleMinus),
+            (Some('-'), Some('=')) => self.advance_twice_with(Punctuator::MinusEq),
+            (Some('-'), Some(_)) => self.advance_with(Punctuator::Minus),
 
-            ('*', '*') => self.advance_twice_with(Punctuator::DoubleAsterisk),
-            ('*', '=') => self.advance_twice_with(Punctuator::AsteriskEq),
-            ('*', _) => self.advance_with(Punctuator::Asterisk),
+            (Some('*'), Some('*')) => self.advance_twice_with(Punctuator::DoubleAsterisk),
+            (Some('*'), Some('=')) => self.advance_twice_with(Punctuator::AsteriskEq),
+            (Some('*'), Some(_)) => self.advance_with(Punctuator::Asterisk),
 
-            ('#', _) => self.advance_with(Punctuator::HashTag),
+            (Some('#'), Some(_)) => self.advance_with(Punctuator::HashTag),
 
-            ('/', '/') => {
+            (Some('/'), Some('/')) => {
                 self.advance();
 
                 match self.next {
-                    '!' => self.tokenize_doc_comment(true),
-                    '/' => self.tokenize_doc_comment(false),
+                    Some('!') => self.tokenize_doc_comment(true),
+                    Some('/') => self.tokenize_doc_comment(false),
                     _ => self.tokenize_comment(),
                 }
             }
 
-            ('/', '=') => self.advance_twice_with(Punctuator::SlashEq),
-            ('/', _) => self.advance_with(Punctuator::Slash),
-            ('!', '=') => self.advance_twice_with(Punctuator::BangEq),
-            ('!', _) => self.advance_with(Punctuator::Bang),
-            ('>', '>') => self.advance_twice_with(Punctuator::RightShift),
-            ('>', '=') => self.advance_twice_with(Punctuator::GreaterEq),
-            ('>', _) => self.advance_with(Punctuator::Greater),
-            ('<', '<') => self.advance_twice_with(Punctuator::LeftShift),
-            ('<', '=') => self.advance_twice_with(Punctuator::LessEq),
-            ('<', _) => self.advance_with(Punctuator::Less),
-            ('=', '=') => self.advance_twice_with(Punctuator::DoubleEq),
-            ('=', _) => self.advance_with(Punctuator::Eq),
-            ('|', '=') => self.advance_twice_with(Punctuator::OrEq),
-            ('|', '|') => self.advance_twice_with(Punctuator::DoubleOr),
-            ('|', _) => self.advance_with(Punctuator::Or),
-            ('?', _) => self.advance_with(Punctuator::QuestionMark),
-            ('&', '&') => self.advance_twice_with(Punctuator::DoubleAmpersand),
-            ('&', _) => self.advance_with(Punctuator::Ampersand),
-            ('^', '=') => self.advance_twice_with(Punctuator::CaretEq),
-            ('^', _) => self.advance_with(Punctuator::Caret),
-            ('~', _) => self.advance_with(Punctuator::Tilde),
-            ('(', _) => self.advance_with(Punctuator::OpenParent),
-            (')', _) => self.advance_with(Punctuator::CloseParent),
-            ('[', _) => self.advance_with(Punctuator::OpenBracket),
-            (']', _) => self.advance_with(Punctuator::CloseBracket),
-            ('{', _) => self.advance_with(Punctuator::OpenBrace),
-            ('}', _) => self.advance_with(Punctuator::CloseBrace),
-            (',', _) => self.advance_with(Punctuator::Comma),
-            (';', _) => self.advance_with(Punctuator::Semicolon),
-            ('%', '=') => self.advance_with(Punctuator::PercentEq),
-            ('%', _) => self.advance_with(Punctuator::Percent),
+            (Some('/'), Some('=')) => self.advance_twice_with(Punctuator::SlashEq),
+            (Some('/'), Some(_)) => self.advance_with(Punctuator::Slash),
+            (Some('!'), Some('=')) => self.advance_twice_with(Punctuator::BangEq),
+            (Some('!'), Some(_)) => self.advance_with(Punctuator::Bang),
+            (Some('>'), Some('>')) => self.advance_twice_with(Punctuator::RightShift),
+            (Some('>'), Some('=')) => self.advance_twice_with(Punctuator::GreaterEq),
+            (Some('>'), Some(_)) => self.advance_with(Punctuator::Greater),
+            (Some('<'), Some('<')) => self.advance_twice_with(Punctuator::LeftShift),
+            (Some('<'), Some('=')) => self.advance_twice_with(Punctuator::LessEq),
+            (Some('<'), Some(_)) => self.advance_with(Punctuator::Less),
+            (Some('='), Some('=')) => self.advance_twice_with(Punctuator::DoubleEq),
+            (Some('='), Some(_)) => self.advance_with(Punctuator::Eq),
+            (Some('|'), Some('=')) => self.advance_twice_with(Punctuator::OrEq),
+            (Some('|'), Some('|')) => self.advance_twice_with(Punctuator::DoubleOr),
+            (Some('|'), Some(_)) => self.advance_with(Punctuator::Or),
+            (Some('?'), Some(_)) => self.advance_with(Punctuator::QuestionMark),
+            (Some('&'), Some('&')) => self.advance_twice_with(Punctuator::DoubleAmpersand),
+            (Some('&'), Some(_)) => self.advance_with(Punctuator::Ampersand),
+            (Some('^'), Some('=')) => self.advance_twice_with(Punctuator::CaretEq),
+            (Some('^'), Some(_)) => self.advance_with(Punctuator::Caret),
+            (Some('~'), Some(_)) => self.advance_with(Punctuator::Tilde),
+            (Some('('), Some(_)) => self.advance_with(Punctuator::OpenParent),
+            (Some(')'), Some(_)) => self.advance_with(Punctuator::CloseParent),
+            (Some('['), Some(_)) => self.advance_with(Punctuator::OpenBracket),
+            (Some(']'), Some(_)) => self.advance_with(Punctuator::CloseBracket),
+            (Some('{'), Some(_)) => self.advance_with(Punctuator::OpenBrace),
+            (Some('}'), Some(_)) => self.advance_with(Punctuator::CloseBrace),
+            (Some(','), Some(_)) => self.advance_with(Punctuator::Comma),
+            (Some(';'), Some(_)) => self.advance_with(Punctuator::Semicolon),
+            (Some('%'), Some('=')) => self.advance_with(Punctuator::PercentEq),
+            (Some('%'), Some(_)) => self.advance_with(Punctuator::Percent),
 
-            ('.', '.') => self.advance_twice_with(Punctuator::DoubleDot),
+            (Some('.'), Some('.')) => self.advance_twice_with(Punctuator::DoubleDot),
 
             _ => {
                 if self.current.is_ascii_digit()
-                    || (self.current == '.' && self.next.is_ascii_digit())
+                    || (self.current == Some('.') && self.next.is_ascii_digit())
                 {
                     return self.tokenize_number();
                 } else if is_id_start(self.current) {
                     return self.tokenize_identifier_keyword_or_underscore();
-                } else if self.current == '.' {
+                } else if self.current == Some('.') {
                     return self.advance_with(Punctuator::Dot);
                 }
 
@@ -772,38 +787,58 @@ impl<'s> Lexer<'s> {
 }
 
 /// True if `c` is a whitespace.
-const fn is_whitespace(c: char) -> bool {
+const fn is_whitespace(c: Option<char>) -> bool {
     // Note that it is ok to hard-code the values, because
     // the set is stable and doesn't change with different
     // Unicode versions.
     matches!(
         c,
-        '\u{0009}'   // \t
-        | '\u{000A}' // \n
-        | '\u{000B}' // vertical tab
-        | '\u{000C}' // form feed
-        | '\u{000D}' // \r
-        | '\u{0020}' // space
+        Some('\u{0009}')   // \t
+        | Some('\u{000A}') // \n
+        | Some('\u{000B}') // vertical tab
+        | Some('\u{000C}') // form feed
+        | Some('\u{000D}') // \r
+        | Some('\u{0020}') // space
 
         // NEXT LINE from latin1
-        | '\u{0085}'
+        | Some('\u{0085}')
 
         // Bidi markers
-        | '\u{200E}' // LEFT-TO-RIGHT MARK
-        | '\u{200F}' // RIGHT-TO-LEFT MARK
+        | Some('\u{200E}') // LEFT-TO-RIGHT MARK
+        | Some('\u{200F}') // RIGHT-TO-LEFT MARK
 
         // Dedicated whitespace characters from Unicode
-        | '\u{2028}' // LINE SEPARATOR
-        | '\u{2029}' // PARAGRAPH SEPARATOR
+        | Some('\u{2028}') // LINE SEPARATOR
+        | Some('\u{2029}') // PARAGRAPH SEPARATOR
     )
 }
 
 /// True if `c` is valid as a first character of an identifier.
-fn is_id_start(c: char) -> bool {
-    c == '_' || unicode_xid::UnicodeXID::is_xid_start(c)
+#[must_use]
+fn is_id_start(c: Option<char>) -> bool {
+    matches!(c, Some(c) if unicode_xid::UnicodeXID::is_xid_start(c) || c == '_')
 }
 
 /// True if `c` is valid as a non-first character of an identifier.
-fn is_id_continue(c: char) -> bool {
-    unicode_xid::UnicodeXID::is_xid_continue(c)
+#[must_use]
+fn is_id_continue(c: Option<char>) -> bool {
+    matches!(c, Some(c) if unicode_xid::UnicodeXID::is_xid_continue(c))
+}
+
+trait OptionCharExt {
+    #[must_use]
+    fn is_ascii_digit(&self) -> bool;
+
+    #[must_use]
+    fn is_ascii_hexdigit(&self) -> bool;
+}
+
+impl OptionCharExt for Option<char> {
+    fn is_ascii_digit(&self) -> bool {
+        matches!(self, Some(c) if c.is_ascii_digit())
+    }
+
+    fn is_ascii_hexdigit(&self) -> bool {
+        matches!(self, Some(c) if c.is_ascii_hexdigit())
+    }
 }

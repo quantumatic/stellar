@@ -2,7 +2,7 @@
 
 use std::{io::Write, time::Instant};
 
-use stellar_database::State;
+use stellar_database::{State, DUMMY_PACKAGE_ID};
 use stellar_diagnostics::DiagnosticsEmitter;
 use stellar_filesystem::file_utils::make_unique_file;
 use stellar_interner::{PathId, DUMMY_IDENTIFIER_ID};
@@ -15,7 +15,12 @@ pub fn command(filepath: &str) {
     let mut state = State::new();
     let now = Instant::now();
 
-    match read_and_parse_module(&mut state, DUMMY_IDENTIFIER_ID, PathId::from(filepath)) {
+    match read_and_parse_module(
+        &mut state,
+        DUMMY_PACKAGE_ID,
+        DUMMY_IDENTIFIER_ID,
+        PathId::from(filepath),
+    ) {
         Err(..) => {
             log_error(format!("cannot read the file {filepath}"));
         }
@@ -29,7 +34,7 @@ pub fn command(filepath: &str) {
 
             if diagnostics.is_ok() {
                 let now = Instant::now();
-                let ast_string = serde_json::to_string(parsed.ast()).unwrap();
+                let ast_string = serde_json::to_string(&parsed).unwrap();
 
                 log_info("Serialized", format!("in {}s", now.elapsed().as_secs_f64()));
 

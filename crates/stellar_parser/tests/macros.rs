@@ -14,6 +14,9 @@ macro_rules! tests_using {
 
                     let result_ =
                         $parse_fn(DUMMY_PATH_ID, $code, &mut diagnostics);
+                    if diagnostics.is_fatal() {
+                        println!("{:?}", diagnostics);
+                    }
                     assert!(result_.is_some());
                 }
             )*

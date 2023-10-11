@@ -15,6 +15,14 @@ pub trait PluralizeExt {
     ///
     /// # Panics
     /// If the given noun string is empty.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// assert_eq!("cat".pluralize(), "cats".to_owned());
+    /// assert_eq!("bee".pluralize(), "bees".to_owned());
+    /// assert_eq!("index".pluralize(), "indices".to_owned());
+    /// ```
     fn pluralize(self) -> String;
 }
 

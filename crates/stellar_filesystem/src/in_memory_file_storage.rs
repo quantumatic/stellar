@@ -7,12 +7,25 @@ use stellar_interner::PathId;
 
 use crate::in_memory_file::InMemoryFile;
 
-/// In memory file storage. The storage can be used for example when emitting
-/// some diagnostics, to avoid rereading the same file multiple times.
+/// # In-memory file storage.
+///
+/// The storage can be used for example when emitting some diagnostics, to
+/// avoid rereading the same file multiple times.
+///
+/// # Notes
+///
+/// The storage is instantiated only 2 times throughout the compilation:
+///
+/// - The first time happens when the compiler needs to parse files which requires
+/// reads.
+/// - The second time happens when diagnostics needs to be emitted. It being
+/// separate from the first one prevents storing the whole project storage with
+/// files from the whole dependency tree throughout the compilation.
+///
+/// The storage is represented as a simple hashmap of type [`FxHashMap<PathId, InMemoryFile>`]
+/// because no smart interning mechanisms are required.
 #[derive(Debug, Clone, Default)]
-pub struct InMemoryFileStorage {
-    storage: FxHashMap<PathId, InMemoryFile>,
-}
+pub struct InMemoryFileStorage(FxHashMap<PathId, InMemoryFile>);
 
 impl InMemoryFileStorage {
     /// Creates an empty storage.
@@ -25,7 +38,7 @@ impl InMemoryFileStorage {
     /// Adds a file into the storage.
     #[inline(always)]
     pub fn add_file(&mut self, path: PathId, file: InMemoryFile) {
-        self.storage.insert(path, file);
+        self.0.insert(path, file);
     }
 
     /// Reads and adds a file into the storage.
@@ -46,14 +59,14 @@ impl InMemoryFileStorage {
     /// If the file contents cannot be read.
     #[inline(always)]
     pub fn read_and_add_file_or_panic(&mut self, path: PathId) {
-        self.storage
+        self.0
             .insert(path, InMemoryFile::new_or_panic(path.resolve_or_panic()));
     }
 
     /// Adds a file into the storage if it does not exist.
     #[inline(always)]
     pub fn add_file_if_not_exists(&mut self, path: PathId, file: InMemoryFile) {
-        if !self.storage.contains_key(&path) {
+        if !self.0.contains_key(&path) {
             self.add_file(path, file);
         }
     }
@@ -64,7 +77,7 @@ impl InMemoryFileStorage {
     /// If the file contents cannot be read.
     #[inline(always)]
     pub fn read_and_add_file_if_not_exists(&mut self, path: PathId) -> Result<(), io::Error> {
-        if !self.storage.contains_key(&path) {
+        if !self.0.contains_key(&path) {
             self.read_and_add_file(path)?;
         }
 
@@ -85,6 +98,6 @@ impl InMemoryFileStorage {
     #[inline(always)]
     #[must_use]
     pub fn resolve_file(&self, path: PathId) -> Option<&InMemoryFile> {
-        self.storage.get(&path)
+        self.0.get(&path)
     }
 }

@@ -17,6 +17,13 @@ mod tests {
     lexer_test!(identifier, "test", Identifier);
     lexer_test!(identifier2, "тест", Identifier);
     lexer_test!(comment, "//test comment", Comment);
+    lexer_test!(integer, "123", IntegerLiteral);
+    lexer_test!(integer2, "0x3f", IntegerLiteral);
+    lexer_test!(float, "3.14", FloatLiteral);
+    lexer_test!(float2, "3.14e5", FloatLiteral);
+    lexer_test!(float3, "3.14e-5", FloatLiteral);
+    lexer_test!(float4, "3.14E5", FloatLiteral);
+    lexer_test!(float5, "3.14E-5", FloatLiteral);
     lexer_test!(global_doc_comment, "///test comment", LocalDocComment);
     lexer_test!(local_doc_comment, "//!test comment", GlobalDocComment);
     lexer_test!(unexpected_char, "١", Error(RawLexError::UnexpectedChar));

@@ -37,7 +37,7 @@ pub fn command() {
 
             CollectDefinitions::run_all(&mut state, &hir);
             ResolveImports::run_all(&mut state, &hir);
-            CollectSignatures::run_all(&mut state, &hir);
+            // CollectSignatures::run_all(&mut state, &hir);
 
             log_info("Analyzed", format!("in {}s", now.elapsed().as_secs_f64()));
 

@@ -21,9 +21,9 @@ where
     let len = iter.len();
 
     iter.enumerate()
-        .map(|(idx, item)| {
+        .fold(String::new(), |acc, (idx, item)| {
             format!(
-                "{}{item}",
+                "{acc}{}{item}",
                 if idx == 0 {
                     ""
                 } else if idx == len - 1 {
@@ -37,7 +37,6 @@ where
                 }
             )
         })
-        .collect::<String>()
 }
 
 /// Formats a list of strings in such a format:
@@ -60,9 +59,9 @@ where
     let len = iter.len();
 
     iter.enumerate()
-        .map(|(idx, item)| {
+        .fold(String::new(), |acc, (idx, item)| {
             format!(
-                "{}{item}",
+                "{acc}{}{item}",
                 if idx == 0 {
                     ""
                 } else if idx == len - 1 {
@@ -76,5 +75,4 @@ where
                 }
             )
         })
-        .collect::<String>()
 }

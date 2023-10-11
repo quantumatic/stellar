@@ -60,14 +60,14 @@
 use clap::{Parser, Subcommand};
 
 #[cfg(feature = "debug")]
-mod collect_definitions;
-mod collect_signatures;
+// mod collect_definitions;
+// mod collect_signatures;
 mod lex;
 mod log;
-mod lower;
+// mod lower;
 mod parse;
 mod parse_manifest;
-mod resolve_imports;
+// mod resolve_imports;
 mod version;
 
 #[derive(Parser)]
@@ -149,12 +149,12 @@ fn main() {
         .init();
 
     match Cli::parse().command {
-        #[cfg(feature = "debug")]
-        Commands::CollectDefinitions => collect_definitions::command(),
-        #[cfg(feature = "debug")]
-        Commands::CollectSignatures => collect_signatures::command(),
-        #[cfg(feature = "debug")]
-        Commands::ResolveImports => resolve_imports::command(),
+        // #[cfg(feature = "debug")]
+        // Commands::CollectDefinitions => collect_definitions::command(),
+        // #[cfg(feature = "debug")]
+        // Commands::CollectSignatures => collect_signatures::command(),
+        // #[cfg(feature = "debug")]
+        // Commands::ResolveImports => resolve_imports::command(),
         Commands::CompilerVersion => version::compiler_version_command(),
         Commands::StdVersion => version::std_version_command(),
         Commands::PackageManagerVersion => version::package_manager_version_command(),
@@ -175,15 +175,15 @@ fn main() {
         Commands::Ast { filepath } | Commands::Parse { filepath } => {
             parse::command(&filepath);
         }
-        #[cfg(feature = "debug")]
-        Commands::Hir { filepath } | Commands::LowerAst { filepath } => {
-            lower::command(&filepath);
-        }
+        // #[cfg(feature = "debug")]
+        // Commands::Hir { filepath } | Commands::LowerAst { filepath } => {
+        //     lower::command(&filepath);
+        // }
         #[cfg(feature = "debug")]
         Commands::ParseManifest { filepath } => {
             parse_manifest::command(&filepath);
         }
-        Commands::New { package_name: _ } => {
+        _ => {
             todo!()
         }
     }

@@ -4,15 +4,14 @@
 )]
 
 use paste::paste;
+#[cfg(feature = "serde")]
+use serde::{Deserialize, Serialize};
 use stellar_ast::{IdentifierAST, ModuleItemKind, Visibility};
 use stellar_diagnostics::Diagnostics;
 use stellar_filesystem::location::{Location, DUMMY_LOCATION};
 use stellar_fx_hash::FxHashMap;
 use stellar_interner::{IdentifierId, PathId};
 use stellar_thir::ty::{Type, TypeConstructor};
-
-#[cfg(feature = "serde")]
-use serde::{Deserialize, Serialize};
 
 #[macro_use]
 mod access_methods_macro;
@@ -919,6 +918,8 @@ impl ModuleId {
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct PackageId(pub usize);
 
+pub const DUMMY_PACKAGE_ID: PackageId = PackageId(0);
+
 impl PackageId {
     #[inline(always)]
     #[must_use]
@@ -940,7 +941,10 @@ impl PackageId {
 
     #[inline(always)]
     #[must_use]
-    pub fn dependencies_or_none(self, db: &Database) -> Option<&FxHashMap<IdentifierId, PackageId>> {
+    pub fn dependencies_or_none(
+        self,
+        db: &Database,
+    ) -> Option<&FxHashMap<IdentifierId, PackageId>> {
         db.packages.get(self.0).map(|package| &package.dependencies)
     }
 

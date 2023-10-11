@@ -105,14 +105,14 @@ impl IdentifierId {
     /// Gets the interned string by ID.
     #[inline(always)]
     #[must_use]
-    pub fn resolve_or_panic(self) -> String {
+    pub fn resolve_owned_or_panic(self) -> String {
         IDENTIFIER_INTERNER.read().resolved_owned_or_panic(self)
     }
 
     /// Gets the interned string by ID.
     #[inline(always)]
     #[must_use]
-    pub fn resolve(self) -> Option<String> {
+    pub fn resolve_owned(self) -> Option<String> {
         IDENTIFIER_INTERNER.read().resolve_owned(self)
     }
 }
@@ -120,14 +120,14 @@ impl IdentifierId {
 impl Display for IdentifierId {
     #[inline(always)]
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        self.resolve_or_panic().fmt(f)
+        self.resolve_owned_or_panic().fmt(f)
     }
 }
 
 impl From<IdentifierId> for String {
     #[inline(always)]
     fn from(value: IdentifierId) -> Self {
-        value.resolve_or_panic()
+        value.resolve_owned_or_panic()
     }
 }
 
@@ -146,7 +146,7 @@ impl Serialize for IdentifierId {
     where
         S: Serializer,
     {
-        serializer.serialize_str(&self.resolve_or_panic())
+        serializer.serialize_str(&self.resolve_owned_or_panic())
     }
 }
 
@@ -311,6 +311,11 @@ where
 
     /// Resolves the given symbol to its original string.
     fn resolve(&self, symbol: S) -> Option<&str> {
+        self.span_of(symbol).map(|span| self.str_at(span))
+    }
+
+    /// Resolves the given symbol to its original string.
+    fn resolve_static(&'static self, symbol: S) -> Option<&'static str> {
         self.span_of(symbol).map(|span| self.str_at(span))
     }
 
@@ -513,6 +518,13 @@ where
     pub fn resolve(&self, symbol: S) -> Option<&str> {
         self.backend.resolve(symbol)
     }
+
+    /// Returns the string for the given symbol if any.
+    #[inline(always)]
+    #[must_use]
+    pub fn resolve_static(&'static self, symbol: S) -> Option<&'static str> {
+        self.backend.resolve_static(symbol)
+    }
 }
 
 /// Represents a location of an interned string inside the [`Backend`]'s internal
@@ -574,10 +586,8 @@ define_builtin_identifiers! {
     INT8 = 1 => "int8", INT16 = 2 => "int16", INT32 = 3 => "int32", INT64 = 4 => "int64",
     UINT8 = 5 => "uint8", UINT16 = 6 => "uint16", UINT32 = 7 => "uint32", UINT64 = 8 => "uint64",
     FLOAT32 = 9 => "float32", FLOAT64 = 10 => "float64",
-
     ISIZE = 11 => "isize", USIZE = 12 => "usize",
     BOOL = 13 => "bool", STRING = 14 => "String", LIST = 15 => "List",
-
     CHAR = 16 => "char", SMALL_SELF = 17 => "self", BIG_SELF = 18 => "Self",
     SIZE_OF = 19 => "sizeof", STD = 20 => "std"
 }

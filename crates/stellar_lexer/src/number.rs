@@ -3,7 +3,7 @@ use std::char::from_u32;
 use stellar_ast::token::{NumberKind, RawLexError, RawToken, Token};
 use stellar_filesystem::location::{ByteOffset, Location};
 
-use crate::{is_id_start, Lexer};
+use crate::{is_id_start, Lexer, OptionCharExt};
 
 impl Lexer<'_> {
     pub(crate) fn tokenize_number(&mut self) -> Token {
@@ -31,24 +31,24 @@ impl Lexer<'_> {
         // Location of the first invalid digit.
         let mut invalid_digit_location = None;
 
-        if self.current != '.' {
+        if self.current != Some('.') {
             number_kind = NumberKind::Int;
 
-            if self.current == '0' {
+            if self.current == Some('0') {
                 self.advance();
 
-                match self.current.to_ascii_lowercase() {
-                    'x' => {
+                match self.current.map(|c| c.to_ascii_lowercase()) {
+                    Some('x') => {
                         self.advance();
                         base = 16;
                         prefix = 'x';
                     }
-                    'o' => {
+                    Some('o') => {
                         self.advance();
                         base = 8;
                         prefix = 'o';
                     }
-                    'b' => {
+                    Some('b') => {
                         self.advance();
                         base = 2;
                         prefix = 'b';
@@ -65,7 +65,7 @@ impl Lexer<'_> {
         }
 
         'processing_float: {
-            if self.current == '.' {
+            if self.current == Some('.') {
                 // 1.to_string() is parsed as:
                 // Int(1) Punct(Dot) Ident Punct(Lparen) ...
                 if is_id_start(self.next) {
@@ -94,8 +94,7 @@ impl Lexer<'_> {
             }
         }
 
-        let l = self.current.to_ascii_lowercase();
-        if l == 'e' {
+        if self.current.map(|c| c.to_ascii_lowercase()) == Some('e') {
             if prefix != '\0' && prefix != '0' {
                 return Token {
                     raw: RawToken::Error(RawLexError::ExponentRequiresDecimalMantissa),
@@ -107,7 +106,7 @@ impl Lexer<'_> {
 
             number_kind = NumberKind::Float;
 
-            if self.current == '+' || self.current == '-' {
+            if self.current == Some('+') || self.current == Some('-') {
                 self.advance();
             }
 
@@ -203,12 +202,12 @@ impl Lexer<'_> {
         if base <= 10 {
             let max = from_u32('0' as u32 + u32::from(base)).unwrap();
 
-            while self.current.is_ascii_digit() || self.current == '_' {
+            while self.current.is_ascii_digit() || self.current == Some('_') {
                 let mut digit_separator_ = 1;
 
-                if self.current == '_' {
+                if self.current == Some('_') {
                     digit_separator_ = 2;
-                } else if self.current >= max && invalid_digit_offset.is_none() {
+                } else if self.current >= Some(max) && invalid_digit_offset.is_none() {
                     set_if_none(invalid_digit_offset, self.offset);
                 }
 
@@ -216,8 +215,8 @@ impl Lexer<'_> {
                 self.advance();
             }
         } else {
-            while self.current.is_ascii_hexdigit() || self.current == '_' {
-                *digit_separator |= if self.current == '_' { 2 } else { 1 };
+            while self.current.is_ascii_hexdigit() || self.current == Some('_') {
+                *digit_separator |= if self.current == Some('_') { 2 } else { 1 };
                 self.advance();
             }
         }

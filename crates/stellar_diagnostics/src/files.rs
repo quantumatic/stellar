@@ -1,12 +1,11 @@
 //! Source file support for diagnostic reporting.
 //!
-//! The main trait defined in this module is the [`Files`] trait, which provides
+//! The main trait defined in this module is the [`DiagnosticsRenderHelper`] trait, which provides
 //! provides the minimum amount of functionality required for printing [`Diagnostics`]
 //! with the [`term::emit`] function.
 //!
 //! [`term::emit`]: crate::term::emit
 //! [`Diagnostics`]: crate::diagnostic::Diagnostic
-//! [`Files`]: Files
 
 use stellar_filesystem::in_memory_file::LineTooLargeError;
 use stellar_filesystem::in_memory_file_storage::InMemoryFileStorage;

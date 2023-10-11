@@ -195,6 +195,26 @@ impl ParsedModule {
     }
 }
 
+// pub fn read_and_parse_root_module(
+//     state: &mut State,
+//     package_name: IdentifierId,
+//     filepath: PathId
+// ) -> Result<(Module, ParsedModule), io::Error> {
+//     let module = ModuleData::alloc(state.db_mut(), package, module_name, filepath);
+//     let source = fs::read_to_string(filepath.resolve_or_panic())?;
+
+//     let mut parse_state = ParseState::new(filepath, &source, state.diagnostics_mut());
+
+//     Ok(ParsedModule {
+//         module,
+//         ast: Module {
+//             filepath: parse_state.lexer.filepath,
+//             docstring: parse_state.consume_module_docstring(),
+//             items: ItemsParser.parse(&mut parse_state),
+//         },
+//     })
+// }
+
 /// Read and parse a Stellar module.
 ///
 /// # Errors
@@ -208,19 +228,16 @@ pub fn read_and_parse_module(
     package: PackageId,
     module_name: IdentifierId,
     filepath: PathId,
-) -> Result<ParsedModule, io::Error> {
-    let module = ModuleData::alloc(state.db_mut(), package, module_name, filepath);
+) -> Result<Module, io::Error> {
+    // let module = ModuleData::alloc(state.db_mut(), package, module_name, filepath);
     let source = fs::read_to_string(filepath.resolve_or_panic())?;
 
     let mut parse_state = ParseState::new(filepath, &source, state.diagnostics_mut());
 
-    Ok(ParsedModule {
-        module,
-        ast: Module {
-            filepath: parse_state.lexer.filepath,
-            docstring: parse_state.consume_module_docstring(),
-            items: ItemsParser.parse(&mut parse_state),
-        },
+    Ok(Module {
+        filepath: parse_state.lexer.filepath,
+        docstring: parse_state.consume_module_docstring(),
+        items: ItemsParser.parse(&mut parse_state),
     })
 }
 
@@ -361,66 +378,66 @@ pub fn parse_pattern_using(state: &mut ParseState<'_, '_>) -> Option<Pattern> {
     PatternParser.parse(state)
 }
 
-/// Traverses, reads and parses all package source files.
-///
-/// # Errors
-/// Returns an error if the package's source directory cannot be read.
-pub fn parse_package_source_files(
-    state: &mut State,
-    root: impl AsRef<Path>,
-) -> Result<Vec<ParsedModule>, String> {
-    fn module_name(path: PathId) -> IdentifierId {
-        IdentifierId::from(
-            path.resolve_or_panic()
-                .file_stem()
-                .unwrap()
-                .to_str()
-                .unwrap(),
-        )
-    }
+// /// Traverses, reads and parses all package source files.
+// ///
+// /// # Errors
+// /// Returns an error if the package's source directory cannot be read.
+// pub fn parse_package_source_files(
+//     state: &mut State,
+//     root: impl AsRef<Path>,
+// ) -> Result<Vec<ParsedModule>, String> {
+//     fn module_name(path: PathId) -> IdentifierId {
+//         IdentifierId::from(
+//             path.resolve_or_panic()
+//                 .file_stem()
+//                 .unwrap()
+//                 .to_str()
+//                 .unwrap(),
+//         )
+//     }
 
-    let root = root.as_ref();
+//     let root = root.as_ref();
 
-    let source_directory = PackagePathResolver::new(root).source_directory();
+//     let source_directory = PackagePathResolver::new(root).source_directory();
 
-    if !source_directory.exists() {
-        return Err(format!(
-            "cannot find package's source directory in {}",
-            root.display()
-        ));
-    }
+//     if !source_directory.exists() {
+//         return Err(format!(
+//             "cannot find package's source directory in {}",
+//             root.display()
+//         ));
+//     }
 
-    Ok(
-        WalkDir::new(PackagePathResolver::new(root).source_directory())
-            .into_iter()
-            .filter_map(|entry| {
-                let Ok(entry) = entry else {
-                    return None;
-                };
+//     Ok(
+//         WalkDir::new(PackagePathResolver::new(root).source_directory())
+//             .into_iter()
+//             .filter_map(|entry| {
+//                 let Ok(entry) = entry else {
+//                     return None;
+//                 };
 
-                #[cfg(feature = "debug")]
-                let now = Instant::now();
+//                 #[cfg(feature = "debug")]
+//                 let now = Instant::now();
 
-                let filepath = PathId::from(entry.path());
-                let parsing_result = read_and_parse_module(
-                    state,
-                    PackageId(0), // TODO: package managment
-                    module_name(filepath),
-                    filepath,
-                );
+//                 let filepath = PathId::from(entry.path());
+//                 let parsing_result = read_and_parse_module(
+//                     state,
+//                     PackageId(0), // TODO: package managment
+//                     module_name(filepath),
+//                     filepath,
+//                 );
 
-                #[cfg(feature = "debug")]
-                trace!(
-                    "parse_module(module = '{}') <{} us>",
-                    entry.path().display(),
-                    now.elapsed().as_micros()
-                );
+//                 #[cfg(feature = "debug")]
+//                 trace!(
+//                     "parse_module(module = '{}') <{} us>",
+//                     entry.path().display(),
+//                     now.elapsed().as_micros()
+//                 );
 
-                parsing_result.ok()
-            })
-            .collect(),
-    )
-}
+//                 parsing_result.ok()
+//             })
+//             .collect(),
+//     )
+// }
 
 impl<'s, 'd> ParseState<'s, 'd> {
     /// Creates an initial parse state from file source.
