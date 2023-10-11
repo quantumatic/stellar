@@ -685,6 +685,7 @@ impl<'s> Lexer<'s> {
     pub fn next_no_comments(&mut self) -> Token {
         loop {
             let t = self.next_token();
+
             if t.raw != RawToken::Comment {
                 return t;
             }
@@ -703,27 +704,27 @@ impl<'s> Lexer<'s> {
         }
 
         match (self.current, self.next) {
-            (Some(':'), Some(_)) => self.advance_with(Punctuator::Colon),
-            (Some('@'), Some(_)) => self.advance_with(Punctuator::At),
+            (Some(':'), _) => self.advance_with(Punctuator::Colon),
+            (Some('@'), _) => self.advance_with(Punctuator::At),
 
-            (Some('"'), Some(_)) => self.tokenize_string_literal(),
-            (Some('\''), Some(_)) => self.tokenize_char_literal(),
-            (Some('`'), Some(_)) => self.tokenize_wrapped_identifier(),
+            (Some('"'), _) => self.tokenize_string_literal(),
+            (Some('\''), _) => self.tokenize_char_literal(),
+            (Some('`'), _) => self.tokenize_wrapped_identifier(),
 
             (Some('+'), Some('+')) => self.advance_twice_with(Punctuator::DoublePlus),
             (Some('+'), Some('=')) => self.advance_twice_with(Punctuator::PlusEq),
-            (Some('+'), Some(_)) => self.advance_with(Punctuator::Plus),
+            (Some('+'), _) => self.advance_with(Punctuator::Plus),
 
             (Some('-'), Some('>')) => self.advance_twice_with(Punctuator::Arrow),
             (Some('-'), Some('-')) => self.advance_twice_with(Punctuator::DoubleMinus),
             (Some('-'), Some('=')) => self.advance_twice_with(Punctuator::MinusEq),
-            (Some('-'), Some(_)) => self.advance_with(Punctuator::Minus),
+            (Some('-'), _) => self.advance_with(Punctuator::Minus),
 
             (Some('*'), Some('*')) => self.advance_twice_with(Punctuator::DoubleAsterisk),
             (Some('*'), Some('=')) => self.advance_twice_with(Punctuator::AsteriskEq),
-            (Some('*'), Some(_)) => self.advance_with(Punctuator::Asterisk),
+            (Some('*'), _) => self.advance_with(Punctuator::Asterisk),
 
-            (Some('#'), Some(_)) => self.advance_with(Punctuator::HashTag),
+            (Some('#'), _) => self.advance_with(Punctuator::HashTag),
 
             (Some('/'), Some('/')) => {
                 self.advance();
@@ -736,36 +737,36 @@ impl<'s> Lexer<'s> {
             }
 
             (Some('/'), Some('=')) => self.advance_twice_with(Punctuator::SlashEq),
-            (Some('/'), Some(_)) => self.advance_with(Punctuator::Slash),
+            (Some('/'), _) => self.advance_with(Punctuator::Slash),
             (Some('!'), Some('=')) => self.advance_twice_with(Punctuator::BangEq),
-            (Some('!'), Some(_)) => self.advance_with(Punctuator::Bang),
+            (Some('!'), _) => self.advance_with(Punctuator::Bang),
             (Some('>'), Some('>')) => self.advance_twice_with(Punctuator::RightShift),
             (Some('>'), Some('=')) => self.advance_twice_with(Punctuator::GreaterEq),
-            (Some('>'), Some(_)) => self.advance_with(Punctuator::Greater),
+            (Some('>'), _) => self.advance_with(Punctuator::Greater),
             (Some('<'), Some('<')) => self.advance_twice_with(Punctuator::LeftShift),
             (Some('<'), Some('=')) => self.advance_twice_with(Punctuator::LessEq),
-            (Some('<'), Some(_)) => self.advance_with(Punctuator::Less),
+            (Some('<'), _) => self.advance_with(Punctuator::Less),
             (Some('='), Some('=')) => self.advance_twice_with(Punctuator::DoubleEq),
-            (Some('='), Some(_)) => self.advance_with(Punctuator::Eq),
+            (Some('='), _) => self.advance_with(Punctuator::Eq),
             (Some('|'), Some('=')) => self.advance_twice_with(Punctuator::OrEq),
             (Some('|'), Some('|')) => self.advance_twice_with(Punctuator::DoubleOr),
-            (Some('|'), Some(_)) => self.advance_with(Punctuator::Or),
-            (Some('?'), Some(_)) => self.advance_with(Punctuator::QuestionMark),
+            (Some('|'), _) => self.advance_with(Punctuator::Or),
+            (Some('?'), _) => self.advance_with(Punctuator::QuestionMark),
             (Some('&'), Some('&')) => self.advance_twice_with(Punctuator::DoubleAmpersand),
-            (Some('&'), Some(_)) => self.advance_with(Punctuator::Ampersand),
+            (Some('&'), _) => self.advance_with(Punctuator::Ampersand),
             (Some('^'), Some('=')) => self.advance_twice_with(Punctuator::CaretEq),
-            (Some('^'), Some(_)) => self.advance_with(Punctuator::Caret),
-            (Some('~'), Some(_)) => self.advance_with(Punctuator::Tilde),
-            (Some('('), Some(_)) => self.advance_with(Punctuator::OpenParent),
-            (Some(')'), Some(_)) => self.advance_with(Punctuator::CloseParent),
-            (Some('['), Some(_)) => self.advance_with(Punctuator::OpenBracket),
-            (Some(']'), Some(_)) => self.advance_with(Punctuator::CloseBracket),
-            (Some('{'), Some(_)) => self.advance_with(Punctuator::OpenBrace),
-            (Some('}'), Some(_)) => self.advance_with(Punctuator::CloseBrace),
-            (Some(','), Some(_)) => self.advance_with(Punctuator::Comma),
-            (Some(';'), Some(_)) => self.advance_with(Punctuator::Semicolon),
+            (Some('^'), _) => self.advance_with(Punctuator::Caret),
+            (Some('~'), _) => self.advance_with(Punctuator::Tilde),
+            (Some('('), _) => self.advance_with(Punctuator::OpenParent),
+            (Some(')'), _) => self.advance_with(Punctuator::CloseParent),
+            (Some('['), _) => self.advance_with(Punctuator::OpenBracket),
+            (Some(']'), _) => self.advance_with(Punctuator::CloseBracket),
+            (Some('{'), _) => self.advance_with(Punctuator::OpenBrace),
+            (Some('}'), _) => self.advance_with(Punctuator::CloseBrace),
+            (Some(','), _) => self.advance_with(Punctuator::Comma),
+            (Some(';'), _) => self.advance_with(Punctuator::Semicolon),
             (Some('%'), Some('=')) => self.advance_with(Punctuator::PercentEq),
-            (Some('%'), Some(_)) => self.advance_with(Punctuator::Percent),
+            (Some('%'), _) => self.advance_with(Punctuator::Percent),
 
             (Some('.'), Some('.')) => self.advance_twice_with(Punctuator::DoubleDot),
 
