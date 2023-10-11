@@ -924,19 +924,21 @@ impl PackageId {
     #[inline(always)]
     #[must_use]
     pub fn parent(self, db: &Database) -> Option<PackageId> {
-        db.packages[self.0].parent
+        db.packages[self.0 - 1].parent
     }
 
     #[inline(always)]
     #[must_use]
     pub fn parent_or_none(self, db: &Database) -> Option<PackageId> {
-        db.packages.get(self.0).and_then(|package| package.parent)
+        db.packages
+            .get(self.0 - 1)
+            .and_then(|package| package.parent)
     }
 
     #[inline(always)]
     #[must_use]
     pub fn dependencies(self, db: &Database) -> &FxHashMap<IdentifierId, PackageId> {
-        &db.packages[self.0].dependencies
+        &db.packages[self.0 - 1].dependencies
     }
 
     #[inline(always)]
@@ -945,19 +947,23 @@ impl PackageId {
         self,
         db: &Database,
     ) -> Option<&FxHashMap<IdentifierId, PackageId>> {
-        db.packages.get(self.0).map(|package| &package.dependencies)
+        db.packages
+            .get(self.0 - 1)
+            .map(|package| &package.dependencies)
     }
 
     #[inline(always)]
     #[must_use]
     pub fn root_module(self, db: &Database) -> ModuleId {
-        db.packages[self.0].root_module
+        db.packages[self.0 - 1].root_module
     }
 
     #[inline(always)]
     #[must_use]
     pub fn root_module_or_none(self, db: &Database) -> Option<ModuleId> {
-        db.packages.get(self.0).map(|package| package.root_module)
+        db.packages
+            .get(self.0 - 1)
+            .map(|package| package.root_module)
     }
 }
 

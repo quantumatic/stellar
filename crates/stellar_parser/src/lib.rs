@@ -159,11 +159,8 @@ impl ParsedModule {
     /// Creates a new instance of [`ParsedModule`].
     #[inline(always)]
     #[must_use]
-    pub const fn new(module_id: ModuleId, ast: Module) -> Self {
-        Self {
-            module: module_id,
-            ast,
-        }
+    pub const fn new(module: ModuleId, ast: Module) -> Self {
+        Self { module, ast }
     }
 
     /// Returns the module AST.
@@ -195,26 +192,6 @@ impl ParsedModule {
     }
 }
 
-// pub fn read_and_parse_root_module(
-//     state: &mut State,
-//     package_name: IdentifierId,
-//     filepath: PathId
-// ) -> Result<(Module, ParsedModule), io::Error> {
-//     let module = ModuleData::alloc(state.db_mut(), package, module_name, filepath);
-//     let source = fs::read_to_string(filepath.resolve_or_panic())?;
-
-//     let mut parse_state = ParseState::new(filepath, &source, state.diagnostics_mut());
-
-//     Ok(ParsedModule {
-//         module,
-//         ast: Module {
-//             filepath: parse_state.lexer.filepath,
-//             docstring: parse_state.consume_module_docstring(),
-//             items: ItemsParser.parse(&mut parse_state),
-//         },
-//     })
-// }
-
 /// Read and parse a Stellar module.
 ///
 /// # Errors
@@ -228,17 +205,20 @@ pub fn read_and_parse_module(
     package: PackageId,
     module_name: IdentifierId,
     filepath: PathId,
-) -> Result<Module, io::Error> {
-    // let module = ModuleData::alloc(state.db_mut(), package, module_name, filepath);
+) -> Result<ParsedModule, io::Error> {
+    let module = ModuleData::alloc(state.db_mut(), package, module_name, filepath);
     let source = fs::read_to_string(filepath.resolve_or_panic())?;
 
     let mut parse_state = ParseState::new(filepath, &source, state.diagnostics_mut());
 
-    Ok(Module {
-        filepath: parse_state.lexer.filepath,
-        docstring: parse_state.consume_module_docstring(),
-        items: ItemsParser.parse(&mut parse_state),
-    })
+    Ok(ParsedModule::new(
+        module,
+        Module {
+            filepath: parse_state.lexer.filepath,
+            docstring: parse_state.consume_module_docstring(),
+            items: ItemsParser.parse(&mut parse_state),
+        },
+    ))
 }
 
 /// Parse a Stellar module.

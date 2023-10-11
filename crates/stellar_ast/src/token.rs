@@ -120,7 +120,7 @@ macro_rules! define_keywords {
             }
 
             /// Convert a string into a keyword.
-            pub fn get_keyword(string: impl AsRef<str>) -> Option<Keyword> {
+            pub fn resolve_keyword(string: impl AsRef<str>) -> Option<Keyword> {
                 match string.as_ref() {
                     $(
                         stringify!($keyword) => Some(Keyword::[<$keyword:camel>]),

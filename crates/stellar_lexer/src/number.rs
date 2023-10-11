@@ -1,11 +1,14 @@
+//! Implements tokenizing for number literals.
+
 use std::char::from_u32;
 
 use stellar_ast::token::{NumberKind, RawLexError, RawToken, Token};
 use stellar_filesystem::location::{ByteOffset, Location};
 
-use crate::{is_id_start, Lexer, OptionCharExt};
+use crate::{is_id_start, IsAsciiExt, Lexer};
 
 impl Lexer<'_> {
+    /// Tokenizes a number literal token.
     pub(crate) fn tokenize_number(&mut self) -> Token {
         let start_offset = self.offset;
 

@@ -1,7 +1,7 @@
 //! This crate provides a lexer for Stellar programming language.
 //!
 //! Lexer is a first stage of compilation, state machine that converts
-//! source text into [`type@Token`]s.
+//! source text into [`Token`]s.
 //!
 //! See [`Lexer`] for more information.
 
@@ -67,14 +67,15 @@
 
 use std::{mem, str::Chars, string::String};
 
-use stellar_ast::token::{get_keyword, LexError, Punctuator, RawLexError, RawToken, Token};
+use stellar_ast::token::{resolve_keyword, LexError, Punctuator, RawLexError, RawToken, Token};
 use stellar_filesystem::location::{ByteOffset, Location};
 use stellar_interner::{IdentifierId, PathId};
 use stellar_stable_likely::unlikely;
 
 mod number;
 
-/// Represents a lexer state machine.
+/// # Lexer
+///
 /// Lexer is fairly standart. It returns [`type@Token`] and then advances its state on
 /// each iteration and stops at eof (always returns [`EndOfFile`]).
 /// ```
@@ -111,7 +112,8 @@ mod number;
 /// ```
 ///
 /// # Note
-/// The lexer makes use of the `stellar_interner` crate to perform string interning,
+///
+/// The lexer makes use of the [`stellar_interner`] crate to perform string interning,
 /// a process of deduplicating strings, which can be highly beneficial when dealing with
 /// identifiers.
 ///
@@ -126,8 +128,20 @@ pub struct Lexer<'s> {
     pub source: &'s str,
 
     /// Current character.
+    ///
+    /// **NOTE**: Can easily be stored as `Option<char>` without worrying about additional discriminant
+    /// space, because `None` is represented as `1114112u32` (not all `u32`s are
+    /// valid `char`s). See https://godbolt.org/z/5nG9Pjoxh.
+    ///
+    /// ```
+    /// assert!(std::mem::size_of::<char>() == std::mem::size_of::<Option<char>>());
+    /// ```
     current: Option<char>,
+
     /// Next character.
+    ///
+    /// **NOTE**: Can be stored as `Option<char>` without worrying about additional discriminant
+    /// space. See [`Lexer::current`] for more details.
     next: Option<char>,
 
     /// Iterator through source text characters.
@@ -136,29 +150,29 @@ pub struct Lexer<'s> {
     /// Offset of the current character being processed.
     offset: ByteOffset,
 
+    /* Temporary buffers */
     /// Symbol corresponding to an identifier being processed early on.
     pub scanned_identifier: IdentifierId,
+
     /// Buffer for storing scanned characters (after processing escape sequences).
     pub scanned_char: char,
+
     /// Buffer for storing scanned strings (after processing escape sequences).
     scanned_string: String,
 }
 
 impl<'s> Lexer<'s> {
-    /// Creates a new [`Lexer`] instance.
+    /// Creates a [`Lexer`] state instantiated at the first character.
     #[inline(always)]
     #[must_use]
     pub fn new(filepath: PathId, source: &'s str) -> Self {
         let mut chars = source.chars();
 
-        let current = chars.next();
-        let next = chars.next();
-
         Self {
             filepath,
             source,
-            current,
-            next,
+            current: chars.next(),
+            next: chars.next(),
             chars,
             offset: ByteOffset(0),
             scanned_identifier: IdentifierId(0),
@@ -182,7 +196,10 @@ impl<'s> Lexer<'s> {
         &self.scanned_string
     }
 
-    /// Returns `true` if it is EOF.
+    /// Returns `true` if current character is EOF.
+    ///
+    /// **NOTE**: Null bytes are taken into account, so if current character is `null`,
+    /// then `false` is returned.
     const fn eof(&self) -> bool {
         self.current.is_none()
     }
@@ -203,12 +220,12 @@ impl<'s> Lexer<'s> {
 
         self.offset += match previous {
             Some(c) => c.len_utf8(),
-            None => 0,
+            None => 0, // if it's EOF, stay at the same offset
         };
     }
 
-    /// Advances the lexer state to the next 2 characters
-    /// (calls [`Lexer::advance()`] twice).
+    /// Advances the lexer state to the next 2 characters (calls
+    /// [`Lexer::advance()`] twice).
     fn advance_twice(&mut self) {
         self.advance();
         self.advance();
@@ -237,7 +254,7 @@ impl<'s> Lexer<'s> {
     }
 
     /// Returns a location of the current character.
-    #[allow(clippy::missing_const_for_fn)]
+    #[allow(clippy::missing_const_for_fn)] // `+` for `ByteOffset` is not a const operator.
     fn current_char_location(&self) -> Location {
         self.make_location(self.offset, self.offset + 1)
     }
@@ -656,12 +673,15 @@ impl<'s> Lexer<'s> {
             };
         }
 
-        if let Some(reserved) = get_keyword(name) {
+        if let Some(reserved) = resolve_keyword(name) {
             Token {
                 raw: reserved.into(),
                 location: self.location_from(start_location),
             }
-        } else if name == "true" {
+        }
+        // Both `true` and `false` are considered boolean literals and are not
+        // included in the `Keyword` enum.
+        else if name == "true" {
             Token {
                 raw: RawToken::TrueBoolLiteral,
                 location: self.location_from(start_location),
@@ -684,10 +704,9 @@ impl<'s> Lexer<'s> {
     /// Works the same as [`Lexer::next_token`], but skips comments ([`RawToken::Comment`]).
     pub fn next_no_comments(&mut self) -> Token {
         loop {
-            let t = self.next_token();
-
-            if t.raw != RawToken::Comment {
-                return t;
+            let token = self.next_token();
+            if token.raw != RawToken::Comment {
+                return token;
             }
         }
     }
@@ -696,6 +715,9 @@ impl<'s> Lexer<'s> {
     pub fn next_token(&mut self) -> Token {
         self.eat_whitespaces();
 
+        // EOF will be processed only once throughout the scanning process compared to all other
+        // characters in the input. So this condition is not likely to be `true`, because input files
+        // are rarely empty or contain <10 bytes.
         if unlikely(self.eof()) {
             return Token {
                 raw: RawToken::EndOfFile,
@@ -706,26 +728,20 @@ impl<'s> Lexer<'s> {
         match (self.current, self.next) {
             (Some(':'), _) => self.advance_with(Punctuator::Colon),
             (Some('@'), _) => self.advance_with(Punctuator::At),
-
             (Some('"'), _) => self.tokenize_string_literal(),
             (Some('\''), _) => self.tokenize_char_literal(),
             (Some('`'), _) => self.tokenize_wrapped_identifier(),
-
             (Some('+'), Some('+')) => self.advance_twice_with(Punctuator::DoublePlus),
             (Some('+'), Some('=')) => self.advance_twice_with(Punctuator::PlusEq),
             (Some('+'), _) => self.advance_with(Punctuator::Plus),
-
             (Some('-'), Some('>')) => self.advance_twice_with(Punctuator::Arrow),
             (Some('-'), Some('-')) => self.advance_twice_with(Punctuator::DoubleMinus),
             (Some('-'), Some('=')) => self.advance_twice_with(Punctuator::MinusEq),
             (Some('-'), _) => self.advance_with(Punctuator::Minus),
-
             (Some('*'), Some('*')) => self.advance_twice_with(Punctuator::DoubleAsterisk),
             (Some('*'), Some('=')) => self.advance_twice_with(Punctuator::AsteriskEq),
             (Some('*'), _) => self.advance_with(Punctuator::Asterisk),
-
             (Some('#'), _) => self.advance_with(Punctuator::HashTag),
-
             (Some('/'), Some('/')) => {
                 self.advance();
 
@@ -735,7 +751,6 @@ impl<'s> Lexer<'s> {
                     _ => self.tokenize_comment(),
                 }
             }
-
             (Some('/'), Some('=')) => self.advance_twice_with(Punctuator::SlashEq),
             (Some('/'), _) => self.advance_with(Punctuator::Slash),
             (Some('!'), Some('=')) => self.advance_twice_with(Punctuator::BangEq),
@@ -767,9 +782,7 @@ impl<'s> Lexer<'s> {
             (Some(';'), _) => self.advance_with(Punctuator::Semicolon),
             (Some('%'), Some('=')) => self.advance_with(Punctuator::PercentEq),
             (Some('%'), _) => self.advance_with(Punctuator::Percent),
-
             (Some('.'), Some('.')) => self.advance_twice_with(Punctuator::DoubleDot),
-
             _ => {
                 if self.current.is_ascii_digit()
                     || (self.current == Some('.') && self.next.is_ascii_digit())
@@ -787,7 +800,7 @@ impl<'s> Lexer<'s> {
     }
 }
 
-/// True if `c` is a whitespace.
+/// Returns `true` if `c` is a whitespace.
 const fn is_whitespace(c: Option<char>) -> bool {
     // Note that it is ok to hard-code the values, because
     // the set is stable and doesn't change with different
@@ -814,27 +827,26 @@ const fn is_whitespace(c: Option<char>) -> bool {
     )
 }
 
-/// True if `c` is valid as a first character of an identifier.
-#[must_use]
+/// Returns `true` if `c` is valid as a first character of an identifier.
 fn is_id_start(c: Option<char>) -> bool {
     matches!(c, Some(c) if unicode_xid::UnicodeXID::is_xid_start(c) || c == '_')
 }
 
-/// True if `c` is valid as a non-first character of an identifier.
-#[must_use]
+/// Returns `true` if `c` is valid as a non-first character of an identifier.
 fn is_id_continue(c: Option<char>) -> bool {
     matches!(c, Some(c) if unicode_xid::UnicodeXID::is_xid_continue(c))
 }
 
-trait OptionCharExt {
-    #[must_use]
+/// Extension trait for `Option<char>` to reduce code duplication.
+trait IsAsciiExt {
+    /// Returns `true` if `self` is an ASCII digit.
     fn is_ascii_digit(&self) -> bool;
 
-    #[must_use]
+    /// Returns `true` if `self` is an ASCII hex digit.
     fn is_ascii_hexdigit(&self) -> bool;
 }
 
-impl OptionCharExt for Option<char> {
+impl IsAsciiExt for Option<char> {
     fn is_ascii_digit(&self) -> bool {
         matches!(self, Some(c) if c.is_ascii_digit())
     }

@@ -1,6 +1,22 @@
 //! The crate implements string internering for Stellar programming language
-//! compiler. It allows to cache strings and associate them with unique symbols.
-//! These allows constant time comparisons and look-ups to underlying interned strings!
+//! compiler.
+//!
+//! # String interning
+//!
+//! It allows to cache strings and associate them with unique symbols. These allows
+//! constant time comparisons and look-ups to underlying interned strings!
+//!
+//! ```txt
+//! "test" -> intern -> Id(1)
+//! "halo" -> intern -> Id(2)
+//! "test" -> intern -> Id(1)
+//!
+//! "test" ? "test" -> Id(1) == Id(1) // constant time comparison
+//! "test" ? "halo" -> Id(1) != Id(2)
+//!
+//! Id(1) -> resolve -> "test"
+//! Id(2) -> resolve -> "halo"
+//! ```
 //!
 //! See the [`Interner`] for more information.
 
