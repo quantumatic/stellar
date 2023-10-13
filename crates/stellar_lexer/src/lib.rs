@@ -1,7 +1,17 @@
 //! This crate provides a lexer for Stellar programming language.
 //!
-//! Lexer is a first stage of compilation, state machine that converts
-//! source text into [`Token`]s.
+//! Lexer is a first stage of compilation, that converts raw sources
+//! into [`Token`]s.
+//!
+//! ```txt
+//! "fun main() { println(\"hello\") }" -> l = Lexer::new(filepath, source)
+//!                                          |_ l.next_token() = Keyword(Fun)
+//!                                          |_ l.next_token() = Identifier(main)
+//!                                          |
+//!                                         ...
+//!                                          |
+//!                                          |_ l.next_token() = EndOfFile
+//! ```
 //!
 //! See [`Lexer`] for more information.
 

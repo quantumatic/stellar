@@ -1,8 +1,8 @@
 //! Defines a [`InMemoryFile`] to represent a Stellar source file and provides some utilities.
 
+use std::cmp::Ordering;
 use std::io;
 use std::ops::Range;
-use std::{cmp::Ordering, path::PathBuf};
 
 use stellar_interner::PathId;
 
@@ -11,8 +11,8 @@ use crate::location::ByteOffset;
 /// A Stellar source file.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct InMemoryFile {
-    /// The path of the source file.
-    pub path: PathBuf,
+    /// The path of the file.
+    pub path: PathId,
 
     /// The source content of the file.
     pub source: String,
@@ -30,23 +30,11 @@ impl InMemoryFile {
     /// # Errors
     /// If the source of the file cannot be read.
     #[inline(always)]
-    pub fn new(path: impl Into<PathBuf> + Clone) -> Result<Self, io::Error> {
+    pub fn new(path: PathId) -> Result<Self, io::Error> {
         Ok(Self::new_from_source(
-            path.clone(),
-            std::fs::read_to_string(path.into())?,
+            path,
+            std::fs::read_to_string(path.resolve())?,
         ))
-    }
-
-    /// Creates a new [`InMemoryFile`] from its path id.
-    ///
-    /// # Panics
-    /// If the path id cannot be resolved in the path storage.
-    ///
-    /// # Errors
-    /// If the source of the file cannot be read.
-    #[inline(always)]
-    pub fn new_from_path(path: PathId) -> Result<Self, io::Error> {
-        Self::new(path.resolve_or_panic())
     }
 
     /// Creates a new [`InMemoryFile`] and panics if its contents
@@ -56,27 +44,16 @@ impl InMemoryFile {
     /// If the file contents cannot be read.
     #[inline(always)]
     #[must_use]
-    pub fn new_or_panic(path: impl Into<PathBuf> + Clone) -> Self {
+    pub fn new_or_panic(path: PathId) -> Self {
         Self::new(path).expect("Cannot read the file")
-    }
-
-    /// Creates a new [`InMemoryFile`] from its path id.
-    ///
-    /// # Panics
-    /// * If the path id cannot be resolved in the path storage.
-    /// * If the source of the file cannot be read.
-    #[inline(always)]
-    #[must_use]
-    pub fn new_from_path_or_panic(path: PathId) -> Self {
-        Self::new_or_panic(path.resolve_or_panic())
     }
 
     /// Creates a new [`InMemoryFile`] with the given source.
     #[inline(always)]
     #[must_use]
-    pub fn new_from_source(path: impl Into<PathBuf>, source: String) -> Self {
+    pub fn new_from_source(path: PathId, source: String) -> Self {
         Self {
-            path: path.into(),
+            path,
             source_len: source.len(),
             line_starts: std::iter::once(0)
                 .chain(source.match_indices('\n').map(|(i, _)| i + 1))

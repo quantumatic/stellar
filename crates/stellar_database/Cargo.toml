@@ -19,6 +19,7 @@ stellar_interner = { path = "../stellar_interner" }
 stellar_thir = { path = "../stellar_thir" }
 serde = { version = "1.0.188", features = ["derive"], optional = true }
 bincode = { version = "1.3.3", optional = true }
+filetime = "0.2.22"
 
 [features]
 serde = ["dep:serde"]

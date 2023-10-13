@@ -3,6 +3,7 @@
     html_favicon_url = "https://raw.githubusercontent.com/quantumatic/stellar/main/additional/icon/stellar.png"
 )]
 
+use filetime::FileTime;
 use paste::paste;
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
@@ -968,7 +969,7 @@ impl PackageId {
 }
 
 /// The information Stellar compiler has about a particular package.
-#[derive(Default, Debug)]
+#[derive(Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct PackageData {
     /// The ID of the root module of the package.
@@ -997,6 +998,10 @@ pub struct PackageData {
     /// List of packages that the package depends on.
     #[allow(dead_code)]
     dependencies: FxHashMap<IdentifierId, PackageId>,
+
+    /// The time of the last modification of the package folder.
+    #[allow(dead_code)]
+    last_modification_time: FileTime,
 
     // Information about all package-related compiler entities.
     modules: Vec<ModuleData>,

@@ -8,6 +8,7 @@ use std::io;
 /// If `hir.json` already exists, and you invoke
 /// `make_unique_file("hir", "json")`, then it will create
 /// a file with the path: `hir (2).json`.
+#[inline(always)]
 pub fn make_unique_file(
     name: impl AsRef<str>,
     extension: impl AsRef<str>,

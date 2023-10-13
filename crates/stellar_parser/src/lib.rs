@@ -207,7 +207,7 @@ pub fn read_and_parse_module(
     filepath: PathId,
 ) -> Result<ParsedModule, io::Error> {
     let module = ModuleData::alloc(state.db_mut(), package, module_name, filepath);
-    let source = fs::read_to_string(filepath.resolve_or_panic())?;
+    let source = fs::read_to_string(filepath.resolve())?;
 
     let mut parse_state = ParseState::new(filepath, &source, state.diagnostics_mut());
 

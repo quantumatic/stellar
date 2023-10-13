@@ -1,12 +1,11 @@
-use std::path::Path;
-
 use stellar_filesystem::in_memory_file::InMemoryFile;
+use stellar_interner::PathId;
 
 const TEST_SOURCE: &str = "foo\nbar\r\n\nbaz";
 
 #[test]
 fn line_starts() {
-    let file = InMemoryFile::new_from_source(Path::new("test.sr"), TEST_SOURCE.to_owned());
+    let file = InMemoryFile::new_from_source(PathId::from("test.sr"), TEST_SOURCE.to_owned());
 
     assert_eq!(
         file.line_starts,
@@ -21,7 +20,7 @@ fn line_starts() {
 
 #[test]
 fn line_span_sources() {
-    let file = InMemoryFile::new_from_source(Path::new("test.sr"), TEST_SOURCE.to_owned());
+    let file = InMemoryFile::new_from_source(PathId::from("test.sr"), TEST_SOURCE.to_owned());
 
     let line_sources = (0..4)
         .map(|line| {

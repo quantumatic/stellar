@@ -47,7 +47,7 @@ impl InMemoryFileStorage {
     /// If the file contents cannot be read.
     #[inline(always)]
     pub fn read_and_add_file(&mut self, path: PathId) -> Result<(), io::Error> {
-        let file = InMemoryFile::new_from_path(path)?;
+        let file = InMemoryFile::new(path)?;
         self.add_file(path, file);
 
         Ok(())
@@ -59,8 +59,7 @@ impl InMemoryFileStorage {
     /// If the file contents cannot be read.
     #[inline(always)]
     pub fn read_and_add_file_or_panic(&mut self, path: PathId) {
-        self.0
-            .insert(path, InMemoryFile::new_or_panic(path.resolve_or_panic()));
+        self.0.insert(path, InMemoryFile::new_or_panic(path));
     }
 
     /// Adds a file into the storage if it does not exist.
@@ -82,16 +81,6 @@ impl InMemoryFileStorage {
         }
 
         Ok(())
-    }
-
-    /// Reads and adds a file into the storage if it does not exist.
-    ///
-    /// # Panics
-    /// If the file contents cannot be read.
-    #[inline(always)]
-    #[must_use]
-    pub fn read_and_add_file_if_not_exists_or_panic(&mut self, path: PathId) -> InMemoryFile {
-        InMemoryFile::new_or_panic(path.resolve_or_panic())
     }
 
     /// Resolves a file from the storage by its path id.
