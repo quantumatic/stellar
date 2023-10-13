@@ -26,14 +26,14 @@ pub struct ExpressionParser {
 
 impl ExpressionParser {
     /// Creates a parser for expressions with lowest precedence.
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub fn new() -> Self {
         Self::default()
     }
 
     /// Creates a parser for expressions with specified precedence.
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub const fn with_precedence(mut self, precedence: Precedence) -> Self {
         self.precedence = precedence;
@@ -41,7 +41,7 @@ impl ExpressionParser {
     }
 
     /// Creates a parser for expressions, that disallows struct expressions.
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub const fn prohibit_struct_expressions(mut self) -> Self {
         self.prohibit_struct_expressions = true;
@@ -50,7 +50,7 @@ impl ExpressionParser {
 
     /// Creates a parser for expressions, that disallows struct expressions if
     /// condition is satisfied.
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub const fn prohibit_struct_expressions_if(mut self, condition: bool) -> Self {
         self.prohibit_struct_expressions = condition;
@@ -59,7 +59,7 @@ impl ExpressionParser {
 
     /// Creates a parser for expressions, that prints diagnostics
     /// specific to statements blocks.
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub const fn in_statements_block(mut self) -> Self {
         self.in_statements_block = true;

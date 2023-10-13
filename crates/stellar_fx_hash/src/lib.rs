@@ -57,8 +57,7 @@
     clippy::module_name_repetitions,
     clippy::too_many_lines,
     clippy::option_if_let_else,
-    clippy::cast_possible_truncation,
-    clippy::inline_always
+    clippy::cast_possible_truncation
 )]
 
 use std::{
@@ -96,14 +95,14 @@ const K: usize = 0x9e37_79b9;
 const K: usize = 0x517c_c1b7_2722_0a95;
 
 impl FxHasher {
-    #[inline(always)]
+    #[inline]
     fn add_to_hash(&mut self, i: usize) {
         self.hash = self.hash.rotate_left(5).bitxor(i).wrapping_mul(K);
     }
 }
 
 impl Hasher for FxHasher {
-    #[inline(always)]
+    #[inline]
     fn write(&mut self, mut bytes: &[u8]) {
         #[cfg(target_pointer_width = "32")]
         let read_usize = |bytes: &[u8]| u32::from_ne_bytes(bytes[..4].try_into().unwrap());
@@ -132,40 +131,40 @@ impl Hasher for FxHasher {
         self.hash = hash.hash;
     }
 
-    #[inline(always)]
+    #[inline]
     fn write_u8(&mut self, i: u8) {
         self.add_to_hash(i as usize);
     }
 
-    #[inline(always)]
+    #[inline]
     fn write_u16(&mut self, i: u16) {
         self.add_to_hash(i as usize);
     }
 
-    #[inline(always)]
+    #[inline]
     fn write_u32(&mut self, i: u32) {
         self.add_to_hash(i as usize);
     }
 
     #[cfg(target_pointer_width = "32")]
-    #[inline(always)]
+    #[inline]
     fn write_u64(&mut self, i: u64) {
         self.add_to_hash(i as usize);
         self.add_to_hash((i >> 32) as usize);
     }
 
     #[cfg(target_pointer_width = "64")]
-    #[inline(always)]
+    #[inline]
     fn write_u64(&mut self, i: u64) {
         self.add_to_hash(i as usize);
     }
 
-    #[inline(always)]
+    #[inline]
     fn write_usize(&mut self, i: usize) {
         self.add_to_hash(i);
     }
 
-    #[inline(always)]
+    #[inline]
     fn finish(&self) -> u64 {
         self.hash as u64
     }

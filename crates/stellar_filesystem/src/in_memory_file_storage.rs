@@ -29,14 +29,14 @@ pub struct InMemoryFileStorage(FxHashMap<PathId, InMemoryFile>);
 
 impl InMemoryFileStorage {
     /// Creates an empty storage.
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub fn new() -> Self {
         Self::default()
     }
 
     /// Adds a file into the storage.
-    #[inline(always)]
+    #[inline]
     pub fn add_file(&mut self, path: PathId, file: InMemoryFile) {
         self.0.insert(path, file);
     }
@@ -45,7 +45,7 @@ impl InMemoryFileStorage {
     ///
     /// # Errors
     /// If the file contents cannot be read.
-    #[inline(always)]
+    #[inline]
     pub fn read_and_add_file(&mut self, path: PathId) -> Result<(), io::Error> {
         let file = InMemoryFile::new(path)?;
         self.add_file(path, file);
@@ -57,13 +57,13 @@ impl InMemoryFileStorage {
     ///
     /// # Panics
     /// If the file contents cannot be read.
-    #[inline(always)]
+    #[inline]
     pub fn read_and_add_file_or_panic(&mut self, path: PathId) {
         self.0.insert(path, InMemoryFile::new_or_panic(path));
     }
 
     /// Adds a file into the storage if it does not exist.
-    #[inline(always)]
+    #[inline]
     pub fn add_file_if_not_exists(&mut self, path: PathId, file: InMemoryFile) {
         if !self.0.contains_key(&path) {
             self.add_file(path, file);
@@ -74,7 +74,7 @@ impl InMemoryFileStorage {
     ///
     /// # Errors
     /// If the file contents cannot be read.
-    #[inline(always)]
+    #[inline]
     pub fn read_and_add_file_if_not_exists(&mut self, path: PathId) -> Result<(), io::Error> {
         if !self.0.contains_key(&path) {
             self.read_and_add_file(path)?;
@@ -84,7 +84,7 @@ impl InMemoryFileStorage {
     }
 
     /// Resolves a file from the storage by its path id.
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub fn resolve_file(&self, path: PathId) -> Option<&InMemoryFile> {
         self.0.get(&path)

@@ -58,7 +58,7 @@ pub struct Label {
 
 impl Label {
     /// Create a new label.
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub const fn new(style: LabelStyle, location: Location) -> Self {
         Self {
@@ -71,7 +71,7 @@ impl Label {
     /// Create a new label with a style of [`LabelStyle::Primary`].
     ///
     /// [`LabelStyle::Primary`]: LabelStyle::Primary
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub const fn primary(location: Location) -> Self {
         Self::new(LabelStyle::Primary, location)
@@ -80,14 +80,14 @@ impl Label {
     /// Create a new label with a style of [`LabelStyle::Secondary`].
     ///
     /// [`LabelStyle::Secondary`]: LabelStyle::Secondary
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub const fn secondary(location: Location) -> Self {
         Self::new(LabelStyle::Secondary, location)
     }
 
     /// Add a message to the diagnostic.
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub fn with_message(mut self, message: impl ToString) -> Self {
         self.message = message.to_string();
@@ -123,7 +123,7 @@ pub struct Diagnostic {
 
 impl Diagnostic {
     /// Create a new diagnostic.
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub const fn new(severity: Severity) -> Self {
         Self {
@@ -138,7 +138,7 @@ impl Diagnostic {
     /// Create a new diagnostic with a severity of [`Severity::Bug`].
     ///
     /// [`Severity::Bug`]: Severity::Bug
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub const fn bug() -> Self {
         Self::new(Severity::Bug)
@@ -147,7 +147,7 @@ impl Diagnostic {
     /// Create a new diagnostic with a severity of [`Severity::Error`].
     ///
     /// [`Severity::Error`]: Severity::Error
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub const fn error() -> Self {
         Self::new(Severity::Error)
@@ -156,7 +156,7 @@ impl Diagnostic {
     /// Create a new diagnostic with a severity of [`Severity::Warning`].
     ///
     /// [`Severity::Warning`]: Severity::Warning
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub const fn warning() -> Self {
         Self::new(Severity::Warning)
@@ -165,7 +165,7 @@ impl Diagnostic {
     /// Create a new diagnostic with a severity of [`Severity::Note`].
     ///
     /// [`Severity::Note`]: Severity::Note
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub const fn note() -> Self {
         Self::new(Severity::Note)
@@ -174,14 +174,14 @@ impl Diagnostic {
     /// Create a new diagnostic with a severity of [`Severity::Help`].
     ///
     /// [`Severity::Help`]: Severity::Help
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub const fn help() -> Self {
         Self::new(Severity::Help)
     }
 
     /// Set the error code of the diagnostic.
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub fn with_code(mut self, code: impl ToString) -> Self {
         self.code = Some(code.to_string());
@@ -189,7 +189,7 @@ impl Diagnostic {
     }
 
     /// Set the message of the diagnostic.
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub fn with_message(mut self, message: impl ToString) -> Self {
         self.message = message.to_string();
@@ -197,7 +197,7 @@ impl Diagnostic {
     }
 
     /// Add a label to the diagnostic.
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub fn with_label(mut self, label: Label) -> Self {
         self.labels.push(label);
@@ -205,7 +205,7 @@ impl Diagnostic {
     }
 
     /// Add some labels to the diagnostic.
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub fn with_labels(mut self, labels: impl IntoIterator<Item = Label>) -> Self {
         self.labels.append(&mut labels.into_iter().collect());
@@ -213,7 +213,7 @@ impl Diagnostic {
     }
 
     /// Add some notes to the diagnostic.
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub fn with_notes(mut self, notes: impl IntoIterator<Item = impl ToString>) -> Self {
         self.notes
@@ -222,7 +222,7 @@ impl Diagnostic {
     }
 
     /// Returns the files involved in the diagnostic.
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub fn files_involved(&self) -> Vec<stellar_interner::PathId> {
         self.labels

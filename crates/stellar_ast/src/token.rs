@@ -77,7 +77,7 @@ pub struct LexError {
 }
 
 impl From<LexError> for Token {
-    #[inline(always)]
+    #[inline]
     fn from(value: LexError) -> Self {
         Self {
             location: value.location,
@@ -370,7 +370,7 @@ pub enum RawToken {
 }
 
 impl RawToken {
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub const fn is_error(&self) -> bool {
         matches!(self, Self::Error(_))
@@ -414,7 +414,7 @@ impl From<RawToken> for String {
 }
 
 impl RawToken {
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub const fn eof(&self) -> bool {
         matches!(self, Self::EndOfFile)
@@ -470,14 +470,14 @@ impl From<RawToken> for Precedence {
 }
 
 impl From<Punctuator> for String {
-    #[inline(always)]
+    #[inline]
     fn from(punctuator: Punctuator) -> Self {
         punctuator.to_string()
     }
 }
 
 impl From<Keyword> for String {
-    #[inline(always)]
+    #[inline]
     fn from(keyword: Keyword) -> Self {
         keyword.to_string()
     }

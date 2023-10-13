@@ -71,8 +71,7 @@
     clippy::too_many_lines,
     clippy::option_if_let_else,
     clippy::redundant_pub_crate,
-    clippy::unnested_or_patterns,
-    clippy::inline_always
+    clippy::unnested_or_patterns
 )]
 
 use std::{mem, str::Chars, string::String};
@@ -173,7 +172,7 @@ pub struct Lexer<'s> {
 
 impl<'s> Lexer<'s> {
     /// Creates a [`Lexer`] state instantiated at the first character.
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub fn new(filepath: PathId, source: &'s str) -> Self {
         let mut chars = source.chars();
@@ -193,14 +192,14 @@ impl<'s> Lexer<'s> {
 
     /// Returns a string being scanned early on (after processing escape sequences) and
     /// cleans internal lexer string buffer. So it must be used only once!
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub fn scanned_string(&mut self) -> String {
         mem::take(&mut self.scanned_string)
     }
 
     /// Returns a string being scanned early on (after processing escape sequences).
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub fn scanned_string_slice(&self) -> &str {
         &self.scanned_string
@@ -290,7 +289,7 @@ impl<'s> Lexer<'s> {
     /// where its arguments are the current and next characters.
     /// Returns the string slice of source text between `start_offset`
     /// and `self.offset` when `f` returns `false` OR `self.eof() == true`.
-    #[inline(always)]
+    #[inline]
     fn advance_while<F>(&mut self, start_offset: ByteOffset, mut f: F) -> &'s str
     where
         F: FnMut(Option<char>, Option<char>) -> bool,

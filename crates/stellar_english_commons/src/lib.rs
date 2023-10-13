@@ -55,8 +55,7 @@
 #![allow(
     clippy::module_name_repetitions,
     clippy::too_many_lines,
-    clippy::option_if_let_else,
-    clippy::inline_always
+    clippy::option_if_let_else
 )]
 
 pub mod enumeration;

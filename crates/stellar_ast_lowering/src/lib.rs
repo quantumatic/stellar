@@ -43,35 +43,35 @@ pub struct LoweredModule {
 
 impl LoweredModule {
     /// Constructs a new lowered module.
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub const fn new(id: ModuleId, hir: stellar_hir::Module) -> Self {
         Self { id, hir }
     }
 
     /// Returns the ID of the module in the database.
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub const fn id(&self) -> ModuleId {
         self.id
     }
 
     /// Returns the HIR of the module.
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub const fn hir(&self) -> &stellar_hir::Module {
         &self.hir
     }
 
     /// Returns the HIR of the module.
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub fn hir_mut(&mut self) -> &mut stellar_hir::Module {
         &mut self.hir
     }
 
     /// Returns the HIR of the module.
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub fn into_hir(self) -> stellar_hir::Module {
         self.hir
@@ -79,7 +79,7 @@ impl LoweredModule {
 }
 
 impl From<LoweredModule> for stellar_hir::Module {
-    #[inline(always)]
+    #[inline]
     fn from(result: LoweredModule) -> Self {
         result.into_hir()
     }

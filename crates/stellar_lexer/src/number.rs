@@ -195,7 +195,7 @@ impl Lexer<'_> {
         invalid_digit_offset: &mut Option<ByteOffset>,
         digit_separator: &mut i32,
     ) {
-        #[inline(always)]
+        #[inline]
         fn set_if_none<T>(option: &mut Option<T>, value: T) {
             if option.is_none() {
                 *option = Some(value);

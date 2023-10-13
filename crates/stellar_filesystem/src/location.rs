@@ -38,7 +38,7 @@ impl Index<Location> for str {
 pub struct ByteOffset(pub usize);
 
 impl From<usize> for ByteOffset {
-    #[inline(always)]
+    #[inline]
     fn from(value: usize) -> Self {
         Self(value)
     }
@@ -47,7 +47,7 @@ impl From<usize> for ByteOffset {
 impl Add for ByteOffset {
     type Output = Self;
 
-    #[inline(always)]
+    #[inline]
     fn add(self, rhs: Self) -> Self::Output {
         Self(self.0 + rhs.0)
     }
@@ -56,21 +56,21 @@ impl Add for ByteOffset {
 impl Add<usize> for ByteOffset {
     type Output = Self;
 
-    #[inline(always)]
+    #[inline]
     fn add(self, rhs: usize) -> Self::Output {
         Self(self.0 + rhs)
     }
 }
 
 impl AddAssign for ByteOffset {
-    #[inline(always)]
+    #[inline]
     fn add_assign(&mut self, rhs: Self) {
         self.0 += rhs.0;
     }
 }
 
 impl AddAssign<usize> for ByteOffset {
-    #[inline(always)]
+    #[inline]
     fn add_assign(&mut self, rhs: usize) {
         self.0 += rhs;
     }
@@ -79,7 +79,7 @@ impl AddAssign<usize> for ByteOffset {
 impl Sub for ByteOffset {
     type Output = Self;
 
-    #[inline(always)]
+    #[inline]
     fn sub(self, rhs: Self) -> Self::Output {
         Self(self.0 - rhs.0)
     }
@@ -88,21 +88,21 @@ impl Sub for ByteOffset {
 impl Sub<usize> for ByteOffset {
     type Output = Self;
 
-    #[inline(always)]
+    #[inline]
     fn sub(self, rhs: usize) -> Self::Output {
         Self(self.0 - rhs)
     }
 }
 
 impl SubAssign for ByteOffset {
-    #[inline(always)]
+    #[inline]
     fn sub_assign(&mut self, rhs: Self) {
         self.0 -= rhs.0;
     }
 }
 
 impl SubAssign<usize> for ByteOffset {
-    #[inline(always)]
+    #[inline]
     fn sub_assign(&mut self, rhs: usize) {
         self.0 -= rhs;
     }
@@ -110,7 +110,7 @@ impl SubAssign<usize> for ByteOffset {
 
 impl ByteOffset {
     /// Returns location of the next byte relative to the current offset.
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub const fn next_byte_location_at(self, filepath: PathId) -> Location {
         Location {
@@ -121,7 +121,7 @@ impl ByteOffset {
     }
 
     /// Returns location of the previous byte relative to the current offset.
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub const fn previous_byte_location_at(self, filepath: PathId) -> Location {
         Location {
@@ -172,7 +172,7 @@ impl Location {
     ///     }
     /// );
     /// ```
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub const fn start_byte_location(self) -> Self {
         self.start.next_byte_location_at(self.filepath)
@@ -199,7 +199,7 @@ impl Location {
     ///     }
     /// );
     /// ```
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub const fn end_byte_location(self) -> Self {
         self.end.previous_byte_location_at(self.filepath)

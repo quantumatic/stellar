@@ -214,21 +214,21 @@ impl From<LineTooLargeError> for Error {
 }
 
 impl<'a> DiagnosticsRenderHelper<'a> for InMemoryFileStorage {
-    #[inline(always)]
+    #[inline]
     fn name(&'a self, filepath: PathId) -> Result<String, Error> {
         self.resolve_file(filepath)
             .map(|file| file.path.resolve().display().to_string())
             .ok_or(Error::FileMissing)
     }
 
-    #[inline(always)]
+    #[inline]
     fn source(&'a self, filepath: PathId) -> Result<&'a str, Error> {
         self.resolve_file(filepath)
             .map(|file| file.source.as_str())
             .ok_or(Error::FileMissing)
     }
 
-    #[inline(always)]
+    #[inline]
     fn line_index(&'a self, filepath: PathId, byte_offset: ByteOffset) -> Result<usize, Error> {
         self.resolve_file(filepath)
             .ok_or(Error::FileMissing)

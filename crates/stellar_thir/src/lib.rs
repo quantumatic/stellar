@@ -56,8 +56,7 @@
     clippy::module_name_repetitions,
     clippy::too_many_lines,
     clippy::option_if_let_else,
-    clippy::unnested_or_patterns,
-    clippy::inline_always
+    clippy::unnested_or_patterns
 )]
 
 use generic_parameter_scope::GenericParameterScope;
@@ -135,7 +134,7 @@ pub enum Pattern {
 
 impl Pattern {
     /// Returns the location of the pattern.
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub const fn location(&self) -> Location {
         match self {
@@ -313,7 +312,7 @@ pub enum TypeArgument {
 
 impl Expression {
     /// Returns the location of the expression.
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub const fn location(&self) -> Location {
         match self {
@@ -361,7 +360,7 @@ impl Expression {
     /// Returns `true` if this expression has a block in it (except function expressions).
     /// Used to determine if this expression has to have semicolon at the end.
     /// Function expression do have blocks in them, but they must have a semicolon at the end.
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub const fn with_block(&self) -> bool {
         matches!(
@@ -533,7 +532,7 @@ pub struct Path {
 }
 
 impl From<&stellar_hir::Path> for Path {
-    #[inline(always)]
+    #[inline]
     fn from(value: &stellar_hir::Path) -> Self {
         Self {
             identifiers: value.identifiers.iter().map(|ast| ast.id).collect(),

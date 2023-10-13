@@ -82,8 +82,7 @@
     clippy::too_many_lines,
     clippy::option_if_let_else,
     clippy::redundant_pub_crate,
-    clippy::unnested_or_patterns,
-    clippy::inline_always
+    clippy::unnested_or_patterns
 )]
 
 use std::collections::BTreeMap;
@@ -107,7 +106,7 @@ pub struct TomlManifest {
 
 impl TomlManifest {
     /// Returns a new toml manifest struct with a given package.
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub const fn new(package: TomlPackage) -> Self {
         Self {
@@ -117,7 +116,7 @@ impl TomlManifest {
     }
 
     /// Returns a new toml manifest struct with given dependencies.
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub fn with_dependencies(
         mut self,
@@ -157,7 +156,7 @@ pub struct TomlPackage {
 impl TomlPackage {
     /// Returns a new toml package struct with a given name and version.
     /// Other fieds can be constructed using `with_*` methods.
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub fn new(name: impl Into<String>, version: impl Into<String>) -> Self {
         Self {
@@ -173,7 +172,7 @@ impl TomlPackage {
     }
 
     /// Builds a new toml package struct with a given description.
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub fn with_description(mut self, description: impl Into<String>) -> Self {
         self.description = Some(description.into());
@@ -181,7 +180,7 @@ impl TomlPackage {
     }
 
     /// Builds a new toml package struct with a given license.
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub fn with_license(mut self, license: impl Into<String>) -> Self {
         self.license = Some(license.into());
@@ -189,7 +188,7 @@ impl TomlPackage {
     }
 
     /// Builds a new toml package struct with a given author.
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub fn with_author(mut self, author: impl Into<String>) -> Self {
         self.author = Some(author.into());
@@ -197,7 +196,7 @@ impl TomlPackage {
     }
 
     /// Builds a new toml package struct with a given repository.
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub fn with_repository(mut self, repository: impl Into<String>) -> Self {
         self.repository = Some(repository.into());
@@ -205,7 +204,7 @@ impl TomlPackage {
     }
 
     /// Builds a new toml package struct with given keywords.
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub fn with_keywords(mut self, keywords: impl IntoIterator<Item = impl Into<String>>) -> Self {
         self.keywords = Some(keywords.into_iter().map(Into::into).collect());
@@ -213,7 +212,7 @@ impl TomlPackage {
     }
 
     /// Builds a new toml package struct with given categories.
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub fn with_categories(
         mut self,
@@ -239,14 +238,14 @@ pub struct TomlDependency {
 
 impl TomlDependency {
     /// Returns a new empty toml dependency struct.
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub fn new() -> Self {
         Self::default()
     }
 
     /// Builds a new toml dependency struct with a given version.
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub fn with_version(mut self, version: impl Into<String>) -> Self {
         self.version = Some(version.into());
@@ -254,7 +253,7 @@ impl TomlDependency {
     }
 
     /// Builds a new toml dependency struct with a given path.s
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub fn with_path(mut self, path: impl Into<String>) -> Self {
         self.path = Some(path.into());
@@ -262,7 +261,7 @@ impl TomlDependency {
     }
 
     /// Builds a new toml dependency struct with a given author.
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub fn with_author(mut self, author: impl Into<String>) -> Self {
         self.author = Some(author.into());

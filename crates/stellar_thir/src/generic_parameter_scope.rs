@@ -27,7 +27,7 @@ pub struct GenericParameterScope {
 
 impl GenericParameterScope {
     /// Creates a new empty generic parameter scope.
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub fn new(parent: Option<Arc<Self>>) -> Self {
         Self {
@@ -37,7 +37,7 @@ impl GenericParameterScope {
     }
 
     /// Adds a generic paramater into the scope.
-    #[inline(always)]
+    #[inline]
     pub fn add_generic_parameter(
         &mut self,
         parameter_name: IdentifierId,

@@ -14,42 +14,42 @@ pub struct PackagePathResolver<'p> {
 
 impl<'p> PackagePathResolver<'p> {
     /// Constructs a new [`PackagePathResolver`].
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub const fn new(root: &'p Path) -> Self {
         Self { root }
     }
 
     /// Returns the path of the package root.
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub const fn root(&self) -> &'p Path {
         self.root
     }
 
     /// Returns the path of the package README.
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub fn readme(&self) -> PathBuf {
         self.root.join("README.md")
     }
 
     /// Returns the path of the package configuration file.
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub fn manifest(&self) -> PathBuf {
         self.root.join("package.toml")
     }
 
     /// Returns the path of the package source directory.
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub fn source_directory(&self) -> PathBuf {
         self.root.join("src")
     }
 
     /// Returns the path of the build directory (used by the compiler).
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub fn build_directory(&self) -> PathBuf {
         self.root.join("build")

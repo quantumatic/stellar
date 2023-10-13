@@ -13,7 +13,7 @@
     html_favicon_url = "https://raw.githubusercontent.com/quantumatic/stellar/main/additional/icon/stellar.png"
 )]
 
-#[inline(always)]
+#[inline]
 /// Brings [likely](core::intrinsics::likely) to stable Rust.
 pub const fn likely(b: bool) -> bool {
     #[allow(clippy::needless_bool)]
@@ -24,7 +24,7 @@ pub const fn likely(b: bool) -> bool {
     }
 }
 
-#[inline(always)]
+#[inline]
 /// Brings [unlikely](core::intrinsics::unlikely) to stable Rust.
 pub const fn unlikely(b: bool) -> bool {
     #[allow(clippy::needless_bool)]

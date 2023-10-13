@@ -93,7 +93,7 @@ pub struct UnnecessaryVisibilityQualifierDiagnostic {
 }
 
 impl BuildDiagnostic for UnnecessaryVisibilityQualifierDiagnostic {
-    #[inline(always)]
+    #[inline]
     fn build(self) -> Diagnostic {
         let mut labels =
             vec![Label::primary(self.location).with_message("help: remove this `pub`")];

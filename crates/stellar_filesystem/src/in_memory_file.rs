@@ -29,7 +29,7 @@ impl InMemoryFile {
     ///
     /// # Errors
     /// If the source of the file cannot be read.
-    #[inline(always)]
+    #[inline]
     pub fn new(path: PathId) -> Result<Self, io::Error> {
         Ok(Self::new_from_source(
             path,
@@ -42,14 +42,14 @@ impl InMemoryFile {
     ///
     /// # Panics
     /// If the file contents cannot be read.
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub fn new_or_panic(path: PathId) -> Self {
         Self::new(path).expect("Cannot read the file")
     }
 
     /// Creates a new [`InMemoryFile`] with the given source.
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub fn new_from_source(path: PathId, source: String) -> Self {
         Self {

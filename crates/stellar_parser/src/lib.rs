@@ -61,8 +61,7 @@
     clippy::too_many_lines,
     clippy::option_if_let_else,
     clippy::redundant_pub_crate,
-    clippy::unnested_or_patterns,
-    clippy::inline_always
+    clippy::unnested_or_patterns
 )]
 
 pub mod diagnostics;
@@ -153,35 +152,35 @@ pub struct ParseResult {
 
 impl ParseResult {
     /// Creates a new instance of [`ParsedModule`].
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub const fn new(module: ModuleId, ast: Module) -> Self {
         Self { module, ast }
     }
 
     /// Returns the module AST.
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub const fn ast(&self) -> &Module {
         &self.ast
     }
 
     /// Returns the ID of the module in database.
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub const fn module(&self) -> ModuleId {
         self.module
     }
 
     /// Returns the module AST.
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub fn into_ast(self) -> Module {
         self.ast
     }
 
     /// Returns the module AST.
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub fn ast_mut(&mut self) -> &mut Module {
         &mut self.ast
@@ -195,7 +194,7 @@ impl ParseResult {
 ///
 /// # Panics
 /// Panics if the file path cannot be resolved in the path storage.
-#[inline(always)]
+#[inline]
 pub fn read_and_parse_module(
     state: &mut State,
     package: PackageId,
@@ -218,7 +217,7 @@ pub fn read_and_parse_module(
 }
 
 /// Parse a Stellar module.
-#[inline(always)]
+#[inline]
 #[must_use]
 pub fn parse_module(
     state: &mut State,
@@ -241,7 +240,7 @@ pub fn parse_module(
 }
 
 /// Parse a Stellar module using a given parse state.
-#[inline(always)]
+#[inline]
 #[must_use]
 pub fn parse_module_using(
     state: &mut State,
@@ -265,7 +264,7 @@ pub fn parse_module_using(
 }
 
 /// Parse an item.
-#[inline(always)]
+#[inline]
 #[must_use]
 pub fn parse_item(
     filepath: PathId,
@@ -276,14 +275,14 @@ pub fn parse_item(
 }
 
 /// Parse an item.
-#[inline(always)]
+#[inline]
 #[must_use]
 pub fn parse_item_using(state: &mut ParseState<'_, '_>) -> Option<ModuleItem> {
     ItemParser.parse(state)
 }
 
 /// Parse an expression.
-#[inline(always)]
+#[inline]
 #[must_use]
 pub fn parse_expression(
     filepath: PathId,
@@ -294,14 +293,14 @@ pub fn parse_expression(
 }
 
 /// Parse an expression.
-#[inline(always)]
+#[inline]
 #[must_use]
 pub fn parse_expression_using(state: &mut ParseState<'_, '_>) -> Option<Expression> {
     ExpressionParser::default().parse(state)
 }
 
 /// Parse a statement.
-#[inline(always)]
+#[inline]
 #[must_use]
 pub fn parse_statement(
     filepath: PathId,
@@ -312,14 +311,14 @@ pub fn parse_statement(
 }
 
 /// Parse a statement.
-#[inline(always)]
+#[inline]
 #[must_use]
 pub fn parse_statement_using(state: &mut ParseState<'_, '_>) -> Option<Statement> {
     StatementParser.parse(state).map(|s| s.statement)
 }
 
 /// Parse a type.
-#[inline(always)]
+#[inline]
 #[must_use]
 pub fn parse_type(
     filepath: PathId,
@@ -330,14 +329,14 @@ pub fn parse_type(
 }
 
 /// Parse a type.
-#[inline(always)]
+#[inline]
 #[must_use]
 pub fn parse_type_using(state: &mut ParseState<'_, '_>) -> Option<Type> {
     TypeParser.parse(state)
 }
 
 /// Parse a pattern.
-#[inline(always)]
+#[inline]
 #[must_use]
 pub fn parse_pattern(
     filepath: PathId,
@@ -348,7 +347,7 @@ pub fn parse_pattern(
 }
 
 /// Parse a pattern.
-#[inline(always)]
+#[inline]
 #[must_use]
 pub fn parse_pattern_using(state: &mut ParseState<'_, '_>) -> Option<Pattern> {
     PatternParser.parse(state)
@@ -436,7 +435,7 @@ impl<'s, 'd> ParseState<'s, 'd> {
     }
 
     /// Adds diagnostic if the next token has lex error in itself.
-    #[inline(always)]
+    #[inline]
     fn check_next_token(&mut self) {
         if let RawToken::Error(error) = self.next_token.raw {
             self.diagnostics
@@ -448,14 +447,14 @@ impl<'s, 'd> ParseState<'s, 'd> {
     }
 
     /// Returns string slice corresponding to the given location.
-    #[inline(always)]
+    #[inline]
     #[must_use]
     fn resolve_location(&self, location: Location) -> &str {
         &self.lexer.source[location.start.0..location.end.0]
     }
 
     /// Returns string slice corresponding to the current token's location.
-    #[inline(always)]
+    #[inline]
     #[must_use]
     fn resolve_current(&self) -> &str {
         self.resolve_location(self.current_token.location)
@@ -493,7 +492,7 @@ impl<'s, 'd> ParseState<'s, 'd> {
 
     /// Creates a new location with the parser state's file id and
     /// the given starting and ending byte offsets.
-    #[inline(always)]
+    #[inline]
     pub(crate) const fn make_location(&self, start: ByteOffset, end: ByteOffset) -> Location {
         Location {
             filepath: self.lexer.filepath,
@@ -504,7 +503,7 @@ impl<'s, 'd> ParseState<'s, 'd> {
 
     /// Creates a new location with the state's file id and
     /// ending with a current token location's end byte location.
-    #[inline(always)]
+    #[inline]
     pub(crate) const fn location_from(&self, start_offset: ByteOffset) -> Location {
         self.make_location(start_offset, self.current_token.location.end)
     }
@@ -563,7 +562,7 @@ impl<'s, 'd> ParseState<'s, 'd> {
     /// Adds an unexpected token diagnostic.
     ///
     /// See [`diagnostics::UnexpectedToken`] for more details.
-    #[inline(always)]
+    #[inline]
     pub(crate) fn add_unexpected_token_diagnostic(&mut self, expected: impl Into<String>) {
         self.diagnostics.add_diagnostic(UnexpectedToken::new(
             self.current_token.location.end,

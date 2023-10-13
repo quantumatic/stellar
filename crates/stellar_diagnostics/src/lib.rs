@@ -58,8 +58,7 @@
     clippy::redundant_pub_crate,
     clippy::too_many_arguments,
     clippy::needless_pass_by_value,
-    clippy::similar_names,
-    clippy::inline_always
+    clippy::similar_names
 )]
 
 pub mod diagnostic;
@@ -97,7 +96,7 @@ pub struct DiagnosticsEmitter {
 }
 
 impl Default for DiagnosticsEmitter {
-    #[inline(always)]
+    #[inline]
     fn default() -> Self {
         Self::new()
     }
@@ -121,7 +120,7 @@ impl Default for Diagnostics {
 
 impl Diagnostics {
     /// Creates a new instance of [`Diagnostics`].
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub fn new() -> Self {
         Self {
@@ -131,7 +130,7 @@ impl Diagnostics {
     }
 
     /// Adds a diagnostic associated with some files.
-    #[inline(always)]
+    #[inline]
     pub fn add_diagnostic(&mut self, diagnostic: impl BuildDiagnostic) {
         let diagnostic = diagnostic.build();
 
@@ -140,14 +139,14 @@ impl Diagnostics {
     }
 
     /// Returns `true` if diagnostics are fatal.
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub fn is_fatal(&self) -> bool {
         !self.is_ok()
     }
 
     /// Returns `true` if diagnostics are ok.
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub fn is_ok(&self) -> bool {
         self.diagnostics
@@ -184,7 +183,7 @@ impl AsRef<str> for EmptySource {
 
 impl DiagnosticsEmitter {
     /// Create a new [`DiagnosticsEmitter`] instance.
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub fn new() -> Self {
         Self {
@@ -195,7 +194,7 @@ impl DiagnosticsEmitter {
     }
 
     /// Set the stream in which diagnostics is reported into.
-    #[inline(always)]
+    #[inline]
     #[must_use]
     #[allow(clippy::missing_const_for_fn)] // false-positive clippy lint
     pub fn with_diagnostics_writer(mut self, writer: StandardStream) -> Self {
@@ -204,7 +203,7 @@ impl DiagnosticsEmitter {
     }
 
     /// Set the config for diagnostics reporting.
-    #[inline(always)]
+    #[inline]
     #[must_use]
     #[allow(clippy::missing_const_for_fn)] // false-positive clippy lint
     pub fn with_diagnostics_config(mut self, config: Config) -> Self {
@@ -218,7 +217,7 @@ impl DiagnosticsEmitter {
     /// # Panics
     /// * If the file with a given path does not exist.
     /// * If the file path id cannot be resolved in the path storage.
-    #[inline(always)]
+    #[inline]
     fn emit_diagnostic(&self, diagnostic: &Diagnostic) {
         term::emit(
             &mut self.writer.lock(),
@@ -249,7 +248,7 @@ impl DiagnosticsEmitter {
     }
 
     /// Emit global diagnostics.
-    #[inline(always)]
+    #[inline]
     pub fn emit_global_diagnostics(&mut self, global_diagnostics: &Diagnostics) {
         self.initialize_file_storage(&global_diagnostics.files_involved);
         self.emit_diagnostics(&global_diagnostics.diagnostics);
@@ -267,7 +266,7 @@ pub enum DiagnosticsStatus {
 }
 
 /// Returns `true` if the given [`Severity`] is fatal.
-#[inline(always)]
+#[inline]
 #[must_use]
 pub const fn is_fatal_severity(severity: Severity) -> bool {
     matches!(severity, Severity::Error | Severity::Bug)

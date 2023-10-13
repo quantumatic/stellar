@@ -31,14 +31,14 @@ pub struct EnumData {
 
 impl EnumData {
     /// Creates a new enum data object in the database and returns its ID.
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub fn alloc(db: &mut Database, signature: SignatureId) -> EnumId {
         db.add_enum(signature.module(db).0, Self::new(signature))
     }
 
     /// Creates a new enum data object.
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub fn new(signature: SignatureId) -> Self {
         Self {
@@ -56,21 +56,21 @@ pub struct EnumId(pub PackageId, pub usize);
 
 impl EnumId {
     /// Returns a list of predicates associated with the enum.
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub fn signature(self, db: &Database) -> SignatureId {
         db.enum_(self).signature
     }
 
     /// Returns a list of items associated with the enum.
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub fn items(self, db: &Database) -> &FxHashMap<IdentifierId, EnumItemId> {
         &db.enum_(self).items
     }
 
     /// Returns `true` if an item with a given name is contained in the enum definition.
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub fn contains_item(self, db: &Database, name: IdentifierId) -> bool {
         db.enum_(self).items.contains_key(&name)
@@ -93,14 +93,14 @@ pub struct StructData {
 
 impl StructData {
     /// Creates a new struct data object in the database and returns its ID.
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub fn alloc(db: &mut Database, signature: SignatureId) -> StructId {
         db.add_struct(signature.module(db).0, Self::new(signature))
     }
 
     /// Creates a new struct data object.
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub fn new(signature: SignatureId) -> Self {
         Self {
@@ -118,14 +118,14 @@ pub struct StructId(pub PackageId, pub usize);
 
 impl StructId {
     /// Returns a list of predicates associated with the struct.
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub fn signature(self, db: &Database) -> SignatureId {
         db.struct_(self).signature
     }
 
     /// Returns a list of fields associated with the struct.
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub fn fields(self, db: &Database) -> &FxHashMap<IdentifierId, FieldId> {
         &db.struct_(self).fields
@@ -142,14 +142,14 @@ pub struct TupleLikeStructData {
 
 impl TupleLikeStructData {
     /// Creates a new tuple-like struct data object in the database and returns its ID.
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub fn alloc(db: &mut Database, signature: SignatureId) -> TupleLikeStructId {
         db.add_tuple_like_struct(signature.module(db).0, Self::new(signature))
     }
 
     /// Creates a new tuple-like struct data object.
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub fn new(signature: SignatureId) -> Self {
         Self {
@@ -166,7 +166,7 @@ pub struct TupleLikeStructId(pub PackageId, pub usize);
 
 impl TupleLikeStructId {
     /// Returns the type signature of the struct.
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub fn signature(self, db: &Database) -> SignatureId {
         db.tuple_like_struct(self).signature
@@ -184,7 +184,7 @@ pub struct FieldData {
 
 impl FieldData {
     /// Creates a new field data object in the database and returns its ID.
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub fn alloc(
         db: &mut Database,
@@ -197,7 +197,7 @@ impl FieldData {
     }
 
     /// Creates a new field data object.
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub fn new(visibility: Visibility, name: IdentifierAST, ty: Type) -> Self {
         Self {
@@ -223,7 +223,7 @@ pub struct PredicateData {
 
 impl PredicateData {
     /// Creates a new predicate data object in the database and returns its ID.
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub fn alloc(
         db: &mut Database,
@@ -235,7 +235,7 @@ impl PredicateData {
     }
 
     /// Creates a new predicate data object.
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub fn new(ty: Type, bounds: Vec<TypeConstructor>) -> Self {
         Self { ty, bounds }
@@ -249,14 +249,14 @@ pub struct PredicateId(pub PackageId, pub usize);
 
 impl PredicateId {
     /// Returns the type of the predicate.
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub fn ty(self, db: &Database) -> &Type {
         &db.predicate(self).ty
     }
 
     /// Returns the bounds of the predicate.
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub fn bounds(self, db: &Database) -> &[TypeConstructor] {
         &db.predicate(self).bounds
@@ -282,14 +282,14 @@ pub struct GenericParameterScopeData {
 
 impl GenericParameterScopeData {
     /// Creates a new generic parameter scope data object in the database and returns its ID.
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub fn alloc(db: &mut Database, package: PackageId) -> GenericParameterScopeId {
         db.add_generic_parameter_scope(package, Self::new(None))
     }
 
     /// Creates a new empty generic parameter scope.
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub fn new(parent_scope: Option<GenericParameterScopeId>) -> Self {
         Self {
@@ -316,7 +316,7 @@ impl GenericParameterScopeId {
     }
 
     /// Adds a generic parameter into the scope.
-    #[inline(always)]
+    #[inline]
     pub fn add_generic_parameter(
         self,
         db: &mut Database,
@@ -334,7 +334,7 @@ impl GenericParameterScopeId {
     /// in the scope. Use the [`contains()`] method.
     ///
     /// [`contains()`]: GenericParameterScopeId::contains
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub fn resolve(
         &self,
@@ -351,7 +351,7 @@ impl GenericParameterScopeId {
     }
 
     /// Checks if the generic parameter exists in the scope.
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub fn contains(&self, db: &Database, parameter_name: IdentifierId) -> bool {
         self.parameters(db).contains_key(&parameter_name)
@@ -386,7 +386,7 @@ pub struct GenericParameterData {
 
 impl GenericParameterData {
     /// Creates a new generic parameter data object in the database and returns its ID.
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub fn alloc(
         db: &mut Database,
@@ -398,7 +398,7 @@ impl GenericParameterData {
     }
 
     /// Creates a new generic parameter data object.
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub fn new(location: Location, default_value: Option<Type>) -> Self {
         Self {
@@ -423,14 +423,14 @@ pub struct EnumItemData {
 
 impl EnumItemData {
     /// Creates a new enum item data object in the database and returns its ID.
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub fn alloc(db: &mut Database, name: IdentifierAST, module: ModuleId) -> EnumItemId {
         db.add_enum_item(module.0, Self::new(name, module))
     }
 
     /// Creates a new enum item data object.
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub fn new(name: IdentifierAST, module: ModuleId) -> Self {
         Self { name, module }
@@ -444,13 +444,13 @@ pub struct EnumItemId(pub PackageId, pub usize);
 
 impl EnumItemId {
     /// Returns the name of the enum item.
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub fn name(self, db: &Database) -> IdentifierAST {
         db.enum_item(self).name
     }
 
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub fn module(self, db: &Database) -> ModuleId {
         db.enum_item(self).module
@@ -473,7 +473,7 @@ pub struct SignatureData {
 
 impl SignatureData {
     /// Creates a new signature data object in the database and returns its ID.
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub fn alloc(
         db: &mut Database,
@@ -493,7 +493,7 @@ impl SignatureData {
     }
 
     /// Creates a new signature data object.
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub fn new(
         visibility: Visibility,
@@ -522,67 +522,67 @@ pub struct SignatureId(pub PackageId, pub usize);
 
 impl SignatureId {
     /// Returns the name.
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub fn name(self, db: &Database) -> IdentifierAST {
         db.signature(self).name
     }
 
     /// Returns the visibility.
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub fn visibility(self, db: &Database) -> Visibility {
         db.signature(self).visibility
     }
 
     /// Returns the module.
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub fn module(self, db: &Database) -> ModuleId {
         db.signature(self).module
     }
 
     /// Returns the corresponding HIR/THIR node index.
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub fn node_idx(self, db: &Database) -> usize {
         db.signature(self).node_idx
     }
 
-    #[inline(always)]
+    #[inline]
     pub fn set_analyzed(self, db: &mut Database) {
         db.signature_mut(self).is_analyzed = true;
     }
 
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub fn is_analyzed(self, db: &Database) -> bool {
         db.signature(self).is_analyzed
     }
 
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub fn predicates(self, db: &Database) -> &[PredicateId] {
         &db.signature(self).predicates
     }
 
-    #[inline(always)]
+    #[inline]
     pub fn add_predicate(self, db: &mut Database, predicate: PredicateId) {
         db.signature_mut(self).predicates.push(predicate);
     }
 
-    #[inline(always)]
+    #[inline]
     pub fn add_implemented_interface(self, db: &mut Database, interface: TypeConstructor) {
         db.signature_mut(self).implements.push(interface);
     }
 
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub fn generic_parameter_scope(self, db: &Database) -> GenericParameterScopeId {
         db.signature(self).generic_parameter_scope
     }
 
-    #[inline(always)]
+    #[inline]
     pub fn set_generic_parameter_scope(
         self,
         db: &mut Database,
@@ -601,14 +601,14 @@ pub struct FunctionData {
 
 impl FunctionData {
     /// Creates a new function data object in the database and returns its ID.
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub fn alloc(db: &mut Database, signature: SignatureId) -> FunctionId {
         db.add_function(signature.module(db).0, Self::new(signature))
     }
 
     /// Creates a new function data object.
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub fn new(signature: SignatureId) -> Self {
         Self { signature }
@@ -622,7 +622,7 @@ pub struct FunctionId(pub PackageId, pub usize);
 
 impl FunctionId {
     /// Returns the function signature.
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub fn signature(self, db: &Database) -> SignatureId {
         db.function(self).signature
@@ -639,14 +639,14 @@ pub struct InterfaceData {
 
 impl InterfaceData {
     /// Creates a new interface data object in the database and returns its ID.
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub fn alloc(db: &mut Database, signature: SignatureId) -> InterfaceId {
         db.add_interface(signature.module(db).0, Self::new(signature))
     }
 
     /// Creates a new interface data object.
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub fn new(signature: SignatureId) -> Self {
         Self {
@@ -663,7 +663,7 @@ pub struct InterfaceId(pub PackageId, pub usize);
 
 impl InterfaceId {
     /// Returns the type signature of the interface.
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub fn signature(self, db: &Database) -> SignatureId {
         db.interface(self).signature
@@ -680,14 +680,14 @@ pub struct TypeAliasData {
 
 impl TypeAliasData {
     /// Creates a new type alias data object in the database and returns its ID.
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub fn alloc(db: &mut Database, signature: SignatureId) -> TypeAliasId {
         db.add_type_alias(signature.module(db).0, Self::new(signature))
     }
 
     /// Creates a new type alias data object.
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub fn new(signature: SignatureId) -> Self {
         Self {
@@ -704,19 +704,19 @@ pub struct TypeAliasId(pub PackageId, pub usize);
 
 impl TypeAliasId {
     /// Returns the signature of the type alias.
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub fn signature(self, db: &Database) -> SignatureId {
         db.type_alias(self).signature
     }
 
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub fn ty(self, db: &Database) -> &Type {
         &db.type_alias(self).ty
     }
 
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub fn ty_mut(self, db: &mut Database) -> &mut Type {
         &mut db.type_alias_mut(self).ty
@@ -736,7 +736,7 @@ pub struct ModuleData {
 
 impl ModuleData {
     /// Creates a new module data object in the database and returns its ID.
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub fn alloc(
         db: &mut Database,
@@ -748,7 +748,7 @@ impl ModuleData {
     }
 
     /// Creates a new module data object.
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub fn new(name: IdentifierId, filepath: PathId) -> Self {
         Self {
@@ -770,28 +770,28 @@ pub const DUMMY_MODULE_ID: ModuleId = ModuleId(DUMMY_PACKAGE_ID, 0);
 
 impl ModuleId {
     /// Returns module's file path ID.
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub fn filepath(self, db: &Database) -> PathId {
         db.module(self).filepath
     }
 
     /// Returns module's name.
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub fn name(self, db: &Database) -> IdentifierId {
         db.module(self).name
     }
 
     /// Returns an immutable reference to module item symbols.
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub fn module_item_symbols(self, db: &Database) -> &FxHashMap<IdentifierId, Symbol> {
         &db.module(self).module_item_symbols
     }
 
     /// Returns a mutable reference to module item symbols.
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub fn module_item_symbols_mut(
         self,
@@ -801,14 +801,14 @@ impl ModuleId {
     }
 
     /// Returns an immutable reference to submodules.
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub fn submodules(self, db: &Database) -> &FxHashMap<IdentifierId, ModuleId> {
         &db.module(self).submodules
     }
 
     /// Returns a mutable reference to submodules.
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub fn submodules_mut(self, db: &mut Database) -> &mut FxHashMap<IdentifierId, ModuleId> {
         &mut db.module_mut(self).submodules
@@ -817,7 +817,7 @@ impl ModuleId {
     /// Resolves a symbol related to only module item in the module.
     ///
     /// If you want to additionally resolve submodules, use [`ModuleId::symbol()`].
-    #[inline(always)]
+    #[inline]
     pub fn module_item_symbol_or_none(
         self,
         db: &Database,
@@ -827,7 +827,7 @@ impl ModuleId {
     }
 
     /// Resolves a symbol in the module.
-    #[inline(always)]
+    #[inline]
     pub fn symbol_or_none(self, db: &Database, name: IdentifierId) -> Option<Symbol> {
         self.module_item_symbol_or_none(db, name)
             .or(self.submodule(db, name).map(Symbol::Module))
@@ -837,7 +837,7 @@ impl ModuleId {
     ///
     /// # Panics
     /// Panics if the symbol cannot be resolved.
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub fn symbol(self, db: &Database, name: IdentifierId) -> Symbol {
         self.symbol_or_none(db, name).unwrap()
@@ -847,33 +847,33 @@ impl ModuleId {
     ///
     /// # Panics
     /// Panics if the symbol cannot be resolved.
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub fn module_item_symbol(self, db: &Database, name: IdentifierId) -> Symbol {
         self.module_item_symbol_or_none(db, name).unwrap()
     }
 
     /// Adds a module item information to the module.
-    #[inline(always)]
+    #[inline]
     pub fn add_module_item(self, db: &mut Database, name: IdentifierId, symbol: Symbol) {
         self.module_item_symbols_mut(db).insert(name, symbol);
     }
 
     /// Checks if a symbol is contained in the module.
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub fn contains_module_item_symbol(self, db: &Database, item_name: IdentifierId) -> bool {
         self.module_item_symbols(db).contains_key(&item_name)
     }
 
     /// Returns the ID of the submodule of the module by its name.
-    #[inline(always)]
+    #[inline]
     pub fn submodule(self, db: &Database, name: IdentifierId) -> Option<ModuleId> {
         self.submodules(db).get(&name).copied()
     }
 
     /// Adds a submodule to the module.
-    #[inline(always)]
+    #[inline]
     pub fn add_submodule(self, db: &mut Database, module: ModuleId) {
         let name = module.name(db);
 
@@ -881,14 +881,14 @@ impl ModuleId {
     }
 
     /// Checks if a submodule with a given name is contained in the module.
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub fn contains_submodule_with_name(self, db: &Database, name: IdentifierId) -> bool {
         self.submodules(db).contains_key(&name)
     }
 
     /// Checks if a submodule with a given ID is contained in the module.
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub fn contains_submodule_with_id(self, db: &Database, id: ModuleId) -> bool {
         self.submodules(db)
@@ -897,21 +897,21 @@ impl ModuleId {
     }
 
     /// Returns an immutable reference to imports.
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub fn resolved_imports(self, db: &Database) -> &FxHashMap<IdentifierId, Symbol> {
         &db.module(self).resolved_imports
     }
 
     /// Returns a mutable reference to imports.
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub fn resolved_imports_mut(self, db: &mut Database) -> &mut FxHashMap<IdentifierId, Symbol> {
         &mut db.module_mut(self).resolved_imports
     }
 
     /// Adds a resolved import to the module.
-    #[inline(always)]
+    #[inline]
     pub fn add_resolved_import(self, db: &mut Database, name: IdentifierId, symbol: Symbol) {
         self.resolved_imports_mut(db).insert(name, symbol);
     }
@@ -924,19 +924,19 @@ pub struct PackageId(pub usize);
 pub const DUMMY_PACKAGE_ID: PackageId = PackageId(0);
 
 impl PackageId {
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub fn name(self, db: &Database) -> IdentifierId {
         db.packages[self.0 - 1].name
     }
 
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub fn parent(self, db: &Database) -> Option<PackageId> {
         db.packages[self.0 - 1].parent
     }
 
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub fn parent_or_none(self, db: &Database) -> Option<PackageId> {
         db.packages
@@ -944,13 +944,13 @@ impl PackageId {
             .and_then(|package| package.parent)
     }
 
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub fn dependencies(self, db: &Database) -> &FxHashMap<IdentifierId, PackageId> {
         &db.packages[self.0 - 1].dependencies
     }
 
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub fn dependencies_or_none(
         self,
@@ -961,13 +961,13 @@ impl PackageId {
             .map(|package| &package.dependencies)
     }
 
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub fn root_module(self, db: &Database) -> ModuleId {
         db.packages[self.0 - 1].root_module
     }
 
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub fn root_module_or_none(self, db: &Database) -> Option<ModuleId> {
         db.packages
@@ -1074,14 +1074,14 @@ impl PackageData {
         PackageId(db.packages.len())
     }
 
-    #[inline(always)]
+    #[inline]
     #[must_use]
     #[cfg(feature = "bincode")]
     pub fn serialize(&self) -> Vec<u8> {
         bincode::serialize(self).unwrap()
     }
 
-    #[inline(always)]
+    #[inline]
     #[must_use]
     #[cfg(feature = "bincode")]
     pub fn deserialize(bytes: Vec<u8>) -> Self {
@@ -1091,7 +1091,7 @@ impl PackageData {
 
 #[cfg(feature = "bincode")]
 impl From<PackageData> for Vec<u8> {
-    #[inline(always)]
+    #[inline]
     fn from(value: PackageData) -> Self {
         value.serialize()
     }
@@ -1099,7 +1099,7 @@ impl From<PackageData> for Vec<u8> {
 
 #[cfg(feature = "bincode")]
 impl From<Vec<u8>> for PackageData {
-    #[inline(always)]
+    #[inline]
     fn from(value: Vec<u8>) -> Self {
         Self::deserialize(value)
     }
@@ -1113,21 +1113,21 @@ pub struct Database {
 
 impl Database {
     /// Creates a new empty database.
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub fn new() -> Self {
         Self::default()
     }
 
     /// Returns an immutable reference to package data by its ID.
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub fn package(&self, id: PackageId) -> &PackageData {
         &self.packages[id.0 - 1]
     }
 
     /// Returns a mutable reference to package data by its ID.
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub fn package_mut(&mut self, id: PackageId) -> &mut PackageData {
         &mut self.packages[id.0 - 1]
@@ -1146,7 +1146,7 @@ pub struct State {
 pub struct Config {}
 
 impl Config {
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub fn new() -> Self {
         Self::default()
@@ -1155,14 +1155,14 @@ impl Config {
 
 impl State {
     /// Creates a new empty state.
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub fn new() -> Self {
         Self::default()
     }
 
     /// Builds a new state with given configuration.
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub fn with_config(mut self, config: Config) -> Self {
         self.config = config;
@@ -1170,49 +1170,49 @@ impl State {
     }
 
     /// Returns a reference to config.
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub const fn config(&self) -> &Config {
         &self.config
     }
 
     /// Returns an immutable reference to a database object.
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub const fn db(&self) -> &Database {
         &self.db
     }
 
     /// Returns a mutable reference to a database object.
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub fn db_mut(&mut self) -> &mut Database {
         &mut self.db
     }
 
     /// Gives an ownership over database object inside the state.
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub fn into_db(self) -> Database {
         self.db
     }
 
     /// Returns an immutable reference to diagnostics.
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub const fn diagnostics(&self) -> &Diagnostics {
         &self.diagnostics
     }
 
     /// Returns a mutable reference to diagnostics.
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub fn diagnostics_mut(&mut self) -> &mut Diagnostics {
         &mut self.diagnostics
     }
 
     /// Gives an ownership over diagnostics object inside the state.
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub fn into_diagnostics(self) -> Diagnostics {
         self.diagnostics

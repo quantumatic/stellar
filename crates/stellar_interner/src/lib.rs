@@ -74,8 +74,7 @@
 #![allow(
     clippy::module_name_repetitions,
     clippy::too_many_lines,
-    clippy::option_if_let_else,
-    clippy::inline_always
+    clippy::option_if_let_else
 )]
 
 use std::{
@@ -112,14 +111,14 @@ pub const DUMMY_IDENTIFIER_ID: IdentifierId = IdentifierId(0);
 
 impl IdentifierId {
     /// Interns a string.
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub fn from(string: impl AsRef<str>) -> Self {
         IDENTIFIER_INTERNER.write().get_or_intern(string)
     }
 
     /// Gets the interned string by ID.
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub fn resolve(self) -> String {
         IDENTIFIER_INTERNER.read().resolve(self)
@@ -127,14 +126,14 @@ impl IdentifierId {
 }
 
 impl Display for IdentifierId {
-    #[inline(always)]
+    #[inline]
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.resolve().fmt(f)
     }
 }
 
 impl From<IdentifierId> for String {
-    #[inline(always)]
+    #[inline]
     fn from(value: IdentifierId) -> Self {
         value.resolve()
     }
@@ -143,7 +142,7 @@ impl From<IdentifierId> for String {
 impl FromStr for IdentifierId {
     type Err = ();
 
-    #[inline(always)]
+    #[inline]
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         Ok(Self::from(s))
     }
@@ -170,12 +169,12 @@ impl<'de> Deserialize<'de> for IdentifierId {
 }
 
 impl SymbolId for IdentifierId {
-    #[inline(always)]
+    #[inline]
     fn to_storage_index(self) -> usize {
         self.0 - 1
     }
 
-    #[inline(always)]
+    #[inline]
     fn from_storage_index(index: usize) -> Self {
         Self(index + 1)
     }
@@ -275,7 +274,7 @@ where
     S: SymbolId,
 {
     /// Creates a new empty [`Interner`].
-    #[inline(always)]
+    #[inline]
     fn default() -> Self {
         Self::new()
     }
@@ -464,7 +463,7 @@ where
     }
 
     /// Interns the given string and returns a corresponding symbol.
-    #[inline(always)]
+    #[inline]
     fn get_or_intern(&mut self, string: impl AsRef<str>) -> S {
         self.get_or_intern_using(string.as_ref(), InternerStorage::intern)
     }
@@ -644,21 +643,21 @@ pub struct PathId(pub usize);
 
 impl PathId {
     /// Interns the given path and returns its ID.
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub fn from(path: impl AsRef<Path>) -> Self {
         PATH_INTERNER.write().get_or_intern(path)
     }
 
     /// Resolves the given path by ID.
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub fn resolve(self) -> PathBuf {
         PATH_INTERNER.read().resolve(self)
     }
 
     /// Resolves the given path by ID.
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub fn resolve_or_none(self) -> Option<PathBuf> {
         PATH_INTERNER.read().resolve_or_none(self)
@@ -666,14 +665,14 @@ impl PathId {
 }
 
 impl Display for PathId {
-    #[inline(always)]
+    #[inline]
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.resolve().display())
     }
 }
 
 impl From<PathId> for String {
-    #[inline(always)]
+    #[inline]
     fn from(value: PathId) -> Self {
         format!("{}", value.resolve().display())
     }
@@ -682,7 +681,7 @@ impl From<PathId> for String {
 impl FromStr for PathId {
     type Err = ();
 
-    #[inline(always)]
+    #[inline]
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         Ok(Self::from(s))
     }

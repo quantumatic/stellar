@@ -176,8 +176,7 @@
     clippy::module_name_repetitions,
     clippy::too_many_lines,
     clippy::option_if_let_else,
-    clippy::unnested_or_patterns,
-    clippy::inline_always
+    clippy::unnested_or_patterns
 )]
 
 #[cfg(feature = "serde")]
@@ -273,7 +272,7 @@ pub enum Pattern {
 
 impl Pattern {
     /// Returns the location of the pattern.
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub const fn location(&self) -> Location {
         match self {
@@ -358,7 +357,7 @@ pub enum Type {
 
 impl Type {
     /// Returns the location of the type.
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub const fn location(&self) -> Location {
         match self {
@@ -551,7 +550,7 @@ pub struct LambdaFunctionParameter {
 
 impl Expression {
     /// Returns the location of the expression.
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub const fn location(&self) -> Location {
         match self {
@@ -600,7 +599,7 @@ impl Expression {
     /// Returns `true` if this expression has a block in it (except function expressions).
     /// Used to determine if this expression has to have semicolon at the end.
     /// Function expression do have blocks in them, but they must have a semicolon at the end.
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub const fn with_block(&self) -> bool {
         matches!(
@@ -786,7 +785,7 @@ pub enum ModuleItem {
 
 impl ModuleItem {
     /// Returns the location of the item.
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub const fn location(&self) -> Location {
         match self {
@@ -823,7 +822,7 @@ impl ModuleItem {
     }
 
     /// Returns the location of the item.
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub const fn name(&self) -> Option<IdentifierId> {
         match self {
@@ -864,14 +863,14 @@ impl ModuleItem {
     /// # Panics
     ///
     /// If the item does not have a name.
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub fn name_or_panic(&self) -> IdentifierId {
         self.name().unwrap()
     }
 
     /// Returns the kind of the item.
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub const fn kind(&self) -> ModuleItemKind {
         match self {
@@ -886,7 +885,7 @@ impl ModuleItem {
     }
 
     /// Returns the visibility of the item.
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub const fn visibility(&self) -> Visibility {
         match self {
@@ -904,7 +903,7 @@ impl ModuleItem {
     }
 
     /// Returns the type alias variant of the time.
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub const fn type_alias(&self) -> Option<&TypeAlias> {
         match self {
@@ -917,7 +916,7 @@ impl ModuleItem {
     ///
     /// # Panics
     /// If the item is not a type alias.
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub fn type_alias_or_panic(&self) -> &TypeAlias {
         self.type_alias()
@@ -959,7 +958,7 @@ pub enum EnumItem {
 }
 
 impl EnumItem {
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub const fn name(&self) -> IdentifierAST {
         match self {
@@ -969,7 +968,7 @@ impl EnumItem {
         }
     }
 
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub const fn name_id(&self) -> IdentifierId {
         self.name().id

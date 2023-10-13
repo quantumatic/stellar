@@ -146,8 +146,7 @@
     clippy::module_name_repetitions,
     clippy::too_many_lines,
     clippy::option_if_let_else,
-    clippy::unnested_or_patterns,
-    clippy::inline_always
+    clippy::unnested_or_patterns
 )]
 
 use std::fmt::Display;
@@ -196,7 +195,7 @@ pub enum Literal {
 }
 
 impl Literal {
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub const fn location(&self) -> Location {
         match self {
@@ -372,7 +371,7 @@ pub enum Pattern {
 
 impl Pattern {
     /// Returns the location of the pattern.
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub const fn location(&self) -> Location {
         match self {
@@ -402,13 +401,13 @@ impl Pattern {
         }
     }
 
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub const fn is_rest(&self) -> bool {
         matches!(self, Self::Rest { .. })
     }
 
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub const fn is_grouped(&self) -> bool {
         matches!(self, Self::Grouped { .. })
@@ -482,7 +481,7 @@ pub enum Type {
 
 impl Type {
     /// Returns the location of the type.
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub const fn location(&self) -> Location {
         match self {
@@ -699,7 +698,7 @@ pub struct LambdaFunctionParameter {
 
 impl Expression {
     /// Returns the location of the expression.
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub const fn location(&self) -> Location {
         match self {
@@ -789,7 +788,7 @@ macro_rules! operator_type {
 
         impl RawToken {
             $(#[$($raw_operator_type_doc)*])*
-            #[inline(always)]
+            #[inline]
             #[must_use]
             pub const fn $token_check_fn_name(self) -> bool {
                 matches!(self, RawToken::Punctuator($(| Punctuator::$name)*))
@@ -1004,7 +1003,7 @@ impl Expression {
     /// Returns `true` if this expression has a block in it (except function expressions).
     /// Used to determine if this expression has to have semicolon at the end.
     /// Function expression do have blocks in them, but they must have a semicolon at the end.
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub const fn with_block(&self) -> bool {
         matches!(
@@ -1168,7 +1167,7 @@ pub enum ModuleItem {
 
 impl ModuleItem {
     /// Returns the location of the item.
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub const fn location(&self) -> Location {
         match self {
@@ -1205,7 +1204,7 @@ impl ModuleItem {
     }
 
     /// Returns the id of the item name identifier.
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub const fn name_identifier_id(&self) -> Option<IdentifierId> {
         match self {
@@ -1246,14 +1245,14 @@ impl ModuleItem {
     /// # Panics
     ///
     /// If the item does not have a name.
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub fn name_identifier_id_or_panic(&self) -> IdentifierId {
         self.name_identifier_id().unwrap()
     }
 
     /// Returns the kind of the item.
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub const fn kind(&self) -> ModuleItemKind {
         match self {
@@ -1268,7 +1267,7 @@ impl ModuleItem {
     }
 
     /// Returns the visibility of the item.
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub const fn visibility(&self) -> Option<Visibility> {
         match self {
@@ -1290,7 +1289,7 @@ impl ModuleItem {
     /// # Panics
     ///
     /// If the item does not have a visibility.
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub fn visibility_or_panic(&self) -> Visibility {
         self.visibility().unwrap()
@@ -1323,7 +1322,7 @@ pub enum ModuleItemKind {
 }
 
 impl From<ModuleItemKind> for String {
-    #[inline(always)]
+    #[inline]
     fn from(value: ModuleItemKind) -> Self {
         value.to_string()
     }

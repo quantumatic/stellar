@@ -48,7 +48,7 @@ where
 }
 
 /// Constructs a new instance of [`Ordinal`].
-#[inline(always)]
+#[inline]
 #[must_use]
 pub const fn ordinal<T>(n: T) -> Ordinal<T>
 where
