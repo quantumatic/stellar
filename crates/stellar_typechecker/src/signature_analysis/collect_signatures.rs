@@ -1,6 +1,6 @@
+use std::mem;
 #[cfg(feature = "debug")]
 use std::time::Instant;
-use std::{collections::BTreeMap, mem};
 
 use stellar_ast::IdentifierAST;
 use stellar_ast_lowering::LoweredModule;
@@ -8,6 +8,7 @@ use stellar_database::{
     GenericParameterData, GenericParameterScopeData, GenericParameterScopeId, ModuleId,
     PredicateData, SignatureId, State, Symbol, TypeAliasId,
 };
+use stellar_fx_hash::FxHashMap;
 use stellar_interner::{IdentifierId, SymbolId};
 use stellar_thir::{
     ty::{Type, TypeConstructor},
@@ -21,11 +22,11 @@ use crate::diagnostics::CycleDetectedWhenComputingSignatureOf;
 pub struct CollectSignatures<'s, 'h> {
     pub(crate) state: &'s mut State,
     pub(crate) currently_analyzed_symbols_trace: Vec<Symbol>,
-    pub(crate) modules: &'h BTreeMap<ModuleId, stellar_hir::Module>,
+    pub(crate) modules: &'h FxHashMap<ModuleId, stellar_hir::Module>,
 }
 
 impl<'s, 'h> CollectSignatures<'s, 'h> {
-    pub fn run_all(state: &'s mut State, modules: &'h BTreeMap<ModuleId, stellar_hir::Module>) {
+    pub fn run_all(state: &'s mut State, modules: &'h FxHashMap<ModuleId, stellar_hir::Module>) {
         let mut me = CollectSignatures {
             state,
             currently_analyzed_symbols_trace: Vec::new(),

@@ -19,8 +19,10 @@ pub trait PluralizeExt {
     /// # Example
     ///
     /// ```
+    /// use stellar_english_commons::pluralize::PluralizeExt;
+    ///
     /// assert_eq!("cat".pluralize(), "cats".to_owned());
-    /// assert_eq!("bee".pluralize(), "bees".to_owned());
+    /// assert_eq!("bee".to_owned().pluralize(), "bees".to_owned());
     /// assert_eq!("index".pluralize(), "indices".to_owned());
     /// ```
     fn pluralize(self) -> String;
@@ -31,16 +33,38 @@ where
     S: Into<String>,
 {
     fn pluralize(self) -> String {
-        let noun = self.into();
+        let mut noun: String = self.into();
 
         if unlikely(noun.is_empty()) {
             String::new()
         } else if let Some(pluralized) = IRREGULAR_NOUNS.get(&*noun) {
             (*pluralized).to_owned()
-        } else if VOWELS.contains(noun.chars().last().as_ref().expect("The noun is empty")) {
-            format!("{noun}s")
         } else {
-            format!("{noun}es")
+            let last_char = noun
+                .chars()
+                .last()
+                .unwrap_or_else(|| panic!("The noun is empty"));
+            let penultimate_char = noun.chars().nth(noun.len() - 2);
+
+            if last_char == 'y' {
+                if VOWELS
+                    .contains(&penultimate_char.unwrap_or_else(|| panic!("Word 'y' is not valid")))
+                {
+                    format!("{noun}s") // toy -> toys
+                } else {
+                    noun.pop(); // candy -> cand
+                    format!("{noun}ies") // cand -> candies
+                }
+            } else if last_char == 'f' {
+                noun.pop(); // loaf -> loa
+                format!("{noun}ves") // loa -> loaves
+            } else if last_char == 'e' && penultimate_char == Some('f') {
+                noun.pop();
+                noun.pop(); // knife -> kni
+                format!("{noun}ves") // kni -> knives
+            } else {
+                format!("{noun}s") // cat -> cats
+            }
         }
     }
 }

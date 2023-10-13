@@ -67,10 +67,12 @@ impl InMemoryFile {
     /// # Example
     ///
     /// ```
-    /// # use std::path::Path;
-    /// # use stellar_filesystem::{in_memory_file::InMemoryFile, location::ByteOffset};
+    /// use std::path::Path;
+    /// use stellar_filesystem::{in_memory_file::InMemoryFile, location::ByteOffset};
+    /// use stellar_interner::PathId;
+    ///
     /// let file = InMemoryFile::new_from_source(
-    ///     Path::new("test.sr"),
+    ///     PathId::from("test.sr"),
     ///     "fun main() {
     ///     println(\"Hello, world!\");
     /// }".to_owned(),
@@ -94,10 +96,12 @@ impl InMemoryFile {
     /// # Examples
     ///
     /// ```
-    /// # use std::path::Path;
-    /// # use stellar_filesystem::{in_memory_file::InMemoryFile, location::ByteOffset};
+    /// use std::path::Path;
+    /// use stellar_filesystem::{in_memory_file::InMemoryFile, location::ByteOffset};
+    /// use stellar_interner::PathId;
+    ///
     /// let file = InMemoryFile::new_from_source(
-    ///     Path::new("test.sr"),
+    ///     PathId::from("test.sr"),
     ///     "fun main() {
     ///     println(\"Hello, world!\");
     /// }".to_owned(),
@@ -134,10 +138,12 @@ impl InMemoryFile {
     /// # Example
     ///
     /// ```
-    /// # use std::path::Path;
-    /// # use stellar_filesystem::{in_memory_file::InMemoryFile, location::ByteOffset};
+    /// use std::path::Path;
+    /// use stellar_filesystem::{in_memory_file::InMemoryFile, location::ByteOffset};
+    /// use stellar_interner::PathId;
+    ///
     /// let file = InMemoryFile::new_from_source(
-    ///     Path::new("test.sr"),
+    ///     PathId::from("test.sr"),
     ///     "fun main() {
     ///     println(\"Hello, world!\");
     /// }".to_owned(),

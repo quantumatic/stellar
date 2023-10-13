@@ -4,11 +4,10 @@ use std::fmt::Display;
 
 use derive_more::Display;
 use paste::paste;
-use stellar_filesystem::location::Location;
-use stellar_interner::{builtin_identifiers, IdentifierId};
-
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
+use stellar_filesystem::location::Location;
+use stellar_interner::{builtin_identifiers, IdentifierId};
 
 use crate::Path;
 

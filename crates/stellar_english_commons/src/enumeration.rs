@@ -20,23 +20,22 @@ where
     let iter = iter.into_iter();
     let len = iter.len();
 
-    iter.enumerate()
-        .fold(String::new(), |acc, (idx, item)| {
-            format!(
-                "{acc}{}{item}",
-                if idx == 0 {
-                    ""
-                } else if idx == len - 1 {
-                    if len == 2 {
-                        " or "
-                    } else {
-                        ", or "
-                    }
+    iter.enumerate().fold(String::new(), |acc, (idx, item)| {
+        format!(
+            "{acc}{}{item}",
+            if idx == 0 {
+                ""
+            } else if idx == len - 1 {
+                if len == 2 {
+                    " or "
                 } else {
-                    ", "
+                    ", or "
                 }
-            )
-        })
+            } else {
+                ", "
+            }
+        )
+    })
 }
 
 /// Formats a list of strings in such a format:
@@ -58,21 +57,20 @@ where
     let iter = iter.into_iter();
     let len = iter.len();
 
-    iter.enumerate()
-        .fold(String::new(), |acc, (idx, item)| {
-            format!(
-                "{acc}{}{item}",
-                if idx == 0 {
-                    ""
-                } else if idx == len - 1 {
-                    if len == 2 {
-                        " and "
-                    } else {
-                        ", and "
-                    }
+    iter.enumerate().fold(String::new(), |acc, (idx, item)| {
+        format!(
+            "{acc}{}{item}",
+            if idx == 0 {
+                ""
+            } else if idx == len - 1 {
+                if len == 2 {
+                    " and "
                 } else {
-                    ", "
+                    ", and "
                 }
-            )
-        })
+            } else {
+                ", "
+            }
+        )
+    })
 }

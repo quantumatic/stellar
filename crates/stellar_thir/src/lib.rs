@@ -61,15 +61,14 @@
 )]
 
 use generic_parameter_scope::GenericParameterScope;
+#[cfg(feature = "serde")]
+use serde::{Deserialize, Serialize};
 use stellar_ast::{IdentifierAST, Literal, Visibility};
 use stellar_filesystem::location::Location;
 use stellar_fx_hash::FxHashMap;
 use stellar_hir as _;
 use stellar_interner::IdentifierId;
 use ty::{Type, TypeConstructor};
-
-#[cfg(feature = "serde")]
-use serde::{Deserialize, Serialize};
 
 pub mod generic_parameter_scope;
 pub mod ty;

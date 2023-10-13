@@ -24,7 +24,7 @@ use stellar_database::{ModuleId, State};
 use stellar_filesystem::location::Location;
 use stellar_fx_hash::FxHashMap;
 use stellar_interner::builtin_identifiers::BIG_SELF;
-use stellar_parser::ParsedModule;
+use stellar_parser::ParseResult;
 #[cfg(feature = "debug")]
 use tracing::trace;
 
@@ -88,7 +88,7 @@ impl From<LoweredModule> for stellar_hir::Module {
 impl<'s> LowerToHir<'s> {
     pub fn run_all(
         state: &'s mut State,
-        modules: Vec<ParsedModule>,
+        modules: Vec<ParseResult>,
     ) -> FxHashMap<ModuleId, stellar_hir::Module> {
         modules
             .into_iter()

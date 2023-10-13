@@ -16,7 +16,7 @@ macro_rules! __db_first_access_method {
                 #[inline(always)]
                 #[must_use]
                 pub fn $what(&self, id: $id_ty) -> &$data_ty {
-                    &self.packages[id.0.0].$whats[id.1]
+                    &self.packages[id.0.0 - 1].$whats[id.1]
                 }
             }
     };
@@ -38,7 +38,7 @@ macro_rules! __db_first_access_method {
                 #[inline(always)]
                 #[must_use]
                 pub fn [<$what _>](&self, id: $id_ty) -> &$data_ty {
-                    &self.packages[id.0.0].$whats[id.1]
+                    &self.packages[id.0.0 - 1].$whats[id.1]
                 }
             }
     };
@@ -62,7 +62,7 @@ macro_rules! __db_rest_of_access_methods {
             #[inline(always)]
             #[must_use]
             pub fn [<$what _mut>](&mut self, id: $id_ty) -> &mut $data_ty {
-                &mut self.packages.get_mut(id.0.0).unwrap().$whats[id.1]
+                &mut self.packages.get_mut(id.0.0 - 1).unwrap().$whats[id.1]
             }
 
             #[doc = "Returns an immutable reference to [`" $data_ty "`] by its ID ([`" $id_ty "`])."]
@@ -71,7 +71,7 @@ macro_rules! __db_rest_of_access_methods {
             #[inline(always)]
             #[must_use]
             pub fn [<$what _or_none>](&self, id: $id_ty) -> Option<&$data_ty> {
-                self.packages.get(id.0.0).and_then(|p| p.$whats.get(id.1))
+                self.packages.get(id.0.0 - 1).and_then(|p| p.$whats.get(id.1))
             }
 
             #[doc = "Returns a mutable reference to [`" $data_ty "`] by its ID ([`" $id_ty "`])."]
@@ -80,7 +80,7 @@ macro_rules! __db_rest_of_access_methods {
             #[inline(always)]
             #[must_use]
             pub fn [<$what _mut_or_none>](&mut self, id: $id_ty) -> Option<&mut $data_ty> {
-                self.packages.get_mut(id.0.0).and_then(|p| p.$whats.get_mut(id.1))
+                self.packages.get_mut(id.0.0 - 1).and_then(|p| p.$whats.get_mut(id.1))
             }
 
             #[doc = "Returns whether a [`" $data_ty "`] with a given ID ([`" $id_ty "`]) is present in the database storage."]
@@ -105,9 +105,9 @@ macro_rules! __db_rest_of_access_methods {
             #[inline(always)]
             #[must_use]
             pub fn [<add_ $what>](&mut self, package: PackageId, [<$what _>]: $data_ty) -> $id_ty {
-                self.packages.get_mut(package.0).unwrap().$whats.push([<$what _>]);
+                self.packages.get_mut(package.0 - 1).unwrap().$whats.push([<$what _>]);
 
-                $id_ty(package, self.packages[package.0].$whats.len() - 1)
+                $id_ty(package, self.packages[package.0 - 1].$whats.len() - 1)
             }
         }
     };

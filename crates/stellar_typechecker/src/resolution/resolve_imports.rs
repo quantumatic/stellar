@@ -1,4 +1,3 @@
-use std::collections::BTreeMap;
 #[cfg(feature = "debug")]
 use std::time::Instant;
 
@@ -45,10 +44,12 @@ impl<'s> ResolveImports<'s> {
         };
 
         if let Some(module) = symbol.to_module_or_none() {
-            if self.module.0.dependencies(self
-                .state
-                .db())
+            if self
+                .module
+                .0
+                .dependencies(self.state.db())
                 .contains_key(&module.name(self.state.db()))
+                || module == self.module.0.root_module(self.state.db())
             {
                 self.state
                     .diagnostics_mut()

@@ -77,7 +77,7 @@ mod r#type;
 
 #[cfg(feature = "debug")]
 use std::time::Instant;
-use std::{fs, io, path::Path};
+use std::{fs, io};
 
 use diagnostics::LexErrorDiagnostic;
 pub use expression::ExpressionParser;
@@ -91,16 +91,12 @@ use stellar_ast::{
 };
 use stellar_database::{ModuleData, ModuleId, PackageId, State};
 use stellar_diagnostics::Diagnostics;
-use stellar_filesystem::{
-    location::{ByteOffset, Location},
-    path_resolver::PackagePathResolver,
-};
+use stellar_filesystem::location::{ByteOffset, Location};
 use stellar_interner::{IdentifierId, PathId};
 use stellar_lexer::Lexer;
 use stellar_stable_likely::unlikely;
 #[cfg(feature = "debug")]
 use tracing::trace;
-use walkdir::WalkDir;
 
 use crate::diagnostics::UnexpectedToken;
 
@@ -150,12 +146,12 @@ pub trait OptionallyParse: Sized {
 
 /// A structure returned by every module parsing function.
 #[derive(Debug)]
-pub struct ParsedModule {
+pub struct ParseResult {
     module: ModuleId,
     ast: Module,
 }
 
-impl ParsedModule {
+impl ParseResult {
     /// Creates a new instance of [`ParsedModule`].
     #[inline(always)]
     #[must_use]
@@ -205,13 +201,13 @@ pub fn read_and_parse_module(
     package: PackageId,
     module_name: IdentifierId,
     filepath: PathId,
-) -> Result<ParsedModule, io::Error> {
+) -> Result<ParseResult, io::Error> {
     let module = ModuleData::alloc(state.db_mut(), package, module_name, filepath);
     let source = fs::read_to_string(filepath.resolve())?;
 
     let mut parse_state = ParseState::new(filepath, &source, state.diagnostics_mut());
 
-    Ok(ParsedModule::new(
+    Ok(ParseResult::new(
         module,
         Module {
             filepath: parse_state.lexer.filepath,
@@ -230,11 +226,11 @@ pub fn parse_module(
     module_name: IdentifierId,
     filepath: PathId,
     source: &str,
-) -> ParsedModule {
+) -> ParseResult {
     let module = ModuleData::alloc(state.db_mut(), package, module_name, filepath);
     let mut parse_state = ParseState::new(filepath, source, state.diagnostics_mut());
 
-    ParsedModule {
+    ParseResult {
         module,
         ast: Module {
             filepath: parse_state.lexer.filepath,
@@ -252,8 +248,8 @@ pub fn parse_module_using(
     package: PackageId,
     module_name: IdentifierId,
     mut parse_state: ParseState<'_, '_>,
-) -> ParsedModule {
-    ParsedModule::new(
+) -> ParseResult {
+    ParseResult::new(
         ModuleData::alloc(
             state.db_mut(),
             package,

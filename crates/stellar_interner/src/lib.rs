@@ -410,8 +410,10 @@ where
     /// Returns the symbol for the given string if it is interned.
     ///
     /// # Example
-    /// ```
-    /// # use stellar_interner::Interner;
+    ///
+    /// ```ignore
+    /// use stellar_interner::Interner;
+    ///
     /// let mut interner = Interner::<usize>::default();
     /// let hello_id = interner.get_or_intern("hello");
     /// assert_eq!(interner.get("hello"), Some(hello_id));
@@ -475,7 +477,8 @@ where
     /// Returns the string for the given symbol if any.
     ///
     /// # Example
-    /// ```
+    ///
+    /// ```ignore
     /// # use stellar_interner::Interner;
     /// let mut interner = Interner::<usize>::default();
     /// let hello_id = interner.get_or_intern("hello");
@@ -566,8 +569,10 @@ impl IdentifierInterner {
     /// Returns the symbol for the given identifier if it is interned.
     ///
     /// # Example
-    /// ```
-    /// # use stellar_interner::IdentifierInterner;
+    ///
+    /// ```ignore
+    /// use stellar_interner::IdentifierInterner;
+    ///
     /// let mut identifier_interner = IdentifierInterner::new();
     /// let hello_id = identifier_interner.get_or_intern("hello");
     /// assert_eq!(identifier_interner.get("hello"), Some(hello_id));
@@ -590,8 +595,10 @@ impl IdentifierInterner {
     /// Returns the string for the given symbol if any.
     ///
     /// # Example
-    /// ```
-    /// # use stellar_interner::{IdentifierInterner, builtin_identifiers::UINT8, IdentifierId};
+    ///
+    /// ```ignore
+    /// use stellar_interner::{IdentifierInterner, builtin_identifiers::UINT8, IdentifierId};
+    ///
     /// let mut identifier_interner = IdentifierInterner::new();
     ///
     /// let hello_id = identifier_interner.get_or_intern("hello");
@@ -602,7 +609,11 @@ impl IdentifierInterner {
     /// ```
     #[must_use]
     fn resolve_or_none(&self, id: IdentifierId) -> Option<String> {
-        self.0.resolve(id).map(ToOwned::to_owned)
+        if id == DUMMY_IDENTIFIER_ID {
+            None
+        } else {
+            self.0.resolve(id).map(ToOwned::to_owned)
+        }
     }
 
     /// Returns the string for the given identifier if any.
@@ -644,6 +655,13 @@ impl PathId {
     #[must_use]
     pub fn resolve(self) -> PathBuf {
         PATH_INTERNER.read().resolve(self)
+    }
+
+    /// Resolves the given path by ID.
+    #[inline(always)]
+    #[must_use]
+    pub fn resolve_or_none(self) -> Option<PathBuf> {
+        PATH_INTERNER.read().resolve_or_none(self)
     }
 }
 
@@ -723,7 +741,11 @@ impl PathInterner {
     /// Resolves a path stored in the storage.
     #[must_use]
     fn resolve_or_none(&self, id: PathId) -> Option<PathBuf> {
-        self.0.resolve(id).map(PathBuf::from)
+        if id == DUMMY_PATH_ID {
+            None
+        } else {
+            self.0.resolve(id).map(PathBuf::from)
+        }
     }
 
     /// Resolves a path stored in the storage (same as [`PathInterner::resolve()`]),

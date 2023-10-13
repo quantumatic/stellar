@@ -1,6 +1,6 @@
 use stellar_ast_lowering::LowerToHir;
-use stellar_database::State;
-use stellar_interner::{IdentifierId, PathId, DUMMY_IDENTIFIER_ID};
+use stellar_database::{PackageData, State};
+use stellar_interner::{IdentifierId, PathId, DUMMY_IDENTIFIER_ID, DUMMY_PATH_ID};
 use stellar_parser::parse_module;
 use stellar_typechecker::resolution::collect_definitions::CollectDefinitions;
 
@@ -10,23 +10,23 @@ fn test_enum() {
     let filepath = PathId::from("test.sr");
     let source_code = "enum A {}\nenum B {}";
 
-    let ast = parse_module(&mut state, DUMMY_IDENTIFIER_ID, filepath, source_code);
-    let hir = LowerToHir::run_all(&mut state, vec![ast.into()]);
+    let package = PackageData::alloc(state.db_mut(), DUMMY_IDENTIFIER_ID, DUMMY_PATH_ID);
+    let parse_result = parse_module(
+        &mut state,
+        package,
+        DUMMY_IDENTIFIER_ID,
+        filepath,
+        source_code,
+    );
+    let module = parse_result.module();
+    package.set_root_module(state.db_mut(), parse_result.module());
+
+    let hir = LowerToHir::run_all(&mut state, vec![parse_result]);
 
     CollectDefinitions::run_all(&mut state, &hir);
 
-    assert!(hir
-        .first_key_value()
-        .unwrap()
-        .0
-        .symbol(state.db(), IdentifierId::from("A"))
-        .is_enum());
-    assert!(hir
-        .first_key_value()
-        .unwrap()
-        .0
-        .symbol(state.db(), IdentifierId::from("B"))
-        .is_enum());
+    assert!(module.symbol(state.db(), IdentifierId::from("A")).is_enum());
+    assert!(module.symbol(state.db(), IdentifierId::from("B")).is_enum());
     assert!(state.diagnostics().is_ok());
 }
 
@@ -36,8 +36,17 @@ fn test_duplicate_definition() {
     let filepath = PathId::from("test.sr");
     let source_code = "enum A {}\nenum A {}";
 
-    let ast = parse_module(&mut state, DUMMY_IDENTIFIER_ID, filepath, source_code);
-    let hir = LowerToHir::run_all(&mut state, vec![ast.into()]);
+    let package = PackageData::alloc(state.db_mut(), DUMMY_IDENTIFIER_ID, DUMMY_PATH_ID);
+    let parse_result = parse_module(
+        &mut state,
+        package,
+        DUMMY_IDENTIFIER_ID,
+        filepath,
+        source_code,
+    );
+    package.set_root_module(state.db_mut(), parse_result.module());
+
+    let hir = LowerToHir::run_all(&mut state, vec![parse_result]);
 
     CollectDefinitions::run_all(&mut state, &hir);
 
@@ -50,22 +59,24 @@ fn test_enum_items() {
     let filepath = PathId::from("test.sr");
     let source_code = "enum A { A, B, C }";
 
-    let ast = parse_module(&mut state, DUMMY_IDENTIFIER_ID, filepath, source_code);
-    let hir = LowerToHir::run_all(&mut state, vec![ast.into()]);
+    let package = PackageData::alloc(state.db_mut(), DUMMY_IDENTIFIER_ID, DUMMY_PATH_ID);
+    let parse_result = parse_module(
+        &mut state,
+        package,
+        DUMMY_IDENTIFIER_ID,
+        filepath,
+        source_code,
+    );
+    let module = parse_result.module();
+    package.set_root_module(state.db_mut(), parse_result.module());
+
+    let hir = LowerToHir::run_all(&mut state, vec![parse_result]);
 
     CollectDefinitions::run_all(&mut state, &hir);
 
-    assert!(hir
-        .first_key_value()
-        .unwrap()
-        .0
-        .symbol(state.db(), IdentifierId::from("A"))
-        .is_enum());
+    assert!(module.symbol(state.db(), IdentifierId::from("A")).is_enum());
 
-    let items = hir
-        .first_key_value()
-        .unwrap()
-        .0
+    let items = module
         .symbol(state.db(), IdentifierId::from("A"))
         .to_enum()
         .items(state.db());
@@ -81,8 +92,17 @@ fn duplicate_enum_item_definitions() {
     let filepath = PathId::from("test.sr");
     let source_code = "enum A { A, A }";
 
-    let ast = parse_module(&mut state, DUMMY_IDENTIFIER_ID, filepath, source_code);
-    let hir = LowerToHir::run_all(&mut state, vec![ast.into()]);
+    let package = PackageData::alloc(state.db_mut(), DUMMY_IDENTIFIER_ID, DUMMY_PATH_ID);
+    let parse_result = parse_module(
+        &mut state,
+        package,
+        DUMMY_IDENTIFIER_ID,
+        filepath,
+        source_code,
+    );
+    package.set_root_module(state.db_mut(), parse_result.module());
+
+    let hir = LowerToHir::run_all(&mut state, vec![parse_result]);
 
     CollectDefinitions::run_all(&mut state, &hir);
 
@@ -95,15 +115,22 @@ fn test_function() {
     let filepath = PathId::from("test.sr");
     let source_code = "fun a() {}";
 
-    let ast = parse_module(&mut state, DUMMY_IDENTIFIER_ID, filepath, source_code);
-    let hir = LowerToHir::run_all(&mut state, vec![ast.into()]);
+    let package = PackageData::alloc(state.db_mut(), DUMMY_IDENTIFIER_ID, DUMMY_PATH_ID);
+    let parse_result = parse_module(
+        &mut state,
+        package,
+        DUMMY_IDENTIFIER_ID,
+        filepath,
+        source_code,
+    );
+    let module = parse_result.module();
+    package.set_root_module(state.db_mut(), parse_result.module());
+
+    let hir = LowerToHir::run_all(&mut state, vec![parse_result]);
 
     CollectDefinitions::run_all(&mut state, &hir);
 
-    assert!(hir
-        .first_key_value()
-        .unwrap()
-        .0
+    assert!(module
         .symbol(state.db(), IdentifierId::from("a"))
         .is_function());
     assert!(state.diagnostics().is_ok());
@@ -115,15 +142,22 @@ fn test_struct() {
     let filepath = PathId::from("test.sr");
     let source_code = "struct A {}";
 
-    let ast = parse_module(&mut state, DUMMY_IDENTIFIER_ID, filepath, source_code);
-    let hir = LowerToHir::run_all(&mut state, vec![ast.into()]);
+    let package = PackageData::alloc(state.db_mut(), DUMMY_IDENTIFIER_ID, DUMMY_PATH_ID);
+    let parse_result = parse_module(
+        &mut state,
+        package,
+        DUMMY_IDENTIFIER_ID,
+        filepath,
+        source_code,
+    );
+    let module = parse_result.module();
+    package.set_root_module(state.db_mut(), parse_result.module());
+
+    let hir = LowerToHir::run_all(&mut state, vec![parse_result]);
 
     CollectDefinitions::run_all(&mut state, &hir);
 
-    assert!(hir
-        .first_key_value()
-        .unwrap()
-        .0
+    assert!(module
         .symbol(state.db(), IdentifierId::from("A"))
         .is_struct());
     assert!(state.diagnostics().is_ok());
@@ -135,15 +169,22 @@ fn test_interface() {
     let filepath = PathId::from("test.sr");
     let source_code = "interface A {}";
 
-    let ast = parse_module(&mut state, DUMMY_IDENTIFIER_ID, filepath, source_code);
-    let hir = LowerToHir::run_all(&mut state, vec![ast.into()]);
+    let package = PackageData::alloc(state.db_mut(), DUMMY_IDENTIFIER_ID, DUMMY_PATH_ID);
+    let parse_result = parse_module(
+        &mut state,
+        package,
+        DUMMY_IDENTIFIER_ID,
+        filepath,
+        source_code,
+    );
+    let module = parse_result.module();
+    package.set_root_module(state.db_mut(), parse_result.module());
+
+    let hir = LowerToHir::run_all(&mut state, vec![parse_result]);
 
     CollectDefinitions::run_all(&mut state, &hir);
 
-    assert!(hir
-        .first_key_value()
-        .unwrap()
-        .0
+    assert!(module
         .symbol(state.db(), IdentifierId::from("A"))
         .is_interface());
     assert!(state.diagnostics().is_ok());
@@ -155,15 +196,22 @@ fn test_type_alias() {
     let filepath = PathId::from("test.sr");
     let source_code = "type A = int8;";
 
-    let ast = parse_module(&mut state, DUMMY_IDENTIFIER_ID, filepath, source_code);
-    let hir = LowerToHir::run_all(&mut state, vec![ast.into()]);
+    let package = PackageData::alloc(state.db_mut(), DUMMY_IDENTIFIER_ID, DUMMY_PATH_ID);
+    let parse_result = parse_module(
+        &mut state,
+        package,
+        DUMMY_IDENTIFIER_ID,
+        filepath,
+        source_code,
+    );
+    let module = parse_result.module();
+    package.set_root_module(state.db_mut(), parse_result.module());
+
+    let hir = LowerToHir::run_all(&mut state, vec![parse_result]);
 
     CollectDefinitions::run_all(&mut state, &hir);
 
-    assert!(hir
-        .first_key_value()
-        .unwrap()
-        .0
+    assert!(module
         .symbol(state.db(), IdentifierId::from("A"))
         .is_type_alias());
     assert!(state.diagnostics().is_ok());

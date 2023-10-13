@@ -766,6 +766,8 @@ impl ModuleData {
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct ModuleId(pub PackageId, pub usize);
 
+pub const DUMMY_MODULE_ID: ModuleId = ModuleId(DUMMY_PACKAGE_ID, 0);
+
 impl ModuleId {
     /// Returns module's file path ID.
     #[inline(always)]
@@ -924,6 +926,12 @@ pub const DUMMY_PACKAGE_ID: PackageId = PackageId(0);
 impl PackageId {
     #[inline(always)]
     #[must_use]
+    pub fn name(self, db: &Database) -> IdentifierId {
+        db.packages[self.0 - 1].name
+    }
+
+    #[inline(always)]
+    #[must_use]
     pub fn parent(self, db: &Database) -> Option<PackageId> {
         db.packages[self.0 - 1].parent
     }
@@ -966,12 +974,22 @@ impl PackageId {
             .get(self.0 - 1)
             .map(|package| package.root_module)
     }
+
+    pub fn set_root_module(self, db: &mut Database, module: ModuleId) {
+        db.packages[self.0 - 1].root_module = module;
+    }
 }
 
 /// The information Stellar compiler has about a particular package.
 #[derive(Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct PackageData {
+    #[allow(dead_code)]
+    name: IdentifierId,
+
+    #[allow(dead_code)]
+    path: PathId,
+
     /// The ID of the root module of the package.
     ///
     /// ```txt
@@ -1001,7 +1019,7 @@ pub struct PackageData {
 
     /// The time of the last modification of the package folder.
     #[allow(dead_code)]
-    last_modification_time: FileTime,
+    last_modification_time: Option<FileTime>,
 
     // Information about all package-related compiler entities.
     modules: Vec<ModuleData>,
@@ -1019,12 +1037,41 @@ pub struct PackageData {
     signatures: Vec<SignatureData>,
 }
 
+/// Returns the last modification time of a folder with a given path.
+fn last_modification_time_of(path: PathId) -> Option<FileTime> {
+    path.resolve_or_none()
+        .and_then(|path| path.metadata().ok())
+        .map(|metadata| FileTime::from_last_modification_time(&metadata))
+}
+
 impl PackageData {
-    /// Returns the root module ID.
-    #[inline(always)]
-    #[must_use]
-    pub fn root_module(&self) -> ModuleId {
-        self.root_module
+    pub fn alloc(db: &mut Database, name: IdentifierId, path: PathId) -> PackageId {
+        dbg!(path);
+        let last_modification_time = last_modification_time_of(path);
+        dbg!("ok");
+        db.packages.push(Self {
+            name,
+            path,
+            last_modification_time,
+            root_module: DUMMY_MODULE_ID,
+            parent: None,
+            dependencies: FxHashMap::default(),
+            modules: Vec::new(),
+            enums: Vec::new(),
+            enum_items: Vec::new(),
+            predicates: Vec::new(),
+            structs: Vec::new(),
+            tuple_like_structs: Vec::new(),
+            fields: Vec::new(),
+            functions: Vec::new(),
+            interfaces: Vec::new(),
+            type_aliases: Vec::new(),
+            generic_parameter_scopes: Vec::new(),
+            generic_parameters: Vec::new(),
+            signatures: Vec::new(),
+        });
+
+        PackageId(db.packages.len())
     }
 
     #[inline(always)]
@@ -1070,6 +1117,20 @@ impl Database {
     #[must_use]
     pub fn new() -> Self {
         Self::default()
+    }
+
+    /// Returns an immutable reference to package data by its ID.
+    #[inline(always)]
+    #[must_use]
+    pub fn package(&self, id: PackageId) -> &PackageData {
+        &self.packages[id.0 - 1]
+    }
+
+    /// Returns a mutable reference to package data by its ID.
+    #[inline(always)]
+    #[must_use]
+    pub fn package_mut(&mut self, id: PackageId) -> &mut PackageData {
+        &mut self.packages[id.0 - 1]
     }
 }
 

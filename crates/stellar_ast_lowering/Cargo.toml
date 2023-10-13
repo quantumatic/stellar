@@ -15,10 +15,10 @@ stellar_ast = { path = "../stellar_ast" }
 stellar_database = { path = "../stellar_database" }
 stellar_diagnostics = { path = "../stellar_diagnostics" }
 stellar_filesystem = { path = "../stellar_filesystem" }
+stellar_fx_hash = { path = "../stellar_fx_hash" }
 stellar_hir = { path = "../stellar_hir" }
 stellar_interner = { path = "../stellar_interner" }
 stellar_parser = { path = "../stellar_parser" }
-stellar_fx_hash = { path = "../stellar_fx_hash" }
 tracing = { version = "0.1.37", optional = true }
 
 [features]
