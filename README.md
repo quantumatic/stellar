@@ -4,7 +4,7 @@
 
 # Stellar programming language
 
-Stellar is the language to make your programs both easy and fast!
+Stellar is the language to reduce the cognitive load of your code, but to preserve syntax flexibility and scalability! The language is made by [15 years old teenager](https://github.com/abs0luty) as a hobby project. The language is largely inspired by [Rust](https://github.com/rust-lang/rust), [Gleam](https://github.com/gleam-lang/gleam) and [Go](https://github.com/golang/go). Official reference of the language can be found [here](https://quantumatic.github.io/stellar).
 
 <p align="center">
 <details>
@@ -12,8 +12,6 @@ Stellar is the language to make your programs both easy and fast!
   We have a <a href="https://discord.gg/re29xvSV2">Discord server</a> and a <a href="https://t.me/stellar_lang">Telegram group</a>.
 </details>
 </p>
-
-Reference of Stellar can be found [here](https://quantumatic.github.io/stellar).
 
 # Table of contents
 
