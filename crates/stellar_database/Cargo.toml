@@ -19,7 +19,6 @@ stellar_diagnostics = { path = "../stellar_diagnostics" }
 stellar_filesystem = { path = "../stellar_filesystem" }
 stellar_fx_hash = { path = "../stellar_fx_hash" }
 stellar_interner = { path = "../stellar_interner" }
-stellar_thir = { path = "../stellar_thir" }
 
 [features]
 serde = ["dep:serde"]

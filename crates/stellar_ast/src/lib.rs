@@ -780,7 +780,7 @@ macro_rules! operator_type {
 
             fn from_str(s: &str) -> Result<Self, Self::Err> {
                 match s {
-                    $(stringify!($name) => Ok(Self::$name),)*
+                    $($str => Ok(Self::$name),)*
                     _ => Err("unexpected operator type".to_string()),
                 }
             }

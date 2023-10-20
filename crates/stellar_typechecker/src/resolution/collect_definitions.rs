@@ -103,7 +103,7 @@ impl<'s> CollectDefinitions<'s> {
 
         self.check_for_duplicate_definition(enum_.name);
 
-        let id = self.state.db_mut().add_enum(self.module.0, enum_data);
+        let id = self.state.db_mut().add_enum(self.module.package(), enum_data);
 
         self.module
             .add_module_item(self.state.db_mut(), enum_.name.id, Symbol::Enum(id));

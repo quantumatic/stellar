@@ -236,7 +236,7 @@ impl<'s, 'h> CollectSignatures<'s, 'h> {
         parameters_hir: &[stellar_hir::GenericParameter],
     ) {
         let generic_parameter_scope =
-            GenericParameterScopeData::alloc(self.state.db_mut(), module.0);
+            GenericParameterScopeData::alloc(self.state.db_mut(), module.package());
 
         for parameter_hir in parameters_hir {
             let default_value = if let Some(default_value) = &parameter_hir.default_value {
@@ -250,7 +250,7 @@ impl<'s, 'h> CollectSignatures<'s, 'h> {
 
                 let predicate = PredicateData::alloc(
                     self.state.db_mut(),
-                    module.0,
+                    module.package(),
                     Type::Constructor(TypeConstructor::new_primitive(parameter_hir.name.id)),
                     bounds,
                 );
@@ -260,7 +260,7 @@ impl<'s, 'h> CollectSignatures<'s, 'h> {
 
             let generic_parameter = GenericParameterData::alloc(
                 self.state.db_mut(),
-                module.0,
+                module.package(),
                 parameter_hir.name.location,
                 default_value,
             );
@@ -291,7 +291,7 @@ impl<'s, 'h> CollectSignatures<'s, 'h> {
 
             let bounds = self.resolve_bounds(&predicate_hir.bounds);
 
-            let predicate = PredicateData::alloc(self.state.db_mut(), module.0, ty, bounds);
+            let predicate = PredicateData::alloc(self.state.db_mut(), module.package(), ty, bounds);
 
             signature.add_predicate(self.state.db_mut(), predicate);
         }

@@ -90,7 +90,7 @@ impl<'s, 'h> CollectSignatures<'s, 'h> {
         let signature = self.resolve_or_analyze_signature(module, &constructor.path)?;
 
         let constructor = TypeConstructor {
-            path: Path::from(&constructor.path),
+            symbol: Path::from(&constructor.path),
             arguments: constructor
                 .arguments
                 .iter()

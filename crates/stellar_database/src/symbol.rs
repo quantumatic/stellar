@@ -1,5 +1,20 @@
 use super::*;
 
+/// A builtin symbol's unique ID.
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+pub enum BuiltinSymbolId {
+    I8,
+    I16,
+    I32,
+    I64,
+    U8,
+    U16,
+    U32,
+    U64,
+    CHAR,
+}
+
 macro_rules! symbols {
     ($($name:ident),*) => {
         paste! {
@@ -59,7 +74,8 @@ symbols! {
     interface,
     tuple_like_struct,
     type_alias,
-    enum_item
+    enum_item,
+    builtin_symbol
 }
 
 impl Symbol {
@@ -74,7 +90,7 @@ impl Symbol {
             Self::Interface(interface) => interface.signature(db),
             Self::TupleLikeStruct(struct_) => struct_.signature(db),
             Self::TypeAlias(alias) => alias.signature(db),
-            Self::EnumItem(_) | Self::Module(_) => unreachable!(),
+            Self::EnumItem(_) | Self::Module(_) | Self::BuiltinSymbol(_) => unreachable!(),
         }
     }
 
@@ -88,6 +104,7 @@ impl Symbol {
             Self::TupleLikeStruct(struct_) => struct_.signature(db).module(db),
             Self::TypeAlias(alias) => alias.signature(db).module(db),
             Self::EnumItem(item) => item.module(db),
+            Self::BuiltinSymbol(_) => DUMMY_MODULE_ID,
         }
     }
 
@@ -107,6 +124,7 @@ impl Symbol {
             Self::TupleLikeStruct(struct_) => struct_.signature(db).name(db),
             Self::TypeAlias(alias) => alias.signature(db).name(db),
             Self::EnumItem(item) => item.name(db),
+            Self::BuiltinSymbol(_) => todo!(),
         }
     }
 
@@ -120,7 +138,7 @@ impl Symbol {
             Self::Interface(_) => Some(ModuleItemKind::Interface),
             Self::TupleLikeStruct(_) => Some(ModuleItemKind::TupleLikeStruct),
             Self::TypeAlias(_) => Some(ModuleItemKind::TypeAlias),
-            Self::EnumItem(_) | Self::Module(_) => None,
+            Self::EnumItem(_) | Self::Module(_) | Self::BuiltinSymbol(_) => None,
         }
     }
 

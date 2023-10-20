@@ -12,13 +12,14 @@ use stellar_diagnostics::Diagnostics;
 use stellar_filesystem::location::{Location, DUMMY_LOCATION};
 use stellar_fx_hash::FxHashMap;
 use stellar_interner::{IdentifierId, PathId};
-use stellar_thir::ty::{Type, TypeConstructor};
 
 #[macro_use]
-mod access_methods_macro;
+mod id_type;
 mod symbol;
+mod ty;
 
 pub use symbol::Symbol;
+use ty::{Type, TypeConstructor};
 
 /// A data that Stellar compiler has about an enum.
 #[derive(Debug)]
@@ -49,36 +50,31 @@ impl EnumData {
     }
 }
 
-/// A unique ID that maps to [`EnumData`].
-#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
-pub struct EnumId(pub PackageId, pub usize);
-
 impl EnumId {
     /// Returns a list of predicates associated with the enum.
     #[inline]
     #[must_use]
     pub fn signature(self, db: &Database) -> SignatureId {
-        db.enum_(self).signature
+        db.fetch_enum(self).signature
     }
 
     /// Returns a list of items associated with the enum.
     #[inline]
     #[must_use]
     pub fn items(self, db: &Database) -> &FxHashMap<IdentifierId, EnumItemId> {
-        &db.enum_(self).items
+        &db.fetch_enum(self).items
     }
 
     /// Returns `true` if an item with a given name is contained in the enum definition.
     #[inline]
     #[must_use]
     pub fn contains_item(self, db: &Database, name: IdentifierId) -> bool {
-        db.enum_(self).items.contains_key(&name)
+        db.fetch_enum(self).items.contains_key(&name)
     }
 
     /// Returns an item with a given name.
     pub fn item(self, db: &Database, name: IdentifierId) -> Option<EnumItemId> {
-        db.enum_(self).items.get(&name).copied()
+        db.fetch_enum(self).items.get(&name).copied()
     }
 }
 
@@ -111,24 +107,19 @@ impl StructData {
     }
 }
 
-/// A unique ID that maps to [`StructData`].
-#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
-pub struct StructId(pub PackageId, pub usize);
-
 impl StructId {
     /// Returns a list of predicates associated with the struct.
     #[inline]
     #[must_use]
     pub fn signature(self, db: &Database) -> SignatureId {
-        db.struct_(self).signature
+        db.fetch_struct(self).signature
     }
 
     /// Returns a list of fields associated with the struct.
     #[inline]
     #[must_use]
     pub fn fields(self, db: &Database) -> &FxHashMap<IdentifierId, FieldId> {
-        &db.struct_(self).fields
+        &db.fetch_struct(self).fields
     }
 }
 
@@ -159,17 +150,12 @@ impl TupleLikeStructData {
     }
 }
 
-/// A unique ID that maps to [`TupleLikeStructData`].
-#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
-pub struct TupleLikeStructId(pub PackageId, pub usize);
-
 impl TupleLikeStructId {
     /// Returns the type signature of the struct.
     #[inline]
     #[must_use]
     pub fn signature(self, db: &Database) -> SignatureId {
-        db.tuple_like_struct(self).signature
+        db.fetch_tuple_like_struct(self).signature
     }
 }
 
@@ -208,11 +194,6 @@ impl FieldData {
     }
 }
 
-/// A unique ID that maps to [`FieldData`].
-#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
-pub struct FieldId(pub PackageId, pub usize);
-
 /// A data that Stellar compiler has about a predicate.
 #[derive(Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
@@ -242,24 +223,19 @@ impl PredicateData {
     }
 }
 
-/// A unique ID that maps to [`PredicateData`].
-#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
-pub struct PredicateId(pub PackageId, pub usize);
-
 impl PredicateId {
     /// Returns the type of the predicate.
     #[inline]
     #[must_use]
     pub fn ty(self, db: &Database) -> &Type {
-        &db.predicate(self).ty
+        &db.fetch_predicate(self).ty
     }
 
     /// Returns the bounds of the predicate.
     #[inline]
     #[must_use]
     pub fn bounds(self, db: &Database) -> &[TypeConstructor] {
-        &db.predicate(self).bounds
+        &db.fetch_predicate(self).bounds
     }
 }
 
@@ -299,20 +275,15 @@ impl GenericParameterScopeData {
     }
 }
 
-/// A unique ID that maps to [`GenericParameterScopeData`].
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
-pub struct GenericParameterScopeId(pub PackageId, pub usize);
-
 impl GenericParameterScopeId {
     /// Returns the parent scope.
     pub fn parent_scope(self, db: &Database) -> Option<GenericParameterScopeId> {
-        db.generic_parameter_scope(self).parent_scope
+        db.fetch_generic_parameter_scope(self).parent_scope
     }
 
     /// Returns the map of generic parameters in the scope.
     pub fn parameters(self, db: &Database) -> &FxHashMap<IdentifierId, GenericParameterId> {
-        &db.generic_parameter_scope(self).parameters
+        &db.fetch_generic_parameter_scope(self).parameters
     }
 
     /// Adds a generic parameter into the scope.
@@ -323,7 +294,7 @@ impl GenericParameterScopeId {
         parameter_name: IdentifierId,
         parameter: GenericParameterId,
     ) {
-        db.generic_parameter_scope_mut(self)
+        db.fetch_generic_parameter_scope_mut(self)
             .parameters
             .insert(parameter_name, parameter);
     }
@@ -408,11 +379,6 @@ impl GenericParameterData {
     }
 }
 
-/// A unique ID that maps to [`GenericParameterData`].
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
-pub struct GenericParameterId(pub PackageId, pub usize);
-
 /// A data that Stellar compiler has about an enum item.
 #[derive(Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
@@ -437,23 +403,18 @@ impl EnumItemData {
     }
 }
 
-/// A unique ID that maps to [`EnumItemData`].
-#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
-pub struct EnumItemId(pub PackageId, pub usize);
-
 impl EnumItemId {
     /// Returns the name of the enum item.
     #[inline]
     #[must_use]
     pub fn name(self, db: &Database) -> IdentifierAST {
-        db.enum_item(self).name
+        db.fetch_enum_item(self).name
     }
 
     #[inline]
     #[must_use]
     pub fn module(self, db: &Database) -> ModuleId {
-        db.enum_item(self).module
+        db.fetch_enum_item(self).module
     }
 }
 
@@ -515,71 +476,66 @@ impl SignatureData {
     }
 }
 
-/// A unique ID that maps to [`SignatureData`].
-#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
-pub struct SignatureId(pub PackageId, pub usize);
-
 impl SignatureId {
     /// Returns the name.
     #[inline]
     #[must_use]
     pub fn name(self, db: &Database) -> IdentifierAST {
-        db.signature(self).name
+        db.fetch_signature(self).name
     }
 
     /// Returns the visibility.
     #[inline]
     #[must_use]
     pub fn visibility(self, db: &Database) -> Visibility {
-        db.signature(self).visibility
+        db.fetch_signature(self).visibility
     }
 
     /// Returns the module.
     #[inline]
     #[must_use]
     pub fn module(self, db: &Database) -> ModuleId {
-        db.signature(self).module
+        db.fetch_signature(self).module
     }
 
     /// Returns the corresponding HIR/THIR node index.
     #[inline]
     #[must_use]
     pub fn node_idx(self, db: &Database) -> usize {
-        db.signature(self).node_idx
+        db.fetch_signature(self).node_idx
     }
 
     #[inline]
     pub fn set_analyzed(self, db: &mut Database) {
-        db.signature_mut(self).is_analyzed = true;
+        db.fetch_signature(self).is_analyzed = true;
     }
 
     #[inline]
     #[must_use]
     pub fn is_analyzed(self, db: &Database) -> bool {
-        db.signature(self).is_analyzed
+        db.fetch_signature(self).is_analyzed
     }
 
     #[inline]
     #[must_use]
     pub fn predicates(self, db: &Database) -> &[PredicateId] {
-        &db.signature(self).predicates
+        &db.fetch_signature(self).predicates
     }
 
     #[inline]
     pub fn add_predicate(self, db: &mut Database, predicate: PredicateId) {
-        db.signature_mut(self).predicates.push(predicate);
+        db.fetch_signature(self).predicates.push(predicate);
     }
 
     #[inline]
     pub fn add_implemented_interface(self, db: &mut Database, interface: TypeConstructor) {
-        db.signature_mut(self).implements.push(interface);
+        db.fetch_signature_mut(self).implements.push(interface);
     }
 
     #[inline]
     #[must_use]
     pub fn generic_parameter_scope(self, db: &Database) -> GenericParameterScopeId {
-        db.signature(self).generic_parameter_scope
+        db.fetch_signature(self).generic_parameter_scope
     }
 
     #[inline]
@@ -588,7 +544,7 @@ impl SignatureId {
         db: &mut Database,
         generic_parameter_scope: GenericParameterScopeId,
     ) {
-        db.signature_mut(self).generic_parameter_scope = generic_parameter_scope;
+        db.fetch_signature_mut(self).generic_parameter_scope = generic_parameter_scope;
     }
 }
 
@@ -615,17 +571,12 @@ impl FunctionData {
     }
 }
 
-/// A unique ID that maps to [`FunctionData`].
-#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
-pub struct FunctionId(pub PackageId, pub usize);
-
 impl FunctionId {
     /// Returns the function signature.
     #[inline]
     #[must_use]
     pub fn signature(self, db: &Database) -> SignatureId {
-        db.function(self).signature
+        db.fetch_function(self).signature
     }
 }
 
@@ -656,17 +607,12 @@ impl InterfaceData {
     }
 }
 
-/// A unique ID that maps to [`InterfaceData`].
-#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
-pub struct InterfaceId(pub PackageId, pub usize);
-
 impl InterfaceId {
     /// Returns the type signature of the interface.
     #[inline]
     #[must_use]
     pub fn signature(self, db: &Database) -> SignatureId {
-        db.interface(self).signature
+        db.fetch_interface(self).signature
     }
 }
 
@@ -697,29 +643,24 @@ impl TypeAliasData {
     }
 }
 
-/// A unique ID that maps to [`TypeAliasData`].
-#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
-pub struct TypeAliasId(pub PackageId, pub usize);
-
 impl TypeAliasId {
     /// Returns the signature of the type alias.
     #[inline]
     #[must_use]
     pub fn signature(self, db: &Database) -> SignatureId {
-        db.type_alias(self).signature
+        db.fetch_type_alias(self).signature
     }
 
     #[inline]
     #[must_use]
     pub fn ty(self, db: &Database) -> &Type {
-        &db.type_alias(self).ty
+        &db.fetch_type_alias(self).ty
     }
 
     #[inline]
     #[must_use]
-    pub fn ty_mut(self, db: &mut Database) -> &mut Type {
-        &mut db.type_alias_mut(self).ty
+    pub fn set_type(self, db: &mut Database, ty: Type) {
+        db.fetch_type_alias_mut(self).ty = ty;
     }
 }
 
@@ -761,57 +702,47 @@ impl ModuleData {
     }
 }
 
-/// A unique ID that maps to [`ModuleData`].
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
-pub struct ModuleId(pub PackageId, pub usize);
-
-pub const DUMMY_MODULE_ID: ModuleId = ModuleId(DUMMY_PACKAGE_ID, 0);
-
 impl ModuleId {
     /// Returns module's file path ID.
     #[inline]
     #[must_use]
     pub fn filepath(self, db: &Database) -> PathId {
-        db.module(self).filepath
+        db.fetch_module(self).filepath
     }
 
     /// Returns module's name.
     #[inline]
     #[must_use]
     pub fn name(self, db: &Database) -> IdentifierId {
-        db.module(self).name
+        db.fetch_module(self).name
     }
 
     /// Returns an immutable reference to module item symbols.
     #[inline]
     #[must_use]
     pub fn module_item_symbols(self, db: &Database) -> &FxHashMap<IdentifierId, Symbol> {
-        &db.module(self).module_item_symbols
+        &db.fetch_module(self).module_item_symbols
     }
 
-    /// Returns a mutable reference to module item symbols.
-    #[inline]
-    #[must_use]
-    pub fn module_item_symbols_mut(
-        self,
-        db: &mut Database,
-    ) -> &mut FxHashMap<IdentifierId, Symbol> {
-        &mut db.module_mut(self).module_item_symbols
+    /// Adds a module item symbol to the module.
+    pub fn add_module_item(self, db: &mut Database, name: IdentifierId, symbol: Symbol) {
+        db.fetch_module_mut(self)
+            .module_item_symbols
+            .insert(name, symbol);
     }
 
     /// Returns an immutable reference to submodules.
     #[inline]
     #[must_use]
     pub fn submodules(self, db: &Database) -> &FxHashMap<IdentifierId, ModuleId> {
-        &db.module(self).submodules
+        &db.fetch_module(self).submodules
     }
 
     /// Returns a mutable reference to submodules.
     #[inline]
     #[must_use]
     pub fn submodules_mut(self, db: &mut Database) -> &mut FxHashMap<IdentifierId, ModuleId> {
-        &mut db.module_mut(self).submodules
+        &mut db.fetch_module_mut(self).submodules
     }
 
     /// Resolves a symbol related to only module item in the module.
@@ -851,12 +782,6 @@ impl ModuleId {
     #[must_use]
     pub fn module_item_symbol(self, db: &Database, name: IdentifierId) -> Symbol {
         self.module_item_symbol_or_none(db, name).unwrap()
-    }
-
-    /// Adds a module item information to the module.
-    #[inline]
-    pub fn add_module_item(self, db: &mut Database, name: IdentifierId, symbol: Symbol) {
-        self.module_item_symbols_mut(db).insert(name, symbol);
     }
 
     /// Checks if a symbol is contained in the module.
@@ -900,20 +825,15 @@ impl ModuleId {
     #[inline]
     #[must_use]
     pub fn resolved_imports(self, db: &Database) -> &FxHashMap<IdentifierId, Symbol> {
-        &db.module(self).resolved_imports
-    }
-
-    /// Returns a mutable reference to imports.
-    #[inline]
-    #[must_use]
-    pub fn resolved_imports_mut(self, db: &mut Database) -> &mut FxHashMap<IdentifierId, Symbol> {
-        &mut db.module_mut(self).resolved_imports
+        &db.fetch_module(self).resolved_imports
     }
 
     /// Adds a resolved import to the module.
     #[inline]
     pub fn add_resolved_import(self, db: &mut Database, name: IdentifierId, symbol: Symbol) {
-        self.resolved_imports_mut(db).insert(name, symbol);
+        db.fetch_module_mut(self)
+            .resolved_imports
+            .insert(name, symbol);
     }
 }
 
@@ -1022,19 +942,19 @@ pub struct PackageData {
     last_modification_time: Option<FileTime>,
 
     // Information about all package-related compiler entities.
-    modules: Vec<ModuleData>,
-    enums: Vec<EnumData>,
-    enum_items: Vec<EnumItemData>,
-    predicates: Vec<PredicateData>,
-    structs: Vec<StructData>,
-    tuple_like_structs: Vec<TupleLikeStructData>,
-    fields: Vec<FieldData>,
-    functions: Vec<FunctionData>,
-    interfaces: Vec<InterfaceData>,
-    type_aliases: Vec<TypeAliasData>,
-    generic_parameter_scopes: Vec<GenericParameterScopeData>,
-    generic_parameters: Vec<GenericParameterData>,
-    signatures: Vec<SignatureData>,
+    module_: Vec<ModuleData>,
+    enum_: Vec<EnumData>,
+    enum_item_: Vec<EnumItemData>,
+    predicate_: Vec<PredicateData>,
+    struct_: Vec<StructData>,
+    tuple_like_struct_: Vec<TupleLikeStructData>,
+    field_: Vec<FieldData>,
+    function_: Vec<FunctionData>,
+    interface_: Vec<InterfaceData>,
+    type_alias_: Vec<TypeAliasData>,
+    generic_parameter_scope_: Vec<GenericParameterScopeData>,
+    generic_parameter_: Vec<GenericParameterData>,
+    signature_: Vec<SignatureData>,
 }
 
 /// Returns the last modification time of a folder with a given path.
@@ -1046,9 +966,8 @@ fn last_modification_time_of(path: PathId) -> Option<FileTime> {
 
 impl PackageData {
     pub fn alloc(db: &mut Database, name: IdentifierId, path: PathId) -> PackageId {
-        dbg!(path);
         let last_modification_time = last_modification_time_of(path);
-        dbg!("ok");
+
         db.packages.push(Self {
             name,
             path,
@@ -1056,19 +975,19 @@ impl PackageData {
             root_module: DUMMY_MODULE_ID,
             parent: None,
             dependencies: FxHashMap::default(),
-            modules: Vec::new(),
-            enums: Vec::new(),
-            enum_items: Vec::new(),
-            predicates: Vec::new(),
-            structs: Vec::new(),
-            tuple_like_structs: Vec::new(),
-            fields: Vec::new(),
-            functions: Vec::new(),
-            interfaces: Vec::new(),
-            type_aliases: Vec::new(),
-            generic_parameter_scopes: Vec::new(),
-            generic_parameters: Vec::new(),
-            signatures: Vec::new(),
+            module_: Vec::new(),
+            enum_: Vec::new(),
+            enum_item_: Vec::new(),
+            predicate_: Vec::new(),
+            struct_: Vec::new(),
+            tuple_like_struct_: Vec::new(),
+            field_: Vec::new(),
+            function_: Vec::new(),
+            interface_: Vec::new(),
+            type_alias_: Vec::new(),
+            generic_parameter_scope_: Vec::new(),
+            generic_parameter_: Vec::new(),
+            signature_: Vec::new(),
         });
 
         PackageId(db.packages.len())
@@ -1219,46 +1138,19 @@ impl State {
     }
 }
 
-// # What?
-// This macro automatically generates methods like `module`, `module_mut`,
-// `add_module`, `contains_module`, etc. It is here because it saves up to
-// 1k lines of unrequired boilerplate code.
-//
-// # Macro input format
-// * `method_name` is the name of the method that returns entity data by ID.
-// * `field_name` is the name of the field in [`PackageData`] type that stores
-// the entity data.
-// * `entity_id_ty` is the type of the entity ID.
-// * `entity_data_ty` is the type of the entity data.
-// * `reserved_name` stands for situations in which `method_name` is a keyword,
-// so additional `_` will be added.
-//
-// TODO: refactor this to be more readable and easy to edit in the near future.
-define_db_access_methods! {
-    { method_name: module, field_name: modules,
-      entity_id_ty: ModuleId, entity_data_ty: ModuleData },
-    { reserved_name, method_name: enum, field_name: enums,
-      entity_id_ty: EnumId, entity_data_ty: EnumData },
-    { method_name: enum_item, field_name: enum_items,
-      entity_id_ty: EnumItemId, entity_data_ty: EnumItemData },
-    { method_name: predicate, field_name: predicates,
-      entity_id_ty: PredicateId, entity_data_ty: PredicateData },
-    { reserved_name, method_name: struct, field_name: structs,
-      entity_id_ty: StructId, entity_data_ty: StructData },
-    { method_name: tuple_like_struct, field_name: tuple_like_structs,
-      entity_id_ty: TupleLikeStructId, entity_data_ty: TupleLikeStructData },
-    { method_name: field, field_name: fields,
-      entity_id_ty: FieldId, entity_data_ty: FieldData },
-    { method_name: function, field_name: functions,
-      entity_id_ty: FunctionId, entity_data_ty: FunctionData },
-    { method_name: type_alias, field_name: type_aliases,
-      entity_id_ty: TypeAliasId, entity_data_ty: TypeAliasData },
-    { method_name: interface, field_name: interfaces,
-      entity_id_ty: InterfaceId, entity_data_ty: InterfaceData },
-    { method_name: generic_parameter_scope, field_name: generic_parameter_scopes,
-      entity_id_ty: GenericParameterScopeId, entity_data_ty: GenericParameterScopeData },
-    { method_name: generic_parameter, field_name: generic_parameters,
-      entity_id_ty: GenericParameterId, entity_data_ty: GenericParameterData },
-    { method_name: signature, field_name: signatures,
-      entity_id_ty: SignatureId, entity_data_ty: SignatureData }
+// Reduces another 1331 lines of boilerplate code
+id_types! {
+    enum,
+    enum_item,
+    struct,
+    tuple_like_struct,
+    field,
+    predicate,
+    generic_parameter_scope,
+    generic_parameter,
+    signature,
+    function,
+    interface,
+    type_alias,
+    module
 }
