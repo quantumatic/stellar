@@ -1,20 +1,48 @@
-use super::*;
+//! Defines [`Symbol`] and [`BuiltinSymbolId`].
 
-/// A builtin symbol's unique ID.
-#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
-pub enum BuiltinSymbolId {
-    I8,
-    I16,
-    I32,
-    I64,
-    U8,
-    U16,
-    U32,
-    U64,
-    CHAR,
+use super::*;
+use crate::Path;
+
+/// Generates an ADT for all builtin symbols.
+macro_rules! builtin_symbols {
+    ($($name:ident),*) => {
+        paste! {
+            /// A builtin symbol's unique ID.
+            #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
+            #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+            pub enum BuiltinSymbolId {
+                $(
+                    [<$name:camel>],
+                )*
+            }
+
+            impl From<IdentifierId> for BuiltinSymbolId {
+                #[inline]
+                fn from(id: IdentifierId) -> Self {
+                    match id {
+                        $(
+                            stellar_interner::builtin_identifiers::[<$name:upper>] => Self::[<$name:camel>],
+                        )*
+                        _ => unimplemented!()
+                    }
+                }
+            }
+
+            impl From<BuiltinSymbolId> for IdentifierId {
+                #[inline]
+                fn from(id: BuiltinSymbolId) -> Self {
+                    match id {
+                        $(
+                            BuiltinSymbolId::[<$name:camel>] => stellar_interner::builtin_identifiers::[<$name:upper>],
+                        )*
+                    }
+                }
+            }
+        }
+    };
 }
 
+/// Generates an ADT for symbols.
 macro_rules! symbols {
     ($($name:ident),*) => {
         paste! {
@@ -26,6 +54,15 @@ macro_rules! symbols {
                     [<$name:camel>]([<$name:camel Id>]),
                 )*
             }
+
+            $(
+                impl From<[<$name:camel Id>]> for Symbol {
+                    #[inline]
+                    fn from(id: [<$name:camel Id>]) -> Self {
+                        Self::[<$name:camel>](id)
+                    }
+                }
+            )*
 
             impl Symbol {
                 $(
@@ -64,6 +101,18 @@ macro_rules! symbols {
             }
         }
     };
+}
+
+builtin_symbols! {
+    int8, int16, int32, int64, uint8, uint16, uint32, uint64,
+    float32, float64, char, String, List, bool
+}
+
+impl From<BuiltinSymbolId> for Path {
+    #[inline]
+    fn from(id: BuiltinSymbolId) -> Self {
+        IdentifierId::from(id).into()
+    }
 }
 
 symbols! {
@@ -115,7 +164,7 @@ impl Symbol {
         match self {
             Self::Module(module) => IdentifierAST {
                 location: DUMMY_LOCATION,
-                id: db.module(module).name,
+                id: module.name(db),
             },
             Self::Enum(enum_) => enum_.signature(db).name(db),
             Self::Struct(struct_) => struct_.signature(db).name(db),
@@ -146,5 +195,25 @@ impl Symbol {
     #[must_use]
     pub fn module_item_kind(self) -> ModuleItemKind {
         self.module_item_kind_or_none().unwrap()
+    }
+
+    #[inline]
+    #[must_use]
+    pub fn path(self, db: &Database) -> Path {
+        let path = self.module(db).path(db).clone();
+
+        match self {
+            Self::Module(_) => path,
+            Self::Enum(_)
+            | Self::Struct(_)
+            | Self::TupleLikeStruct(_)
+            | Self::Function(_)
+            | Self::TypeAlias(_)
+            | Self::Interface(_) => path + self.name(db).id,
+            Self::EnumItem(item) => {
+                path + item.enum_(db).signature(db).name(db).id + item.name(db).id
+            }
+            Self::BuiltinSymbol(symbol) => symbol.into(),
+        }
     }
 }

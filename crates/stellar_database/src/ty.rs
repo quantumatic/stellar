@@ -3,11 +3,11 @@
 use std::fmt::Display;
 
 use derive_more::Display;
-use paste::paste;
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 use stellar_filesystem::location::Location;
-use stellar_interner::{builtin_identifiers, IdentifierId};
+
+use crate::{symbol::BuiltinSymbolId, Path, Symbol};
 
 /// A raw representation of types in the Stellar programming language.
 ///
@@ -184,28 +184,6 @@ impl TypeVariable {
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct TypeVariableId(pub usize);
 
-/// The macro, automates the process of generating functions
-/// for getting builtin primitive types.
-macro_rules! generate_builtin_primitive_types {
-    ($($name:ident),*) => {
-        paste! {
-            $(
-                #[inline]
-                #[must_use]
-                #[doc = "Returns a `" $name "` type."]
-                pub fn $name() -> Type {
-                    Type::new_primitive(builtin_identifiers::[<$name:upper>])
-                }
-            )*
-        }
-    };
-}
-
-generate_builtin_primitive_types! {
-    int8, int16, int32, int64, uint8, uint16, uint32, uint64,
-    float32, float64, char, string
-}
-
 /// A type constructor: `List[uint32]`, `uint32`, `String`.
 ///
 /// Anything that has name and optionally have generic arguments.
@@ -219,41 +197,26 @@ pub struct TypeConstructor {
 impl TypeConstructor {
     #[inline]
     #[must_use]
-    pub const fn new(left: Path, right: Vec<Type>) -> Self {
-        Self {
-            symbol: left,
-            arguments: right,
-        }
-    }
-
-    #[inline]
-    #[must_use]
-    pub fn new_primitive(identifier_id: IdentifierId) -> Self {
-        Self {
-            symbol: Path {
-                identifiers: vec![identifier_id],
-            },
-            arguments: vec![],
-        }
+    pub const fn new(symbol: Symbol, arguments: Vec<Type>) -> Self {
+        Self { symbol, arguments }
     }
 }
 
 impl Type {
     #[inline]
     #[must_use]
-    pub fn new_primitive(identifier_id: IdentifierId) -> Self {
-        Self::Constructor(TypeConstructor::new_primitive(identifier_id))
+    pub fn new_primitive(symbol: Symbol) -> Self {
+        Self::Constructor(TypeConstructor::new(symbol, vec![]))
     }
 }
 
 /// Returns a list type with the given element type.
 #[inline]
 #[must_use]
+#[allow(dead_code)]
 pub fn list_of(element_type: Type) -> Type {
     Type::Constructor(TypeConstructor {
-        symbol: Path {
-            identifiers: vec![builtin_identifiers::LIST],
-        },
+        symbol: Symbol::BuiltinSymbol(BuiltinSymbolId::List),
         arguments: vec![element_type],
     })
 }

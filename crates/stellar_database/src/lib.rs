@@ -3,6 +3,8 @@
     html_favicon_url = "https://raw.githubusercontent.com/quantumatic/stellar/main/additional/icon/stellar.png"
 )]
 
+use std::{iter, ops::Add};
+
 use filetime::FileTime;
 use paste::paste;
 #[cfg(feature = "serde")]
@@ -21,6 +23,68 @@ mod ty;
 pub use symbol::Symbol;
 use ty::{Type, TypeConstructor};
 
+#[derive(Debug, PartialEq, Eq, Clone, Hash)]
+pub struct Path {
+    segments: Vec<IdentifierId>,
+}
+
+impl Path {
+    #[inline]
+    #[must_use]
+    pub fn new(segments: Vec<IdentifierId>) -> Self {
+        Self { segments }
+    }
+
+    #[inline]
+    #[must_use]
+    pub fn segments(&self) -> &[IdentifierId] {
+        &self.segments
+    }
+}
+
+impl From<IdentifierId> for Path {
+    fn from(id: IdentifierId) -> Self {
+        Self::new(vec![id])
+    }
+}
+
+impl From<IdentifierAST> for Path {
+    fn from(id: IdentifierAST) -> Self {
+        Self::new(vec![id.id])
+    }
+}
+
+impl Add<Path> for Path {
+    type Output = Path;
+
+    #[inline]
+    fn add(self, rhs: Path) -> Self::Output {
+        Self {
+            segments: self.segments.into_iter().chain(rhs.segments).collect(),
+        }
+    }
+}
+
+impl Add<IdentifierId> for Path {
+    type Output = Path;
+
+    #[inline]
+    fn add(self, rhs: IdentifierId) -> Self::Output {
+        Self {
+            segments: self.segments.into_iter().chain(iter::once(rhs)).collect(),
+        }
+    }
+}
+
+impl Add<IdentifierAST> for Path {
+    type Output = Path;
+
+    #[inline]
+    fn add(self, rhs: IdentifierAST) -> Self::Output {
+        self + rhs.id
+    }
+}
+
 /// A data that Stellar compiler has about an enum.
 #[derive(Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
@@ -35,7 +99,7 @@ impl EnumData {
     #[inline]
     #[must_use]
     pub fn alloc(db: &mut Database, signature: SignatureId) -> EnumId {
-        db.add_enum(signature.module(db).0, Self::new(signature))
+        db.add_enum(signature.package(), Self::new(signature))
     }
 
     /// Creates a new enum data object.
@@ -55,26 +119,26 @@ impl EnumId {
     #[inline]
     #[must_use]
     pub fn signature(self, db: &Database) -> SignatureId {
-        db.fetch_enum(self).signature
+        db.resolve_enum(self).signature
     }
 
     /// Returns a list of items associated with the enum.
     #[inline]
     #[must_use]
     pub fn items(self, db: &Database) -> &FxHashMap<IdentifierId, EnumItemId> {
-        &db.fetch_enum(self).items
+        &db.resolve_enum(self).items
     }
 
     /// Returns `true` if an item with a given name is contained in the enum definition.
     #[inline]
     #[must_use]
     pub fn contains_item(self, db: &Database, name: IdentifierId) -> bool {
-        db.fetch_enum(self).items.contains_key(&name)
+        db.resolve_enum(self).items.contains_key(&name)
     }
 
     /// Returns an item with a given name.
     pub fn item(self, db: &Database, name: IdentifierId) -> Option<EnumItemId> {
-        db.fetch_enum(self).items.get(&name).copied()
+        db.resolve_enum(self).items.get(&name).copied()
     }
 }
 
@@ -92,7 +156,7 @@ impl StructData {
     #[inline]
     #[must_use]
     pub fn alloc(db: &mut Database, signature: SignatureId) -> StructId {
-        db.add_struct(signature.module(db).0, Self::new(signature))
+        db.add_struct(signature.package(), Self::new(signature))
     }
 
     /// Creates a new struct data object.
@@ -112,14 +176,14 @@ impl StructId {
     #[inline]
     #[must_use]
     pub fn signature(self, db: &Database) -> SignatureId {
-        db.fetch_struct(self).signature
+        db.resolve_struct(self).signature
     }
 
     /// Returns a list of fields associated with the struct.
     #[inline]
     #[must_use]
     pub fn fields(self, db: &Database) -> &FxHashMap<IdentifierId, FieldId> {
-        &db.fetch_struct(self).fields
+        &db.resolve_struct(self).fields
     }
 }
 
@@ -136,7 +200,7 @@ impl TupleLikeStructData {
     #[inline]
     #[must_use]
     pub fn alloc(db: &mut Database, signature: SignatureId) -> TupleLikeStructId {
-        db.add_tuple_like_struct(signature.module(db).0, Self::new(signature))
+        db.add_tuple_like_struct(signature.package(), Self::new(signature))
     }
 
     /// Creates a new tuple-like struct data object.
@@ -155,7 +219,7 @@ impl TupleLikeStructId {
     #[inline]
     #[must_use]
     pub fn signature(self, db: &Database) -> SignatureId {
-        db.fetch_tuple_like_struct(self).signature
+        db.resolve_tuple_like_struct(self).signature
     }
 }
 
@@ -228,14 +292,14 @@ impl PredicateId {
     #[inline]
     #[must_use]
     pub fn ty(self, db: &Database) -> &Type {
-        &db.fetch_predicate(self).ty
+        &db.resolve_predicate(self).ty
     }
 
     /// Returns the bounds of the predicate.
     #[inline]
     #[must_use]
     pub fn bounds(self, db: &Database) -> &[TypeConstructor] {
-        &db.fetch_predicate(self).bounds
+        &db.resolve_predicate(self).bounds
     }
 }
 
@@ -278,12 +342,12 @@ impl GenericParameterScopeData {
 impl GenericParameterScopeId {
     /// Returns the parent scope.
     pub fn parent_scope(self, db: &Database) -> Option<GenericParameterScopeId> {
-        db.fetch_generic_parameter_scope(self).parent_scope
+        db.resolve_generic_parameter_scope(self).parent_scope
     }
 
     /// Returns the map of generic parameters in the scope.
     pub fn parameters(self, db: &Database) -> &FxHashMap<IdentifierId, GenericParameterId> {
-        &db.fetch_generic_parameter_scope(self).parameters
+        &db.resolve_generic_parameter_scope(self).parameters
     }
 
     /// Adds a generic parameter into the scope.
@@ -294,7 +358,7 @@ impl GenericParameterScopeId {
         parameter_name: IdentifierId,
         parameter: GenericParameterId,
     ) {
-        db.fetch_generic_parameter_scope_mut(self)
+        db.resolve_generic_parameter_scope_mut(self)
             .parameters
             .insert(parameter_name, parameter);
     }
@@ -383,6 +447,7 @@ impl GenericParameterData {
 #[derive(Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct EnumItemData {
+    pub enum_: EnumId,
     pub name: IdentifierAST,
     pub module: ModuleId,
 }
@@ -391,15 +456,24 @@ impl EnumItemData {
     /// Creates a new enum item data object in the database and returns its ID.
     #[inline]
     #[must_use]
-    pub fn alloc(db: &mut Database, name: IdentifierAST, module: ModuleId) -> EnumItemId {
-        db.add_enum_item(module.0, Self::new(name, module))
+    pub fn alloc(
+        db: &mut Database,
+        enum_: EnumId,
+        name: IdentifierAST,
+        module: ModuleId,
+    ) -> EnumItemId {
+        db.add_enum_item(module.package(), Self::new(enum_, name, module))
     }
 
     /// Creates a new enum item data object.
     #[inline]
     #[must_use]
-    pub fn new(name: IdentifierAST, module: ModuleId) -> Self {
-        Self { name, module }
+    pub fn new(enum_: EnumId, name: IdentifierAST, module: ModuleId) -> Self {
+        Self {
+            name,
+            module,
+            enum_,
+        }
     }
 }
 
@@ -408,13 +482,19 @@ impl EnumItemId {
     #[inline]
     #[must_use]
     pub fn name(self, db: &Database) -> IdentifierAST {
-        db.fetch_enum_item(self).name
+        db.resolve_enum_item(self).name
     }
 
     #[inline]
     #[must_use]
     pub fn module(self, db: &Database) -> ModuleId {
-        db.fetch_enum_item(self).module
+        db.resolve_enum_item(self).module
+    }
+
+    #[inline]
+    #[must_use]
+    pub fn enum_(self, db: &Database) -> EnumId {
+        db.resolve_enum_item(self).enum_
     }
 }
 
@@ -443,12 +523,10 @@ impl SignatureData {
         node_idx: usize,
         module: ModuleId,
     ) -> SignatureId {
-        let package = module.0;
-
-        let generic_parameter_scope = GenericParameterScopeData::alloc(db, package);
+        let generic_parameter_scope = GenericParameterScopeData::alloc(db, module.package());
 
         db.add_signature(
-            package,
+            module.package(),
             Self::new(visibility, name, node_idx, generic_parameter_scope, module),
         )
     }
@@ -481,61 +559,61 @@ impl SignatureId {
     #[inline]
     #[must_use]
     pub fn name(self, db: &Database) -> IdentifierAST {
-        db.fetch_signature(self).name
+        db.resolve_signature(self).name
     }
 
     /// Returns the visibility.
     #[inline]
     #[must_use]
     pub fn visibility(self, db: &Database) -> Visibility {
-        db.fetch_signature(self).visibility
+        db.resolve_signature(self).visibility
     }
 
     /// Returns the module.
     #[inline]
     #[must_use]
     pub fn module(self, db: &Database) -> ModuleId {
-        db.fetch_signature(self).module
+        db.resolve_signature(self).module
     }
 
     /// Returns the corresponding HIR/THIR node index.
     #[inline]
     #[must_use]
     pub fn node_idx(self, db: &Database) -> usize {
-        db.fetch_signature(self).node_idx
+        db.resolve_signature(self).node_idx
     }
 
     #[inline]
     pub fn set_analyzed(self, db: &mut Database) {
-        db.fetch_signature(self).is_analyzed = true;
+        db.resolve_signature_mut(self).is_analyzed = true;
     }
 
     #[inline]
     #[must_use]
     pub fn is_analyzed(self, db: &Database) -> bool {
-        db.fetch_signature(self).is_analyzed
+        db.resolve_signature(self).is_analyzed
     }
 
     #[inline]
     #[must_use]
     pub fn predicates(self, db: &Database) -> &[PredicateId] {
-        &db.fetch_signature(self).predicates
+        &db.resolve_signature(self).predicates
     }
 
     #[inline]
     pub fn add_predicate(self, db: &mut Database, predicate: PredicateId) {
-        db.fetch_signature(self).predicates.push(predicate);
+        db.resolve_signature_mut(self).predicates.push(predicate);
     }
 
     #[inline]
     pub fn add_implemented_interface(self, db: &mut Database, interface: TypeConstructor) {
-        db.fetch_signature_mut(self).implements.push(interface);
+        db.resolve_signature_mut(self).implements.push(interface);
     }
 
     #[inline]
     #[must_use]
     pub fn generic_parameter_scope(self, db: &Database) -> GenericParameterScopeId {
-        db.fetch_signature(self).generic_parameter_scope
+        db.resolve_signature(self).generic_parameter_scope
     }
 
     #[inline]
@@ -544,7 +622,7 @@ impl SignatureId {
         db: &mut Database,
         generic_parameter_scope: GenericParameterScopeId,
     ) {
-        db.fetch_signature_mut(self).generic_parameter_scope = generic_parameter_scope;
+        db.resolve_signature_mut(self).generic_parameter_scope = generic_parameter_scope;
     }
 }
 
@@ -560,7 +638,7 @@ impl FunctionData {
     #[inline]
     #[must_use]
     pub fn alloc(db: &mut Database, signature: SignatureId) -> FunctionId {
-        db.add_function(signature.module(db).0, Self::new(signature))
+        db.add_function(signature.package(), Self::new(signature))
     }
 
     /// Creates a new function data object.
@@ -576,7 +654,7 @@ impl FunctionId {
     #[inline]
     #[must_use]
     pub fn signature(self, db: &Database) -> SignatureId {
-        db.fetch_function(self).signature
+        db.resolve_function(self).signature
     }
 }
 
@@ -593,7 +671,7 @@ impl InterfaceData {
     #[inline]
     #[must_use]
     pub fn alloc(db: &mut Database, signature: SignatureId) -> InterfaceId {
-        db.add_interface(signature.module(db).0, Self::new(signature))
+        db.add_interface(signature.package(), Self::new(signature))
     }
 
     /// Creates a new interface data object.
@@ -612,7 +690,7 @@ impl InterfaceId {
     #[inline]
     #[must_use]
     pub fn signature(self, db: &Database) -> SignatureId {
-        db.fetch_interface(self).signature
+        db.resolve_interface(self).signature
     }
 }
 
@@ -629,7 +707,7 @@ impl TypeAliasData {
     #[inline]
     #[must_use]
     pub fn alloc(db: &mut Database, signature: SignatureId) -> TypeAliasId {
-        db.add_type_alias(signature.module(db).0, Self::new(signature))
+        db.add_type_alias(signature.package(), Self::new(signature))
     }
 
     /// Creates a new type alias data object.
@@ -648,19 +726,18 @@ impl TypeAliasId {
     #[inline]
     #[must_use]
     pub fn signature(self, db: &Database) -> SignatureId {
-        db.fetch_type_alias(self).signature
+        db.resolve_type_alias(self).signature
     }
 
     #[inline]
     #[must_use]
     pub fn ty(self, db: &Database) -> &Type {
-        &db.fetch_type_alias(self).ty
+        &db.resolve_type_alias(self).ty
     }
 
     #[inline]
-    #[must_use]
     pub fn set_type(self, db: &mut Database, ty: Type) {
-        db.fetch_type_alias_mut(self).ty = ty;
+        db.resolve_type_alias_mut(self).ty = ty;
     }
 }
 
@@ -669,6 +746,7 @@ impl TypeAliasId {
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct ModuleData {
     pub name: IdentifierId,
+    pub path: Path,
     pub filepath: PathId,
     pub module_item_symbols: FxHashMap<IdentifierId, Symbol>,
     pub submodules: FxHashMap<IdentifierId, ModuleId>,
@@ -683,17 +761,19 @@ impl ModuleData {
         db: &mut Database,
         package: PackageId,
         name: IdentifierId,
+        path: Path,
         filepath: PathId,
     ) -> ModuleId {
-        db.add_module(package, Self::new(name, filepath))
+        db.add_module(package, Self::new(name, path, filepath))
     }
 
     /// Creates a new module data object.
     #[inline]
     #[must_use]
-    pub fn new(name: IdentifierId, filepath: PathId) -> Self {
+    pub fn new(name: IdentifierId, path: Path, filepath: PathId) -> Self {
         Self {
             name,
+            path,
             filepath,
             submodules: FxHashMap::default(),
             resolved_imports: FxHashMap::default(),
@@ -707,26 +787,32 @@ impl ModuleId {
     #[inline]
     #[must_use]
     pub fn filepath(self, db: &Database) -> PathId {
-        db.fetch_module(self).filepath
+        db.resolve_module(self).filepath
+    }
+
+    #[inline]
+    #[must_use]
+    pub fn path(self, db: &Database) -> &Path {
+        &db.resolve_module(self).path
     }
 
     /// Returns module's name.
     #[inline]
     #[must_use]
     pub fn name(self, db: &Database) -> IdentifierId {
-        db.fetch_module(self).name
+        db.resolve_module(self).name
     }
 
     /// Returns an immutable reference to module item symbols.
     #[inline]
     #[must_use]
     pub fn module_item_symbols(self, db: &Database) -> &FxHashMap<IdentifierId, Symbol> {
-        &db.fetch_module(self).module_item_symbols
+        &db.resolve_module(self).module_item_symbols
     }
 
     /// Adds a module item symbol to the module.
     pub fn add_module_item(self, db: &mut Database, name: IdentifierId, symbol: Symbol) {
-        db.fetch_module_mut(self)
+        db.resolve_module_mut(self)
             .module_item_symbols
             .insert(name, symbol);
     }
@@ -735,14 +821,14 @@ impl ModuleId {
     #[inline]
     #[must_use]
     pub fn submodules(self, db: &Database) -> &FxHashMap<IdentifierId, ModuleId> {
-        &db.fetch_module(self).submodules
+        &db.resolve_module(self).submodules
     }
 
     /// Returns a mutable reference to submodules.
     #[inline]
     #[must_use]
     pub fn submodules_mut(self, db: &mut Database) -> &mut FxHashMap<IdentifierId, ModuleId> {
-        &mut db.fetch_module_mut(self).submodules
+        &mut db.resolve_module_mut(self).submodules
     }
 
     /// Resolves a symbol related to only module item in the module.
@@ -825,13 +911,13 @@ impl ModuleId {
     #[inline]
     #[must_use]
     pub fn resolved_imports(self, db: &Database) -> &FxHashMap<IdentifierId, Symbol> {
-        &db.fetch_module(self).resolved_imports
+        &db.resolve_module(self).resolved_imports
     }
 
     /// Adds a resolved import to the module.
     #[inline]
     pub fn add_resolved_import(self, db: &mut Database, name: IdentifierId, symbol: Symbol) {
-        db.fetch_module_mut(self)
+        db.resolve_module_mut(self)
             .resolved_imports
             .insert(name, symbol);
     }
@@ -1045,11 +1131,25 @@ impl Database {
         &self.packages[id.0 - 1]
     }
 
+    /// Returns an immutable reference to package data by its ID.
+    #[inline]
+    #[must_use]
+    pub fn package_or_none(&self, id: PackageId) -> Option<&PackageData> {
+        self.packages.get(id.0 - 1)
+    }
+
     /// Returns a mutable reference to package data by its ID.
     #[inline]
     #[must_use]
     pub fn package_mut(&mut self, id: PackageId) -> &mut PackageData {
         &mut self.packages[id.0 - 1]
+    }
+
+    /// Returns a mutable reference to package data by its ID.
+    #[inline]
+    #[must_use]
+    pub fn package_mut_or_none(&mut self, id: PackageId) -> Option<&mut PackageData> {
+        self.packages.get_mut(id.0 - 1)
     }
 }
 
