@@ -1,5 +1,5 @@
 <p align="center">
-<img width="80%" src="./additional/icon/banner.png">
+<img width="80%" src="./additional/icon/banner2.png">
 </p>
 
 # Stellar programming language
