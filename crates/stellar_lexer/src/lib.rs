@@ -222,15 +222,13 @@ impl<'s> Lexer<'s> {
 
     /// Advances the lexer state to the next character.
     fn advance(&mut self) {
-        let previous = self.current;
-
-        self.current = self.next;
-        self.next = self.chars.next();
-
-        self.offset += match previous {
+        self.offset += match self.current {
             Some(c) => c.len_utf8(),
             None => 0, // if it's EOF, stay at the same offset
         };
+
+        self.current = self.next;
+        self.next = self.chars.next();
     }
 
     /// Advances the lexer state to the next 2 characters (calls

@@ -109,14 +109,18 @@ pub struct IdentifierId(pub usize);
 /// ID of an identifier, that will never exist in the [`IdentifierInterner`].
 pub const DUMMY_IDENTIFIER_ID: IdentifierId = IdentifierId(0);
 
-impl IdentifierId {
+impl<S> From<S> for IdentifierId
+where
+    S: AsRef<str>,
+{
     /// Interns a string.
     #[inline]
-    #[must_use]
-    pub fn from(string: impl AsRef<str>) -> Self {
-        IDENTIFIER_INTERNER.write().get_or_intern(string)
+    fn from(s: S) -> Self {
+        IDENTIFIER_INTERNER.write().get_or_intern(s)
     }
+}
 
+impl IdentifierId {
     /// Gets the interned string by ID.
     #[inline]
     #[must_use]
@@ -641,14 +645,18 @@ lazy_static! {
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct PathId(pub usize);
 
-impl PathId {
+impl<P> From<P> for PathId
+where
+    P: AsRef<Path>,
+{
     /// Interns the given path and returns its ID.
     #[inline]
-    #[must_use]
-    pub fn from(path: impl AsRef<Path>) -> Self {
+    fn from(path: P) -> Self {
         PATH_INTERNER.write().get_or_intern(path)
     }
+}
 
+impl PathId {
     /// Resolves the given path by ID.
     #[inline]
     #[must_use]

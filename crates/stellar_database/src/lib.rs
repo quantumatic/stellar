@@ -17,8 +17,8 @@ use stellar_interner::{IdentifierId, PathId};
 
 #[macro_use]
 mod id_type;
-mod symbol;
-mod ty;
+pub mod symbol;
+pub mod ty;
 
 pub use symbol::Symbol;
 use ty::{Type, TypeConstructor};
@@ -33,6 +33,12 @@ impl Path {
     #[must_use]
     pub fn new(segments: Vec<IdentifierId>) -> Self {
         Self { segments }
+    }
+
+    #[inline]
+    #[must_use]
+    pub fn last(&self) -> IdentifierId {
+        *self.segments.last().unwrap()
     }
 
     #[inline]
@@ -119,26 +125,33 @@ impl EnumId {
     #[inline]
     #[must_use]
     pub fn signature(self, db: &Database) -> SignatureId {
-        db.resolve_enum(self).signature
+        self.get_data(db).signature
     }
 
     /// Returns a list of items associated with the enum.
     #[inline]
     #[must_use]
     pub fn items(self, db: &Database) -> &FxHashMap<IdentifierId, EnumItemId> {
-        &db.resolve_enum(self).items
+        &self.get_data(db).items
     }
 
     /// Returns `true` if an item with a given name is contained in the enum definition.
     #[inline]
     #[must_use]
     pub fn contains_item(self, db: &Database, name: IdentifierId) -> bool {
-        db.resolve_enum(self).items.contains_key(&name)
+        self.get_data(db).items.contains_key(&name)
     }
 
     /// Returns an item with a given name.
+    #[inline]
     pub fn item(self, db: &Database, name: IdentifierId) -> Option<EnumItemId> {
-        db.resolve_enum(self).items.get(&name).copied()
+        self.get_data(db).items.get(&name).copied()
+    }
+
+    /// Adds an item to the enum definition.
+    #[inline]
+    pub fn add_item(self, db: &mut Database, name: IdentifierId, item: EnumItemId) {
+        self.get_data_mut(db).items.insert(name, item);
     }
 }
 
@@ -176,14 +189,14 @@ impl StructId {
     #[inline]
     #[must_use]
     pub fn signature(self, db: &Database) -> SignatureId {
-        db.resolve_struct(self).signature
+        self.get_data(db).signature
     }
 
     /// Returns a list of fields associated with the struct.
     #[inline]
     #[must_use]
     pub fn fields(self, db: &Database) -> &FxHashMap<IdentifierId, FieldId> {
-        &db.resolve_struct(self).fields
+        &self.get_data(db).fields
     }
 }
 
@@ -219,7 +232,7 @@ impl TupleLikeStructId {
     #[inline]
     #[must_use]
     pub fn signature(self, db: &Database) -> SignatureId {
-        db.resolve_tuple_like_struct(self).signature
+        self.get_data(db).signature
     }
 }
 
@@ -292,14 +305,14 @@ impl PredicateId {
     #[inline]
     #[must_use]
     pub fn ty(self, db: &Database) -> &Type {
-        &db.resolve_predicate(self).ty
+        &self.get_data(db).ty
     }
 
     /// Returns the bounds of the predicate.
     #[inline]
     #[must_use]
     pub fn bounds(self, db: &Database) -> &[TypeConstructor] {
-        &db.resolve_predicate(self).bounds
+        &self.get_data(db).bounds
     }
 }
 
@@ -342,12 +355,12 @@ impl GenericParameterScopeData {
 impl GenericParameterScopeId {
     /// Returns the parent scope.
     pub fn parent_scope(self, db: &Database) -> Option<GenericParameterScopeId> {
-        db.resolve_generic_parameter_scope(self).parent_scope
+        self.get_data(db).parent_scope
     }
 
     /// Returns the map of generic parameters in the scope.
     pub fn parameters(self, db: &Database) -> &FxHashMap<IdentifierId, GenericParameterId> {
-        &db.resolve_generic_parameter_scope(self).parameters
+        &self.get_data(db).parameters
     }
 
     /// Adds a generic parameter into the scope.
@@ -358,7 +371,7 @@ impl GenericParameterScopeId {
         parameter_name: IdentifierId,
         parameter: GenericParameterId,
     ) {
-        db.resolve_generic_parameter_scope_mut(self)
+        self.get_data_mut(db)
             .parameters
             .insert(parameter_name, parameter);
     }
@@ -482,19 +495,19 @@ impl EnumItemId {
     #[inline]
     #[must_use]
     pub fn name(self, db: &Database) -> IdentifierAST {
-        db.resolve_enum_item(self).name
+        self.get_data(db).name
     }
 
     #[inline]
     #[must_use]
     pub fn module(self, db: &Database) -> ModuleId {
-        db.resolve_enum_item(self).module
+        self.get_data(db).module
     }
 
     #[inline]
     #[must_use]
     pub fn enum_(self, db: &Database) -> EnumId {
-        db.resolve_enum_item(self).enum_
+        self.get_data(db).enum_
     }
 }
 
@@ -559,61 +572,61 @@ impl SignatureId {
     #[inline]
     #[must_use]
     pub fn name(self, db: &Database) -> IdentifierAST {
-        db.resolve_signature(self).name
+        self.get_data(db).name
     }
 
     /// Returns the visibility.
     #[inline]
     #[must_use]
     pub fn visibility(self, db: &Database) -> Visibility {
-        db.resolve_signature(self).visibility
+        self.get_data(db).visibility
     }
 
     /// Returns the module.
     #[inline]
     #[must_use]
     pub fn module(self, db: &Database) -> ModuleId {
-        db.resolve_signature(self).module
+        self.get_data(db).module
     }
 
     /// Returns the corresponding HIR/THIR node index.
     #[inline]
     #[must_use]
     pub fn node_idx(self, db: &Database) -> usize {
-        db.resolve_signature(self).node_idx
+        self.get_data(db).node_idx
     }
 
     #[inline]
     pub fn set_analyzed(self, db: &mut Database) {
-        db.resolve_signature_mut(self).is_analyzed = true;
+        self.get_data_mut(db).is_analyzed = true;
     }
 
     #[inline]
     #[must_use]
     pub fn is_analyzed(self, db: &Database) -> bool {
-        db.resolve_signature(self).is_analyzed
+        self.get_data(db).is_analyzed
     }
 
     #[inline]
     #[must_use]
     pub fn predicates(self, db: &Database) -> &[PredicateId] {
-        &db.resolve_signature(self).predicates
+        &self.get_data(db).predicates
     }
 
     #[inline]
     pub fn add_predicate(self, db: &mut Database, predicate: PredicateId) {
-        db.resolve_signature_mut(self).predicates.push(predicate);
+        self.get_data_mut(db).predicates.push(predicate);
     }
 
     #[inline]
     pub fn add_implemented_interface(self, db: &mut Database, interface: TypeConstructor) {
-        db.resolve_signature_mut(self).implements.push(interface);
+        self.get_data_mut(db).implements.push(interface);
     }
 
     #[inline]
     #[must_use]
     pub fn generic_parameter_scope(self, db: &Database) -> GenericParameterScopeId {
-        db.resolve_signature(self).generic_parameter_scope
+        self.get_data(db).generic_parameter_scope
     }
 
     #[inline]
@@ -622,7 +635,7 @@ impl SignatureId {
         db: &mut Database,
         generic_parameter_scope: GenericParameterScopeId,
     ) {
-        db.resolve_signature_mut(self).generic_parameter_scope = generic_parameter_scope;
+        self.get_data_mut(db).generic_parameter_scope = generic_parameter_scope;
     }
 }
 
@@ -654,7 +667,7 @@ impl FunctionId {
     #[inline]
     #[must_use]
     pub fn signature(self, db: &Database) -> SignatureId {
-        db.resolve_function(self).signature
+        self.get_data(db).signature
     }
 }
 
@@ -690,7 +703,7 @@ impl InterfaceId {
     #[inline]
     #[must_use]
     pub fn signature(self, db: &Database) -> SignatureId {
-        db.resolve_interface(self).signature
+        self.get_data(db).signature
     }
 }
 
@@ -726,18 +739,18 @@ impl TypeAliasId {
     #[inline]
     #[must_use]
     pub fn signature(self, db: &Database) -> SignatureId {
-        db.resolve_type_alias(self).signature
+        self.get_data(db).signature
     }
 
     #[inline]
     #[must_use]
     pub fn ty(self, db: &Database) -> &Type {
-        &db.resolve_type_alias(self).ty
+        &self.get_data(db).ty
     }
 
     #[inline]
     pub fn set_type(self, db: &mut Database, ty: Type) {
-        db.resolve_type_alias_mut(self).ty = ty;
+        self.get_data_mut(db).ty = ty;
     }
 }
 
@@ -745,7 +758,6 @@ impl TypeAliasId {
 #[derive(Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct ModuleData {
-    pub name: IdentifierId,
     pub path: Path,
     pub filepath: PathId,
     pub module_item_symbols: FxHashMap<IdentifierId, Symbol>,
@@ -757,22 +769,15 @@ impl ModuleData {
     /// Creates a new module data object in the database and returns its ID.
     #[inline]
     #[must_use]
-    pub fn alloc(
-        db: &mut Database,
-        package: PackageId,
-        name: IdentifierId,
-        path: Path,
-        filepath: PathId,
-    ) -> ModuleId {
-        db.add_module(package, Self::new(name, path, filepath))
+    pub fn alloc(db: &mut Database, package: PackageId, path: Path, filepath: PathId) -> ModuleId {
+        db.add_module(package, Self::new(path, filepath))
     }
 
     /// Creates a new module data object.
     #[inline]
     #[must_use]
-    pub fn new(name: IdentifierId, path: Path, filepath: PathId) -> Self {
+    pub fn new(path: Path, filepath: PathId) -> Self {
         Self {
-            name,
             path,
             filepath,
             submodules: FxHashMap::default(),
@@ -787,32 +792,31 @@ impl ModuleId {
     #[inline]
     #[must_use]
     pub fn filepath(self, db: &Database) -> PathId {
-        db.resolve_module(self).filepath
+        self.get_data(db).filepath
+    }
+
+    #[inline]
+    #[must_use]
+    pub fn name(self, db: &Database) -> IdentifierId {
+        self.get_data(db).path.last()
     }
 
     #[inline]
     #[must_use]
     pub fn path(self, db: &Database) -> &Path {
-        &db.resolve_module(self).path
-    }
-
-    /// Returns module's name.
-    #[inline]
-    #[must_use]
-    pub fn name(self, db: &Database) -> IdentifierId {
-        db.resolve_module(self).name
+        &self.get_data(db).path
     }
 
     /// Returns an immutable reference to module item symbols.
     #[inline]
     #[must_use]
     pub fn module_item_symbols(self, db: &Database) -> &FxHashMap<IdentifierId, Symbol> {
-        &db.resolve_module(self).module_item_symbols
+        &self.get_data(db).module_item_symbols
     }
 
     /// Adds a module item symbol to the module.
     pub fn add_module_item(self, db: &mut Database, name: IdentifierId, symbol: Symbol) {
-        db.resolve_module_mut(self)
+        self.get_data_mut(db)
             .module_item_symbols
             .insert(name, symbol);
     }
@@ -821,14 +825,14 @@ impl ModuleId {
     #[inline]
     #[must_use]
     pub fn submodules(self, db: &Database) -> &FxHashMap<IdentifierId, ModuleId> {
-        &db.resolve_module(self).submodules
+        &self.get_data(db).submodules
     }
 
     /// Returns a mutable reference to submodules.
     #[inline]
     #[must_use]
     pub fn submodules_mut(self, db: &mut Database) -> &mut FxHashMap<IdentifierId, ModuleId> {
-        &mut db.resolve_module_mut(self).submodules
+        &mut self.get_data_mut(db).submodules
     }
 
     /// Resolves a symbol related to only module item in the module.
@@ -911,15 +915,13 @@ impl ModuleId {
     #[inline]
     #[must_use]
     pub fn resolved_imports(self, db: &Database) -> &FxHashMap<IdentifierId, Symbol> {
-        &db.resolve_module(self).resolved_imports
+        &self.get_data(db).resolved_imports
     }
 
     /// Adds a resolved import to the module.
     #[inline]
     pub fn add_resolved_import(self, db: &mut Database, name: IdentifierId, symbol: Symbol) {
-        db.resolve_module_mut(self)
-            .resolved_imports
-            .insert(name, symbol);
+        self.get_data_mut(db).resolved_imports.insert(name, symbol);
     }
 }
 
@@ -1238,7 +1240,7 @@ impl State {
     }
 }
 
-// Reduces another 1331 lines of boilerplate code
+// See documentation of `id_types` for more details.
 id_types! {
     enum,
     enum_item,

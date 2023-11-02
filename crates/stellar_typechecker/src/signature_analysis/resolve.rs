@@ -1,10 +1,10 @@
 use itertools::Itertools;
 use stellar_ast::IdentifierAST;
-use stellar_database::{ModuleId, PredicateId, SignatureId, Symbol};
-use stellar_thir::{
+use stellar_database::{
     ty::{Type, TypeConstructor},
-    Path,
+    GenericParameterScopeId, Path,
 };
+use stellar_database::{ModuleId, PredicateId, SignatureId, Symbol};
 
 use super::collect_signatures::CollectSignatures;
 use crate::{
@@ -81,16 +81,26 @@ impl<'s, 'h> CollectSignatures<'s, 'h> {
         }
     }
 
+    fn resolve_type_constructor_path(
+        &mut self,
+        module: ModuleId,
+        item_name: IdentifierAST,
+        path: &stellar_ast::Path,
+    ) -> Option<Symbol> {
+        if path.identifiers.len() == 1 && path.identifiers[0].id == item_name.id {}
+    }
+
     fn resolve_or_analyze_type_constructor(
         &mut self,
         module: ModuleId,
         item_name: IdentifierAST,
+        generic_parameter_scope: GenericParameterScopeId,
         constructor: &stellar_hir::TypeConstructor,
     ) -> Option<TypeConstructor> {
         let signature = self.resolve_or_analyze_signature(module, &constructor.path)?;
 
         let constructor = TypeConstructor {
-            symbol: Path::from(&constructor.path),
+            symbol: constructor,
             arguments: constructor
                 .arguments
                 .iter()
@@ -137,7 +147,6 @@ impl<'s, 'h> CollectSignatures<'s, 'h> {
         if !signature.is_analyzed(self.state.db()) {
             let module_hir = &self.modules[&symbol.module(self.state.db())];
             let node_idx = symbol.signature(self.state.db()).node_idx(self.state.db());
-
             let item_hir = &module_hir.items[node_idx];
 
             self.analyze_signature(symbol.module(self.state.db()), item_hir);

@@ -3,11 +3,12 @@
 /// The macro generates types for interned data in database.
 ///
 /// ```ignore
-/// id_types! { x, y, z }
+/// id_types! { x, y, z, test }
 /// ```
 ///
 /// The macro is used to reduce thousands of lines of boilerplate source code with methods
-/// like `Database::add_x()`, `Database::contains_x()`, `Database::resolve_x()`, and types like `XId` in `lib.rs`.
+/// like `Database::add_test()`, `Test::is_valid()`, `Test::get()`, `Test::get_mut()`, and
+/// types like `TestId` in `lib.rs`.
 macro_rules! id_types {
     {
         $($what:ident),*
@@ -48,6 +49,31 @@ macro_rules! id_types {
                     }
                 }
 
+                impl [<$what:camel Id>] {
+                    #[allow(dead_code)]
+                    #[doc = "Returns an immutable reference to [`" [<$what:camel Data>] "`] by its ID ([`" [<$what:camel Id>] "`])."]
+                    fn get_data(self, db: &Database) -> &[<$what:camel Data>] {
+                        &db.package(self.package()).[<$what _>][self.idx() - 1]
+                    }
+
+                    #[allow(dead_code)]
+                    #[doc = "Returns a mutable reference to [`" [<$what:camel Data>] "`] by its ID ([`" [<$what:camel Id>] "`])."]
+                    fn get_data_mut(self, db: &mut Database) -> &mut [<$what:camel Data>] {
+                        &mut db.package_mut(self.package()).[<$what _>][self.idx() - 1]
+                    }
+
+                    #[doc = "Returns whether a [`" [<$what:camel Data>] "`] with a given ID ([`" [<$what:camel Id>] "`]) is present in the database storage."]
+                    #[inline]
+                    #[must_use]
+                    pub fn is_valid(self, db: &Database) -> bool {
+                        if let Some(package) = db.package_or_none(self.package()) {
+                            self.idx() - 1 < package.[<$what _>].len()
+                        } else {
+                            false
+                        }
+                    }
+                }
+
                 impl Database {
                     #[doc = "Adds an object of type [`" [<$what:camel Data>] "`] to the database storage and returns its ID ([`" [<$what:camel Id>] "`])."]
                     ///
@@ -61,61 +87,6 @@ macro_rules! id_types {
                         self.package_mut(package).[<$what _>].push(data);
 
                         [<$what:camel Id>](package, self.package(package).[<$what _>].len())
-                    }
-
-                    #[doc = "Returns whether a [`" [<$what:camel Data>] "`] with a given ID ([`" [<$what:camel Id>] "`]) is present in the database storage."]
-                    ///
-                    /// _This function is automatically generated using a macro!_
-                    #[inline]
-                    #[must_use]
-                    pub fn [<contains_ $what>](&self, id: [<$what:camel Id>]) -> bool {
-                        if let Some(package) = self.package_or_none(id.package()) {
-                            id.idx() - 1 < package.[<$what _>].len()
-                        } else {
-                            false
-                        }
-                    }
-
-                    #[doc = "Returns an immutable reference to [`" [<$what:camel Data>] "`] by its ID ([`" [<$what:camel Id>] "`])."]
-                    /// # Panics
-                    /// Panics if an object with the given ID is not present in the database storage.
-                    ///
-                    /// _This function is automatically generated using a macro!_
-                    #[inline]
-                    #[must_use]
-                    pub fn [<resolve_ $what >](&self, id: [<$what:camel Id>]) -> &[<$what:camel Data>] {
-                        &self.package(id.package()).[<$what _>][id.idx() - 1]
-                    }
-
-                    #[doc = "Returns a mutable reference to [`" [<$what:camel Data>] "`] by its ID ([`" [<$what:camel Id>] "`])."]
-                    /// # Panics
-                    /// Panics if an object with the given ID is not present in the database storage.
-                    ///
-                    /// _This function is automatically generated using a macro!_
-                    #[inline]
-                    #[must_use]
-                    pub fn [<resolve_ $what _mut>](&mut self, id: [<$what:camel Id>]) -> &mut [<$what:camel Data>] {
-                        &mut self.package_mut(id.package()).[<$what _>][id.idx() - 1]
-                    }
-
-                    #[doc = "Returns an immutable reference to [`" [<$what:camel Data>] "`] by its ID ([`" [<$what:camel Id>] "`])."]
-                    ///
-                    /// _This function is automatically generated using a macro!_
-                    #[inline]
-                    #[must_use]
-                    pub fn [<resolve_ $what _or_none>](&self, id: [<$what:camel Id>]) -> Option<&[<$what:camel Data>]> {
-                        self.package_or_none(id.package())
-                            .and_then(|p| p.[<$what _>].get(id.idx() - 1))
-                    }
-
-                    #[doc = "Returns a mutable reference to [`" [<$what:camel Data>] "`] by its ID ([`" [<$what:camel Id>] "`])."]
-                    ///
-                    /// _This function is automatically generated using a macro!_
-                    #[inline]
-                    #[must_use]
-                    pub fn [<resolve_ $what _mut_or_none>](&mut self, id: [<$what:camel Id>]) -> Option<&mut [<$what:camel Data>]> {
-                        self.package_mut_or_none(id.package())
-                            .and_then(|p| p.[<$what _>].get_mut(id.idx() - 1))
                     }
                 }
             }

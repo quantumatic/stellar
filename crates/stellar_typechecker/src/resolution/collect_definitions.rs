@@ -4,8 +4,8 @@ use std::time::Instant;
 use stellar_ast::IdentifierAST;
 use stellar_ast_lowering::LoweredModule;
 use stellar_database::{
-    EnumData, EnumItemData, FunctionData, InterfaceData, ModuleId, PackageId, SignatureData, State,
-    StructData, Symbol, TupleLikeStructData, TypeAliasData, TypeAliasId,
+    EnumData, EnumId, EnumItemData, FunctionData, InterfaceData, ModuleId, PackageId,
+    SignatureData, State, StructData, Symbol, TupleLikeStructData, TypeAliasData, TypeAliasId,
 };
 use stellar_fx_hash::FxHashMap;
 #[cfg(feature = "debug")]
@@ -65,30 +65,31 @@ impl<'s> CollectDefinitions<'s> {
         );
     }
 
-    fn collect_definition_of_enum(&mut self, enum_: &stellar_hir::Enum) {
+    fn collect_definition_of_enum(&mut self, enum_hir: &stellar_hir::Enum) {
         #[cfg(feature = "debug")]
         let now = Instant::now();
 
         let signature = SignatureData::alloc(
             self.state.db_mut(),
-            enum_.visibility,
-            enum_.name,
+            enum_hir.visibility,
+            enum_hir.name,
             self.current_node_idx,
             self.module,
         );
-        let mut enum_data = EnumData::new(signature);
+        let mut enum_ = EnumData::alloc(self.state.db_mut(), signature);
 
-        for item in &enum_.items {
+        for item in &enum_hir.items {
             let name = item.name();
 
             #[cfg(feature = "debug")]
             let now = Instant::now();
 
-            self.check_for_duplicate_enum_item(&enum_data, name);
+            self.check_for_duplicate_enum_item(enum_, name);
 
-            enum_data.items.insert(
+            enum_.add_item(
+                self.state.db_mut(),
                 name.id,
-                EnumItemData::alloc(self.state.db_mut(), name, self.module),
+                EnumItemData::alloc(self.state.db_mut(), enum_, name, self.module),
             );
 
             #[cfg(feature = "debug")]
@@ -101,12 +102,10 @@ impl<'s> CollectDefinitions<'s> {
             );
         }
 
-        self.check_for_duplicate_definition(enum_.name);
-
-        let id = self.state.db_mut().add_enum(self.module.package(), enum_data);
+        self.check_for_duplicate_definition(enum_hir.name);
 
         self.module
-            .add_module_item(self.state.db_mut(), enum_.name.id, Symbol::Enum(id));
+            .add_module_item(self.state.db_mut(), enum_hir.name.id, Symbol::Enum(enum_));
 
         #[cfg(feature = "debug")]
         trace!(
@@ -270,10 +269,10 @@ impl<'s> CollectDefinitions<'s> {
         }
     }
 
-    fn check_for_duplicate_enum_item(&mut self, enum_data: &EnumData, item_name: IdentifierAST) {
-        if let Some(enum_item) = enum_data.items.get(&item_name.id) {
+    fn check_for_duplicate_enum_item(&mut self, enum_: EnumId, item_name: IdentifierAST) {
+        if let Some(enum_item) = enum_.item(self.state.db(), item_name.id) {
             let diagnostic = EnumItemDefinedMultipleTimes::new(
-                self.state.db().signature(enum_data.signature).name.id,
+                enum_.signature(self.state.db()).name(self.state.db()).id,
                 item_name.id,
                 enum_item.name(self.state.db()).location,
                 item_name.location,

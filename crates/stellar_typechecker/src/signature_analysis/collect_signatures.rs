@@ -5,15 +5,12 @@ use std::time::Instant;
 use stellar_ast::IdentifierAST;
 use stellar_ast_lowering::LoweredModule;
 use stellar_database::{
-    GenericParameterData, GenericParameterScopeData, GenericParameterScopeId, ModuleId,
-    PredicateData, SignatureId, State, Symbol, TypeAliasId,
+    ty::Type, ty::TypeConstructor, GenericParameterData, GenericParameterScopeData,
+    GenericParameterScopeId, ModuleId, PredicateData, SignatureId, State, Symbol, TypeAliasId,
 };
 use stellar_fx_hash::FxHashMap;
 use stellar_interner::{IdentifierId, SymbolId};
-use stellar_thir::{
-    ty::{Type, TypeConstructor},
-    Path, Predicate,
-};
+use stellar_thir::{Path, Predicate};
 #[cfg(feature = "debug")]
 use tracing::trace;
 
@@ -245,25 +242,25 @@ impl<'s, 'h> CollectSignatures<'s, 'h> {
                 None
             };
 
-            if let Some(bounds) = &parameter_hir.bounds {
-                let bounds = self.resolve_bounds(bounds);
-
-                let predicate = PredicateData::alloc(
-                    self.state.db_mut(),
-                    module.package(),
-                    Type::Constructor(TypeConstructor::new_primitive(parameter_hir.name.id)),
-                    bounds,
-                );
-
-                signature.add_predicate(self.state.db_mut(), predicate);
-            }
-
             let generic_parameter = GenericParameterData::alloc(
                 self.state.db_mut(),
                 module.package(),
                 parameter_hir.name.location,
                 default_value,
             );
+
+            if let Some(bounds) = &parameter_hir.bounds {
+                let bounds = self.resolve_bounds(bounds);
+
+                let predicate = PredicateData::alloc(
+                    self.state.db_mut(),
+                    module.package(),
+                    Type::GenericParameter(generic_parameter),
+                    bounds,
+                );
+
+                signature.add_predicate(self.state.db_mut(), predicate);
+            }
 
             generic_parameter_scope.add_generic_parameter(
                 self.state.db_mut(),
@@ -332,7 +329,7 @@ impl<'s, 'h> CollectSignatures<'s, 'h> {
             return;
         };
 
-        *alias.ty_mut(self.state.db_mut()) = value;
+        alias.set_type(self.state.db_mut(), value);
 
         signature.set_analyzed(self.state.db_mut());
 

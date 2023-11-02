@@ -7,7 +7,7 @@ use derive_more::Display;
 use serde::{Deserialize, Serialize};
 use stellar_filesystem::location::Location;
 
-use crate::{symbol::BuiltinSymbolId, Path, Symbol};
+use crate::{symbol::BuiltinSymbolId, GenericParameterId, Symbol};
 
 /// A raw representation of types in the Stellar programming language.
 ///
@@ -58,6 +58,10 @@ pub enum Type {
     /// A type variable (placeholder for types, that aren't inferred yet).
     #[cfg_attr(feature = "serde", serde(rename = "type_variable"))]
     Variable(TypeVariable),
+
+    /// A generic parameter.
+    #[cfg_attr(feature = "serde", serde(rename = "generic_parameter"))]
+    GenericParameter(GenericParameterId),
 
     /// An interface object type, e.g. `dyn Iterator[char] + ToString`.
     ///
@@ -111,6 +115,10 @@ pub enum TypeKind {
     #[display(fmt = "uninferred type")]
     Variable,
 
+    /// A generic parameter.
+    #[display(fmt = "generic parameter")]
+    GenericParameter,
+
     /// An interface object type, e.g. `dyn Iterator[char] + ToString`.
     ///
     /// A type of dynamically dispatched objects, that have a vtable of interfaces in
@@ -127,10 +135,11 @@ impl Type {
     #[must_use]
     pub const fn kind(&self) -> TypeKind {
         match self {
-            Self::Constructor(..) => TypeKind::Constructor,
+            Self::Constructor(_) => TypeKind::Constructor,
             Self::Tuple { .. } => TypeKind::Tuple,
             Self::Function { .. } => TypeKind::Function,
             Self::Variable(..) => TypeKind::Variable,
+            Self::GenericParameter(_) => TypeKind::GenericParameter,
             Self::InterfaceObject { .. } => TypeKind::InterfaceObject,
             Self::Unit => TypeKind::Unit,
             Self::Unknown => TypeKind::Unknown,
@@ -148,9 +157,6 @@ pub enum TypeVariable {
         /// Location of the type argument itself (if exists), e.g. location `_` in `HashMap[_, int32]`.
         #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
         location: Option<Location>,
-
-        /// Path to the type that contains the correspoding generic parameter.
-        origin_type_path: Path,
 
         /// Location of the corresponding generic parameter name.
         origin_location: Location,

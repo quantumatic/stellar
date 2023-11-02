@@ -88,10 +88,10 @@ use stellar_ast::{
     token::{Keyword, LexError, RawToken, Token},
     Expression, IdentifierAST, Module, ModuleItem, Pattern, Statement, Type, Visibility,
 };
-use stellar_database::{ModuleData, ModuleId, PackageId, State};
+use stellar_database::{ModuleData, ModuleId, PackageId, Path, State};
 use stellar_diagnostics::Diagnostics;
 use stellar_filesystem::location::{ByteOffset, Location};
-use stellar_interner::{IdentifierId, PathId};
+use stellar_interner::PathId;
 use stellar_lexer::Lexer;
 use stellar_stable_likely::unlikely;
 #[cfg(feature = "debug")]
@@ -198,10 +198,10 @@ impl ParseResult {
 pub fn read_and_parse_module(
     state: &mut State,
     package: PackageId,
-    module_name: IdentifierId,
+    path: Path,
     filepath: PathId,
 ) -> Result<ParseResult, io::Error> {
-    let module = ModuleData::alloc(state.db_mut(), package, module_name, filepath);
+    let module = ModuleData::alloc(state.db_mut(), package, path, filepath);
     let source = fs::read_to_string(filepath.resolve())?;
 
     let mut parse_state = ParseState::new(filepath, &source, state.diagnostics_mut());
@@ -222,11 +222,11 @@ pub fn read_and_parse_module(
 pub fn parse_module(
     state: &mut State,
     package: PackageId,
-    module_name: IdentifierId,
+    path: Path,
     filepath: PathId,
     source: &str,
 ) -> ParseResult {
-    let module = ModuleData::alloc(state.db_mut(), package, module_name, filepath);
+    let module = ModuleData::alloc(state.db_mut(), package, path, filepath);
     let mut parse_state = ParseState::new(filepath, source, state.diagnostics_mut());
 
     ParseResult {
@@ -245,16 +245,11 @@ pub fn parse_module(
 pub fn parse_module_using(
     state: &mut State,
     package: PackageId,
-    module_name: IdentifierId,
+    path: Path,
     mut parse_state: ParseState<'_, '_>,
 ) -> ParseResult {
     ParseResult::new(
-        ModuleData::alloc(
-            state.db_mut(),
-            package,
-            module_name,
-            parse_state.lexer.filepath,
-        ),
+        ModuleData::alloc(state.db_mut(), package, path, parse_state.lexer.filepath),
         Module {
             filepath: parse_state.lexer.filepath,
             docstring: parse_state.consume_module_docstring(),
