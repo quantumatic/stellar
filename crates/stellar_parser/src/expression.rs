@@ -262,29 +262,6 @@ impl Parse for ExpressionParser {
     }
 }
 
-struct WhileExpressionParser;
-
-impl Parse for WhileExpressionParser {
-    type Output = Option<Expression>;
-
-    fn parse(self, state: &mut ParseState<'_, '_>) -> Self::Output {
-        let start = state.next_token.location.start;
-        state.advance(); // `while`
-
-        let condition = ExpressionParser::new()
-            .prohibit_struct_expressions()
-            .parse(state)?;
-
-        let body = StatementsBlockParser.parse(state)?;
-
-        Some(Expression::While {
-            location: state.location_from(start),
-            condition: Box::new(condition),
-            statements_block: body,
-        })
-    }
-}
-
 struct PrimaryExpressionParser {
     in_statements_block: bool,
     prohibit_struct_expressions: bool,
