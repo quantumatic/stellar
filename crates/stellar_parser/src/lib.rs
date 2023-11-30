@@ -202,7 +202,7 @@ pub fn read_and_parse_module(
     filepath: PathId,
 ) -> Result<ParseResult, io::Error> {
     let module = ModuleData::alloc(state.db_mut(), package, path, filepath);
-    let source = fs::read_to_string(filepath.resolve())?;
+    let source = fs::read_to_string(filepath.as_path())?;
 
     let mut parse_state = ParseState::new(filepath, &source, state.diagnostics_mut());
 
@@ -451,7 +451,7 @@ impl<'s, 'd> ParseState<'s, 'd> {
     /// Returns string slice corresponding to the current token's location.
     #[inline]
     #[must_use]
-    fn resolve_current(&self) -> &str {
+    fn resolve_current_token_str(&self) -> &str {
         self.resolve_location(self.current_token.location)
     }
 

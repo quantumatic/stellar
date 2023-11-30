@@ -37,185 +37,110 @@ impl Parse for PatternParser {
 
 struct PatternExceptOrParser;
 
-impl Parse for PatternExceptOrParser {
-    type Output = Option<Pattern>;
+impl PatternExceptOrParser {
+    fn parse_negative_numeric_literal_pattern(
+        &self,
+        state: &mut ParseState<'_, '_>,
+    ) -> Option<Pattern> {
+        state.advance();
 
-    fn parse(self, state: &mut ParseState<'_, '_>) -> Self::Output {
         match state.next_token.raw {
-            RawToken::StringLiteral
-            | RawToken::CharLiteral
-            | RawToken::IntegerLiteral
-            | RawToken::FloatLiteral
-            | RawToken::TrueBoolLiteral
-            | RawToken::FalseBoolLiteral => LiteralParser.parse(state).map(Pattern::Literal),
-            RawToken::Punctuator(Punctuator::Minus) => {
+            RawToken::IntegerLiteral => {
                 state.advance();
 
-                match state.next_token.raw {
-                    RawToken::IntegerLiteral => {
-                        state.advance();
-
-                        if let Ok(value) = state.resolve_current().replace('_', "").parse::<u64>() {
-                            Some(NegativeNumericLiteral::Integer {
-                                value,
-                                location: state.current_token.location,
-                            })
-                        } else {
-                            state
-                                .diagnostics
-                                .add_diagnostic(IntegerOverflow::new(state.current_token.location));
-
-                            None
-                        }
-                    }
-                    RawToken::FloatLiteral => {
-                        state.advance();
-
-                        if let Ok(value) = state.resolve_current().replace('_', "").parse::<f64>() {
-                            Some(NegativeNumericLiteral::Float {
-                                value,
-                                location: state.current_token.location,
-                            })
-                        } else {
-                            state
-                                .diagnostics
-                                .add_diagnostic(FloatOverflow::new(state.current_token.location));
-
-                            None
-                        }
-                    }
-                    _ => {
-                        state.add_unexpected_token_diagnostic("numeric literal");
-
-                        None
-                    }
-                }
-                .map(Pattern::NegativeNumericLiteral)
-            }
-            RawToken::Punctuator(Punctuator::Underscore) => {
-                state.advance();
-
-                Some(Pattern::Wildcard {
-                    location: state.current_token.location,
-                })
-            }
-            RawToken::Identifier => {
-                let path = PathParser.parse(state)?;
-
-                match state.next_token.raw {
-                    RawToken::Punctuator(Punctuator::OpenBrace) => {
-                        return StructPatternParser { path }.parse(state);
-                    }
-                    RawToken::Punctuator(Punctuator::OpenParent) => {
-                        return TupleLikePatternParser { path }.parse(state);
-                    }
-                    _ => {}
-                };
-
-                // If it is only 1 identifier
-                if path.identifiers.len() == 1 {
-                    let identifier = path.identifiers.first().expect(
-                        "Cannot get first identifier in path when parsing identifier pattern",
-                    );
-
-                    let pattern = if state.next_token.raw == Punctuator::At {
-                        state.advance();
-                        Some(Box::new(PatternParser.parse(state)?))
-                    } else {
-                        None
-                    };
-
-                    Some(Pattern::Identifier {
-                        location: state.make_location(
-                            path.location.start,
-                            match pattern {
-                                Some(ref pattern) => pattern.location().end,
-                                None => path.location.end,
-                            },
-                        ),
-                        identifier: *identifier,
-                        pattern,
+                if let Ok(value) = state
+                    .resolve_current_token_str()
+                    .replace('_', "")
+                    .parse::<u64>()
+                {
+                    Some(NegativeNumericLiteral::Integer {
+                        value,
+                        location: state.current_token.location,
                     })
                 } else {
-                    Some(Pattern::Path { path })
+                    state
+                        .diagnostics
+                        .add_diagnostic(IntegerOverflow::new(state.current_token.location));
+
+                    None
                 }
             }
-            RawToken::Punctuator(Punctuator::OpenBracket) => ListPatternParser.parse(state),
-            RawToken::Punctuator(Punctuator::DoubleDot) => {
+            RawToken::FloatLiteral => {
                 state.advance();
 
-                Some(Pattern::Rest {
-                    location: state.next_token.location,
-                })
-            }
-            RawToken::Punctuator(Punctuator::OpenParent) => {
-                GroupedOrTuplePatternParser.parse(state)
+                if let Ok(value) = state
+                    .resolve_current_token_str()
+                    .replace('_', "")
+                    .parse::<f64>()
+                {
+                    Some(NegativeNumericLiteral::Float {
+                        value,
+                        location: state.current_token.location,
+                    })
+                } else {
+                    state
+                        .diagnostics
+                        .add_diagnostic(FloatOverflow::new(state.current_token.location));
+
+                    None
+                }
             }
             _ => {
-                state.diagnostics.add_diagnostic(UnexpectedToken::new(
-                    state.current_token.location.end,
-                    state.next_token,
-                    "pattern",
-                ));
+                state.add_unexpected_token_diagnostic("numeric literal");
+
                 None
             }
         }
+        .map(Pattern::NegativeNumericLiteral)
     }
-}
 
-struct StructPatternParser {
-    pub(crate) path: Path,
-}
+    fn parse_pattern_beginning_with_identifier(
+        &self,
+        state: &mut ParseState<'_, '_>,
+    ) -> Option<Pattern> {
+        let path = PathParser.parse(state)?;
 
-impl Parse for StructPatternParser {
-    type Output = Option<Pattern>;
-
-    fn parse(self, state: &mut ParseState<'_, '_>) -> Self::Output {
-        state.advance(); // `{`
-
-        let fields = ListParser::new(&[RawToken::from(Punctuator::CloseBrace)], |state| {
-            if state.next_token.raw == Punctuator::DoubleDot {
-                state.advance();
-
-                Some(StructFieldPattern::Rest {
-                    location: state.current_token.location,
-                })
-            } else {
-                let field_name = state.consume_identifier()?;
-
-                let value_pattern = if state.next_token.raw == Punctuator::Colon {
-                    state.advance();
-
-                    Some(PatternParser.parse(state)?)
-                } else {
-                    None
-                };
-
-                Some(StructFieldPattern::NotRest {
-                    location: state.location_from(field_name.location.start),
-                    field_name,
-                    value_pattern,
-                })
+        match state.next_token.raw {
+            RawToken::Punctuator(Punctuator::OpenBrace) => {
+                return self.parse_struct_pattern(state, path);
             }
-        })
-        .parse(state)?;
+            RawToken::Punctuator(Punctuator::OpenParent) => {
+                return self.parse_tuple_like_struct_pattern(state, path);
+            }
+            _ => {}
+        };
 
-        state.advance();
+        // If it is only 1 identifier
+        if path.identifiers.len() == 1 {
+            let identifier = path
+                .identifiers
+                .first()
+                .expect("Cannot get first identifier in path when parsing identifier pattern");
 
-        Some(Pattern::Struct {
-            location: state.location_from(self.path.location.start),
-            path: self.path,
-            fields,
-        })
+            let pattern = if state.next_token.raw == Punctuator::At {
+                state.advance();
+                Some(Box::new(PatternParser.parse(state)?))
+            } else {
+                None
+            };
+
+            Some(Pattern::Identifier {
+                location: state.make_location(
+                    path.location.start,
+                    match pattern {
+                        Some(ref pattern) => pattern.location().end,
+                        None => path.location.end,
+                    },
+                ),
+                identifier: *identifier,
+                pattern,
+            })
+        } else {
+            Some(Pattern::Path { path })
+        }
     }
-}
 
-struct ListPatternParser;
-
-impl Parse for ListPatternParser {
-    type Output = Option<Pattern>;
-
-    fn parse(self, state: &mut ParseState<'_, '_>) -> Self::Output {
+    fn parse_list_pattern(&self, state: &mut ParseState<'_, '_>) -> Option<Pattern> {
         let start = state.next_token.location.start;
         state.advance();
 
@@ -232,16 +157,12 @@ impl Parse for ListPatternParser {
             inner_patterns,
         })
     }
-}
 
-struct TupleLikePatternParser {
-    pub(crate) path: Path,
-}
-
-impl Parse for TupleLikePatternParser {
-    type Output = Option<Pattern>;
-
-    fn parse(self, state: &mut ParseState<'_, '_>) -> Self::Output {
+    fn parse_tuple_like_struct_pattern(
+        &self,
+        state: &mut ParseState<'_, '_>,
+        path: Path,
+    ) -> Option<Pattern> {
         state.advance(); // `(`
 
         let inner_patterns = ListParser::new(&[RawToken::from(Punctuator::CloseParent)], |state| {
@@ -252,19 +173,13 @@ impl Parse for TupleLikePatternParser {
         state.advance(); // `)`
 
         Some(Pattern::TupleLike {
-            location: state.location_from(self.path.location.start),
-            path: self.path,
+            location: state.location_from(path.location.start),
+            path,
             inner_patterns,
         })
     }
-}
 
-struct GroupedOrTuplePatternParser;
-
-impl Parse for GroupedOrTuplePatternParser {
-    type Output = Option<Pattern>;
-
-    fn parse(self, state: &mut ParseState<'_, '_>) -> Self::Output {
+    fn parse_grouped_or_tuple_pattern(self, state: &mut ParseState<'_, '_>) -> Option<Pattern> {
         let start = state.next_token.location.start;
         state.advance();
 
@@ -314,6 +229,90 @@ impl Parse for GroupedOrTuplePatternParser {
                 })
             }
             _ => unreachable!(),
+        }
+    }
+
+    fn parse_struct_pattern(&self, state: &mut ParseState<'_, '_>, path: Path) -> Option<Pattern> {
+        state.advance(); // `{`
+
+        let fields = ListParser::new(&[RawToken::from(Punctuator::CloseBrace)], |state| {
+            if state.next_token.raw == Punctuator::DoubleDot {
+                state.advance();
+
+                Some(StructFieldPattern::Rest {
+                    location: state.current_token.location,
+                })
+            } else {
+                let field_name = state.consume_identifier()?;
+
+                let value_pattern = if state.next_token.raw == Punctuator::Colon {
+                    state.advance();
+
+                    Some(PatternParser.parse(state)?)
+                } else {
+                    None
+                };
+
+                Some(StructFieldPattern::NotRest {
+                    location: state.location_from(field_name.location.start),
+                    field_name,
+                    value_pattern,
+                })
+            }
+        })
+        .parse(state)?;
+
+        state.advance();
+
+        Some(Pattern::Struct {
+            location: state.location_from(path.location.start),
+            path,
+            fields,
+        })
+    }
+}
+
+impl Parse for PatternExceptOrParser {
+    type Output = Option<Pattern>;
+
+    fn parse(self, state: &mut ParseState<'_, '_>) -> Self::Output {
+        match state.next_token.raw {
+            RawToken::StringLiteral
+            | RawToken::CharLiteral
+            | RawToken::IntegerLiteral
+            | RawToken::FloatLiteral
+            | RawToken::TrueBoolLiteral
+            | RawToken::FalseBoolLiteral => LiteralParser.parse(state).map(Pattern::Literal),
+            RawToken::Punctuator(Punctuator::DoubleDot) => {
+                state.advance();
+
+                Some(Pattern::Rest {
+                    location: state.next_token.location,
+                })
+            }
+            RawToken::Punctuator(Punctuator::Underscore) => {
+                state.advance();
+
+                Some(Pattern::Wildcard {
+                    location: state.current_token.location,
+                })
+            }
+            RawToken::Punctuator(Punctuator::Minus) => {
+                self.parse_negative_numeric_literal_pattern(state)
+            }
+            RawToken::Identifier => self.parse_pattern_beginning_with_identifier(state),
+            RawToken::Punctuator(Punctuator::OpenBracket) => self.parse_list_pattern(state),
+            RawToken::Punctuator(Punctuator::OpenParent) => {
+                self.parse_grouped_or_tuple_pattern(state)
+            }
+            _ => {
+                state.diagnostics.add_diagnostic(UnexpectedToken::new(
+                    state.current_token.location.end,
+                    state.next_token,
+                    "pattern",
+                ));
+                None
+            }
         }
     }
 }

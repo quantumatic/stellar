@@ -31,314 +31,314 @@ impl<'s, 'h> CollectSignatures<'s, 'h> {
         };
 
         for module in modules {
-            me.run(*module.0, module.1);
+            // me.run(*module.0, module.1);
         }
     }
 
-    fn run(&mut self, module: ModuleId, hir: &stellar_hir::Module) {
-        for item in &hir.items {
-            self.analyze_signature(module, item);
-        }
-    }
+    //     fn run(&mut self, module: ModuleId, hir: &stellar_hir::Module) {
+    //         for item in &hir.items {
+    //             self.analyze_signature(module, item);
+    //         }
+    //     }
 
-    pub(crate) fn analyze_signature(&mut self, module: ModuleId, item: &stellar_hir::ModuleItem) {
-        match item {
-            stellar_hir::ModuleItem::Enum(enum_) => {
-                self.analyze_signature_of_enum(module, enum_);
-            }
-            stellar_hir::ModuleItem::Struct(struct_) => {
-                self.analyze_signature_of_struct(module, struct_);
-            }
-            stellar_hir::ModuleItem::TupleLikeStruct(struct_) => {
-                self.analyze_signature_of_tuple_like_struct(module, struct_);
-            }
-            stellar_hir::ModuleItem::TypeAlias(alias) => {
-                self.analyze_type_alias(module, alias);
-            }
-            _ => todo!(),
-        }
-    }
+    //     pub(crate) fn analyze_signature(&mut self, module: ModuleId, item: &stellar_hir::ModuleItem) {
+    //         match item {
+    //             stellar_hir::ModuleItem::Enum(enum_) => {
+    //                 self.analyze_signature_of_enum(module, enum_);
+    //             }
+    //             stellar_hir::ModuleItem::Struct(struct_) => {
+    //                 self.analyze_signature_of_struct(module, struct_);
+    //             }
+    //             stellar_hir::ModuleItem::TupleLikeStruct(struct_) => {
+    //                 self.analyze_signature_of_tuple_like_struct(module, struct_);
+    //             }
+    //             stellar_hir::ModuleItem::TypeAlias(alias) => {
+    //                 self.analyze_type_alias(module, alias);
+    //             }
+    //             _ => todo!(),
+    //         }
+    //     }
 
-    fn emit_computation_cycle_diagnostic(&mut self) {
-        let diagnostic = CycleDetectedWhenComputingSignatureOf::new(
-            mem::take(&mut self.currently_analyzed_symbols_trace)
-                .into_iter()
-                .map(|symbol| symbol.name(self.state.db()))
-                .collect::<Vec<_>>(),
-        );
+    //     fn emit_computation_cycle_diagnostic(&mut self) {
+    //         let diagnostic = CycleDetectedWhenComputingSignatureOf::new(
+    //             mem::take(&mut self.currently_analyzed_symbols_trace)
+    //                 .into_iter()
+    //                 .map(|symbol| symbol.name(self.state.db()))
+    //                 .collect::<Vec<_>>(),
+    //         );
 
-        self.state.diagnostics_mut().add_diagnostic(diagnostic);
-    }
+    //         self.state.diagnostics_mut().add_diagnostic(diagnostic);
+    //     }
 
-    fn start_analyzing_signature(&mut self, symbol: Symbol) {
-        #[cfg(feature = "debug")]
-        let module = symbol.module(self.state.db());
+    //     fn start_analyzing_signature(&mut self, symbol: Symbol) {
+    //         #[cfg(feature = "debug")]
+    //         let module = symbol.module(self.state.db());
 
-        if self.currently_analyzed_symbols_trace.contains(&symbol) {
-            #[cfg(feature = "debug")]
-            trace!(
-                "signature cycle detected when analyzing signature of '{}' in '{}'",
-                symbol.name(self.state.db()).id,
-                module.filepath(self.state.db())
-            );
+    //         if self.currently_analyzed_symbols_trace.contains(&symbol) {
+    //             #[cfg(feature = "debug")]
+    //             trace!(
+    //                 "signature cycle detected when analyzing signature of '{}' in '{}'",
+    //                 symbol.name(self.state.db()).id,
+    //                 module.filepath(self.state.db())
+    //             );
 
-            self.emit_computation_cycle_diagnostic();
+    //             self.emit_computation_cycle_diagnostic();
 
-            return;
-        }
+    //             return;
+    //         }
 
-        self.currently_analyzed_symbols_trace.push(symbol);
+    //         self.currently_analyzed_symbols_trace.push(symbol);
 
-        #[cfg(feature = "debug")]
-        trace!(
-            "start_analyzing_signature_of(name = '{}', module = '{}')",
-            symbol.name(self.state.db()).id,
-            module.filepath(self.state.db()),
-        );
-    }
+    //         #[cfg(feature = "debug")]
+    //         trace!(
+    //             "start_analyzing_signature_of(name = '{}', module = '{}')",
+    //             symbol.name(self.state.db()).id,
+    //             module.filepath(self.state.db()),
+    //         );
+    //     }
 
-    fn analyze_signature_of_enum(&mut self, module: ModuleId, enum_hir: &stellar_hir::Enum) {
-        #[cfg(feature = "debug")]
-        let now = Instant::now();
+    //     fn analyze_signature_of_enum(&mut self, module: ModuleId, enum_hir: &stellar_hir::Enum) {
+    //         #[cfg(feature = "debug")]
+    //         let now = Instant::now();
 
-        let symbol = module.symbol(self.state.db(), enum_hir.name.id);
+    //         let symbol = module.symbol(self.state.db(), enum_hir.name.id);
 
-        self.start_analyzing_signature(symbol);
+    //         self.start_analyzing_signature(symbol);
 
-        let enum_ = symbol.to_enum();
-        let signature = enum_.signature(self.state.db());
+    //         let enum_ = symbol.to_enum();
+    //         let signature = enum_.signature(self.state.db());
 
-        self.analyze_generic_parameters(
-            module,
-            enum_hir.name,
-            signature,
-            None,
-            &enum_hir.generic_parameters,
-        );
-        self.analyze_where_predicates(module, enum_hir.name, signature, &enum_hir.where_predicates);
+    //         self.analyze_generic_parameters(
+    //             module,
+    //             enum_hir.name,
+    //             signature,
+    //             None,
+    //             &enum_hir.generic_parameters,
+    //         );
+    //         self.analyze_where_predicates(module, enum_hir.name, signature, &enum_hir.where_predicates);
 
-        signature.set_analyzed(self.state.db_mut());
+    //         signature.set_analyzed(self.state.db_mut());
 
-        #[cfg(feature = "debug")]
-        trace!(
-            "analyze_signature_of_enum(name = '{}', module = '{}') <{} us>",
-            enum_hir.name.id,
-            module.filepath(self.state.db()),
-            now.elapsed().as_micros()
-        )
-    }
+    //         #[cfg(feature = "debug")]
+    //         trace!(
+    //             "analyze_signature_of_enum(name = '{}', module = '{}') <{} us>",
+    //             enum_hir.name.id,
+    //             module.filepath(self.state.db()),
+    //             now.elapsed().as_micros()
+    //         )
+    //     }
 
-    fn analyze_signature_of_struct(&mut self, module: ModuleId, struct_hir: &stellar_hir::Struct) {
-        #[cfg(feature = "debug")]
-        let now = Instant::now();
+    //     fn analyze_signature_of_struct(&mut self, module: ModuleId, struct_hir: &stellar_hir::Struct) {
+    //         #[cfg(feature = "debug")]
+    //         let now = Instant::now();
 
-        let symbol = module.symbol(self.state.db(), struct_hir.name.id);
+    //         let symbol = module.symbol(self.state.db(), struct_hir.name.id);
 
-        self.start_analyzing_signature(symbol);
+    //         self.start_analyzing_signature(symbol);
 
-        let struct_ = symbol.to_struct();
-        let signature = struct_.signature(self.state.db());
+    //         let struct_ = symbol.to_struct();
+    //         let signature = struct_.signature(self.state.db());
 
-        self.analyze_generic_parameters(
-            module,
-            struct_hir.name,
-            signature,
-            None,
-            &struct_hir.generic_parameters,
-        );
-        self.analyze_where_predicates(
-            module,
-            struct_hir.name,
-            signature,
-            &struct_hir.where_predicates,
-        );
+    //         self.analyze_generic_parameters(
+    //             module,
+    //             struct_hir.name,
+    //             signature,
+    //             None,
+    //             &struct_hir.generic_parameters,
+    //         );
+    //         self.analyze_where_predicates(
+    //             module,
+    //             struct_hir.name,
+    //             signature,
+    //             &struct_hir.where_predicates,
+    //         );
 
-        signature.set_analyzed(self.state.db_mut());
+    //         signature.set_analyzed(self.state.db_mut());
 
-        #[cfg(feature = "debug")]
-        trace!(
-            "analyze_signature_of_struct(name = '{}', module = '{}') <{} us>",
-            struct_hir.name.id,
-            module.filepath(self.state.db()),
-            now.elapsed().as_micros()
-        )
-    }
+    //         #[cfg(feature = "debug")]
+    //         trace!(
+    //             "analyze_signature_of_struct(name = '{}', module = '{}') <{} us>",
+    //             struct_hir.name.id,
+    //             module.filepath(self.state.db()),
+    //             now.elapsed().as_micros()
+    //         )
+    //     }
 
-    fn analyze_signature_of_tuple_like_struct(
-        &mut self,
-        module: ModuleId,
-        struct_hir: &stellar_hir::TupleLikeStruct,
-    ) {
-        #[cfg(feature = "debug")]
-        let now = Instant::now();
+    //     fn analyze_signature_of_tuple_like_struct(
+    //         &mut self,
+    //         module: ModuleId,
+    //         struct_hir: &stellar_hir::TupleLikeStruct,
+    //     ) {
+    //         #[cfg(feature = "debug")]
+    //         let now = Instant::now();
 
-        let symbol = module.symbol(self.state.db(), struct_hir.name.id);
+    //         let symbol = module.symbol(self.state.db(), struct_hir.name.id);
 
-        self.start_analyzing_signature(symbol);
+    //         self.start_analyzing_signature(symbol);
 
-        let struct_ = symbol.to_tuple_like_struct();
-        let signature = struct_.signature(self.state.db());
+    //         let struct_ = symbol.to_tuple_like_struct();
+    //         let signature = struct_.signature(self.state.db());
 
-        self.analyze_generic_parameters(
-            module,
-            struct_hir.name,
-            signature,
-            None,
-            &struct_hir.generic_parameters,
-        );
-        self.analyze_where_predicates(
-            module,
-            struct_hir.name,
-            signature,
-            &struct_hir.where_predicates,
-        );
+    //         self.analyze_generic_parameters(
+    //             module,
+    //             struct_hir.name,
+    //             signature,
+    //             None,
+    //             &struct_hir.generic_parameters,
+    //         );
+    //         self.analyze_where_predicates(
+    //             module,
+    //             struct_hir.name,
+    //             signature,
+    //             &struct_hir.where_predicates,
+    //         );
 
-        signature.set_analyzed(self.state.db_mut());
+    //         signature.set_analyzed(self.state.db_mut());
 
-        #[cfg(feature = "debug")]
-        trace!(
-            "analyze_signature_of_tuple_like_struct(name = '{}', module = '{}') <{} us>",
-            struct_hir.name.id,
-            module.filepath(self.state.db()),
-            now.elapsed().as_micros()
-        )
-    }
+    //         #[cfg(feature = "debug")]
+    //         trace!(
+    //             "analyze_signature_of_tuple_like_struct(name = '{}', module = '{}') <{} us>",
+    //             struct_hir.name.id,
+    //             module.filepath(self.state.db()),
+    //             now.elapsed().as_micros()
+    //         )
+    //     }
 
-    fn analyze_implemented_interfaces(
-        &mut self,
-        module: ModuleId,
-        signature: SignatureId,
-        interfaces_hir: &[stellar_hir::TypeConstructor],
-    ) {
-        for interface_hir in interfaces_hir {
-            let interface = self.resolve_interface(interface_hir);
+    //     fn analyze_implemented_interfaces(
+    //         &mut self,
+    //         module: ModuleId,
+    //         signature: SignatureId,
+    //         interfaces_hir: &[stellar_hir::TypeConstructor],
+    //     ) {
+    //         for interface_hir in interfaces_hir {
+    //             let interface = self.resolve_interface(interface_hir);
 
-            signature.add_implemented_interface(self.state.db_mut(), interface);
-        }
-    }
+    //             signature.add_implemented_interface(self.state.db_mut(), interface);
+    //         }
+    //     }
 
-    fn resolve_interface(
-        &mut self,
-        interface_hir: &stellar_hir::TypeConstructor,
-    ) -> TypeConstructor {
-        todo!()
-    }
+    //     fn resolve_interface(
+    //         &mut self,
+    //         interface_hir: &stellar_hir::TypeConstructor,
+    //     ) -> TypeConstructor {
+    //         todo!()
+    //     }
 
-    fn analyze_generic_parameters(
-        &mut self,
-        module: ModuleId,
-        item_name: IdentifierAST,
-        signature: SignatureId,
-        parent_generic_parameter_scope: Option<GenericParameterScopeId>,
-        parameters_hir: &[stellar_hir::GenericParameter],
-    ) {
-        let generic_parameter_scope =
-            GenericParameterScopeData::alloc(self.state.db_mut(), module.package());
+    //     fn analyze_generic_parameters(
+    //         &mut self,
+    //         module: ModuleId,
+    //         item_name: IdentifierAST,
+    //         signature: SignatureId,
+    //         parent_generic_parameter_scope: Option<GenericParameterScopeId>,
+    //         parameters_hir: &[stellar_hir::GenericParameter],
+    //     ) {
+    //         let generic_parameter_scope =
+    //             GenericParameterScopeData::alloc(self.state.db_mut(), module.package());
 
-        for parameter_hir in parameters_hir {
-            let default_value = if let Some(default_value) = &parameter_hir.default_value {
-                self.resolve_or_analyze_type_in_signature(module, item_name, default_value)
-            } else {
-                None
-            };
+    //         for parameter_hir in parameters_hir {
+    //             let default_value = if let Some(default_value) = &parameter_hir.default_value {
+    //                 self.resolve_or_analyze_type_in_signature(module, item_name, default_value)
+    //             } else {
+    //                 None
+    //             };
 
-            let generic_parameter = GenericParameterData::alloc(
-                self.state.db_mut(),
-                module.package(),
-                parameter_hir.name.location,
-                default_value,
-            );
+    //             let generic_parameter = GenericParameterData::alloc(
+    //                 self.state.db_mut(),
+    //                 module.package(),
+    //                 parameter_hir.name.location,
+    //                 default_value,
+    //             );
 
-            if let Some(bounds) = &parameter_hir.bounds {
-                let bounds = self.resolve_bounds(bounds);
+    //             if let Some(bounds) = &parameter_hir.bounds {
+    //                 let bounds = self.resolve_bounds(bounds);
 
-                let predicate = PredicateData::alloc(
-                    self.state.db_mut(),
-                    module.package(),
-                    Type::GenericParameter(generic_parameter),
-                    bounds,
-                );
+    //                 let predicate = PredicateData::alloc(
+    //                     self.state.db_mut(),
+    //                     module.package(),
+    //                     Type::GenericParameter(generic_parameter),
+    //                     bounds,
+    //                 );
 
-                signature.add_predicate(self.state.db_mut(), predicate);
-            }
+    //                 signature.add_predicate(self.state.db_mut(), predicate);
+    //             }
 
-            generic_parameter_scope.add_generic_parameter(
-                self.state.db_mut(),
-                parameter_hir.name.id,
-                generic_parameter,
-            );
-        }
+    //             generic_parameter_scope.add_generic_parameter(
+    //                 self.state.db_mut(),
+    //                 parameter_hir.name.id,
+    //                 generic_parameter,
+    //             );
+    //         }
 
-        signature.set_generic_parameter_scope(self.state.db_mut(), generic_parameter_scope);
-    }
+    //         signature.set_generic_parameter_scope(self.state.db_mut(), generic_parameter_scope);
+    //     }
 
-    fn analyze_where_predicates(
-        &mut self,
-        module: ModuleId,
-        item_name: IdentifierAST,
-        signature: SignatureId,
-        predicates_hir: &[stellar_hir::WherePredicate],
-    ) {
-        for predicate_hir in predicates_hir {
-            let Some(ty) =
-                self.resolve_or_analyze_type_in_signature(module, item_name, &predicate_hir.ty)
-            else {
-                return;
-            };
+    //     fn analyze_where_predicates(
+    //         &mut self,
+    //         module: ModuleId,
+    //         item_name: IdentifierAST,
+    //         signature: SignatureId,
+    //         predicates_hir: &[stellar_hir::WherePredicate],
+    //     ) {
+    //         for predicate_hir in predicates_hir {
+    //             let Some(ty) =
+    //                 self.resolve_or_analyze_type_in_signature(module, item_name, &predicate_hir.ty)
+    //             else {
+    //                 return;
+    //             };
 
-            let bounds = self.resolve_bounds(&predicate_hir.bounds);
+    //             let bounds = self.resolve_bounds(&predicate_hir.bounds);
 
-            let predicate = PredicateData::alloc(self.state.db_mut(), module.package(), ty, bounds);
+    //             let predicate = PredicateData::alloc(self.state.db_mut(), module.package(), ty, bounds);
 
-            signature.add_predicate(self.state.db_mut(), predicate);
-        }
-    }
+    //             signature.add_predicate(self.state.db_mut(), predicate);
+    //         }
+    //     }
 
-    fn resolve_bounds(&mut self, bounds: &[stellar_hir::TypeConstructor]) -> Vec<TypeConstructor> {
-        todo!()
-    }
+    //     fn resolve_bounds(&mut self, bounds: &[stellar_hir::TypeConstructor]) -> Vec<TypeConstructor> {
+    //         todo!()
+    //     }
 
-    fn resolve_bound(&mut self, bound: &stellar_hir::TypeConstructor) -> TypeConstructor {
-        todo!()
-    }
+    //     fn resolve_bound(&mut self, bound: &stellar_hir::TypeConstructor) -> TypeConstructor {
+    //         todo!()
+    //     }
 
-    fn analyze_type_signature(&mut self, path: &stellar_ast::Path) {}
+    //     fn analyze_type_signature(&mut self, path: &stellar_ast::Path) {}
 
-    fn analyze_type_alias(&mut self, module: ModuleId, alias_hir: &stellar_hir::TypeAlias) {
-        #[cfg(feature = "debug")]
-        let now = Instant::now();
+    //     fn analyze_type_alias(&mut self, module: ModuleId, alias_hir: &stellar_hir::TypeAlias) {
+    //         #[cfg(feature = "debug")]
+    //         let now = Instant::now();
 
-        let symbol = module.symbol(self.state.db(), alias_hir.name.id);
+    //         let symbol = module.symbol(self.state.db(), alias_hir.name.id);
 
-        self.start_analyzing_signature(symbol);
+    //         self.start_analyzing_signature(symbol);
 
-        let alias = symbol.to_type_alias();
-        let signature = alias.signature(self.state.db());
+    //         let alias = symbol.to_type_alias();
+    //         let signature = alias.signature(self.state.db());
 
-        self.analyze_generic_parameters(
-            module,
-            alias_hir.name,
-            signature,
-            None,
-            &alias_hir.generic_parameters,
-        );
+    //         self.analyze_generic_parameters(
+    //             module,
+    //             alias_hir.name,
+    //             signature,
+    //             None,
+    //             &alias_hir.generic_parameters,
+    //         );
 
-        let Some(value) =
-            self.resolve_or_analyze_type_in_signature(module, alias_hir.name, &alias_hir.value)
-        else {
-            return;
-        };
+    //         let Some(value) =
+    //             self.resolve_or_analyze_type_in_signature(module, alias_hir.name, &alias_hir.value)
+    //         else {
+    //             return;
+    //         };
 
-        alias.set_type(self.state.db_mut(), value);
+    //         alias.set_type(self.state.db_mut(), value);
 
-        signature.set_analyzed(self.state.db_mut());
+    //         signature.set_analyzed(self.state.db_mut());
 
-        #[cfg(feature = "debug")]
-        trace!(
-            "analyze_type_alias(name = '{}', module = '{}') <{} us>",
-            alias_hir.name.id,
-            module.filepath(self.state.db()),
-            now.elapsed().as_micros()
-        )
-    }
+    //         #[cfg(feature = "debug")]
+    //         trace!(
+    //             "analyze_type_alias(name = '{}', module = '{}') <{} us>",
+    //             alias_hir.name.id,
+    //             module.filepath(self.state.db()),
+    //             now.elapsed().as_micros()
+    //         )
+    //     }
 }

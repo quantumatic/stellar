@@ -1047,8 +1047,9 @@ pub struct PackageData {
 
 /// Returns the last modification time of a folder with a given path.
 fn last_modification_time_of(path: PathId) -> Option<FileTime> {
-    path.resolve_or_none()
-        .and_then(|path| path.metadata().ok())
+    path.as_path()
+        .metadata()
+        .ok()
         .map(|metadata| FileTime::from_last_modification_time(&metadata))
 }
 

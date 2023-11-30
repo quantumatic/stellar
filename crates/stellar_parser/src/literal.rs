@@ -15,7 +15,11 @@ impl Parse for LiteralParser {
             RawToken::IntegerLiteral => {
                 state.advance();
 
-                if let Ok(value) = state.resolve_current().replace('_', "").parse::<u64>() {
+                if let Ok(value) = state
+                    .resolve_current_token_str()
+                    .replace('_', "")
+                    .parse::<u64>()
+                {
                     Some(Literal::Integer {
                         value,
                         location: state.current_token.location,
@@ -30,7 +34,11 @@ impl Parse for LiteralParser {
             RawToken::FloatLiteral => {
                 state.advance();
 
-                if let Ok(value) = state.resolve_current().replace('_', "").parse::<f64>() {
+                if let Ok(value) = state
+                    .resolve_current_token_str()
+                    .replace('_', "")
+                    .parse::<f64>()
+                {
                     Some(Literal::Float {
                         value,
                         location: state.current_token.location,

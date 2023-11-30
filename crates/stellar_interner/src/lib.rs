@@ -82,7 +82,7 @@ use std::{
     hash::BuildHasherDefault,
     hash::{BuildHasher, Hash, Hasher},
     marker::PhantomData,
-    path::{Path, PathBuf},
+    path::Path,
     str::{from_utf8_unchecked, FromStr},
 };
 
@@ -121,25 +121,29 @@ where
 }
 
 impl IdentifierId {
-    /// Gets the interned string by ID.
+    /// Resolves the interned string by ID.
+    ///
+    /// The operation is slowish because it requires locking the
+    /// identifier interner.
     #[inline]
     #[must_use]
-    pub fn resolve(self) -> String {
-        IDENTIFIER_INTERNER.read().resolve(self)
+    pub fn as_str(self) -> &'static str {
+        let interner_rlock = IDENTIFIER_INTERNER.read();
+
+        unsafe { std::mem::transmute(interner_rlock.resolve(self)) }
+    }
+}
+
+impl From<IdentifierId> for String {
+    fn from(value: IdentifierId) -> Self {
+        value.as_str().to_owned()
     }
 }
 
 impl Display for IdentifierId {
     #[inline]
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        self.resolve().fmt(f)
-    }
-}
-
-impl From<IdentifierId> for String {
-    #[inline]
-    fn from(value: IdentifierId) -> Self {
-        value.resolve()
+        self.as_str().fmt(f)
     }
 }
 
@@ -158,7 +162,7 @@ impl Serialize for IdentifierId {
     where
         S: Serializer,
     {
-        serializer.serialize_str(&self.resolve())
+        serializer.serialize_str(&self.as_str())
     }
 }
 
@@ -410,29 +414,6 @@ where
         self.dedup.len()
     }
 
-    /// Returns the symbol for the given string if it is interned.
-    ///
-    /// # Example
-    ///
-    /// ```ignore
-    /// use stellar_interner::Interner;
-    ///
-    /// let mut interner = Interner::<usize>::default();
-    /// let hello_id = interner.get_or_intern("hello");
-    /// assert_eq!(interner.get("hello"), Some(hello_id));
-    /// ```
-    fn get(&self, string: impl AsRef<str>) -> Option<S> {
-        let string = string.as_ref();
-        let hash = hash_value(&self.hasher, string);
-
-        self.dedup
-            .raw_entry()
-            .from_hash(hash, |symbol| {
-                string == unsafe { self.backend.unchecked_resolve(*symbol) }
-            })
-            .map(|(&symbol, ())| symbol)
-    }
-
     /// Interns the given string and returns a corresponding symbol.
     fn get_or_intern_using<T>(
         &mut self,
@@ -478,17 +459,6 @@ where
     }
 
     /// Returns the string for the given symbol if any.
-    ///
-    /// # Example
-    ///
-    /// ```ignore
-    /// # use stellar_interner::Interner;
-    /// let mut interner = Interner::<usize>::default();
-    /// let hello_id = interner.get_or_intern("hello");
-    ///
-    /// assert_eq!(interner.get("hello"), Some(hello_id));
-    /// assert_eq!(interner.get("!"), None);
-    /// ```
     #[must_use]
     fn resolve(&self, symbol: S) -> Option<&str> {
         self.backend.resolve(symbol)
@@ -569,21 +539,6 @@ impl IdentifierInterner {
         self.0.len()
     }
 
-    /// Returns the symbol for the given identifier if it is interned.
-    ///
-    /// # Example
-    ///
-    /// ```ignore
-    /// use stellar_interner::IdentifierInterner;
-    ///
-    /// let mut identifier_interner = IdentifierInterner::new();
-    /// let hello_id = identifier_interner.get_or_intern("hello");
-    /// assert_eq!(identifier_interner.get("hello"), Some(hello_id));
-    /// ```
-    fn get(&self, identifier: impl AsRef<str>) -> Option<IdentifierId> {
-        self.0.get(identifier)
-    }
-
     /// Interns the given identifier (if it doesn't exist) and returns a corresponding symbol.
     fn get_or_intern(&mut self, identifier: impl AsRef<str>) -> IdentifierId {
         self.0.get_or_intern(identifier)
@@ -611,11 +566,11 @@ impl IdentifierInterner {
     /// assert_eq!(identifier_interner.resolve_or_none(IdentifierId(3123123123)), None);
     /// ```
     #[must_use]
-    fn resolve_or_none(&self, id: IdentifierId) -> Option<String> {
+    fn resolve_or_none(&self, id: IdentifierId) -> Option<&str> {
         if id == DUMMY_IDENTIFIER_ID {
             None
         } else {
-            self.0.resolve(id).map(ToOwned::to_owned)
+            self.0.resolve(id)
         }
     }
 
@@ -624,7 +579,7 @@ impl IdentifierInterner {
     /// # Panics
     /// If the identifier is not yet interned.
     #[must_use]
-    fn resolve(&self, id: IdentifierId) -> String {
+    fn resolve(&self, id: IdentifierId) -> &str {
         self.resolve_or_none(id)
             .unwrap_or_else(|| panic!("Failed to resolve identifier with Id: {id:?}"))
     }
@@ -660,29 +615,24 @@ impl PathId {
     /// Resolves the given path by ID.
     #[inline]
     #[must_use]
-    pub fn resolve(self) -> PathBuf {
-        PATH_INTERNER.read().resolve(self)
-    }
+    pub fn as_path(self) -> &'static Path {
+        let interner_rlock = PATH_INTERNER.read();
 
-    /// Resolves the given path by ID.
-    #[inline]
-    #[must_use]
-    pub fn resolve_or_none(self) -> Option<PathBuf> {
-        PATH_INTERNER.read().resolve_or_none(self)
+        unsafe { std::mem::transmute(interner_rlock.resolve(self)) }
     }
 }
 
 impl Display for PathId {
     #[inline]
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.resolve().display())
+        write!(f, "{}", self.as_path().display())
     }
 }
 
 impl From<PathId> for String {
     #[inline]
     fn from(value: PathId) -> Self {
-        format!("{}", value.resolve().display())
+        format!("{}", value.as_path().display())
     }
 }
 
@@ -701,7 +651,7 @@ impl Serialize for PathId {
     where
         S: Serializer,
     {
-        serializer.serialize_str(self.resolve().to_str().unwrap())
+        serializer.serialize_str(self.as_path().to_str().unwrap())
     }
 }
 
@@ -747,11 +697,11 @@ impl PathInterner {
 
     /// Resolves a path stored in the storage.
     #[must_use]
-    fn resolve_or_none(&self, id: PathId) -> Option<PathBuf> {
+    fn resolve_or_none(&self, id: PathId) -> Option<&Path> {
         if id == DUMMY_PATH_ID {
             None
         } else {
-            self.0.resolve(id).map(PathBuf::from)
+            self.0.resolve(id).map(Path::new)
         }
     }
 
@@ -759,7 +709,7 @@ impl PathInterner {
     /// but panics if the path is not found.
     #[allow(clippy::missing_panics_doc)]
     #[must_use]
-    fn resolve(&self, id: PathId) -> PathBuf {
+    fn resolve(&self, id: PathId) -> &Path {
         self.resolve_or_none(id)
             .unwrap_or_else(|| panic!("Path with id: {} is not found", id.0))
     }

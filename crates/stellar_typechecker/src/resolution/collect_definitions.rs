@@ -86,11 +86,9 @@ impl<'s> CollectDefinitions<'s> {
 
             self.check_for_duplicate_enum_item(enum_, name);
 
-            enum_.add_item(
-                self.state.db_mut(),
-                name.id,
-                EnumItemData::alloc(self.state.db_mut(), enum_, name, self.module),
-            );
+            let item = EnumItemData::alloc(self.state.db_mut(), enum_, name, self.module);
+
+            enum_.add_item(self.state.db_mut(), name.id, item);
 
             #[cfg(feature = "debug")]
             trace!(

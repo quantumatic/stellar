@@ -217,7 +217,7 @@ impl<'a> DiagnosticsRenderHelper<'a> for InMemoryFileStorage {
     #[inline]
     fn name(&'a self, filepath: PathId) -> Result<String, Error> {
         self.resolve_file(filepath)
-            .map(|file| file.path.resolve().display().to_string())
+            .map(|file| file.path.as_path().display().to_string())
             .ok_or(Error::FileMissing)
     }
 

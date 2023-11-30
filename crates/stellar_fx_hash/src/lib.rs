@@ -169,3 +169,20 @@ impl Hasher for FxHasher {
         self.hash as u64
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::hash::Hash;
+
+    fn hash<T: Hash>(t: T) -> u64 {
+        let mut hasher = FxHasher::default();
+        t.hash(&mut hasher);
+        hasher.finish()
+    }
+
+    #[test]
+    fn test_hash() {
+        assert_eq!(hash("test"), hash("test"));
+    }
+}

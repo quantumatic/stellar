@@ -65,6 +65,156 @@ impl ExpressionParser {
         self.in_statements_block = true;
         self
     }
+
+    fn parse_call_expression(
+        self,
+        state: &mut ParseState<'_, '_>,
+        left: Expression,
+    ) -> Option<Expression> {
+        state.advance(); // `(`
+
+        let arguments = ListParser::new(&[RawToken::from(Punctuator::CloseParent)], |state| {
+            ExpressionParser::default().parse(state)
+        })
+        .parse(state)?;
+
+        state.advance();
+
+        Some(Expression::Call {
+            location: state.location_from(left.location().start),
+            callee: Box::new(left),
+            arguments,
+        })
+    }
+
+    fn parse_field_access_expression(
+        self,
+        state: &mut ParseState<'_, '_>,
+        left: Expression,
+    ) -> Option<Expression> {
+        state.advance(); // `.`
+
+        let right = state.consume_identifier()?;
+
+        Some(Expression::FieldAccess {
+            location: state.location_from(left.location().start),
+            left: Box::new(left),
+            right,
+        })
+    }
+
+    fn parse_type_arguments_expression(
+        self,
+        state: &mut ParseState<'_, '_>,
+        left: Expression,
+    ) -> Option<Expression> {
+        let arguments = TypeArgumentsParser.parse(state)?;
+
+        Some(Expression::TypeArguments {
+            location: state.location_from(left.location().start),
+            left: Box::new(left),
+            arguments,
+        })
+    }
+
+    fn parse_cast_expression(
+        self,
+        state: &mut ParseState<'_, '_>,
+        left: Expression,
+    ) -> Option<Expression> {
+        state.advance();
+
+        let right = TypeParser.parse(state)?;
+
+        Some(Expression::As {
+            location: state.location_from(left.location().start),
+            left: Box::new(left),
+            right,
+        })
+    }
+
+    fn parse_struct_field_expression(
+        self,
+        state: &mut ParseState<'_, '_>,
+    ) -> Option<StructFieldExpression> {
+        let name = state.consume_identifier()?;
+
+        let value = if state.next_token.raw == Punctuator::Colon {
+            state.advance();
+            Some(ExpressionParser::default().parse(state)?)
+        } else {
+            None
+        };
+
+        Some(StructFieldExpression { name, value })
+    }
+
+    fn parse_struct_expression(
+        self,
+        state: &mut ParseState<'_, '_>,
+        left: Expression,
+    ) -> Option<Expression> {
+        state.advance(); // `{`
+
+        let fields = ListParser::new(&[RawToken::from(Punctuator::CloseBrace)], |state| {
+            self.parse_struct_field_expression(state)
+        })
+        .parse(state)?;
+
+        state.advance(); // `}`
+
+        Some(Expression::Struct {
+            location: state.location_from(left.location().start),
+            left: Box::new(left),
+            fields,
+        })
+    }
+
+    fn parse_binary_expression(
+        self,
+        state: &mut ParseState<'_, '_>,
+        left: Expression,
+    ) -> Option<Expression> {
+        let operator_token = state.next_token;
+        let operator: BinaryOperator = BinaryOperator {
+            location: operator_token.location,
+            raw: RawBinaryOperator::from(operator_token.raw),
+        };
+        let precedence = state.next_token.raw.into();
+
+        state.advance();
+
+        let right = ExpressionParser::new()
+            .with_precedence(precedence)
+            .prohibit_struct_expressions_if(self.prohibit_struct_expressions)
+            .parse(state)?;
+
+        Some(Expression::Binary {
+            location: state.location_from(left.location().start),
+            left: Box::new(left),
+            right: Box::new(right),
+            operator,
+        })
+    }
+
+    fn parse_postfix_expression(
+        self,
+        state: &mut ParseState<'_, '_>,
+        left: Expression,
+    ) -> Option<Expression> {
+        state.advance();
+
+        let operator: PostfixOperator = PostfixOperator {
+            location: state.current_token.location,
+            raw: RawPostfixOperator::from(state.current_token.raw),
+        };
+
+        Some(Expression::Postfix {
+            location: state.location_from(left.location().start),
+            inner: Box::new(left),
+            operator,
+        })
+    }
 }
 
 impl Parse for ExpressionParser {
@@ -80,36 +230,32 @@ impl Parse for ExpressionParser {
         while self.precedence < state.next_token.raw.into() && !left.with_block() {
             left = match state.next_token.raw {
                 RawToken::Punctuator(Punctuator::OpenParent) => {
-                    CallExpressionParser { left }.parse(state)?
+                    self.parse_call_expression(state, left)
                 }
                 RawToken::Punctuator(Punctuator::Dot) => {
-                    FieldAccessExpressionParser { left }.parse(state)?
+                    self.parse_field_access_expression(state, left)
                 }
                 RawToken::Punctuator(Punctuator::OpenBracket) => {
-                    GenericArgumentsExpressionParser { left }.parse(state)?
+                    self.parse_type_arguments_expression(state, left)
                 }
-                RawToken::Keyword(Keyword::As) => CastExpressionParser { left }.parse(state)?,
+                RawToken::Keyword(Keyword::As) => self.parse_cast_expression(state, left),
                 RawToken::Punctuator(Punctuator::OpenBrace) => {
                     if self.prohibit_struct_expressions {
                         return Some(left);
                     }
 
-                    StructExpressionParser { left }.parse(state)?
+                    self.parse_struct_expression(state, left)
                 }
                 _ => {
                     if state.next_token.raw.is_binary_operator() {
-                        BinaryExpressionParser {
-                            left,
-                            prohibit_struct_expressions: self.prohibit_struct_expressions,
-                        }
-                        .parse(state)?
+                        self.parse_binary_expression(state, left)
                     } else if state.next_token.raw.is_postfix_operator() {
-                        PostfixExpressionParser { left }.parse(state)?
+                        self.parse_postfix_expression(state, left)
                     } else {
                         break;
                     }
                 }
-            };
+            }?;
         }
 
         Some(left)
@@ -202,164 +348,11 @@ struct PrimaryExpressionParser {
     prohibit_struct_expressions: bool,
 }
 
-impl Parse for PrimaryExpressionParser {
-    type Output = Option<Expression>;
-
-    fn parse(self, state: &mut ParseState<'_, '_>) -> Self::Output {
-        match state.next_token.raw {
-            RawToken::IntegerLiteral
-            | RawToken::FloatLiteral
-            | RawToken::StringLiteral
-            | RawToken::CharLiteral
-            | RawToken::TrueBoolLiteral
-            | RawToken::FalseBoolLiteral => Some(Expression::Literal(LiteralParser.parse(state)?)),
-            RawToken::Identifier => {
-                let symbol = state.lexer.scanned_identifier;
-                state.advance();
-
-                Some(Expression::Identifier(IdentifierAST {
-                    location: state.current_token.location,
-                    id: symbol,
-                }))
-            }
-            RawToken::Punctuator(Punctuator::OpenParent) => {
-                ParenthesizedOrTupleExpressionParser.parse(state)
-            }
-            RawToken::Punctuator(Punctuator::OpenBracket) => ListExpressionParser.parse(state),
-            RawToken::Punctuator(Punctuator::OpenBrace) => {
-                StatementsBlockExpressionParser.parse(state)
-            }
-            RawToken::Punctuator(Punctuator::Or) | RawToken::Punctuator(Punctuator::DoubleOr) => {
-                LambdaExpressionParser.parse(state)
-            }
-            RawToken::Keyword(Keyword::If) => IfExpressionParser.parse(state),
-            RawToken::Keyword(Keyword::Match) => MatchExpressionParser.parse(state),
-            RawToken::Keyword(Keyword::While) => WhileExpressionParser.parse(state),
-            RawToken::Keyword(Keyword::Loop) => LoopExpressionParser.parse(state),
-            RawToken::Punctuator(Punctuator::Underscore) => {
-                state.advance();
-
-                Some(Expression::Underscore {
-                    location: state.current_token.location,
-                })
-            }
-            _ => {
-                if state.next_token.raw.is_prefix_operator() {
-                    return PrefixExpressionParser {
-                        prohibit_struct_expressions: self.prohibit_struct_expressions,
-                    }
-                    .parse(state);
-                }
-
-                if self.in_statements_block {
-                    state.add_unexpected_token_diagnostic(one_of([
-                        "statement".to_owned(),
-                        Punctuator::Semicolon.to_string(),
-                        Punctuator::CloseBrace.to_string(),
-                    ]));
-                } else {
-                    state.add_unexpected_token_diagnostic("expression");
-                }
-                None
-            }
-        }
-    }
-}
-
-struct GenericArgumentsExpressionParser {
-    left: Expression,
-}
-
-impl Parse for GenericArgumentsExpressionParser {
-    type Output = Option<Expression>;
-
-    fn parse(self, state: &mut ParseState<'_, '_>) -> Self::Output {
-        let arguments = TypeArgumentsParser.parse(state)?;
-
-        Some(Expression::TypeArguments {
-            location: state.location_from(self.left.location().start),
-            left: Box::new(self.left),
-            arguments,
-        })
-    }
-}
-
-struct FieldAccessExpressionParser {
-    left: Expression,
-}
-
-impl Parse for FieldAccessExpressionParser {
-    type Output = Option<Expression>;
-
-    fn parse(self, state: &mut ParseState<'_, '_>) -> Self::Output {
-        state.advance(); // `.`
-
-        let right = state.consume_identifier()?;
-
-        Some(Expression::FieldAccess {
-            location: state.location_from(self.left.location().start),
-            left: Box::new(self.left),
-            right,
-        })
-    }
-}
-
-struct PrefixExpressionParser {
-    prohibit_struct_expressions: bool,
-}
-impl Parse for PrefixExpressionParser {
-    type Output = Option<Expression>;
-
-    fn parse(self, state: &mut ParseState<'_, '_>) -> Self::Output {
-        let operator_token = state.next_token;
-        let operator: PrefixOperator = PrefixOperator {
-            location: operator_token.location,
-            raw: RawPrefixOperator::from(operator_token.raw),
-        };
-        state.advance();
-
-        let inner = ExpressionParser::new()
-            .with_precedence(Precedence::Unastellar)
-            .prohibit_struct_expressions_if(self.prohibit_struct_expressions)
-            .parse(state)?;
-
-        Some(Expression::Prefix {
-            location: state.make_location(operator_token.location.start, inner.location().end),
-            inner: Box::new(inner),
-            operator,
-        })
-    }
-}
-
-struct PostfixExpressionParser {
-    left: Expression,
-}
-
-impl Parse for PostfixExpressionParser {
-    type Output = Option<Expression>;
-
-    fn parse(self, state: &mut ParseState<'_, '_>) -> Self::Output {
-        state.advance();
-
-        let operator: PostfixOperator = PostfixOperator {
-            location: state.current_token.location,
-            raw: RawPostfixOperator::from(state.current_token.raw),
-        };
-
-        Some(Expression::Postfix {
-            location: state.location_from(self.left.location().start),
-            inner: Box::new(self.left),
-            operator,
-        })
-    }
-}
-
-struct ParenthesizedOrTupleExpressionParser;
-
-impl Parse for ParenthesizedOrTupleExpressionParser {
-    type Output = Option<Expression>;
-
-    fn parse(self, state: &mut ParseState<'_, '_>) -> Self::Output {
+impl PrimaryExpressionParser {
+    fn parse_parenthesized_or_tuple_expression(
+        self,
+        state: &mut ParseState<'_, '_>,
+    ) -> Option<Expression> {
         let start = state.next_token.location.start;
         state.advance();
 
@@ -410,136 +403,8 @@ impl Parse for ParenthesizedOrTupleExpressionParser {
             _ => unreachable!(),
         }
     }
-}
 
-struct IfExpressionParser;
-
-impl Parse for IfExpressionParser {
-    type Output = Option<Expression>;
-
-    fn parse(self, state: &mut ParseState<'_, '_>) -> Self::Output {
-        let start = state.next_token.location.start;
-        state.advance(); // `if`
-
-        let condition = ExpressionParser::new()
-            .prohibit_struct_expressions()
-            .parse(state)?;
-
-        let block = StatementsBlockParser.parse(state)?;
-
-        let mut if_blocks = vec![(condition, block)];
-
-        let mut r#else = None;
-
-        while state.next_token.raw == Keyword::Else {
-            state.advance();
-
-            if state.next_token.raw != Keyword::If {
-                r#else = Some(StatementsBlockParser.parse(state)?);
-                break;
-            }
-
-            state.advance();
-
-            let condition = ExpressionParser::new()
-                .prohibit_struct_expressions()
-                .parse(state)?;
-            let block = StatementsBlockParser.parse(state)?;
-
-            if_blocks.push((condition, block));
-        }
-
-        Some(Expression::If {
-            location: state.location_from(start),
-            if_blocks,
-            r#else,
-        })
-    }
-}
-
-struct CastExpressionParser {
-    left: Expression,
-}
-
-impl Parse for CastExpressionParser {
-    type Output = Option<Expression>;
-
-    fn parse(self, state: &mut ParseState<'_, '_>) -> Self::Output {
-        state.advance();
-
-        let right = TypeParser.parse(state)?;
-
-        Some(Expression::As {
-            location: state.location_from(self.left.location().start),
-            left: Box::new(self.left),
-            right,
-        })
-    }
-}
-
-struct CallExpressionParser {
-    left: Expression,
-}
-
-impl Parse for CallExpressionParser {
-    type Output = Option<Expression>;
-
-    fn parse(self, state: &mut ParseState<'_, '_>) -> Self::Output {
-        state.advance(); // `(`
-
-        let arguments = ListParser::new(&[RawToken::from(Punctuator::CloseParent)], |state| {
-            ExpressionParser::default().parse(state)
-        })
-        .parse(state)?;
-
-        state.advance();
-
-        Some(Expression::Call {
-            location: state.location_from(self.left.location().start),
-            callee: Box::new(self.left),
-            arguments,
-        })
-    }
-}
-
-struct BinaryExpressionParser {
-    left: Expression,
-    prohibit_struct_expressions: bool,
-}
-
-impl Parse for BinaryExpressionParser {
-    type Output = Option<Expression>;
-
-    fn parse(self, state: &mut ParseState<'_, '_>) -> Self::Output {
-        let operator_token = state.next_token;
-        let operator: BinaryOperator = BinaryOperator {
-            location: operator_token.location,
-            raw: RawBinaryOperator::from(operator_token.raw),
-        };
-        let precedence = state.next_token.raw.into();
-
-        state.advance();
-
-        let right = ExpressionParser::new()
-            .with_precedence(precedence)
-            .prohibit_struct_expressions_if(self.prohibit_struct_expressions)
-            .parse(state)?;
-
-        Some(Expression::Binary {
-            location: state.location_from(self.left.location().start),
-            left: Box::new(self.left),
-            right: Box::new(right),
-            operator,
-        })
-    }
-}
-
-struct ListExpressionParser;
-
-impl Parse for ListExpressionParser {
-    type Output = Option<Expression>;
-
-    fn parse(self, state: &mut ParseState<'_, '_>) -> Self::Output {
+    fn parse_list_expression(self, state: &mut ParseState<'_, '_>) -> Option<Expression> {
         let start = state.next_token.location.start;
 
         state.advance();
@@ -556,58 +421,8 @@ impl Parse for ListExpressionParser {
             elements,
         })
     }
-}
 
-struct StructExpressionParser {
-    left: Expression,
-}
-
-impl Parse for StructExpressionParser {
-    type Output = Option<Expression>;
-
-    fn parse(self, state: &mut ParseState<'_, '_>) -> Self::Output {
-        state.advance(); // `{`
-
-        let fields = ListParser::new(&[RawToken::from(Punctuator::CloseBrace)], |state| {
-            StructFieldExpressionParser.parse(state)
-        })
-        .parse(state)?;
-
-        state.advance(); // `}`
-
-        Some(Expression::Struct {
-            location: state.location_from(self.left.location().start),
-            left: Box::new(self.left),
-            fields,
-        })
-    }
-}
-
-struct StructFieldExpressionParser;
-
-impl Parse for StructFieldExpressionParser {
-    type Output = Option<StructFieldExpression>;
-
-    fn parse(self, state: &mut ParseState<'_, '_>) -> Self::Output {
-        let name = state.consume_identifier()?;
-
-        let value = if state.next_token.raw == Punctuator::Colon {
-            state.advance();
-            Some(ExpressionParser::default().parse(state)?)
-        } else {
-            None
-        };
-
-        Some(StructFieldExpression { name, value })
-    }
-}
-
-struct StatementsBlockExpressionParser;
-
-impl Parse for StatementsBlockExpressionParser {
-    type Output = Option<Expression>;
-
-    fn parse(self, state: &mut ParseState<'_, '_>) -> Self::Output {
+    fn parse_block_expression(self, state: &mut ParseState<'_, '_>) -> Option<Expression> {
         let start = state.next_token.location.start;
         let block = StatementsBlockParser.parse(state)?;
 
@@ -616,14 +431,8 @@ impl Parse for StatementsBlockExpressionParser {
             block,
         })
     }
-}
 
-struct LambdaExpressionParser;
-
-impl Parse for LambdaExpressionParser {
-    type Output = Option<Expression>;
-
-    fn parse(self, state: &mut ParseState<'_, '_>) -> Self::Output {
+    fn parse_lambda_expression(self, state: &mut ParseState<'_, '_>) -> Option<Expression> {
         let start = state.next_token.location.start;
 
         state.advance(); // `|` or `||`
@@ -668,14 +477,81 @@ impl Parse for LambdaExpressionParser {
             value: Box::new(value),
         })
     }
-}
 
-struct LoopExpressionParser;
+    fn parse_if_expression(self, state: &mut ParseState<'_, '_>) -> Option<Expression> {
+        let start = state.next_token.location.start;
+        state.advance(); // `if`
 
-impl Parse for LoopExpressionParser {
-    type Output = Option<Expression>;
+        let condition = ExpressionParser::new()
+            .prohibit_struct_expressions()
+            .parse(state)?;
 
-    fn parse(self, state: &mut ParseState<'_, '_>) -> Self::Output {
+        let block = StatementsBlockParser.parse(state)?;
+
+        let mut if_blocks = vec![(condition, block)];
+
+        let mut r#else = None;
+
+        while state.next_token.raw == Keyword::Else {
+            state.advance();
+
+            if state.next_token.raw != Keyword::If {
+                r#else = Some(StatementsBlockParser.parse(state)?);
+                break;
+            }
+
+            state.advance();
+
+            let condition = ExpressionParser::new()
+                .prohibit_struct_expressions()
+                .parse(state)?;
+            let block = StatementsBlockParser.parse(state)?;
+
+            if_blocks.push((condition, block));
+        }
+
+        Some(Expression::If {
+            location: state.location_from(start),
+            if_blocks,
+            r#else,
+        })
+    }
+
+    fn parse_match_expression(self, state: &mut ParseState<'_, '_>) -> Option<Expression> {
+        let start = state.next_token.location.start;
+        state.advance(); // `match`
+
+        let expression = ExpressionParser::new()
+            .prohibit_struct_expressions()
+            .parse(state)?;
+
+        let block = MatchExpressionBlockParser.parse(state)?;
+
+        Some(Expression::Match {
+            location: state.location_from(start),
+            expression: Box::new(expression),
+            block,
+        })
+    }
+
+    fn parse_while_expression(self, state: &mut ParseState<'_, '_>) -> Option<Expression> {
+        let start = state.next_token.location.start;
+        state.advance(); // `while`
+
+        let condition = ExpressionParser::new()
+            .prohibit_struct_expressions()
+            .parse(state)?;
+
+        let body = StatementsBlockParser.parse(state)?;
+
+        Some(Expression::While {
+            location: state.location_from(start),
+            condition: Box::new(condition),
+            statements_block: body,
+        })
+    }
+
+    fn parse_loop_expression(self, state: &mut ParseState<'_, '_>) -> Option<Expression> {
         state.advance(); // `loop`
 
         let location = state.current_token.location;
@@ -685,5 +561,85 @@ impl Parse for LoopExpressionParser {
             location,
             statements_block,
         })
+    }
+
+    fn parse_prefix_expression(self, state: &mut ParseState<'_, '_>) -> Option<Expression> {
+        let operator_token = state.next_token;
+        let operator: PrefixOperator = PrefixOperator {
+            location: operator_token.location,
+            raw: RawPrefixOperator::from(operator_token.raw),
+        };
+        state.advance();
+
+        let inner = ExpressionParser::new()
+            .with_precedence(Precedence::Unastellar)
+            .prohibit_struct_expressions_if(self.prohibit_struct_expressions)
+            .parse(state)?;
+
+        Some(Expression::Prefix {
+            location: state.make_location(operator_token.location.start, inner.location().end),
+            inner: Box::new(inner),
+            operator,
+        })
+    }
+}
+
+impl Parse for PrimaryExpressionParser {
+    type Output = Option<Expression>;
+
+    fn parse(self, state: &mut ParseState<'_, '_>) -> Self::Output {
+        match state.next_token.raw {
+            RawToken::IntegerLiteral
+            | RawToken::FloatLiteral
+            | RawToken::StringLiteral
+            | RawToken::CharLiteral
+            | RawToken::TrueBoolLiteral
+            | RawToken::FalseBoolLiteral => Some(Expression::Literal(LiteralParser.parse(state)?)),
+            RawToken::Identifier => {
+                let symbol = state.lexer.scanned_identifier;
+                state.advance();
+
+                Some(Expression::Identifier(IdentifierAST {
+                    location: state.current_token.location,
+                    id: symbol,
+                }))
+            }
+            RawToken::Punctuator(Punctuator::OpenParent) => {
+                self.parse_parenthesized_or_tuple_expression(state)
+            }
+            RawToken::Punctuator(Punctuator::OpenBracket) => self.parse_list_expression(state),
+            RawToken::Punctuator(Punctuator::OpenBrace) => self.parse_block_expression(state),
+            RawToken::Punctuator(Punctuator::Or) | RawToken::Punctuator(Punctuator::DoubleOr) => {
+                self.parse_lambda_expression(state)
+            }
+            RawToken::Keyword(Keyword::If) => self.parse_if_expression(state),
+            RawToken::Keyword(Keyword::Match) => self.parse_match_expression(state),
+            RawToken::Keyword(Keyword::While) => self.parse_while_expression(state),
+            RawToken::Keyword(Keyword::Loop) => self.parse_loop_expression(state),
+            RawToken::Punctuator(Punctuator::Underscore) => {
+                state.advance();
+
+                Some(Expression::Underscore {
+                    location: state.current_token.location,
+                })
+            }
+            _ => {
+                if state.next_token.raw.is_prefix_operator() {
+                    return self.parse_prefix_expression(state);
+                }
+
+                if self.in_statements_block {
+                    state.add_unexpected_token_diagnostic(one_of([
+                        "statement".to_owned(),
+                        Punctuator::Semicolon.to_string(),
+                        Punctuator::CloseBrace.to_string(),
+                    ]));
+                } else {
+                    state.add_unexpected_token_diagnostic("expression");
+                }
+
+                None
+            }
+        }
     }
 }

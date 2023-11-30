@@ -1,68 +1,3 @@
-/// **FOR INTERNAL USAGE ONLY!!!**
-#[macro_export]
-macro_rules! __notes {
-    ($diagnostic:ident, ) => {};
-    ($diagnostic:ident, notes { $($note:expr)* }) => {
-        let $diagnostic = $diagnostic.with_notes(vec![
-            $($note),*
-        ]);
-    }
-}
-
-/// **FOR INTERNAL USAGE ONLY!!!**
-#[macro_export]
-macro_rules! __labels {
-    ($diagnostic:ident,) => {};
-    ($diagnostic:ident,
-     $(primary { $($primary_label:tt)* })*
-     $(secondary { $($secondary_label:tt)* } )*
-    ) => {
-            $(
-                $crate::__primary_label!(
-                    $diagnostic,
-                    $($primary_label)*
-                );
-            )*
-
-            $(
-                $crate::__secondary_label!(
-                    $diagnostic,
-                    $($secondary_label)*
-                );
-            )*
-    };
-}
-
-/// **FOR INTERNAL USAGE ONLY!!!**
-#[macro_export]
-macro_rules! __primary_label {
-    ($diagnostic:ident, $location:expr => $message:expr) => {
-        let $diagnostic = $diagnostic.with_label(
-            stellar_diagnostics::diagnostic::Label::primary($location).with_message($message),
-        );
-    };
-    ($diagnostic:ident, $location:expr) => {
-        let $diagnostic =
-            $diagnostic.with_label(stellar_diagnostics::diagnostic::Label::primary($location));
-    };
-    ($diagnostic:ident,) => {};
-}
-
-/// **FOR INTERNAL USAGE ONLY!!!**
-#[macro_export]
-macro_rules! __secondary_label {
-    ($diagnostic:ident, $location:expr => $message:expr) => {
-        let $diagnostic = $diagnostic.with_label(
-            stellar_diagnostics::diagnostic::Label::secondary($location).with_message($message),
-        );
-    };
-    ($diagnostic:ident, $location:expr) => {
-        let $diagnostic =
-            $diagnostic.with_label(stellar_diagnostics::diagnostic::Label::secondary($location));
-    };
-    ($diagnostic:ident,) => {};
-}
-
 /// Allows to define diagnostics more efficiently.
 ///
 /// # Example
@@ -145,12 +80,45 @@ macro_rules! define_diagnostics {
                         .with_code($code.to_string())
                         .with_message($message);
 
-                    $crate::__labels!(diagnostic, $($labels)*);
-                    $crate::__notes!(diagnostic, $($note)*);
+                    define_diagnostics!(@labels diagnostic, $($labels)*);
+                    define_diagnostics!(@notes diagnostic, $($note)*);
 
                     diagnostic
                 }
             }
         )*
+    };
+    (@notes $diagnostic:ident,) => {};
+    (@notes $diagnostic:ident, notes { $($note:expr)* }) => {
+        let $diagnostic = $diagnostic.with_notes(vec![
+            $($note),*
+        ]);
+    };
+    (@primary_label $diagnostic:ident,) => {};
+    (@primary_label $diagnostic:ident, $location:expr) => {
+        let $diagnostic =
+            $diagnostic.with_label($crate::diagnostic::Label::primary($location));
+    };
+    (@primary_label $diagnostic:ident, $location:expr => $message:expr) => {
+        let $diagnostic = $diagnostic.with_label(
+            $crate::diagnostic::Label::primary($location).with_message($message),
+        );
+    };
+    (@secondary_label $diagnostic:ident,) => {};
+    (@secondary_label $diagnostic:ident, $location:expr) => {
+        let $diagnostic =
+            $diagnostic.with_label($crate::diagnostic::Label::secondary($location));
+    };
+    (@secondary_label $diagnostic:ident, $location:expr => $message:expr) => {
+        let $diagnostic = $diagnostic.with_label(
+            $crate::diagnostic::Label::secondary($location).with_message($message),
+        );
+    };
+    (@labels $diagnostic:ident,) => {};
+    (@labels $diagnostic:ident,
+        $(primary { $($primary_label:tt)* })*
+        $(secondary { $($secondary_label:tt)* })*) => {
+        $( $crate::define_diagnostics!(@primary_label $diagnostic, $($primary_label)*); )*
+        $( $crate::define_diagnostics!(@secondary_label $diagnostic, $($secondary_label)*); )*
     };
 }
