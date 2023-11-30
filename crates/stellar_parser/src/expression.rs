@@ -285,64 +285,6 @@ impl Parse for WhileExpressionParser {
     }
 }
 
-struct MatchExpressionParser;
-
-impl Parse for MatchExpressionParser {
-    type Output = Option<Expression>;
-
-    fn parse(self, state: &mut ParseState<'_, '_>) -> Self::Output {
-        let start = state.next_token.location.start;
-        state.advance(); // `match`
-
-        let expression = ExpressionParser::new()
-            .prohibit_struct_expressions()
-            .parse(state)?;
-
-        let block = MatchExpressionBlockParser.parse(state)?;
-
-        Some(Expression::Match {
-            location: state.location_from(start),
-            expression: Box::new(expression),
-            block,
-        })
-    }
-}
-
-struct MatchExpressionBlockParser;
-
-impl Parse for MatchExpressionBlockParser {
-    type Output = Option<Vec<MatchExpressionItem>>;
-
-    fn parse(self, state: &mut ParseState<'_, '_>) -> Self::Output {
-        state.consume(Punctuator::OpenBrace)?;
-
-        let units = ListParser::new(&[RawToken::from(Punctuator::CloseBrace)], |state| {
-            MatchExpressionUnitParser.parse(state)
-        })
-        .parse(state)?;
-
-        state.advance(); // `}`
-
-        Some(units)
-    }
-}
-
-struct MatchExpressionUnitParser;
-
-impl Parse for MatchExpressionUnitParser {
-    type Output = Option<MatchExpressionItem>;
-
-    fn parse(self, state: &mut ParseState<'_, '_>) -> Self::Output {
-        let left = PatternParser.parse(state)?;
-
-        state.consume(Punctuator::Arrow)?;
-
-        let right = ExpressionParser::new().parse(state)?;
-
-        Some(MatchExpressionItem { left, right })
-    }
-}
-
 struct PrimaryExpressionParser {
     in_statements_block: bool,
     prohibit_struct_expressions: bool,
@@ -404,7 +346,7 @@ impl PrimaryExpressionParser {
         }
     }
 
-    fn parse_list_expression(self, state: &mut ParseState<'_, '_>) -> Option<Expression> {
+    fn parse_list_expression(&self, state: &mut ParseState<'_, '_>) -> Option<Expression> {
         let start = state.next_token.location.start;
 
         state.advance();
@@ -422,7 +364,7 @@ impl PrimaryExpressionParser {
         })
     }
 
-    fn parse_block_expression(self, state: &mut ParseState<'_, '_>) -> Option<Expression> {
+    fn parse_block_expression(&self, state: &mut ParseState<'_, '_>) -> Option<Expression> {
         let start = state.next_token.location.start;
         let block = StatementsBlockParser.parse(state)?;
 
@@ -432,7 +374,7 @@ impl PrimaryExpressionParser {
         })
     }
 
-    fn parse_lambda_expression(self, state: &mut ParseState<'_, '_>) -> Option<Expression> {
+    fn parse_lambda_expression(&self, state: &mut ParseState<'_, '_>) -> Option<Expression> {
         let start = state.next_token.location.start;
 
         state.advance(); // `|` or `||`
@@ -478,7 +420,7 @@ impl PrimaryExpressionParser {
         })
     }
 
-    fn parse_if_expression(self, state: &mut ParseState<'_, '_>) -> Option<Expression> {
+    fn parse_if_expression(&self, state: &mut ParseState<'_, '_>) -> Option<Expression> {
         let start = state.next_token.location.start;
         state.advance(); // `if`
 
@@ -517,7 +459,36 @@ impl PrimaryExpressionParser {
         })
     }
 
-    fn parse_match_expression(self, state: &mut ParseState<'_, '_>) -> Option<Expression> {
+    fn parse_match_expression_item(
+        &self,
+        state: &mut ParseState<'_, '_>,
+    ) -> Option<MatchExpressionItem> {
+        let left = PatternParser.parse(state)?;
+
+        state.consume(Punctuator::Arrow)?;
+
+        let right = ExpressionParser::new().parse(state)?;
+
+        Some(MatchExpressionItem { left, right })
+    }
+
+    fn parse_match_expression_block(
+        &self,
+        state: &mut ParseState<'_, '_>,
+    ) -> Option<Vec<MatchExpressionItem>> {
+        state.consume(Punctuator::OpenBrace)?;
+
+        let items = ListParser::new(&[RawToken::from(Punctuator::CloseBrace)], |state| {
+            self.parse_match_expression_item(state)
+        })
+        .parse(state)?;
+
+        state.advance(); // `}`
+
+        Some(items)
+    }
+
+    fn parse_match_expression(&self, state: &mut ParseState<'_, '_>) -> Option<Expression> {
         let start = state.next_token.location.start;
         state.advance(); // `match`
 
@@ -525,7 +496,7 @@ impl PrimaryExpressionParser {
             .prohibit_struct_expressions()
             .parse(state)?;
 
-        let block = MatchExpressionBlockParser.parse(state)?;
+        let block = self.parse_match_expression_block(state)?;
 
         Some(Expression::Match {
             location: state.location_from(start),
@@ -534,7 +505,7 @@ impl PrimaryExpressionParser {
         })
     }
 
-    fn parse_while_expression(self, state: &mut ParseState<'_, '_>) -> Option<Expression> {
+    fn parse_while_expression(&self, state: &mut ParseState<'_, '_>) -> Option<Expression> {
         let start = state.next_token.location.start;
         state.advance(); // `while`
 
@@ -551,7 +522,7 @@ impl PrimaryExpressionParser {
         })
     }
 
-    fn parse_loop_expression(self, state: &mut ParseState<'_, '_>) -> Option<Expression> {
+    fn parse_loop_expression(&self, state: &mut ParseState<'_, '_>) -> Option<Expression> {
         state.advance(); // `loop`
 
         let location = state.current_token.location;
@@ -563,7 +534,7 @@ impl PrimaryExpressionParser {
         })
     }
 
-    fn parse_prefix_expression(self, state: &mut ParseState<'_, '_>) -> Option<Expression> {
+    fn parse_prefix_expression(&self, state: &mut ParseState<'_, '_>) -> Option<Expression> {
         let operator_token = state.next_token;
         let operator: PrefixOperator = PrefixOperator {
             location: operator_token.location,
